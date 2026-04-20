@@ -1,0 +1,56 @@
+{
+  "name": "EDENTRACK - Professional Farm Management Worldwide",
+  "short_name": "EDENTRACK",
+  "description": "Professional poultry farm management for farmers worldwide. Track flocks, manage sales, monitor inventory, and grow your profits globally.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/img_9286.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/img_9286.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "agriculture"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Add Task",
+      "short_name": "Task",
+      "description": "Quickly add a new task",
+      "url": "/tasks?action=new",
+      "icons": [{ "src": "/img_9286.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Log Eggs",
+      "short_name": "Eggs",
+      "description": "Record egg collection",
+      "url": "/eggs?action=log",
+      "icons": [{ "src": "/img_9286.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false,
+  "iarc_rating_id": "",
+  "related_applications": [],
+  "features": [
+    "Real-time synchronization",
+    "Voice command support",
+    "Offline mode with sync",
+    "Weather integration",
+    "Predictive analytics",
+    "Multi-language support"
+  ]
+}

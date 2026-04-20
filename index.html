@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/img_9286.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f0e8" />
+    <meta name="description" content="EDENTRACK - Professional poultry farm management for farmers worldwide. Track flocks, manage sales, monitor inventory, and grow your profits globally." />
+    <title>EDENTRACK - Professional Farm Management Worldwide</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/img_9286.png" />
+    <meta property="og:title" content="EDENTRACK - Professional Farm Management Worldwide" />
+    <meta property="og:description" content="Trusted by farmers globally. Track your poultry farm, manage flocks, record sales, and grow your profits with EDENTRACK." />
+    <meta property="og:image" content="/img_9286.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="/img_9286.png">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator && location.hostname !== 'localhost') {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    </script>
+  </body>
+</html>
