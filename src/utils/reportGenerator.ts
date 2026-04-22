@@ -110,7 +110,45 @@ export async function generateDailyReport(farmId: string, farmName: string, curr
       monthExpenses: monthExpensesData.data || [],
     };
 
-    return formatDailyReport(data);
+    try {
+      return formatDailyReport(data);
+    } catch (formatError) {
+      console.error('Error formatting report, using fallback:', formatError);
+      // Build a minimal guaranteed-safe report from whatever data loaded
+      const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const lines: string[] = [];
+      lines.push('📊 WEEKLY FARM REPORT');
+      lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      lines.push(`📅 ${today}`);
+      lines.push(`🏢 Farm: ${farmName}`);
+      lines.push('');
+      if (data.flocks.length > 0) {
+        lines.push(`🐔 Active Flocks: ${data.flocks.length}`);
+        data.flocks.forEach((f: any) => {
+          lines.push(`  • ${f.name}: ${f.current_count ?? '?'} birds (${f.type ?? 'Unknown'})`);
+        });
+        lines.push('');
+      }
+      const totalExp = data.expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+      const totalBirdRev = data.birdSales.reduce((s: number, e: any) => s + (Number(e.total_amount) || 0), 0);
+      const totalEggRev = data.eggSales.reduce((s: number, e: any) => s + (Number(e.total_amount) || 0), 0);
+      const totalRev = totalBirdRev + totalEggRev;
+      if (totalRev > 0 || totalExp > 0) {
+        lines.push('💰 THIS WEEK');
+        lines.push(`  Revenue: ${totalRev.toLocaleString()} ${currency}`);
+        lines.push(`  Expenses: ${totalExp.toLocaleString()} ${currency}`);
+        lines.push(`  Net: ${(totalRev - totalExp).toLocaleString()} ${currency}`);
+        lines.push('');
+      }
+      if (data.mortalityLogs.length > 0) {
+        const deaths = data.mortalityLogs.reduce((s: number, m: any) => s + (Number(m.count) || 0), 0);
+        lines.push(`⚠️ Mortality: ${deaths} birds this week`);
+        lines.push('');
+      }
+      lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      lines.push('Sent via Edentrack');
+      return lines.join('\n');
+    }
   } catch (error) {
     console.error('Error generating daily report:', error);
     throw new Error('Failed to generate daily report');
@@ -230,7 +268,7 @@ function formatDailyReport(data: ReportData): string {
         : '0';
 
       lines.push(`• ${flock.name} (${flock.type || 'Unknown'})`);
-      lines.push(`  → ${flock.current_count.toLocaleString()} birds | Age: ${ageInWeeks} weeks (${ageInDays} days)`);
+      lines.push(`  → ${(flock.current_count ?? 0).toLocaleString()} birds | Age: ${ageInWeeks} weeks (${ageInDays} days)`);
       lines.push(`  → Initial: ${flock.initial_count?.toLocaleString() || 'N/A'} | Survival: ${survivalRate}%`);
       
       if (deathsToday > 0) {
@@ -341,14 +379,16 @@ function formatDailyReport(data: ReportData): string {
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     if (birdSales.length > 0) {
-      const totalBirdCount = birdSales.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
+      const totalBirdCount = birdSales.reduce((sum: number, s: any) => sum + (s.birds_sold || s.quantity || 0), 0);
       // 5. Revenue per bird
       const revenuePerBird = totalBirdCount > 0 ? Math.round(totalBirdRevenue / totalBirdCount) : 0;
       lines.push('🐔 Bird Sales:');
       birdSales.forEach((sale: any) => {
-        const pricePerBird = sale.quantity > 0 ? Math.round(sale.total_amount / sale.quantity) : 0;
-        lines.push(`  → ${sale.quantity} birds sold @ ${pricePerBird.toLocaleString()} ${currency} each`);
-        lines.push(`  → Total: ${sale.total_amount.toLocaleString()} ${currency}`);
+        const qty = sale.birds_sold || sale.quantity || 0;
+        const amt = Number(sale.total_amount) || 0;
+        const pricePerBird = qty > 0 ? Math.round(amt / qty) : 0;
+        lines.push(`  → ${qty} birds sold @ ${pricePerBird.toLocaleString()} ${currency} each`);
+        lines.push(`  → Total: ${amt.toLocaleString()} ${currency}`);
         if (sale.customer_name) lines.push(`  → Customer: ${sale.customer_name}`);
       });
       if (totalBirdCount > 0) lines.push(`  → Avg revenue per bird: ${revenuePerBird.toLocaleString()} ${currency}`);
@@ -366,7 +406,7 @@ function formatDailyReport(data: ReportData): string {
                          (sale.large_eggs_sold || 0) + (sale.jumbo_eggs_sold || 0);
         const trays = (saleEggs / 30).toFixed(1);
         lines.push(`  → ${saleEggs} eggs (${trays} trays) sold`);
-        lines.push(`  → Total: ${sale.total_amount.toLocaleString()} ${currency}`);
+        lines.push(`  → Total: ${(Number(sale.total_amount) || 0).toLocaleString()} ${currency}`);
         if (sale.customer_name) lines.push(`  → Customer: ${sale.customer_name}`);
       });
       if (totalEggsSold > 0) {
