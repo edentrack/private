@@ -24,6 +24,7 @@ const DEFAULTS: Partial<FarmPermissions> = {
   managers_can_edit_eggs: false,
   managers_can_use_smart_import: true,
   managers_can_view_analytics: true,
+  managers_can_use_eden_ai: true,
   // Worker
   workers_can_log_mortality: true,
   workers_can_log_eggs: true,
@@ -65,6 +66,7 @@ const MANAGER_GROUPS: PermissionGroup[] = [
       { key: 'managers_can_edit_feed_water', label: 'Edit Feed & Water Records', description: 'Adjust weekly feed and water consumption logs' },
       { key: 'managers_can_edit_eggs', label: 'Edit Egg Records', description: 'Correct egg collection and egg sale records' },
       { key: 'managers_can_use_smart_import', label: 'Use Smart Import', description: 'Upload receipts and documents to auto-import records' },
+      { key: 'managers_can_use_eden_ai', label: 'Use Eden AI', description: 'Chat with Eden for health advice, diagnostics, and quick logging' },
     ],
   },
   {

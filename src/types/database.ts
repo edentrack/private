@@ -46,6 +46,7 @@ export interface FarmPermissions {
   managers_can_edit_eggs: boolean;
   managers_can_use_smart_import: boolean;
   managers_can_view_analytics: boolean;
+  managers_can_use_eden_ai: boolean;
   // ── Worker permissions ───────────────────────────────────────────────
   workers_can_log_mortality: boolean;
   workers_can_log_eggs: boolean;

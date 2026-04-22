@@ -23,8 +23,7 @@ import { canViewAnalytics } from '../../utils/permissions';
 import { getTaskTimeStatus, formatTaskDueTime } from '../../utils/taskPermissions';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
-import { generateDailyReport } from '../../utils/reportGenerator';
-import { shareViaWhatsApp, copyToClipboard } from '../../utils/whatsappShare';
+import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 
 interface DashboardHomeProps {
@@ -187,24 +186,123 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     setGeneratingReport(true);
 
     try {
-      const report = await generateDailyReport(currentFarm.id, currentFarm.name, currentFarm.currency_code || currentFarm.currency || 'CFA');
+      const farmId = currentFarm.id;
+      const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
-      // On mobile, open WhatsApp directly — clipboard API is unreliable on mobile Safari
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        shareViaWhatsApp(report);
-      } else {
-        try {
-          await copyToClipboard(report);
-          toast.success('Report copied! Paste in WhatsApp to share', 5000);
-        } catch {
-          // Clipboard blocked (non-HTTPS or permission denied) — fall back to WhatsApp web
-          shareViaWhatsApp(report);
-        }
+      // Fetch today's operational data in parallel — each query is independent
+      const [eggsRes, mortalityRes, tasksRes, feedRes, vacsRes] = await Promise.allSettled([
+        supabase.from('egg_collections').select('*').eq('farm_id', farmId).gte('collected_on', today).lt('collected_on', tomorrow),
+        supabase.from('mortality_logs').select('*').eq('farm_id', farmId).gte('event_date', today).lt('event_date', tomorrow),
+        supabase.from('tasks').select('*, task_templates(title)').eq('farm_id', farmId).gte('scheduled_for', `${today}T00:00:00`).lt('scheduled_for', `${tomorrow}T00:00:00`),
+        supabase.from('feed_stock').select('*').eq('farm_id', farmId).order('feed_type'),
+        supabase.from('vaccinations').select('*').eq('farm_id', farmId).gte('scheduled_date', today).lte('scheduled_date', today),
+      ]);
+
+      const eggs = eggsRes.status === 'fulfilled' ? (eggsRes.value.data || []) : [];
+      const mortality = mortalityRes.status === 'fulfilled' ? (mortalityRes.value.data || []) : [];
+      const tasks = tasksRes.status === 'fulfilled' ? (tasksRes.value.data || []) : [];
+      const feed = feedRes.status === 'fulfilled' ? (feedRes.value.data || []) : [];
+      const vacs = vacsRes.status === 'fulfilled' ? (vacsRes.value.data || []) : [];
+
+      const dateStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const lines: string[] = [];
+
+      lines.push(`📋 *DAILY OPERATIONS REPORT*`);
+      lines.push(`━━━━━━━━━━━━━━━━━━━━━━`);
+      lines.push(`🏢 *Farm:* ${currentFarm.name}`);
+      lines.push(`📅 *Date:* ${dateStr}`);
+      lines.push('');
+
+      // Flocks
+      if (flocks.length > 0) {
+        lines.push(`🐔 *FLOCKS (${flocks.length} active)*`);
+        flocks.forEach(f => {
+          lines.push(`• ${f.name}: ${(f.current_count ?? 0).toLocaleString()} birds (${f.type ?? 'Unknown'})`);
+        });
+        lines.push('');
       }
+
+      // Egg collections
+      if (eggs.length > 0) {
+        const totalGood = eggs.reduce((s, e) => s + (Number(e.total_eggs) || 0), 0);
+        const totalDmg = eggs.reduce((s, e) => s + (Number(e.damaged_eggs) || 0), 0);
+        lines.push(`🥚 *EGGS COLLECTED TODAY*`);
+        lines.push(`• Good eggs: *${totalGood.toLocaleString()}*`);
+        if (totalDmg > 0) lines.push(`• Damaged: ${totalDmg}`);
+        eggs.forEach(e => {
+          const flock = flocks.find(f => f.id === e.flock_id);
+          if (flock && eggs.length > 1) lines.push(`  → ${flock.name}: ${Number(e.total_eggs) || 0} eggs`);
+        });
+        lines.push('');
+      } else {
+        lines.push(`🥚 *EGGS:* No collections recorded today`);
+        lines.push('');
+      }
+
+      // Mortality
+      if (mortality.length > 0) {
+        const totalDeaths = mortality.reduce((s, m) => s + (Number(m.count) || 0), 0);
+        lines.push(`⚠️ *MORTALITY TODAY: ${totalDeaths} birds*`);
+        mortality.forEach(m => {
+          const flock = flocks.find(f => f.id === m.flock_id);
+          const cause = m.cause ? ` — ${m.cause}` : '';
+          lines.push(`• ${flock?.name ?? 'Unknown flock'}: ${Number(m.count) || 0} birds${cause}`);
+        });
+        lines.push('');
+      } else {
+        lines.push(`✅ *MORTALITY:* 0 deaths today`);
+        lines.push('');
+      }
+
+      // Tasks
+      const completedTasks = tasks.filter(t => t.status === 'completed');
+      const pendingTasks = tasks.filter(t => t.status === 'pending');
+      if (tasks.length > 0) {
+        lines.push(`✅ *TASKS (${completedTasks.length}/${tasks.length} done)*`);
+        completedTasks.slice(0, 5).forEach(t => {
+          const title = t.title_override || t.task_templates?.title || 'Task';
+          lines.push(`✓ ${title}`);
+        });
+        if (pendingTasks.length > 0) {
+          pendingTasks.slice(0, 3).forEach(t => {
+            const title = t.title_override || t.task_templates?.title || 'Task';
+            lines.push(`✗ ${title} (pending)`);
+          });
+        }
+        lines.push('');
+      }
+
+      // Vaccinations due today
+      if (vacs.length > 0) {
+        lines.push(`💉 *VACCINATIONS DUE TODAY*`);
+        vacs.forEach(v => {
+          const flock = flocks.find(f => f.id === v.flock_id);
+          lines.push(`• ${v.vaccine_name ?? 'Vaccine'} — ${flock?.name ?? 'Unknown flock'}`);
+        });
+        lines.push('');
+      }
+
+      // Feed inventory
+      if (feed.length > 0) {
+        lines.push(`🌾 *FEED INVENTORY*`);
+        feed.forEach(f => {
+          const stock = Number(f.current_stock_bags) ?? 0;
+          const lowFlag = stock < 5 ? ' ⚠️ LOW' : '';
+          lines.push(`• ${f.feed_type}: ${stock} bags${lowFlag}`);
+        });
+        lines.push('');
+      }
+
+      lines.push(`━━━━━━━━━━━━━━━━━━━━━━`);
+      lines.push(`Sent via Edentrack`);
+      lines.push(new Date().toLocaleTimeString());
+
+      const report = lines.join('\n');
+      shareViaWhatsApp(report);
     } catch (error) {
-      console.error('Error generating report:', error);
-      toast.error('Failed to generate report. Check your internet connection and try again.');
+      console.error('Error generating operations report:', error);
+      toast.error('Could not generate report. Please try again.');
     } finally {
       setGeneratingReport(false);
     }

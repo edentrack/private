@@ -88,9 +88,11 @@ export function canViewModule(
 
 function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibility {
   switch (m) {
+    case 'ai-assistant':
+      return { visible: p.managers_can_use_eden_ai ?? true };
+
     case 'dashboard':
     case 'smart-dashboard':
-    case 'ai-assistant':
     case 'flocks':
     case 'tasks':
     case 'shifts':
