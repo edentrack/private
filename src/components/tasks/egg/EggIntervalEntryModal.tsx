@@ -63,6 +63,8 @@ export function EggIntervalEntryModal({
   const [notes, setNotes] = useState<string>(initialSizes.notes || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Draft raw strings for loose-egg inputs — committed on blur so typing isn't interrupted by conversion
+  const [looseDrafts, setLooseDrafts] = useState<Partial<Record<EggSizeKey, string>>>({});
 
   const sourceIntervalKey = useMemo(() => `${intervalGranularity}|${intervalTimeHHMM}`, [intervalGranularity, intervalTimeHHMM]);
 
@@ -88,6 +90,7 @@ export function EggIntervalEntryModal({
     setCollectionDateState(collectionDate);
     setSizes(initialSizes);
     setNotes(initialSizes.notes || '');
+    setLooseDrafts({});
     setSyncToInventory((prev) => {
       // If editing an existing task, respect the stored initial sync.
       // If creating new, keep the initial safety default for past dates.
@@ -308,6 +311,7 @@ export function EggIntervalEntryModal({
                 const eggs = (sizes as any)[k] ?? 0;
                 const trays = computeTrays(eggs);
                 const loose = computeLoose(eggs);
+                const looseDraft = looseDrafts[k];
                 return (
                   <div key={k} className="grid grid-cols-3 gap-2 items-center">
                     <div className="font-semibold text-sm text-gray-900">{label}</div>
@@ -323,8 +327,12 @@ export function EggIntervalEntryModal({
                       type="number"
                       min={0}
                       disabled={!canEdit}
-                      value={loose}
-                      onChange={(e) => updateSizeFromTraysLoose(k, trays, Number(e.target.value))}
+                      value={looseDraft !== undefined ? looseDraft : loose}
+                      onChange={(e) => setLooseDrafts((prev) => ({ ...prev, [k]: e.target.value }))}
+                      onBlur={(e) => {
+                        updateSizeFromTraysLoose(k, trays, Number(e.target.value));
+                        setLooseDrafts((prev) => { const next = { ...prev }; delete next[k]; return next; });
+                      }}
                       className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42] disabled:bg-gray-50"
                     />
                   </div>

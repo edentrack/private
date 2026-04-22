@@ -11,6 +11,8 @@ import { ArchiveFlockModal } from './ArchiveFlockModal';
 import { ChickenIcon } from '../icons/ChickenIcon';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { useTranslation } from 'react-i18next';
+import { invalidateFarmTypeCache } from '../../hooks/useFarmType';
+import { FlockListSkeleton } from '../common/Skeleton';
 
 interface FlockManagementProps {
   onSelectFlock: (flock: Flock) => void;
@@ -98,6 +100,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
   const handleFlockCreated = () => {
     setShowCreateModal(false);
+    invalidateFarmTypeCache();
     loadFlocks();
   };
 
@@ -123,6 +126,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
   const handleFlockArchived = () => {
     setShowArchiveModal(false);
     setArchivingFlock(null);
+    invalidateFarmTypeCache();
     loadFlocks();
   };
 
@@ -142,6 +146,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
       toast.success('Flock restored successfully');
       setConfirmingUnarchive(null);
+      invalidateFarmTypeCache();
       loadFlocks();
     } catch (err) {
       console.error('Error unarchiving flock:', err);
@@ -168,16 +173,12 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-neon-500 rounded-full animate-spin" />
-      </div>
-    );
+    return <FlockListSkeleton />;
   }
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div data-tour="flock-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
             {t('flocks.title')}
@@ -220,11 +221,11 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
           <div className="w-20 h-20 bg-neon-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <ChickenIcon className="w-10 h-10 text-neon-600" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">{t('flocks.no_flocks')}</h3>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">{t('flocks.no_flocks_yet')}</h3>
+          <p className="text-gray-500 mb-6 max-w-sm mx-auto text-sm leading-relaxed">
             {currentRole === 'viewer'
-              ? t('flocks.no_flocks')
-              : t('flocks.create_first')}
+              ? t('flocks.no_flocks_worker_message')
+              : t('flocks.no_flocks_owner_message')}
           </p>
           {currentRole && currentRole !== 'viewer' && (
             <button

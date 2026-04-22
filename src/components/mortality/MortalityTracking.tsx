@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Flock, MortalityLog } from '../../types/database';
+import { usePermissions } from '../../contexts/PermissionsContext';
+import { canPerformAction } from '../../utils/navigationPermissions';
 
 interface MortalityTrackingProps {
   flock: Flock | null;
@@ -20,6 +22,8 @@ const MORTALITY_REASONS = [
 
 export function MortalityTracking({ flock }: MortalityTrackingProps) {
   const { currentRole } = useAuth();
+  const { farmPermissions } = usePermissions();
+  const canLog = canPerformAction(currentRole, 'create', 'mortality', farmPermissions);
   const toast = useToast();
   const [count, setCount] = useState(0);
   const [reason, setReason] = useState('Unknown');
@@ -166,7 +170,7 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
         <h3 className="text-lg font-bold text-gray-900 mb-4">Today's Mortality</h3>
 
         <div className="flex items-center justify-center space-x-6 mb-6">
-          {currentRole && currentRole !== 'viewer' && (
+          {canLog && (
             <button
               onClick={() => setCount(Math.max(0, count - 1))}
               className="w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors"
@@ -179,7 +183,7 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
             {count}
           </div>
 
-          {currentRole && currentRole !== 'viewer' && (
+          {canLog && (
             <button
               onClick={() => setCount(count + 1)}
               className="w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors"
@@ -232,7 +236,7 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
             />
           </div>
 
-          {currentRole && currentRole !== 'viewer' && (
+          {canLog && (
             <button
               onClick={handleSave}
               disabled={loading || count === 0}
@@ -269,7 +273,7 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
         </div>
       </div>
 
-      {logs.length > 0 && (
+      {logs.length > 0 ? (
         <div className="bg-white rounded-3xl p-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Logs</h3>
           <div className="space-y-3">
@@ -284,7 +288,7 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-lg font-bold text-gray-900">{log.count}</div>
-                  {currentRole && currentRole !== 'viewer' && (
+                  {canLog && (
                     <button
                       onClick={() => handleDelete(log)}
                       disabled={deletingId === log.id}
@@ -298,6 +302,16 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
               </div>
             ))}
           </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl p-12 text-center">
+          <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No mortality recorded</h3>
+          <p className="text-gray-600 max-w-sm mx-auto text-sm">
+            {currentRole === 'viewer'
+              ? 'Ask your manager to record mortality events. Historical data will appear here.'
+              : 'Record mortality events as they occur to track bird health and track losses.'}
+          </p>
         </div>
       )}
     </div>

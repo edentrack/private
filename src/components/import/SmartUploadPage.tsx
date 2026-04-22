@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, FileText, Image, Table, X, ChevronDown, Sparkles, Lock, AlertTriangle, Loader2 } from 'lucide-react';
+import { Upload, FileText, Image, Table, X, ChevronDown, Sparkles, Lock, AlertTriangle, Loader2, History } from 'lucide-react';
+import { ImportHistory } from './ImportHistory';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { ProposedImportReview } from './ProposedImportReview';
@@ -40,6 +41,7 @@ export function SmartUploadPage() {
   const [showCSVMapping, setShowCSVMapping] = useState(false);
   const [csvFile, setCsvFile] = useState<UploadedFile | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [activeTab, setActiveTab] = useState<'upload' | 'history'>('upload');
 
   useEffect(() => {
     if (farmId) {
@@ -309,13 +311,34 @@ export function SmartUploadPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Smart Upload</h1>
-        <p className="text-gray-600 mt-1">
-          Upload farm documents, receipts, or spreadsheets to automatically extract and import data
-        </p>
+      <div data-tour="smart-import-header" className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Smart Upload</h1>
+          <p className="text-gray-600 mt-1">
+            Upload farm documents, receipts, or spreadsheets to automatically extract and import data
+          </p>
+        </div>
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('upload')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'upload' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <Upload className="w-3.5 h-3.5" />Upload
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            <History className="w-3.5 h-3.5" />History
+          </button>
+        </div>
       </div>
 
+      {activeTab === 'history' && <ImportHistory />}
+      {activeTab === 'upload' && (
+      <div className="space-y-4">
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div
           onDrop={handleDrop}
@@ -501,6 +524,8 @@ export function SmartUploadPage() {
           )}
         </button>
       </div>
+      </div>
+      )}
     </div>
   );
 }

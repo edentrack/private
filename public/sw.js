@@ -1,14 +1,11 @@
-// Service worker focused on preventing "stale index.html" issues.
-// Key idea: never serve app navigations (HTML) cache-first.
+// Service worker — network-first for HTML, cache-first for assets.
+// Key rule: NEVER cache index.html (it references hashed chunks that change on deploy).
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE = `edentrack-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `edentrack-runtime-${CACHE_VERSION}`;
 
-const STATIC_ASSETS = [
-  // Keep this list tiny to avoid caching old HTML that references removed chunks.
-  '/offline.html',
-];
+const STATIC_ASSETS = ['/offline.html'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -38,41 +35,96 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const url = new URL(request.url);
 
   if (request.method !== 'GET') return;
+  if (!url.protocol.startsWith('http')) return;
 
-  // For SPA navigations, always try network first so HTML stays fresh.
-  // This prevents a cached index.html from pointing at missing hashed chunks after deploys.
+  // Navigation requests (HTML): always network-first.
+  // Falls back to offline.html only when truly offline.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => response)
-        .catch(() => caches.match('/offline.html'))
+      fetch(request).catch(() => caches.match('/offline.html'))
     );
     return;
   }
 
-  // For other requests (JS/CSS/images), use cache-first with runtime population.
+  // Supabase API: network-first, no caching (data must be fresh).
+  if (url.hostname.includes('supabase')) {
+    event.respondWith(
+      fetch(request).catch(() =>
+        new Response(
+          JSON.stringify({ error: 'Offline — data will sync when reconnected' }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        )
+      )
+    );
+    return;
+  }
+
+  // Static assets (JS/CSS/images): cache-first, populate on miss.
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
-
-      return fetch(request)
-        .then((response) => {
-          // Only cache successful, same-origin basic responses.
-          if (response && response.ok && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => undefined)
+      return fetch(request).then((response) => {
+        if (response && response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      }).catch(() => undefined);
     })
   );
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
+
+// Push notifications (for future task reminders / alerts)
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Edentrack';
+  const options = {
+    body: data.body || 'You have a new notification',
+    icon: data.icon || '/icon-192x192.png',
+    badge: '/icon-192x192.png',
+    tag: data.tag || 'notification',
+    requireInteraction: data.requireInteraction || false,
+    data: data.data || {},
+    vibrate: [200, 100, 200],
+    actions: data.actions || [],
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  if (event.action === 'dismiss') return;
+
+  const data = event.notification.data;
+  let urlToOpen = data?.actionUrl || '/';
+  if (!urlToOpen.startsWith('http')) {
+    urlToOpen = '#' + (urlToOpen.startsWith('/') ? urlToOpen : '/' + urlToOpen);
+  }
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        if (clientList.length > 0) {
+          const client = clientList[0];
+          if ('focus' in client) client.focus();
+          client.postMessage({ type: 'notification-click', actionUrl: urlToOpen, data });
+          return;
+        }
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen.startsWith('#') ? '/' : urlToOpen);
+        }
+      })
+  );
+});
+
+self.addEventListener('notificationclose', () => {});

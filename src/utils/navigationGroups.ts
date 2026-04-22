@@ -42,7 +42,7 @@ export function getNavigationGroups(
     {
       id: 'tools',
       label: 'TOOLS',
-      items: items.filter(item => ['compare', 'smart-upload', 'marketplace'].includes(item.id)),
+      items: items.filter(item => ['ai-assistant', 'smart-upload', 'compare', 'marketplace'].includes(item.id)),
     },
     {
       id: 'other',

@@ -217,7 +217,7 @@ export function TasksPage2() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div data-tour="task-header" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tasks</h1>
           <p className="text-gray-500 mt-1">Daily tasks + egg collection tracking</p>

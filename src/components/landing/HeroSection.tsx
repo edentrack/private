@@ -597,80 +597,99 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
         </div>
 
         {/* App Preview Slideshow */}
-        <div className="mt-16 max-w-6xl mx-auto">
-          <div className="relative rounded-2xl shadow-2xl overflow-hidden border-4 border-white/20 backdrop-blur-sm">
-            {/* Navigation Dots */}
-            <div className="absolute top-4 right-4 z-20 flex gap-2">
-              {slides.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    currentSlide === idx
-                      ? 'bg-neon-500 w-8'
-                      : 'bg-white/50 hover:bg-white/70'
-                  }`}
-                  aria-label={`Go to slide ${idx + 1}`}
-                />
-              ))}
-            </div>
+        <div className="mt-16 max-w-5xl mx-auto">
 
-            {/* Slides Container */}
-            <div className="relative bg-gradient-to-br from-white to-agri-gold-50 p-4">
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                {/* Mock Navigation Header */}
-                <div className="bg-gradient-to-r from-neon-50 to-agri-gold-50 border-b border-neon-200 px-6 py-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-neon-400 to-neon-500 rounded-lg flex items-center justify-center">
-                      <span className="text-agri-brown-900 font-bold text-sm">E</span>
-                    </div>
-                    <span className="font-bold text-agri-brown-900">EDENTRACK</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    {currentSlideData.nav.map((navItem, idx) => (
-                      <div
-                        key={idx}
-                        className={`text-sm px-3 py-1 rounded-full transition-all duration-300 ${
-                          navItem === currentSlideData.title
-                            ? 'font-medium text-agri-brown-700 bg-white border border-neon-200'
-                            : 'text-agri-brown-600 hover:text-agri-brown-700'
-                        }`}
-                      >
-                        {navItem}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Slide Content with Transition */}
-                <div className="p-8 bg-gradient-to-br from-agri-gold-50 to-white relative min-h-[400px]">
-                  <div
-                    key={currentSlide}
-                    className="transition-opacity duration-500 ease-in-out"
-                  >
-                    {currentSlideData.content}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Slide Indicator Labels */}
-          <div className="mt-4 flex justify-center gap-4">
+          {/* Tab bar */}
+          <div className="flex items-center justify-center gap-1 mb-4">
             {slides.map((slide, idx) => (
               <button
                 key={slide.id}
                 onClick={() => setCurrentSlide(idx)}
-                className={`text-sm font-medium transition-colors ${
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                   currentSlide === idx
-                    ? 'text-agri-brown-900 underline'
-                    : 'text-agri-brown-600 hover:text-agri-brown-900'
+                    ? 'bg-agri-brown-800 text-white shadow'
+                    : 'text-agri-brown-600 hover:bg-agri-brown-100'
                 }`}
               >
                 {slide.title}
               </button>
             ))}
           </div>
+
+          {/* Fixed-size browser frame — never changes height */}
+          <div className="rounded-2xl shadow-2xl overflow-hidden border border-gray-200 bg-white">
+
+            {/* Browser chrome */}
+            <div className="bg-gray-100 border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+              </div>
+              <div className="flex-1 bg-white rounded-md px-3 py-1 text-xs text-gray-400 border border-gray-200">
+                app.edentrack.app
+              </div>
+            </div>
+
+            {/* App header */}
+            <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ffe833 0%, #ffdd00 100%)' }}>
+                  <span className="text-gray-900 font-bold text-xs">E</span>
+                </div>
+                <span className="font-bold text-agri-brown-900 text-sm">EDENTRACK</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {['Dashboard', 'Flocks', 'Insights', 'Sales'].map((nav) => (
+                  <span
+                    key={nav}
+                    className={`text-xs px-3 py-1 rounded-full ${
+                      nav === currentSlideData.title
+                        ? 'bg-agri-brown-800 text-white font-medium'
+                        : 'text-agri-brown-500'
+                    }`}
+                  >
+                    {nav}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Slide content — FIXED height, overflow scroll, crossfade */}
+            <div className="relative bg-gradient-to-br from-agri-gold-50/40 to-white" style={{ height: '420px' }}>
+              {slides.map((slide, idx) => (
+                <div
+                  key={slide.id}
+                  className="absolute inset-0 p-6 overflow-y-auto"
+                  style={{
+                    opacity: currentSlide === idx ? 1 : 0,
+                    transition: 'opacity 0.4s ease-in-out',
+                    pointerEvents: currentSlide === idx ? 'auto' : 'none',
+                  }}
+                >
+                  {slide.content}
+                </div>
+              ))}
+            </div>
+
+            {/* Progress bar at bottom */}
+            <div className="h-1 bg-gray-100 flex">
+              {slides.map((_, idx) => (
+                <div
+                  key={idx}
+                  className="h-full transition-all duration-500"
+                  style={{
+                    flex: 1,
+                    background: currentSlide === idx ? 'linear-gradient(90deg, #3D5F42, #5a8f60)' : 'transparent',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <p className="text-center text-sm text-agri-brown-400 mt-3">
+            Auto-advances every 5 seconds · Click any tab to explore
+          </p>
         </div>
       </div>
 

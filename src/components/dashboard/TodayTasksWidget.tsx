@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Check, Plus, Clock, AlertCircle, Edit2, Trash2, X, Save, Egg } from 'lucide-react';
+import { Check, Plus, Clock, AlertCircle, Edit2, Trash2, X, Save, Egg, ChevronDown } from 'lucide-react';
+import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import {
   ensureTasksGeneratedForDate,
   getTasksForDate,
@@ -26,11 +28,20 @@ interface ExtendedTask extends TaskWithMetadata {
   auto_generated?: boolean;
 }
 
+type QuickLogType = 'mortality' | 'feed' | 'egg';
+
+interface QuickLogState {
+  taskId: string;
+  type: QuickLogType;
+}
+
 export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidgetProps) {
-  const { currentFarm, user, currentRole } = useAuth();
+  const { currentFarm, user, currentRole, profile } = useAuth();
   const { farmPermissions } = usePermissions();
   const canAddTasks = currentRole?.toLowerCase() !== 'worker' && currentRole?.toLowerCase() !== 'viewer';
   const { t } = useTranslation();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
+  const toast = useToast();
   const farmTz = getFarmTimeZone(currentFarm);
   const getLocalTodayISO = useCallback(() => {
     const now = new Date();
@@ -66,6 +77,16 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
   const [eggTaskByHHMM, setEggTaskByHHMM] = useState<Record<string, ExtendedTask>>({});
   const [eggCollectionsByTime, setEggCollectionsByTime] = useState<Record<string, any>>({});
   const lastFarmDaySeenRef = useRef<string | null>(null);
+
+  // Inline quick-log state
+  const [expandedQuickLog, setExpandedQuickLog] = useState<QuickLogState | null>(null);
+  const [quickLogMortalityCount, setQuickLogMortalityCount] = useState('');
+  const [quickLogMortalityNote, setQuickLogMortalityNote] = useState('');
+  const [quickLogFeedQuantity, setQuickLogFeedQuantity] = useState('');
+  const [quickLogFeedType, setQuickLogFeedType] = useState('');
+  const [quickLogEggCount, setQuickLogEggCount] = useState('');
+  const [quickLogSubmitting, setQuickLogSubmitting] = useState(false);
+  const [feedTypes, setFeedTypes] = useState<Array<{ id: string; name: string; unit: string }>>([]);
 
   useEffect(() => {
     if (currentFarm?.id) {
@@ -369,6 +390,211 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
     }
   };
 
+  // Detect if a task is quick-loggable
+  const detectQuickLogType = (task: ExtendedTask): QuickLogType | null => {
+    const title = (task.title_override || task.templateTitle || '').toLowerCase();
+    const category = (task as any).task_templates?.category?.toLowerCase() || '';
+
+    // Check category first (more reliable)
+    if (category.includes('mortality')) return 'mortality';
+    if (category.includes('feed')) return 'feed';
+    if (category.includes('egg')) return 'egg';
+
+    // Fallback to title matching
+    if (title.includes('mortality') || title.includes('dead bird')) return 'mortality';
+    if (title.includes('feed') || title.includes('feeding')) return 'feed';
+    if (title.includes('egg')) return 'egg';
+
+    return null;
+  };
+
+  // Load feed types on mount
+  useEffect(() => {
+    const loadFeedTypes = async () => {
+      if (!currentFarm?.id) return;
+      try {
+        const { data } = await supabase
+          .from('feed_types')
+          .select('id, name, unit')
+          .eq('farm_id', currentFarm.id)
+          .order('name');
+        if (data) {
+          setFeedTypes(data);
+          if (data.length > 0 && !quickLogFeedType) {
+            setQuickLogFeedType(data[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading feed types:', error);
+      }
+    };
+    loadFeedTypes();
+  }, [currentFarm?.id]);
+
+  const handleQuickLogMortality = async (task: ExtendedTask) => {
+    if (!selectedFlockId || !currentFarm?.id || !user) return;
+
+    const count = parseInt(quickLogMortalityCount);
+    if (!quickLogMortalityCount || isNaN(count) || count <= 0) {
+      toast.error('Please enter a valid mortality count');
+      return;
+    }
+
+    setQuickLogSubmitting(true);
+    try {
+      // Insert into mortality_logs (exact pattern from LogMortalityModal)
+      const mortalityPayload = {
+        flock_id: selectedFlockId,
+        farm_id: currentFarm.id,
+        event_date: localTodayISO,
+        count,
+        cause: 'Unknown',
+        notes: quickLogMortalityNote || null,
+        created_by: user.id,
+      };
+
+      const { error: insertError } = await supabase
+        .from('mortality_logs')
+        .insert(mortalityPayload);
+
+      if (insertError) {
+        if (isNetworkError(insertError)) {
+          await tryWrite('mortality_logs', 'insert', mortalityPayload);
+        } else {
+          throw insertError;
+        }
+      }
+
+      // Mark task as complete
+      await toggleTask(task.id, task.status);
+
+      // Reset form
+      setExpandedQuickLog(null);
+      setQuickLogMortalityCount('');
+      setQuickLogMortalityNote('');
+
+      toast.success(`Logged ${count} mortality event(s)`);
+    } catch (error) {
+      console.error('Error logging mortality:', error);
+      toast.error('Failed to log mortality');
+    } finally {
+      setQuickLogSubmitting(false);
+    }
+  };
+
+  const handleQuickLogFeed = async (task: ExtendedTask) => {
+    if (!selectedFlockId || !currentFarm?.id || !user?.id) return;
+
+    const quantity = parseFloat(quickLogFeedQuantity);
+    if (!quickLogFeedQuantity || isNaN(quantity) || quantity <= 0) {
+      toast.error('Please enter a valid quantity');
+      return;
+    }
+
+    if (!quickLogFeedType) {
+      toast.error('Please select a feed type');
+      return;
+    }
+
+    setQuickLogSubmitting(true);
+    try {
+      // Insert into inventory_usage (exact pattern from InventoryUsageWidget)
+      const usagePayload = {
+        farm_id: currentFarm.id,
+        item_type: 'feed',
+        feed_type_id: quickLogFeedType,
+        other_item_id: null,
+        quantity_used: quantity,
+        usage_date: localTodayISO,
+        recorded_by: user.id,
+        notes: null,
+      };
+
+      const { error: usageError } = await supabase
+        .from('inventory_usage')
+        .insert(usagePayload);
+
+      if (usageError) {
+        if (isNetworkError(usageError)) {
+          await tryWrite('inventory_usage', 'insert', usagePayload);
+        } else {
+          throw usageError;
+        }
+      }
+
+      // Mark task as complete
+      await toggleTask(task.id, task.status);
+
+      // Reset form
+      setExpandedQuickLog(null);
+      setQuickLogFeedQuantity('');
+
+      toast.success(`Logged feed usage`);
+    } catch (error) {
+      console.error('Error logging feed usage:', error);
+      toast.error('Failed to log feed usage');
+    } finally {
+      setQuickLogSubmitting(false);
+    }
+  };
+
+  const handleQuickLogEgg = async (task: ExtendedTask) => {
+    if (!selectedFlockId || !currentFarm?.id || !user?.id) return;
+
+    const count = parseInt(quickLogEggCount);
+    if (!quickLogEggCount || isNaN(count) || count <= 0) {
+      toast.error('Please enter a valid egg count');
+      return;
+    }
+
+    setQuickLogSubmitting(true);
+    try {
+      // Insert into egg_collections (exact pattern from QuickEggCollectionWidget)
+      const collectionPayload = {
+        farm_id: currentFarm.id,
+        flock_id: selectedFlockId,
+        collection_date: localTodayISO,
+        collected_on: localTodayISO,
+        trays: 0,
+        broken: 0,
+        small_eggs: count,
+        medium_eggs: 0,
+        large_eggs: 0,
+        jumbo_eggs: 0,
+        damaged_eggs: 0,
+        total_eggs: count,
+        collected_by: user.id,
+        notes: null,
+      };
+
+      const { error: collectionError } = await supabase
+        .from('egg_collections')
+        .insert(collectionPayload);
+
+      if (collectionError) {
+        if (isNetworkError(collectionError)) {
+          await tryWrite('egg_collections', 'insert', collectionPayload);
+        } else {
+          throw collectionError;
+        }
+      }
+
+      // Mark task as complete
+      await toggleTask(task.id, task.status);
+
+      // Reset form
+      setExpandedQuickLog(null);
+      setQuickLogEggCount('');
+
+      toast.success(`Logged ${count} eggs collected`);
+    } catch (error) {
+      console.error('Error logging eggs:', error);
+      toast.error('Failed to log egg collection');
+    } finally {
+      setQuickLogSubmitting(false);
+    }
+  };
+
   const getTaskStatus = (task: TaskWithMetadata) => {
     if (task.status === 'completed') return { label: t('dashboard.completed'), color: 'text-gray-400' };
     if (task.isOverdue) return { label: t('dashboard.overdue'), color: 'text-red-600' };
@@ -441,94 +667,240 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
     const descriptionRaw = (task as any).data_payload?.description ?? '';
     const description = typeof descriptionRaw === 'string' ? descriptionRaw : descriptionRaw ? JSON.stringify(descriptionRaw) : '';
     const isEditing = editingTaskId === task.id;
+    const quickLogType = detectQuickLogType(task);
+    const isQuickLogExpanded = expandedQuickLog?.taskId === task.id;
 
     return (
-      <div
-        key={task.id}
-        className={`flex items-start gap-2 p-2 rounded-lg border-l-2 transition-all ${
-          isCompleted
-            ? 'border-l-green-500 bg-green-50/50 opacity-75'
-            : task.isOverdue
-            ? 'border-l-red-500 bg-red-50'
-            : 'border-l-blue-500 bg-gray-50/50'
-        }`}
-      >
-        <button
-          onClick={() => toggleTask(task.id, task.status)}
-          className={`task-checkbox flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors mt-0.5 cursor-pointer ${
+      <div key={task.id}>
+        <div
+          className={`flex items-start gap-2 p-2 rounded-lg border-l-2 transition-all ${
             isCompleted
-              ? 'bg-[#3D5F42] border-[#3D5F42]'
-              : 'border-gray-400 hover:border-[#3D5F42] hover:bg-[#3D5F42]/10'
+              ? 'border-l-green-500 bg-green-50/50 opacity-75'
+              : task.isOverdue
+              ? 'border-l-red-500 bg-red-50'
+              : 'border-l-blue-500 bg-gray-50/50'
           }`}
         >
-          {isCompleted && <Check className="w-2.5 h-2.5 text-white" />}
-        </button>
+          <button
+            onClick={() => toggleTask(task.id, task.status)}
+            className={`task-checkbox flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors mt-0.5 cursor-pointer ${
+              isCompleted
+                ? 'bg-[#3D5F42] border-[#3D5F42]'
+                : 'border-gray-400 hover:border-[#3D5F42] hover:bg-[#3D5F42]/10'
+            }`}
+          >
+            {isCompleted && <Check className="w-2.5 h-2.5 text-white" />}
+          </button>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <div className={`text-xs font-medium ${isCompleted ? 'line-through text-gray-400' : status.color}`}>
-              {task.title_override || task.templateTitle}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className={`text-xs font-medium ${isCompleted ? 'line-through text-gray-400' : status.color}`}>
+                {task.title_override || task.templateTitle}
+              </div>
+              {task.critical && !isCompleted && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-600">
+                  <AlertCircle className="w-2.5 h-2.5" />
+                  CRITICAL
+                </span>
+              )}
             </div>
-            {task.critical && !isCompleted && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-600">
-                <AlertCircle className="w-2.5 h-2.5" />
-                CRITICAL
-              </span>
+            {description && (
+              <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{description}</p>
+            )}
+            {isEditing ? (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <input
+                  type="time"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  className="text-xs border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3D5F42] bg-white text-gray-900"
+                />
+                <button
+                  onClick={() => handleSaveTime(task)}
+                  className="p-0.5 text-[#3D5F42] hover:bg-[#3D5F42]/10 rounded"
+                >
+                  <Save className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingTaskId(null);
+                    setEditTime('');
+                  }}
+                  className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 mt-0.5">
+                <Clock className={`w-2.5 h-2.5 ${status.color}`} />
+                <span className={`text-[10px] ${status.color}`}>
+                  {formatTaskTime(task)}
+                </span>
+              </div>
             )}
           </div>
-          {description && (
-            <p className="text-[10px] text-gray-500 mt-0.5 line-clamp-1">{description}</p>
-          )}
-          {isEditing ? (
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <input
-                type="time"
-                value={editTime}
-                onChange={(e) => setEditTime(e.target.value)}
-                className="text-xs border border-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#3D5F42] bg-white text-gray-900"
-              />
+
+          {!isCompleted && !isEditing && (
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              {quickLogType && (
+                <button
+                  onClick={() => {
+                    if (isQuickLogExpanded) {
+                      setExpandedQuickLog(null);
+                    } else {
+                      setExpandedQuickLog({ taskId: task.id, type: quickLogType });
+                      // Reset form fields
+                      setQuickLogMortalityCount('');
+                      setQuickLogMortalityNote('');
+                      setQuickLogFeedQuantity('');
+                      setQuickLogEggCount('');
+                    }
+                  }}
+                  className={`p-1 rounded transition-colors ${
+                    isQuickLogExpanded
+                      ? 'text-[#3D5F42] bg-[#3D5F42]/10'
+                      : 'text-gray-400 hover:text-[#3D5F42] hover:bg-[#3D5F42]/10'
+                  }`}
+                  title="Quick log entry"
+                >
+                  <ChevronDown className="w-3 h-3" style={{
+                    transform: isQuickLogExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    transition: 'transform 0.2s'
+                  }} />
+                </button>
+              )}
               <button
-                onClick={() => handleSaveTime(task)}
-                className="p-0.5 text-[#3D5F42] hover:bg-[#3D5F42]/10 rounded"
+                onClick={() => handleEditTask(task)}
+                className="p-1 text-gray-400 hover:text-[#3D5F42] hover:bg-[#3D5F42]/10 rounded transition-colors"
+                title={t('tasks.edit_time')}
               >
-                <Save className="w-3 h-3" />
+                <Edit2 className="w-3 h-3" />
               </button>
               <button
-                onClick={() => {
-                  setEditingTaskId(null);
-                  setEditTime('');
-                }}
-                className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+                onClick={() => handleDeleteTask(task.id)}
+                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                title={t('tasks.delete_task')}
               >
-                <X className="w-3 h-3" />
+                <Trash2 className="w-3 h-3" />
               </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 mt-0.5">
-              <Clock className={`w-2.5 h-2.5 ${status.color}`} />
-              <span className={`text-[10px] ${status.color}`}>
-                {formatTaskTime(task)}
-              </span>
             </div>
           )}
         </div>
 
-        {!isCompleted && !isEditing && (
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            <button
-              onClick={() => handleEditTask(task)}
-              className="p-1 text-gray-400 hover:text-[#3D5F42] hover:bg-[#3D5F42]/10 rounded transition-colors"
-              title={t('tasks.edit_time')}
-            >
-              <Edit2 className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => handleDeleteTask(task.id)}
-              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-              title={t('tasks.delete_task')}
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
+        {/* Inline Quick Log Form */}
+        {isQuickLogExpanded && expandedQuickLog?.type === 'mortality' && (
+          <div className="ml-6 mr-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-in slide-in-from-top-2">
+            <div className="space-y-2">
+              <input
+                type="number"
+                min="1"
+                value={quickLogMortalityCount}
+                onChange={(e) => setQuickLogMortalityCount(e.target.value)}
+                placeholder="Count"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#3D5F42] bg-white"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleQuickLogMortality(task)}
+              />
+              <input
+                type="text"
+                value={quickLogMortalityNote}
+                onChange={(e) => setQuickLogMortalityNote(e.target.value)}
+                placeholder="Note (optional)"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#3D5F42] bg-white"
+                onKeyDown={(e) => e.key === 'Enter' && handleQuickLogMortality(task)}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExpandedQuickLog(null)}
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleQuickLogMortality(task)}
+                  disabled={quickLogSubmitting}
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-white bg-[#3D5F42] rounded-lg hover:bg-[#2F4A34] disabled:bg-gray-400 transition-colors"
+                >
+                  {quickLogSubmitting ? 'Saving...' : 'Log'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isQuickLogExpanded && expandedQuickLog?.type === 'feed' && (
+          <div className="ml-6 mr-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-in slide-in-from-top-2">
+            <div className="space-y-2">
+              <select
+                value={quickLogFeedType}
+                onChange={(e) => setQuickLogFeedType(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#3D5F42] bg-white"
+              >
+                <option value="">Select feed type</option>
+                {feedTypes.map((ft) => (
+                  <option key={ft.id} value={ft.id}>{ft.name}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={quickLogFeedQuantity}
+                onChange={(e) => setQuickLogFeedQuantity(e.target.value)}
+                placeholder="Quantity"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#3D5F42] bg-white"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleQuickLogFeed(task)}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExpandedQuickLog(null)}
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleQuickLogFeed(task)}
+                  disabled={quickLogSubmitting}
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-white bg-[#3D5F42] rounded-lg hover:bg-[#2F4A34] disabled:bg-gray-400 transition-colors"
+                >
+                  {quickLogSubmitting ? 'Saving...' : 'Log'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isQuickLogExpanded && expandedQuickLog?.type === 'egg' && (
+          <div className="ml-6 mr-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg animate-in slide-in-from-top-2">
+            <div className="space-y-2">
+              <input
+                type="number"
+                min="1"
+                value={quickLogEggCount}
+                onChange={(e) => setQuickLogEggCount(e.target.value)}
+                placeholder="Egg count"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#3D5F42] bg-white"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleQuickLogEgg(task)}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExpandedQuickLog(null)}
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleQuickLogEgg(task)}
+                  disabled={quickLogSubmitting}
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-white bg-[#3D5F42] rounded-lg hover:bg-[#2F4A34] disabled:bg-gray-400 transition-colors"
+                >
+                  {quickLogSubmitting ? 'Saving...' : 'Log'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

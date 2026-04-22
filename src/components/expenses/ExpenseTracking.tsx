@@ -11,6 +11,7 @@ import { CreateDailyUsageTaskModal } from '../inventory/CreateDailyUsageTaskModa
 import { recordInventoryIncrease } from '../../utils/inventoryMovements';
 import { canViewInventoryCosts } from '../../utils/permissions';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -33,6 +34,7 @@ const getCategoryLabel = (cat: string, t: (key: string) => string): string => {
 export function ExpenseTracking() {
   const { t } = useTranslation();
   const { user, profile, currentFarm, currentRole } = useAuth();
+  const { farmPermissions } = usePermissions();
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [flocks, setFlocks] = useState<Flock[]>([]);
@@ -47,7 +49,7 @@ export function ExpenseTracking() {
   const [error, setError] = useState('');
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [paidFromProfit, setPaidFromProfit] = useState(false);
-  const hideFinancials = shouldHideFinancialData(currentRole);
+  const hideFinancials = shouldHideFinancialData(currentRole, farmPermissions);
 
   const [inventoryEnabled, setInventoryEnabled] = useState(false);
   const [inventoryType, setInventoryType] = useState<InventoryLinkType>('none');
@@ -486,8 +488,10 @@ export function ExpenseTracking() {
   }, 0);
   const remainingProfitBalance = totalRevenueGenerated - totalPaidFromProfit;
 
+  const farmCurrency = (currentFarm?.currency_code || currentFarm?.currency || 'XAF') as Currency;
+
   const toggleCurrency = () => {
-    const newCurrency: Currency = currency === 'CFA' ? 'USD' : 'CFA';
+    const newCurrency: Currency = currency === 'USD' ? farmCurrency : 'USD';
     setCurrency(newCurrency);
   };
 
@@ -810,7 +814,7 @@ export function ExpenseTracking() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div data-tour="expense-header" className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">{t('expenses.title')}</h2>
           <p className="text-sm text-gray-500 mt-0.5">{t('expenses.subtitle')}</p>
@@ -1092,7 +1096,7 @@ export function ExpenseTracking() {
               className="px-3 py-1.5 bg-white/60 hover:bg-white rounded-lg text-xs font-medium transition-colors text-gray-900"
               title={t('expenses.switch_currency')}
             >
-              {currency} ⇄ {currency === 'CFA' ? 'USD' : 'CFA'}
+              {currency} ⇄ {currency === 'USD' ? farmCurrency : 'USD'}
             </button>
           </div>
           <div className="text-3xl font-bold text-gray-900 mb-1.5">
@@ -1174,8 +1178,11 @@ export function ExpenseTracking() {
             <div className="icon-circle-yellow w-16 h-16 mx-auto mb-4">
               <DollarSign className="w-8 h-8" />
             </div>
-            <p className="text-gray-500">
-              {selectedFlockId ? t('expenses.no_expenses_for_flock') : t('expenses.no_expenses_recorded')}
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{t('expenses.no_expenses_yet')}</h3>
+            <p className="text-gray-500 text-sm max-w-sm mx-auto">
+              {selectedFlockId
+                ? t('expenses.no_expenses_for_flock_message')
+                : t('expenses.no_expenses_recorded_message')}
             </p>
           </div>
         ) : (

@@ -31,6 +31,7 @@ export interface Farm {
 
 export interface FarmPermissions {
   farm_id: string;
+  // ── Manager permissions ──────────────────────────────────────────────
   managers_can_view_financials: boolean;
   managers_can_create_expenses: boolean;
   managers_can_create_sales: boolean;
@@ -43,6 +44,14 @@ export interface FarmPermissions {
   managers_can_mark_vaccinations: boolean;
   managers_can_edit_feed_water: boolean;
   managers_can_edit_eggs: boolean;
+  managers_can_use_smart_import: boolean;
+  managers_can_view_analytics: boolean;
+  // ── Worker permissions ───────────────────────────────────────────────
+  workers_can_log_mortality: boolean;
+  workers_can_log_eggs: boolean;
+  workers_can_log_weight: boolean;
+  workers_can_use_eden_ai: boolean;
+  workers_can_view_financials: boolean;
   created_at: string;
   updated_at: string;
 }

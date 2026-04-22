@@ -6,7 +6,9 @@ import { supabase } from '../../lib/supabaseClient';
 import { Flock, Expense, MortalityLog, EggCollection } from '../../types/database';
 import { formatEggsWithTotal, formatEggsForExport } from '../../utils/eggFormatting';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp, formatInsightsForWhatsApp } from '../../utils/whatsappShare';
+import { InsightsSkeleton } from '../common/Skeleton';
 import { ComprehensiveFarmReport } from '../analytics/ComprehensiveFarmReport';
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { EggIntervalTaskTracker } from '../tasks/egg/EggIntervalTaskTracker';
@@ -60,6 +62,7 @@ interface WeightLog {
 export function InsightsPage() {
   const { t } = useTranslation();
   const { currentFarm, currentRole } = useAuth();
+  const { farmPermissions } = usePermissions();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(null);
@@ -77,7 +80,7 @@ export function InsightsPage() {
   const [showAllWeeks, setShowAllWeeks] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
 
-  const hideFinancials = shouldHideFinancialData(currentRole);
+  const hideFinancials = shouldHideFinancialData(currentRole, farmPermissions);
   const currencyCode = currentFarm?.currency_code || 'XAF';
   const eggsPerTray = (currentFarm as any)?.eggs_per_tray || 0;
 
@@ -85,8 +88,23 @@ export function InsightsPage() {
   const isLayerFlock = flockKind?.toLowerCase() === 'layer';
   const isBroilerFlock = flockKind?.toLowerCase() === 'broiler';
 
+  // Load flocks + auto-select first one immediately, then load its data in parallel
   useEffect(() => {
-    loadFlocks();
+    if (!currentFarm?.id) return;
+    setLoading(true);
+    supabase
+      .from('flocks')
+      .select('*')
+      .eq('farm_id', currentFarm.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        const list = data || [];
+        setFlocks(list);
+        setLoading(false);
+        if (list.length > 0 && !selectedFlockId) {
+          setSelectedFlockId(list[0].id);
+        }
+      });
   }, [currentFarm?.id]);
 
   useEffect(() => {
@@ -107,26 +125,6 @@ export function InsightsPage() {
   }, [selectedFlockId]);
 
 
-  const loadFlocks = async () => {
-    if (!currentFarm?.id) return;
-    setLoading(true);
-
-    try {
-      const { data } = await supabase
-        .from('flocks')
-        .select('*')
-        .eq('farm_id', currentFarm.id)
-        .order('created_at', { ascending: false });
-
-      const flockList = data || [];
-      setFlocks(flockList);
-    } catch (error) {
-      console.error('Error loading flocks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadFlockData = async (flockId: string) => {
     if (!currentFarm?.id) return;
     setLoadingData(true);
@@ -138,74 +136,92 @@ export function InsightsPage() {
       queryStartDate.setDate(queryStartDate.getDate() - 7);
       const queryStartStr = queryStartDate.toISOString().split('T')[0];
 
+      // Wrap each query: one bad response (e.g., schema drift on a column)
+      // must not nuke the whole Insights page. Failures log and return [].
+      const safe = async (label: string, p: PromiseLike<any>) => {
+        try {
+          const res: any = await p;
+          if (res?.error) {
+            console.warn(`[InsightsPage] ${label} failed:`, res.error);
+            return { data: [] };
+          }
+          return res;
+        } catch (e) {
+          console.warn(`[InsightsPage] ${label} threw:`, e);
+          return { data: [] };
+        }
+      };
+
       const queries: any[] = [
-        supabase
+        safe('expenses', supabase
           .from('expenses')
           .select('*')
           .eq('farm_id', currentFarm.id)
-          .eq('flock_id', flockId),
-        supabase
+          .eq('flock_id', flockId)),
+        safe('mortality_logs', supabase
           .from('mortality_logs')
           .select('*')
           .eq('farm_id', currentFarm.id)
-          .eq('flock_id', flockId),
-        supabase
+          .eq('flock_id', flockId)),
+        safe('inventory_usage', supabase
           .from('inventory_usage')
           .select('quantity_used, usage_date, feed_type_id, feed_type:feed_types(id, unit, kg_per_unit)')
           .eq('farm_id', currentFarm.id)
           .eq('item_type', 'feed')
           .gte('usage_date', queryStartStr)
-          .order('usage_date', { ascending: true }),
-        supabase
+          .order('usage_date', { ascending: true })),
+        safe('revenues', supabase
           .from('revenues')
           .select('amount, source_type')
           .eq('farm_id', currentFarm.id)
-          .eq('flock_id', flockId),
-        supabase
+          .eq('flock_id', flockId)),
+        safe('bird_sales', supabase
           .from('bird_sales')
           .select('total_amount')
           .eq('farm_id', currentFarm.id)
-          .or(`flock_id.eq.${flockId},flock_id.is.null`),
+          .or(`flock_id.eq.${flockId},flock_id.is.null`)),
       ];
 
       const kind = flock?.type || (flock as any)?.purpose;
       if (kind?.toLowerCase() === 'layer') {
         queries.push(
-          supabase
+          safe('egg_collections', supabase
             .from('egg_collections')
             .select('*')
             .eq('farm_id', currentFarm.id)
-            .eq('flock_id', flockId)
+            .eq('flock_id', flockId))
         );
         queries.push(
-          supabase
+          safe('egg_sales', supabase
             .from('egg_sales')
             .select('*')
             .eq('farm_id', currentFarm.id)
-            .or(`flock_id.eq.${flockId},flock_id.is.null`)
+            .or(`flock_id.eq.${flockId},flock_id.is.null`))
         );
       }
 
       if (kind?.toLowerCase() === 'broiler') {
         queries.push(
-          supabase
+          safe('weight_logs', supabase
             .from('weight_logs')
             .select('*')
             .eq('farm_id', currentFarm.id)
             .eq('flock_id', flockId)
-            .order('date', { ascending: false })
+            .order('date', { ascending: false }))
         );
       }
 
-      const results = await Promise.all(queries);
-
-      const { data: paidFromProfitRows } = await supabase
+      // Add paid_from_profit query into the same parallel batch
+      queries.push(safe('expenses (paid_from_profit)', supabase
         .from('expenses')
         .select('amount')
         .eq('farm_id', currentFarm.id)
         .eq('flock_id', flockId)
-        .eq('paid_from_profit', true);
+        .eq('paid_from_profit', true)));
 
+      const results = await Promise.all(queries);
+
+      const paidFromProfitRows = results[results.length - 1]?.data;
       const usedFromRevenue = (paidFromProfitRows || []).reduce((sum: number, row: any) => sum + Number(row.amount || 0), 0);
       setProfitPoolUsed(usedFromRevenue);
 
@@ -678,11 +694,7 @@ export function InsightsPage() {
   }, [isBroilerFlock, metrics.feedConversion, metrics.netProfit, metrics.profitMargin, metrics.productionRate, metrics.ageWeeks, weeklyData]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    );
+    return <InsightsSkeleton />;
   }
 
   if (flocks.length === 0) {

@@ -4,7 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Task, TaskTemplate } from '../../types/database';
 import { recordInventoryDecrease, recordInventoryIncrease } from '../../utils/inventoryMovements';
-import { useTranslation } from 'react-i18next';;
+import { useTranslation } from 'react-i18next';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 interface CompleteTaskModalProps {
   task: Task;
@@ -15,6 +16,7 @@ interface CompleteTaskModalProps {
 export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModalProps) {
   const { t } = useTranslation();
   const { user, currentFarm } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState('');
@@ -165,15 +167,20 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
         .select();
 
       if (updateError) {
-        console.error('Task completion error:', {
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code,
-        });
-        setError(updateError.message || 'Failed to complete task');
-        setLoading(false);
-        return;
+        if (isNetworkError(updateError)) {
+          // Queue for offline sync
+          await tryWrite('tasks', 'update', updateData, task.id);
+        } else {
+          console.error('Task completion error:', {
+            message: updateError.message,
+            details: updateError.details,
+            hint: updateError.hint,
+            code: updateError.code,
+          });
+          setError(updateError.message || 'Failed to complete task');
+          setLoading(false);
+          return;
+        }
       }
 
       const taskTitle = task.title_override || task.title || 'Task';

@@ -45,13 +45,11 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
 
       const { data: revenues } = await supabase
         .from('revenues')
-        .select('amount, transport_cost')
+        .select('amount')
         .eq('flock_id', flock.id);
 
       const totalExpenses = expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
-      const grossRevenue = revenues?.reduce((sum, rev) => sum + rev.amount, 0) || 0;
-      const totalTransportCosts = revenues?.reduce((sum, rev) => sum + (rev.transport_cost || 0), 0) || 0;
-      const totalRevenue = grossRevenue - totalTransportCosts;
+      const totalRevenue = revenues?.reduce((sum, rev) => sum + rev.amount, 0) || 0;
       const profit = totalRevenue - totalExpenses;
 
       setFinancials({

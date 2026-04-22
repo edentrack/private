@@ -62,40 +62,41 @@ export function UserApprovals() {
     }
   };
 
-  const handleApprove = async (userId: string) => {
+  const [processing, setProcessing] = useState<Set<string>>(new Set());
+
+  const setUserStatus = async (userId: string, status: 'active' | 'rejected') => {
+    if (processing.has(userId)) return;
+    setProcessing(prev => new Set(prev).add(userId));
     try {
       const { error } = await supabase.rpc('admin_set_user_status', {
         p_user_id: userId,
-        p_status: 'active',
+        p_status: status,
       });
-
       if (error) throw error;
 
-      showToast('User approved successfully', 'success');
+      // Notify the user by email via edge function (fire-and-forget)
+      const user = pendingUsers.find(u => u.id === userId);
+      if (user?.email) {
+        supabase.functions.invoke('send-account-status-email', {
+          body: { email: user.email, full_name: user.full_name, status },
+        }).catch(() => {}); // non-blocking
+      }
+
+      showToast(status === 'active' ? 'User approved' : 'User rejected', 'success');
       loadPendingUsers();
     } catch (error) {
-      console.error('Approval failed:', error);
-      showToast('Failed to approve user', 'error');
+      console.error('Status update failed:', error);
+      showToast('Failed to update user status', 'error');
+    } finally {
+      setProcessing(prev => { const s = new Set(prev); s.delete(userId); return s; });
     }
   };
 
-  const handleReject = async (userId: string) => {
-    if (!confirm('Are you sure you want to reject this user? This action cannot be undone.')) return;
+  const handleApprove = (userId: string) => setUserStatus(userId, 'active');
 
-    try {
-      const { error } = await supabase.rpc('admin_set_user_status', {
-        p_user_id: userId,
-        p_status: 'rejected',
-      });
-
-      if (error) throw error;
-
-      showToast('User rejected', 'success');
-      loadPendingUsers();
-    } catch (error) {
-      console.error('Rejection failed:', error);
-      showToast('Failed to reject user', 'error');
-    }
+  const handleReject = (userId: string) => {
+    if (!confirm('Reject this user? This cannot be undone.')) return;
+    setUserStatus(userId, 'rejected');
   };
 
   if (loading) {

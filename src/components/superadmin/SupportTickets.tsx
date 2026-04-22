@@ -74,12 +74,22 @@ export function SupportTickets() {
     }
   };
 
-  const handleStatusChange = async (ticketId: string, newStatus: string) => {
+  const VALID_TRANSITIONS: Record<string, string[]> = {
+    open: ['in_progress', 'closed'],
+    in_progress: ['resolved', 'open'],
+    resolved: ['closed', 'open'],
+    closed: [],
+  };
+
+  const handleStatusChange = async (ticketId: string, currentStatus: string, newStatus: string) => {
+    const allowed = VALID_TRANSITIONS[currentStatus] || [];
+    if (!allowed.includes(newStatus)) {
+      showToast(`Cannot move from "${currentStatus}" to "${newStatus}"`, 'error');
+      return;
+    }
     try {
       const updateData: any = { status: newStatus };
-      if (newStatus === 'resolved') {
-        updateData.resolved_at = new Date().toISOString();
-      }
+      if (newStatus === 'resolved') updateData.resolved_at = new Date().toISOString();
 
       const { error } = await supabase
         .from('support_tickets')
@@ -87,8 +97,7 @@ export function SupportTickets() {
         .eq('id', ticketId);
 
       if (error) throw error;
-
-      showToast(`Ticket ${newStatus}`, 'success');
+      showToast(`Ticket marked as ${newStatus}`, 'success');
       loadTickets();
     } catch (error) {
       console.error('Failed to update ticket:', error);
@@ -203,7 +212,7 @@ export function SupportTickets() {
                       <div className="flex gap-2">
                         {ticket.status === 'open' && (
                           <button
-                            onClick={() => handleStatusChange(ticket.id, 'in_progress')}
+                            onClick={() => handleStatusChange(ticket.id, ticket.status, 'in_progress')}
                             className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm"
                           >
                             Start
@@ -211,7 +220,7 @@ export function SupportTickets() {
                         )}
                         {ticket.status !== 'resolved' && ticket.status !== 'closed' && (
                           <button
-                            onClick={() => handleStatusChange(ticket.id, 'resolved')}
+                            onClick={() => handleStatusChange(ticket.id, ticket.status, 'resolved')}
                             className="px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm"
                           >
                             Resolve
@@ -219,7 +228,7 @@ export function SupportTickets() {
                         )}
                         {ticket.status === 'resolved' && (
                           <button
-                            onClick={() => handleStatusChange(ticket.id, 'closed')}
+                            onClick={() => handleStatusChange(ticket.id, ticket.status, 'closed')}
                             className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm"
                           >
                             Close

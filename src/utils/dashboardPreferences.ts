@@ -26,23 +26,26 @@ export const AVAILABLE_WIDGETS: DashboardWidget[] = [
 
 const STORAGE_KEY = 'dashboard_widget_preferences';
 
+let _prefCache: Set<string> | null = null;
+
 export function getDashboardPreferences(): Set<string> {
+  if (_prefCache) return _prefCache;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      return new Set(parsed.visibleWidgets || []);
+      _prefCache = new Set(parsed.visibleWidgets || []);
+      return _prefCache;
     }
   } catch (e) {
     console.warn('Failed to load dashboard preferences:', e);
   }
-  
-  // Return default visible widgets
-  return new Set(
+  _prefCache = new Set(
     AVAILABLE_WIDGETS
       .filter(w => w.defaultVisible)
       .map(w => w.id)
   );
+  return _prefCache;
 }
 
 export function saveDashboardPreferences(visibleWidgets: Set<string>) {
@@ -51,6 +54,7 @@ export function saveDashboardPreferences(visibleWidgets: Set<string>) {
       visibleWidgets: Array.from(visibleWidgets),
       updatedAt: new Date().toISOString(),
     }));
+    _prefCache = new Set(visibleWidgets);
   } catch (e) {
     console.warn('Failed to save dashboard preferences:', e);
   }

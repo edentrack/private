@@ -1,11 +1,5 @@
-/**
- * Offline Database Manager using IndexedDB
- * Stores data locally for offline access and sync
- */
-
 import Dexie, { Table } from 'dexie';
 
-// Types for offline queue items
 export interface PendingCreate<T = any> {
   id: string;
   table: string;
@@ -31,7 +25,18 @@ export interface PendingDelete {
   retries: number;
 }
 
-// Local cache tables
+export interface DeadLetterOp {
+  id: string;
+  operation: 'create' | 'update' | 'delete';
+  table: string;
+  recordId?: string;
+  data?: any;
+  errorCode: number | string;
+  errorMessage: string;
+  failedAt: number;
+  retries: number;
+}
+
 export interface CachedFlock {
   id: string;
   farm_id: string;
@@ -125,12 +130,11 @@ export interface CachedWeightLog {
 }
 
 export class OfflineDB extends Dexie {
-  // Sync queue
   pendingCreates!: Table<PendingCreate>;
   pendingUpdates!: Table<PendingUpdate>;
   pendingDeletes!: Table<PendingDelete>;
+  deadLetter!: Table<DeadLetterOp>;
 
-  // Local cache
   cachedFlocks!: Table<CachedFlock>;
   cachedExpenses!: Table<CachedExpense>;
   cachedTasks!: Table<CachedTask>;
@@ -144,12 +148,25 @@ export class OfflineDB extends Dexie {
     super('EdentrackOfflineDB');
 
     this.version(1).stores({
-      // Sync queue tables
       pendingCreates: 'id, table, timestamp',
       pendingUpdates: 'id, table, recordId, timestamp',
       pendingDeletes: 'id, table, recordId, timestamp',
+      cachedFlocks: 'id, farm_id, synced, last_updated',
+      cachedExpenses: 'id, farm_id, synced, last_updated',
+      cachedTasks: 'id, farm_id, synced, last_updated',
+      cachedSales: 'id, farm_id, synced, last_updated',
+      cachedMortality: 'id, farm_id, synced, last_updated',
+      cachedInventoryUsage: 'id, farm_id, synced, last_updated',
+      cachedEggCollections: 'id, farm_id, synced, last_updated',
+      cachedWeightLogs: 'id, farm_id, synced, last_updated',
+    });
 
-      // Local cache tables
+    // Version 2: add deadLetter table for failed ops (never silently delete farmer data)
+    this.version(2).stores({
+      pendingCreates: 'id, table, timestamp',
+      pendingUpdates: 'id, table, recordId, timestamp',
+      pendingDeletes: 'id, table, recordId, timestamp',
+      deadLetter: 'id, table, operation, failedAt',
       cachedFlocks: 'id, farm_id, synced, last_updated',
       cachedExpenses: 'id, farm_id, synced, last_updated',
       cachedTasks: 'id, farm_id, synced, last_updated',
@@ -164,23 +181,14 @@ export class OfflineDB extends Dexie {
 
 export const offlineDB = new OfflineDB();
 
-/**
- * Generate unique ID for pending operations
- */
 export function generatePendingId(): string {
-  return `pending_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  return crypto.randomUUID();
 }
 
-/**
- * Check if device is online
- */
 export function isOnline(): boolean {
   return navigator.onLine;
 }
 
-/**
- * Get pending operations count
- */
 export async function getPendingOperationsCount(): Promise<number> {
   const [creates, updates, deletes] = await Promise.all([
     offlineDB.pendingCreates.count(),
@@ -188,4 +196,8 @@ export async function getPendingOperationsCount(): Promise<number> {
     offlineDB.pendingDeletes.count(),
   ]);
   return creates + updates + deletes;
+}
+
+export async function getDeadLetterCount(): Promise<number> {
+  return offlineDB.deadLetter.count();
 }

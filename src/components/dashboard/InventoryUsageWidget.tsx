@@ -3,6 +3,7 @@ import { Package, AlertTriangle, RefreshCw, X, Minus, CheckCircle, ChevronDown, 
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 interface FeedItem {
   id: string;
@@ -42,7 +43,10 @@ interface FeedPrediction {
 export function InventoryUsageWidget() {
   const { t } = useTranslation();
   const { profile, currentFarm } = useAuth();
-      const [items, setItems] = useState<InventoryItem[]>([]);
+  const { tryWrite, isNetworkError } = useOfflineWrite();
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [activeFlocks, setActiveFlocks] = useState<{ id: string; name: string }[]>([]);
+  const [selectedFlockId, setSelectedFlockId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [recording, setRecording] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
@@ -54,6 +58,20 @@ export function InventoryUsageWidget() {
   const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());
   const [feedPredictions, setFeedPredictions] = useState<Record<string, FeedPrediction>>({});
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!currentFarm?.id) return;
+    supabase
+      .from('flocks')
+      .select('id, name')
+      .eq('farm_id', currentFarm.id)
+      .eq('status', 'active')
+      .order('name')
+      .then(({ data }) => {
+        setActiveFlocks(data || []);
+        if (data && data.length === 1) setSelectedFlockId(data[0].id);
+      });
+  }, [currentFarm?.id]);
 
   useEffect(() => {
     if (profile?.id && currentFarm?.id) {
@@ -389,48 +407,68 @@ export function InventoryUsageWidget() {
         throw new Error('No active farm membership');
       }
 
+      const usagePayload = {
+        farm_id: farmId,
+        flock_id: selectedFlockId || null,
+        item_type: selectedItem.type,
+        feed_type_id: selectedItem.type === 'feed' ? (selectedItem as FeedItem).feed_type_id : null,
+        other_item_id: selectedItem.type === 'other' ? selectedItem.id : null,
+        quantity_used: quantityNum,
+        usage_date: usageDate,
+        recorded_by: profile.id,
+        notes: notes || null,
+      };
+
       // Regular usage recording with selected date (allows backdating)
       const { error: usageError } = await supabase
         .from('inventory_usage')
-        .insert({
-          farm_id: farmId,
-          item_type: selectedItem.type,
-          feed_type_id: selectedItem.type === 'feed' ? (selectedItem as FeedItem).feed_type_id : null,
-          other_item_id: selectedItem.type === 'other' ? selectedItem.id : null,
-          quantity_used: quantityNum,
-          usage_date: usageDate, // Use selected date instead of today
-          recorded_by: profile.id,
-          notes: notes || null,
-        });
+        .insert(usagePayload);
 
-      if (usageError) throw usageError;
+      if (usageError) {
+        if (isNetworkError(usageError)) {
+          // Queue for offline sync
+          await tryWrite('inventory_usage', 'insert', usagePayload);
+        } else {
+          throw usageError;
+        }
+      }
 
       // Water doesn't have inventory to update
       if (selectedItem.type === 'water') {
         // tracked via inventory_usage only
       } else {
         const newQuantity = selectedItem.quantity - quantityNum;
+        const updatePayload = {
+          quantity: newQuantity,
+          updated_at: new Date().toISOString(),
+        };
 
         if (selectedItem.type === 'feed') {
-        const { error: updateError } = await supabase
-          .from('feed_inventory')
-          .update({
-            quantity: newQuantity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', selectedItem.id);
+          const { error: updateError } = await supabase
+            .from('feed_inventory')
+            .update(updatePayload)
+            .eq('id', selectedItem.id);
 
-        if (updateError) throw updateError;
-      } else {
-        const { error: updateError } = await supabase
-          .from('other_inventory_items')
-          .update({
-            quantity: newQuantity,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', selectedItem.id);
+          if (updateError) {
+            if (isNetworkError(updateError)) {
+              await tryWrite('feed_inventory', 'update', updatePayload, selectedItem.id);
+            } else {
+              throw updateError;
+            }
+          }
+        } else {
+          const { error: updateError } = await supabase
+            .from('other_inventory_items')
+            .update(updatePayload)
+            .eq('id', selectedItem.id);
 
-        if (updateError) throw updateError;
+          if (updateError) {
+            if (isNetworkError(updateError)) {
+              await tryWrite('other_inventory_items', 'update', updatePayload, selectedItem.id);
+            } else {
+              throw updateError;
+            }
+          }
         }
       }
 
@@ -724,6 +762,24 @@ export function InventoryUsageWidget() {
                     </div>
                   </div>
                 )
+              )}
+
+              {activeFlocks.length > 1 && selectedItem?.type === 'feed' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Flock (for FCR tracking)
+                  </label>
+                  <select
+                    value={selectedFlockId}
+                    onChange={(e) => setSelectedFlockId(e.target.value)}
+                    className="w-full px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+                  >
+                    <option value="">— All / Unknown —</option>
+                    {activeFlocks.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               <div>

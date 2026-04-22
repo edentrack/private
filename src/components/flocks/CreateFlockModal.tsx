@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { FlockType } from '../../types/database';
 import { upsertChickExpenses } from '../../utils/flockExpenses';
 import { AnimalSpecies, getTypesForSpecies, getSpeciesTerminology } from '../../utils/speciesModules';
+import { getMaxBirdsPerFlock, exceedsBirdLimit } from '../../utils/planGating';
 
 interface CreateFlockModalProps {
   onClose: () => void;
@@ -14,7 +15,7 @@ interface CreateFlockModalProps {
 
 export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) {
   const { t } = useTranslation();
-  const { user, currentFarm } = useAuth();
+  const { user, currentFarm, profile } = useAuth();
   const [species] = useState<AnimalSpecies | null>('poultry'); // Auto-select poultry
   const [name, setName] = useState('');
   const [type, setType] = useState<FlockType | null>(null);
@@ -54,6 +55,18 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
     try {
       const initialCountNum = parseInt(initialCount);
       const currentCountNum = parseInt(currentCount || initialCount);
+
+      // Enforce bird count limit based on plan
+      const plan = (profile?.subscription_tier as any) || 'basic';
+      const maxBirds = getMaxBirdsPerFlock(plan);
+      if (exceedsBirdLimit(plan, initialCountNum)) {
+        setError(
+          `Your ${plan === 'basic' ? 'Starter' : plan === 'pro' ? 'Grower' : 'Farm Boss'} plan allows up to ${maxBirds.toLocaleString()} birds per flock. ` +
+          `Upgrade your plan to add larger flocks.`
+        );
+        setLoading(false);
+        return;
+      }
       const purchasePriceNum = parseFloat(purchasePricePerBird) || 0;
       const transportCostNum = parseFloat(purchaseTransportCost) || 0;
 
@@ -249,7 +262,12 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
           </div>
 
           <div>
-            <label htmlFor="initialCount" className="block text-xs font-medium text-gray-700 mb-1">{t('flocks.initial_count')}</label>
+            <label htmlFor="initialCount" className="block text-xs font-medium text-gray-700 mb-1">
+              {t('flocks.initial_count')}
+              <span className="ml-1 text-gray-400 font-normal">
+                (max {getMaxBirdsPerFlock((profile?.subscription_tier as any) || 'basic').toLocaleString()} on your plan)
+              </span>
+            </label>
             <input
               id="initialCount"
               type="number"

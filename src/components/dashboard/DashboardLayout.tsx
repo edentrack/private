@@ -1,8 +1,10 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, Wallet, User, ChevronDown, Menu, Shield, Scale, Store, GitCompare, ChevronRight, History, HelpCircle, FileText, ListChecks } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, Stethoscope, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, Wallet, User, ChevronDown, Menu, Shield, Scale, Store, GitCompare, ChevronRight, History, HelpCircle, FileText, ListChecks, Upload, Crown, Zap, Sprout } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useSimpleMode } from '../../contexts/SimpleModeContext';
+import { useFarmType } from '../../hooks/useFarmType';
 import { ChickenIcon } from '../icons/ChickenIcon';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { canViewModule, ModuleName } from '../../utils/navigationPermissions';
@@ -11,6 +13,7 @@ import { LogoIcon } from '../common/Logo';
 import { getNavigationGroups, getExpandedGroups, saveExpandedGroups, NavigationGroupId } from '../../utils/navigationGroups';
 import { OfflineIndicator } from '../common/OfflineIndicator';
 import { initOfflineSync } from '../../lib/offlineSync';
+import { offlineDB } from '../../lib/offlineDB';
 import { NotificationPermissionPrompt } from '../common/NotificationPermissionPrompt';
 import { initPushNotifications } from '../../lib/pushNotifications';
 
@@ -20,29 +23,39 @@ interface DashboardLayoutProps {
   onNavigate: (view: string) => void;
 }
 
+type TierStyle = { label: string; bg: string; text: string; border: string; Icon: React.ElementType };
+
+function getTierStyle(tier: string | undefined | null): TierStyle {
+  switch (tier) {
+    case 'pro':
+      return { label: 'Grower', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', Icon: Sprout };
+    case 'enterprise':
+      return { label: 'Farm Boss', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', Icon: Crown };
+    default:
+      return { label: 'Starter', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200', Icon: Zap };
+  }
+}
+
 export function DashboardLayout({ children, currentView, onNavigate }: DashboardLayoutProps) {
   const { t } = useTranslation();
   const { profile, signOut, user, currentRole, currentFarm } = useAuth();
   const { farmPermissions } = usePermissions();
+  const { simpleMode } = useSimpleMode();
+  const { showEggs, showFCR, loading: farmTypeLoading } = useFarmType();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [desktopMoreMenuOpen, setDesktopMoreMenuOpen] = useState(false);
   const [mobileMoreMenuOpen, setMobileMoreMenuOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<NavigationGroupId>>(() => getExpandedGroups());
+  const [isOffline, setIsOffline] = useState(false);
+  const [deadLetterCount, setDeadLetterCount] = useState(0);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const desktopMoreMenuRef = useRef<HTMLDivElement>(null);
   const mobileMoreMenuRef = useRef<HTMLDivElement>(null);
 
   const handleNavigate = (view: string) => {
-    try {
-      // Prevent rapid navigation clicks from causing issues
-      if (currentView === view) return;
-      
-      onNavigate(view);
-    } catch (error) {
-      console.error('Navigation error:', error);
-      onNavigate('dashboard');
-    }
+    if (currentView === view) return;
+    onNavigate(view);
   };
 
   useEffect(() => {
@@ -70,12 +83,12 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   }, []);
 
   const getNavItems = () => {
-    const allItems: Array<{ id: ModuleName; label: string; icon: any }> = [
+    const allItems: Array<{ id: ModuleName; label: string; icon: any; badge?: number }> = [
       { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
       { id: 'flocks', label: t('nav.flocks'), icon: ChickenIcon },
       { id: 'insights', label: t('nav.insights'), icon: TrendingUp },
       { id: 'tasks', label: t('nav.tasks') || 'Tasks', icon: ListChecks },
-      { id: 'compare', label: t('nav.compare'), icon: GitCompare },
+      // { id: 'compare', label: t('nav.compare'), icon: GitCompare }, // Wave 1: HIDDEN — niche owner use case, access via Analytics later
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
@@ -83,18 +96,28 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'weight', label: t('nav.weight'), icon: Scale },
       { id: 'shifts', label: t('nav.shifts'), icon: Calendar },
       { id: 'team', label: t('nav.team'), icon: Users },
-      { id: 'task-history', label: t('nav.task_history'), icon: History },
-      { id: 'payroll', label: t('nav.payroll'), icon: Wallet },
-      { id: 'audit', label: t('nav.audit'), icon: FileText },
-      { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings },
-      // { id: 'smart-upload', label: t('nav.import'), icon: Upload }, // Disabled for now
-      { id: 'marketplace', label: t('nav.marketplace'), icon: Store },
-      // { id: 'roadmap', label: 'Coming Soon', icon: Rocket }, // Disabled for now
+      // { id: 'task-history', label: t('nav.task_history'), icon: History }, // Wave 1: HIDDEN — integrate as tab inside Tasks page later
+      // { id: 'payroll', label: t('nav.payroll'), icon: Wallet }, // Wave 1: HIDDEN — owner-only, will move to Settings sub-tab
+      // { id: 'audit', label: t('nav.audit'), icon: FileText }, // Wave 1: HIDDEN — owner-only compliance, will move to Settings sub-tab
+      { id: 'ai-assistant', label: t('nav.ai_assistant') || 'Eden AI', icon: Zap },
+      { id: 'smart-upload', label: t('nav.import') || 'Smart Import', icon: Upload },
+      { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },
+      // { id: 'marketplace', label: t('nav.marketplace'), icon: Store }, // Wave 1: KILLED — no suppliers, no GTM. Keep component dormant, revive if supplier strategy emerges
+      // { id: 'roadmap', label: 'Coming Soon', icon: Rocket }, // KILLED — use external roadmap tool
     ];
+
+    // Items hidden in Simple Mode (advanced features)
+    const simpleModeHidden = new Set(['vet-log', 'smart-upload', 'shifts']);
+    // Items only relevant when eggs are tracked (layer/mixed farms)
+    const eggOnlyItems = new Set(['sales']); // egg sales shown for all; only hide if pure broiler
 
     const filteredItems = allItems.filter(item => {
       const visibility = canViewModule(currentRole, item.id, farmPermissions);
-      return visibility.visible;
+      if (!visibility.visible) return false;
+      if (simpleMode && simpleModeHidden.has(item.id)) return false;
+      // Hide egg-only nav items for pure broiler farms (once loaded)
+      if (!farmTypeLoading && !showEggs && eggOnlyItems.has(item.id)) return false;
+      return true;
     });
 
     if (currentRole === 'worker') {
@@ -150,12 +173,8 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   const mobileMainTabs = getMobileMainTabs();
   const mobileOtherItems = getMobileOtherItems();
 
-  const [isOffline, setIsOffline] = useState(false);
-
   useEffect(() => {
-    const updateOfflineStatus = () => {
-      setIsOffline(!navigator.onLine);
-    };
+    const updateOfflineStatus = () => setIsOffline(!navigator.onLine);
     updateOfflineStatus();
     window.addEventListener('online', updateOfflineStatus);
     window.addEventListener('offline', updateOfflineStatus);
@@ -163,6 +182,19 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       window.removeEventListener('online', updateOfflineStatus);
       window.removeEventListener('offline', updateOfflineStatus);
     };
+  }, []);
+
+  useEffect(() => {
+    const checkDeadLetter = async () => {
+      try {
+        const count = await offlineDB.deadLetter.count();
+        setDeadLetterCount(count);
+      } catch {}
+    };
+    checkDeadLetter();
+    // Re-check whenever user comes back online
+    window.addEventListener('online', checkDeadLetter);
+    return () => window.removeEventListener('online', checkDeadLetter);
   }, []);
 
   return (
@@ -195,11 +227,20 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                 const Icon = item.icon;
                 const isActive = currentView === item.id;
                 
+                // Tour data attributes for key nav items
+                const tourAttr: Record<string, string> = {
+                  flocks: 'nav-flocks',
+                  expenses: 'nav-expenses',
+                  tasks: 'nav-tasks',
+                  'ai-assistant': 'nav-ai',
+                };
+
                 // Show Flocks as plain text but still clickable
                 if (item.id === 'flocks') {
                   return (
                     <button
                       key={item.id}
+                      data-tour={tourAttr[item.id]}
                       onClick={() => handleNavigate(item.id)}
                       className="flex items-center gap-1.5 flex-shrink-0 px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
                     >
@@ -207,10 +248,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                     </button>
                   );
                 }
-                
+
                 return (
                   <button
                     key={item.id}
+                    data-tour={tourAttr[item.id]}
                     onClick={() => handleNavigate(item.id)}
                     className={`nav-pill flex items-center gap-1.5 flex-shrink-0 ${
                       isActive ? 'nav-pill-active' : 'nav-pill-inactive'
@@ -279,6 +321,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                                   return (
                                     <button
                                       key={item.id}
+                                      data-tour={item.id === 'tasks' ? 'nav-tasks' : item.id === 'ai-assistant' ? 'nav-ai' : undefined}
                                       onClick={() => {
                                         handleNavigate(item.id);
                                         setDesktopMoreMenuOpen(false);
@@ -290,7 +333,10 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                                       }`}
                                     >
                                       <Icon className="w-4 h-4 flex-shrink-0" />
-                                      {item.label}
+                                      <span className="flex-1">{item.label}</span>
+                                      {item.badge ? (
+                                        <span className="ml-auto w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">!</span>
+                                      ) : null}
                                     </button>
                                   );
                                 })}
@@ -313,9 +359,21 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                   onClick={() => setAccountMenuOpen(!accountMenuOpen)}
                   className="flex items-center gap-2 p-1.5 hover:bg-white/60 rounded-full transition-colors"
                 >
-                  <div className="w-9 h-9 bg-gradient-to-br from-neon-400 to-neon-500 rounded-full flex items-center justify-center shadow-md">
-                    <User className="w-5 h-5 text-gray-900" />
-                  </div>
+                  {/* Tier ring around avatar */}
+                  {(() => {
+                    const tier = getTierStyle(profile?.subscription_tier);
+                    return (
+                      <div className={`relative p-0.5 rounded-full border-2 ${tier.border}`}>
+                        <div className="w-8 h-8 bg-gradient-to-br from-neon-400 to-neon-500 rounded-full flex items-center justify-center shadow-md">
+                          <User className="w-4 h-4 text-gray-900" />
+                        </div>
+                        {/* Tier icon badge */}
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${tier.bg} border ${tier.border} flex items-center justify-center`}>
+                          <tier.Icon className={`w-2.5 h-2.5 ${tier.text}`} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </button>
 
                 {accountMenuOpen && (
@@ -323,10 +381,28 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-sm font-semibold text-gray-900">{profile?.full_name || 'User'}</p>
                       <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                      {currentRole && (
-                        <span className="inline-block mt-2 badge-yellow capitalize">
-                          {currentRole}
-                        </span>
+                      <div className="flex items-center gap-2 mt-2">
+                        {currentRole && (
+                          <span className="badge-yellow capitalize">{currentRole}</span>
+                        )}
+                        {(() => {
+                          const tier = getTierStyle(profile?.subscription_tier);
+                          return (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${tier.bg} ${tier.text} ${tier.border}`}>
+                              <tier.Icon className="w-3 h-3" />
+                              {tier.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                      {/* Upgrade nudge for non-enterprise users */}
+                      {profile?.subscription_tier !== 'enterprise' && (
+                        <button
+                          onClick={() => { setAccountMenuOpen(false); window.location.hash = '#/subscribe'; }}
+                          className="mt-2 w-full text-xs text-center py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium hover:from-emerald-600 hover:to-emerald-700 transition-all"
+                        >
+                          {profile?.subscription_tier === 'pro' ? '⚡ Upgrade to Farm Boss' : '🌱 Upgrade your plan'}
+                        </button>
                       )}
                     </div>
                     {profile?.is_super_admin && (
@@ -388,15 +464,22 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
               const Icon = item.icon;
               const isActive = currentView === item.id;
               
+              // Tour data attributes for mobile nav
+              const mobileTourAttr: Record<string, string> = {
+                flocks: 'nav-flocks',
+                expenses: 'nav-expenses',
+              };
+
               // Handle Flocks as plain text on mobile too
               if (item.id === 'flocks') {
                 return (
                   <button
                     key={item.id}
+                    data-tour={mobileTourAttr[item.id]}
                     onClick={() => handleNavigate(item.id)}
                     className={`flex-shrink-0 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 rounded-full ${
-                      isActive 
-                        ? 'bg-neon-500 text-gray-900 shadow-sm' 
+                      isActive
+                        ? 'bg-neon-500 text-gray-900 shadow-sm'
                         : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
@@ -404,10 +487,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                   </button>
                 );
               }
-              
+
               return (
                 <button
                   key={item.id}
+                  data-tour={mobileTourAttr[item.id]}
                   onClick={() => handleNavigate(item.id)}
                   className={`flex-shrink-0 nav-pill ${
                     isActive ? 'nav-pill-active' : 'nav-pill-inactive'
@@ -456,7 +540,10 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                           }`}
                         >
                           <Icon className="w-4 h-4 flex-shrink-0" />
-                          {item.label}
+                          <span className="flex-1">{item.label}</span>
+                          {item.badge ? (
+                            <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">!</span>
+                          ) : null}
                         </button>
                       );
                     })}

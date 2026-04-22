@@ -33,6 +33,7 @@ import { WeightTracking } from './components/weight/WeightTracking';
 import { WeightCheckPage } from './components/weight/WeightCheckPage';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { VaccinationSchedule } from './components/vaccinations/VaccinationSchedule';
+import { VetLog } from './components/vet/VetLog';
 import { ExpenseTracking } from './components/expenses/ExpenseTracking';
 import { InventoryPage } from './components/inventory/InventoryPage';
 import { SettingsPage } from './components/settings/SettingsPage';
@@ -45,21 +46,25 @@ import { TasksPage2 } from './components/tasks2/TasksPage2';
 import { TaskHistoryPage } from './components/tasks/TaskHistoryPage';
 import { InsightsPage } from './components/insights/InsightsPage';
 import { AIAssistantPage } from './components/ai/AIAssistantPage';
-import { HelperAssistant } from './components/helper/HelperAssistant';
-// import { SmartUploadPage } from './components/import/SmartUploadPage';
+// import { HelperAssistant } from './components/helper/HelperAssistant'; // Wave 1: KILLED — consolidate into AI Assistant direction
+import { SmartUploadPage } from './components/import/SmartUploadPage';
+import { OnboardingTour, shouldShowTour } from './components/onboarding/OnboardingTour';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
+import { SimpleModeProvider } from './contexts/SimpleModeContext';
+import { SubscribePage } from './components/billing/SubscribePage';
 import { ComparePage } from './components/compare/ComparePage';
 import { MarketplacePage } from './components/marketplace/MarketplacePage';
 // import ComingSoonPage from './components/roadmap/ComingSoonPage';
 import LandingPage from './components/landing/LandingPage';
 import { FarmActivityAudit } from './components/audit/FarmActivityAudit';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundaryWithTranslation as ErrorBoundary } from './components/ErrorBoundaryWithTranslation';
 import { RequireRole } from './components/common/RequireRole';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { Flock } from './types/database';
 
 function AppContent() {
   const { t } = useTranslation();
-  const { user, profile, loading, refreshSession, currentRole, currentFarm } = useAuth();
+  const { user, profile, loading, refreshSession, signOut, currentRole, currentFarm } = useAuth();
   const [authRoute, setAuthRoute] = useState<'login' | 'signup' | 'forgot-password' | 'reset-password' | 'invite'>('login');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
@@ -68,6 +73,15 @@ function AppContent() {
   const [pullToRefresh, setPullToRefresh] = useState({ isActive: false, distance: 0, isRefreshing: false });
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [showNoFarmMessage, setShowNoFarmMessage] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  // Show onboarding tour for first-time users once farm loads
+  useEffect(() => {
+    if (user && currentFarm && !loading && shouldShowTour()) {
+      const t = window.setTimeout(() => setShowTour(true), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [user, currentFarm, loading]);
 
   // Only show "No farm assigned" after farm data has had time to load (avoid flash before currentFarm is set)
   useEffect(() => {
@@ -181,9 +195,10 @@ function AppContent() {
         // Trigger refresh
         setPullToRefresh({ isActive: true, distance: PULL_THRESHOLD, isRefreshing: true });
         
-        // Reload the page
+        // Dispatch refresh event so active views re-fetch their data
         setTimeout(() => {
-          window.location.reload();
+          window.dispatchEvent(new CustomEvent('edentrack:refresh'));
+          setPullToRefresh({ isActive: false, distance: 0, isRefreshing: false });
         }, 300);
       } else {
         // Reset pull indicator
@@ -221,6 +236,7 @@ function AppContent() {
       'expenses': '#/expenses',
       'sales': '#/sales',
       'vaccinations': '#/vaccinations',
+      'vet-log': '#/vet-log',
       'mortality': '#/mortality',
       'weight': '#/weight',
       'analytics': '#/analytics',
@@ -234,9 +250,13 @@ function AppContent() {
       'task-history': '#/task-history',
       'smart-dashboard': '#/smart-dashboard',
       'marketplace': '#/marketplace',
+      'subscribe': '#/subscribe',
+      'ai-assistant': '#/ai-assistant',
+      'smart-upload': '#/smart-upload',
+      'my-work': '#/my-work',
     };
-    
-    const hash = hashMap[view] || '#/dashboard';
+
+    const hash = hashMap[view] ?? `#/${view}`;
     // Update hash and dispatch event for mobile compatibility
     if (window.location.hash !== hash) {
       window.location.hash = hash;
@@ -272,6 +292,11 @@ function AppContent() {
           return;
         } else if (hash.includes('#/login') || hash.includes('#/auth/login')) {
           setAuthRoute('login');
+          return;
+        } else if (hash.includes('#/auth/callback')) {
+          // Email verification callback — Supabase handles the token automatically.
+          // Redirect to dashboard; AuthContext will see email_confirmed_at set and activate profile.
+          window.location.hash = '#/dashboard';
           return;
         }
         // Don't process further if not logged in and not an auth route
@@ -422,6 +447,10 @@ function AppContent() {
       }
       if (hash.includes('#/marketplace')) {
         setCurrentView('marketplace');
+        return;
+      }
+      if (hash.includes('#/subscribe') || hash.includes('#/billing')) {
+        setCurrentView('subscribe');
         return;
       }
       if (hash.includes('#/dashboard')) {
@@ -609,7 +638,22 @@ function AppContent() {
     );
   }
 
-  // Onboarding wizard removed - users go directly to dashboard
+  // Subscription expiry gate — show subscribe page if trial/sub has expired
+  // Super admins and free-tier users are exempt
+  const subscriptionExpired =
+    profile?.subscription_tier !== 'free' &&
+    !profile?.is_super_admin &&
+    profile?.subscription_expires_at != null &&
+    new Date(profile.subscription_expires_at) < new Date();
+
+  if (subscriptionExpired && currentView !== 'subscribe' && currentView !== 'settings') {
+    return (
+      <SubscribePage onBack={() => {
+        window.location.hash = '#/dashboard';
+        setCurrentView('dashboard');
+      }} />
+    );
+  }
 
   // Logged-in user with no farm — show message only after load has settled (avoid flash before farm data loads)
   if (user && !loading && !currentFarm && authRoute !== 'invite' && !inviteToken && !profile?.is_super_admin) {
@@ -639,9 +683,34 @@ function AppContent() {
             >
               {t('auth.retry_load', 'Retry')}
             </button>
+            <button
+              type="button"
+              onClick={() => signOut?.()}
+              className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+            >
+              {t('auth.sign_out', 'Sign Out')}
+            </button>
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Show onboarding wizard for new users who haven't set up their farm yet
+  if (
+    user &&
+    !loading &&
+    profile &&
+    profile.account_status === 'active' &&
+    !profile.is_super_admin &&
+    !profile.onboarding_completed
+  ) {
+    return (
+      <OnboardingWizard
+        onComplete={async () => {
+          if (refreshSession) await refreshSession();
+        }}
+      />
     );
   }
 
@@ -795,6 +864,12 @@ function AppContent() {
             <VaccinationSchedule flock={selectedFlock} />
           </RequireRole>
         );
+      case 'vet-log':
+        return (
+          <RequireRole moduleId="vet-log" onUnauthorized={handleUnauthorized}>
+            <VetLog />
+          </RequireRole>
+        );
       case 'expenses':
         return (
           <RequireRole moduleId="expenses" onUnauthorized={handleUnauthorized}>
@@ -855,17 +930,24 @@ function AppContent() {
             <AIAssistantPage />
           </RequireRole>
         );
-      // case 'smart-upload': // Disabled for now
-      //   return (
-      //     <RequireRole moduleId="smart-upload" onUnauthorized={handleUnauthorized}>
-      //       <SmartUploadPage />
-      //     </RequireRole>
-      //   );
+      case 'smart-upload':
+        return (
+          <RequireRole moduleId="smart-upload" onUnauthorized={handleUnauthorized}>
+            <SmartUploadPage />
+          </RequireRole>
+        );
       case 'marketplace':
         return (
           <RequireRole moduleId="marketplace" onUnauthorized={handleUnauthorized}>
             <MarketplacePage />
           </RequireRole>
+        );
+      case 'subscribe':
+        return (
+          <SubscribePage onBack={() => {
+            window.location.hash = '#/dashboard';
+            setCurrentView('dashboard');
+          }} />
         );
       // case 'roadmap': // Disabled for now
       //   return (
@@ -873,8 +955,8 @@ function AppContent() {
       //       <ComingSoonPage />
       //     </RequireRole>
       //   );
-      case 'helper':
-        return <HelperAssistant onNavigate={setCurrentView} />;
+      // case 'helper':
+      //   return <HelperAssistant onNavigate={setCurrentView} />; // Wave 1: KILLED
       default:
         return (
           <RequireRole moduleId="dashboard" onUnauthorized={handleUnauthorized}>
@@ -947,6 +1029,12 @@ function AppContent() {
       <DashboardLayout currentView={currentView} onNavigate={navigateToView}>
         {renderView()}
       </DashboardLayout>
+      {showTour && (
+        <OnboardingTour
+          onComplete={() => setShowTour(false)}
+          onNavigate={navigateToView}
+        />
+      )}
     </div>
   );
 }
@@ -959,9 +1047,11 @@ function App() {
           <PermissionsProvider>
             <RealtimeProvider>
               <ToastProvider>
+                <SimpleModeProvider>
                 <LanguageProvider>
                   <AppContent />
                 </LanguageProvider>
+                </SimpleModeProvider>
               </ToastProvider>
             </RealtimeProvider>
           </PermissionsProvider>

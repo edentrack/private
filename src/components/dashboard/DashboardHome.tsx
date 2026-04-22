@@ -1,8 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
-import { Plus, Check, Clock, ArrowRight, TrendingUp, Bird, Users, Package, ArrowUpRight, Play, Pause, DollarSign, Share2, ChevronDown } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { DashboardSkeleton } from '../common/Skeleton';
+import { Plus, Check, Clock, ArrowRight, TrendingUp, Bird, Users, Package, ArrowUpRight, Play, Pause, DollarSign, Share2, ChevronDown, AlertTriangle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmType } from '../../hooks/useFarmType';
 import { useToast } from '../../contexts/ToastContext';
 import { Flock, Task, Farm } from '../../types/database';
 import { LogMortalityModal } from '../mortality/LogMortalityModal';
@@ -15,10 +17,12 @@ import { TodayTasksWidget } from './TodayTasksWidget';
 import { UnifiedTaskSettings } from '../tasks/UnifiedTaskSettings';
 import { InventoryUsageWidget } from './InventoryUsageWidget';
 import { QuickEggCollectionWidget } from './QuickEggCollectionWidget';
+import { WeatherWidget } from './WeatherWidget';
 import { hasFeatureAccess } from '../../utils/planGating';
 import { canViewAnalytics } from '../../utils/permissions';
 import { getTaskTimeStatus, formatTaskDueTime } from '../../utils/taskPermissions';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { generateDailyReport } from '../../utils/reportGenerator';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 
@@ -30,6 +34,8 @@ interface DashboardHomeProps {
 export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps) {
   const { t } = useTranslation();
   const { user, profile, currentFarm, currentRole } = useAuth();
+  const { farmPermissions } = usePermissions();
+  const { showEggs, showFCR, farmType } = useFarmType();
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
@@ -46,11 +52,16 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
   const [refreshTasks, setRefreshTasks] = useState(0);
   const [eggRefreshTrigger, setEggRefreshTrigger] = useState(0);
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [spikeAlerts, setSpikeAlerts] = useState<any[]>([]);
   const [expandedSections, setExpandedSections] = useState({
     mainTasks: true,
     quickActions: false,
   });
-  const hideFinancials = shouldHideFinancialData(currentRole);
+  const hideFinancials = shouldHideFinancialData(currentRole, farmPermissions);
+  // Ref so loadDashboardData can read currentFarm without being recreated on every object change
+  const currentFarmRef = useRef(currentFarm);
+  useEffect(() => { currentFarmRef.current = currentFarm; }, [currentFarm]);
+
   const [farmSettings, setFarmSettings] = useState<{
     broilerDuration?: number;
     layerDuration?: number;
@@ -58,18 +69,21 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     layerPhases?: Array<{ name: string; startWeek: number; endWeek: number; feedType: string }>;
   } | null>(null);
 
-  const loadDashboardData = useCallback(async () => {
-    if (!currentFarm?.id) {
+  const loadDashboardData = useCallback(async (isInitialLoad = false) => {
+    const farm = currentFarmRef.current;
+    if (!farm?.id) {
       setLoading(false);
       return;
     }
 
+    // Only show the loading spinner on first load — subsequent refreshes update silently
+    if (isInitialLoad) setLoading(true);
+
     try {
-      setLoading(true);
       const { data: farmData } = await supabase
         .from('farms')
         .select('*')
-        .eq('id', currentFarm.id)
+        .eq('id', farm.id)
         .single();
 
       if (farmData) {
@@ -79,7 +93,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
       const { data: flocksData } = await supabase
         .from('flocks')
         .select('*')
-        .eq('farm_id', currentFarm.id)
+        .eq('farm_id', farm.id)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
@@ -93,13 +107,13 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
         setStats(prev => ({ ...prev, totalBirds: 0, totalFlocks: 0 }));
       }
 
-      const farmTz = getFarmTimeZone(currentFarm);
+      const farmTz = getFarmTimeZone(farm);
       const today = getFarmTodayISO(farmTz);
 
       const { data: tasksData } = await supabase
         .from('tasks')
         .select('*, task_templates(title, category)')
-        .eq('farm_id', currentFarm.id)
+        .eq('farm_id', farm.id)
         .eq('status', 'pending')
         .eq('is_archived', false)
         .or(`due_date.eq.${today},due_date.lt.${today}`)
@@ -110,7 +124,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
       const { count: totalTasksCount } = await supabase
         .from('tasks')
         .select('*', { count: 'exact', head: true })
-        .eq('farm_id', currentFarm.id)
+        .eq('farm_id', farm.id)
         .eq('status', 'pending')
         .eq('is_archived', false)
         .or(`due_date.eq.${today},due_date.lt.${today}`);
@@ -120,20 +134,40 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
-      setLoading(false);
+      if (isInitialLoad) setLoading(false);
     }
-  }, [currentFarm]);
+  }, []); // stable — reads currentFarm via ref
 
   useEffect(() => {
     if (user && currentFarm?.id) {
-      loadDashboardData();
+      loadDashboardData(true); // initial load — show spinner
     }
-  }, [user, currentFarm?.id, loadDashboardData]);
+  }, [user, currentFarm?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pull-to-refresh: re-fetch silently when the global event fires
+  useEffect(() => {
+    const handler = () => loadDashboardData();
+    window.addEventListener('edentrack:refresh', handler);
+    return () => window.removeEventListener('edentrack:refresh', handler);
+  }, [loadDashboardData]);
 
   useEffect(() => {
     if (currentFarm?.id) {
       loadFarmSettings();
     }
+  }, [currentFarm?.id]);
+
+  useEffect(() => {
+    if (!currentFarm?.id) return;
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('mortality_spike_alerts')
+      .select('*')
+      .eq('farm_id', currentFarm.id)
+      .eq('alert_date', today)
+      .eq('acknowledged', false)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setSpikeAlerts(data || []));
   }, [currentFarm?.id]);
 
   const getGreeting = () => {
@@ -152,7 +186,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     setGeneratingReport(true);
 
     try {
-      const report = await generateDailyReport(currentFarm.id, currentFarm.name);
+      const report = await generateDailyReport(currentFarm.id, currentFarm.name, currentFarm.currency_code || currentFarm.currency || 'CFA');
 
       await navigator.clipboard.writeText(report);
 
@@ -249,14 +283,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-neon-200 border-t-neon-500 rounded-full animate-spin" />
-          <p className="text-gray-500 font-medium">{t('dashboard.loading_farm')}</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (flocks.length === 0) {
@@ -270,10 +297,10 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-3">{t('dashboard.welcome_to_farm')}</h3>
           {isWorker ? (
-            <p className="text-gray-500">{t('dashboard.no_flocks_yet_worker') || 'No flocks set up yet. Your manager will add flocks when ready.'}</p>
+            <p className="text-gray-500 text-sm">{t('dashboard.no_flocks_yet_worker') || 'No flocks set up yet. Your manager will add flocks when ready. Check back soon!'}</p>
           ) : (
             <>
-              <p className="text-gray-500 mb-8">{t('dashboard.create_first_flock_desc')}</p>
+              <p className="text-gray-500 mb-8 text-sm">{t('dashboard.create_first_flock_desc') || 'Create your first flock to start tracking daily operations, expenses, sales, and bird health.'}</p>
               <button
                 onClick={() => onNavigate('flocks')}
                 className="btn-neon inline-flex items-center gap-2"
@@ -288,8 +315,30 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     );
   }
 
+  const dismissAlert = async (id: string) => {
+    setSpikeAlerts(prev => prev.filter(a => a.id !== id));
+    await supabase.from('mortality_spike_alerts').update({ acknowledged: true, acknowledged_at: new Date().toISOString() }).eq('id', id);
+  };
+
   return (
     <div className="space-y-3 md:space-y-5">
+      {/* Mortality spike alert banners */}
+      {spikeAlerts.map(alert => (
+        <div key={alert.id} className="bg-red-50 border border-red-300 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-red-800 text-sm">
+              ⚠️ Mortality spike in {alert.flock_name} — {alert.today_deaths} deaths today ({alert.spike_ratio?.toFixed(1)}× above normal)
+            </p>
+            <p className="text-red-700 text-xs mt-1">
+              Likely causes: {alert.likely_causes?.join(', ')}. Isolate affected birds and check water/feed immediately.
+            </p>
+          </div>
+          <button onClick={() => dismissAlert(alert.id)} className="text-red-400 hover:text-red-600 shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
       <div className="animate-fade-in-up flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1">
@@ -316,6 +365,15 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
           )}
         </button>
       </div>
+
+      <WeatherWidget
+        fallbackLocation={
+          farm?.city
+            ? `${farm.city}${farm.region_state ? ', ' + farm.region_state : ''}, ${farm.country}`
+            : farm?.country
+        }
+        onOpenSettings={() => onNavigate('settings')}
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-fade-in-up stagger-1">
         <div className="flex items-center gap-3">
@@ -452,12 +510,14 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
               )}
             </div>
           </div>
-          <div className="animate-fade-in-up stagger-4">
-            <div>
-              <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">Egg Quick Entry</div>
-              <QuickEggCollectionWidget onSuccess={() => setEggRefreshTrigger((t) => t + 1)} />
+          {showEggs && (
+            <div className="animate-fade-in-up stagger-4">
+              <div>
+                <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">Egg Quick Entry</div>
+                <QuickEggCollectionWidget onSuccess={() => setEggRefreshTrigger((t) => t + 1)} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="lg:col-span-2 space-y-3 md:space-y-4">
@@ -471,7 +531,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
 
       {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(farm.plan, 'kpis') && (
-        <div>
+        <div data-tour="kpi-section">
           <CoreKPISection refreshTrigger={eggRefreshTrigger} />
         </div>
       )}

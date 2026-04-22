@@ -14,23 +14,30 @@ interface ActivityLog {
   admin_email?: string | null;
 }
 
+const PAGE_SIZE = 50;
+
 export function ActivityLogs() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    loadLogs();
+    setPage(0);
+    setLogs([]);
+    loadLogs(0);
   }, [filterType]);
 
-  const loadLogs = async () => {
+  const loadLogs = async (pageNum: number) => {
+    setLoading(true);
     try {
       let query = supabase
         .from('admin_actions')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(500);
+        .range(pageNum * PAGE_SIZE, (pageNum + 1) * PAGE_SIZE - 1);
 
       if (filterType !== 'all') {
         query = query.eq('action_type', filterType);
@@ -38,6 +45,8 @@ export function ActivityLogs() {
 
       const { data, error } = await query;
       if (error) throw error;
+
+      setHasMore((data || []).length === PAGE_SIZE);
 
       // Enrich with user emails
       const enrichedLogs = await Promise.all(
@@ -63,15 +72,11 @@ export function ActivityLogs() {
             adminEmail = adminData?.email || null;
           }
 
-          return {
-            ...log,
-            user_email: userEmail,
-            admin_email: adminEmail,
-          };
+          return { ...log, user_email: userEmail, admin_email: adminEmail };
         })
       );
 
-      setLogs(enrichedLogs);
+      setLogs(prev => pageNum === 0 ? enrichedLogs : [...prev, ...enrichedLogs]);
     } catch (error: any) {
       console.error('Failed to load logs:', error);
       // Show error in console for debugging
@@ -222,9 +227,21 @@ export function ActivityLogs() {
             </table>
           </div>
 
-          {filteredLogs.length === 0 && (
+          {filteredLogs.length === 0 && !loading && (
             <div className="text-center py-12 text-gray-500">
               No activity logs found
+            </div>
+          )}
+
+          {hasMore && !searchTerm && (
+            <div className="flex justify-center py-4 border-t">
+              <button
+                onClick={() => { const next = page + 1; setPage(next); loadLogs(next); }}
+                disabled={loading}
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 text-sm font-medium"
+              >
+                {loading ? 'Loading…' : 'Load more'}
+              </button>
             </div>
           )}
         </div>

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Egg, Package, AlertTriangle, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Egg, Package, AlertTriangle, DollarSign, HelpCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
 import { formatEggsCompact } from '../../utils/eggFormatting';
 import { useTranslation } from 'react-i18next';
+import { calculateFCRForFarm, getFCRStatus } from '../../utils/fcrCalculation';
+import { useFarmType } from '../../hooks/useFarmType';
 
 type TimePeriod = 'today' | 'week' | 'month';
 
@@ -20,6 +22,10 @@ interface KPIData {
   mortalityRate: number;
   mortalityTrend: number;
   profitSnapshot: number;
+  fcr: number | null;
+  isLayerFarm: boolean;
+  isMixedFarm: boolean;
+  fcrReason?: string;
 }
 
 interface CoreKPISectionProps {
@@ -30,11 +36,13 @@ interface CoreKPISectionProps {
 export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
   const { t } = useTranslation();
   const { profile, currentFarm } = useAuth();
+  const { showEggs, showFCR } = useFarmType();
   const [period, setPeriod] = useState<TimePeriod>('today');
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [loading, setLoading] = useState(true);
   const [eggsPerTray, setEggsPerTray] = useState(30);
+  const [showFCRTooltip, setShowFCRTooltip] = useState(false);
 
   useEffect(() => {
     if (currentFarm) {
@@ -193,6 +201,9 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
       }, 0);
       const prevLayRate = totalLayerBirds > 0 ? (prevEggsCollected / (totalLayerBirds * days)) * 100 : 0;
 
+      // Calculate FCR for broiler flocks
+      const fcrResult = await calculateFCRForFarm(currentFarm.id, start, end);
+
       setKpiData({
         layRate,
         layRateTrend: layRate - prevLayRate,
@@ -205,6 +216,10 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
         mortalityRate: totalBirds > 0 ? (totalDeaths / totalBirds) * 100 : 0,
         mortalityTrend: totalDeaths - prevDeaths,
         profitSnapshot: totalRevenue - totalExpenses,
+        fcr: fcrResult.fcr,
+        isLayerFarm: fcrResult.isLayerFlock,
+        isMixedFarm: fcrResult.isMixedFarm,
+        fcrReason: fcrResult.reasonIfNull,
       });
     } catch (error) {
       console.error('Error loading KPIs:', error);
@@ -261,7 +276,8 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 auto-rows-fr">
+      <div className={`grid grid-cols-1 gap-2 auto-rows-fr ${showEggs && showFCR ? 'sm:grid-cols-4' : showEggs || showFCR ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+        {showEggs && (
         <div className="bg-gradient-to-br from-neon-50 to-neon-100 rounded-xl p-2.5 h-[118px] border border-neon-200">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-6 h-6 bg-neon-500 rounded-lg flex items-center justify-center">
@@ -274,7 +290,9 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
           </div>
           <p className="text-xs text-gray-600">{t('dashboard.eggs_produced_per_bird')}</p>
         </div>
+        )}
 
+        {showEggs && (
         <div className="bg-white/60 rounded-xl p-2.5 h-[118px] border border-gray-200">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -297,6 +315,7 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
             </div>
           </div>
         </div>
+        )}
 
         <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-2.5 h-[118px] border border-red-200">
           <div className="flex items-center gap-2 mb-2">
@@ -317,6 +336,72 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
             <p className="text-xs text-gray-600">{t('dashboard.vs_previous_period')}</p>
           )}
         </div>
+
+        {showFCR && (
+        <div
+          className={`rounded-xl p-2.5 h-[118px] border relative ${
+            kpiData.isLayerFarm || kpiData.isMixedFarm
+              ? 'bg-gray-50 border-gray-200'
+              : kpiData.fcr
+              ? `bg-gradient-to-br ${getFCRStatus(kpiData.fcr).bgGradient} border-${getFCRStatus(kpiData.fcr).color.split('-')[1]}-200`
+              : 'bg-gray-50 border-gray-200'
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div
+              className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                kpiData.isLayerFarm || kpiData.isMixedFarm
+                  ? 'bg-gray-300'
+                  : kpiData.fcr
+                  ? `bg-${getFCRStatus(kpiData.fcr).color.split('-')[1]}-600`
+                  : 'bg-gray-300'
+              }`}
+            >
+              <Package className="w-3 h-3 text-white" />
+            </div>
+            <div className="flex items-center gap-1">
+              <h3 className="text-sm font-semibold text-gray-900">FCR</h3>
+              <div className="relative">
+                <button
+                  onMouseEnter={() => setShowFCRTooltip(true)}
+                  onMouseLeave={() => setShowFCRTooltip(false)}
+                  className="cursor-help"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+                </button>
+                {showFCRTooltip && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10 pointer-events-none">
+                    {kpiData.isLayerFarm
+                      ? 'FCR is a broiler metric. Layers are measured by egg production instead.'
+                      : kpiData.isMixedFarm
+                      ? 'FCR requires feed data per flock. Mixed farms (broilers + layers) share feed logs, so FCR cannot be calculated accurately.'
+                      : 'FCR = Feed consumed (kg) / Weight gained (kg)'}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mb-1">
+            {kpiData.isLayerFarm || kpiData.isMixedFarm ? (
+              <span className="text-lg font-bold text-gray-500">N/A</span>
+            ) : kpiData.fcr !== null ? (
+              <span className={`text-lg font-bold ${getFCRStatus(kpiData.fcr).color}`}>{kpiData.fcr.toFixed(2)}</span>
+            ) : (
+              <span className="text-lg font-bold text-gray-500">—</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-600">
+            {kpiData.isMixedFarm
+              ? 'Mixed farm'
+              : kpiData.isLayerFarm
+              ? 'Layer farm'
+              : kpiData.fcr !== null
+              ? getFCRStatus(kpiData.fcr).label
+              : kpiData.fcrReason || 'No data'}
+          </p>
+        </div>
+        )}
       </div>
     </div>
   );

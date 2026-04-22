@@ -3,6 +3,7 @@ import { X, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 interface LogMortalityModalProps {
   flock?: Flock | null;
@@ -25,6 +26,7 @@ const MORTALITY_REASONS = [
 
 export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess, createTaskRecord = false }: LogMortalityModalProps) {
   const { user, profile, currentFarm } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const [currentFlock, setCurrentFlock] = useState<Flock | null>(flock || null);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [count, setCount] = useState('');
@@ -86,7 +88,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
     setLoading(true);
 
     try {
-      const { error: insertError } = await supabase.from('mortality_logs').insert({
+      const mortalityPayload = {
         flock_id: currentFlock.id,
         farm_id: currentFlock.farm_id,
         event_date: date,
@@ -94,9 +96,19 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
         cause: reason,
         notes,
         created_by: user.id,
-      });
+      };
 
-      if (insertError) throw insertError;
+      const { error: insertError } = await supabase.from('mortality_logs').insert(mortalityPayload);
+
+      if (insertError) {
+        // Check if it's a network error
+        if (isNetworkError(insertError)) {
+          // Queue for offline sync and show optimistic success
+          await tryWrite('mortality_logs', 'insert', mortalityPayload);
+        } else {
+          throw insertError;
+        }
+      }
 
       const newCount = Math.max(0, currentFlock.current_count - mortalityCount);
       const { error: updateError } = await supabase

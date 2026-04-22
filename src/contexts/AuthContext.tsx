@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, ReactNode } from 'react';
+import { useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 import type { Profile, FarmMember, MemberRole } from '../types/database';
@@ -14,7 +14,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentMember, setCurrentMember] = useState<FarmMember | null>(null);
   const [currentRole, setCurrentRole] = useState<MemberRole | null>(null);
   const [loading, setLoading] = useState(true);
-  
+  const currentFarmIdRef = useRef<string | null>(null);
+
+  // Only update currentFarm when the farm ID actually changes — prevents token-refresh flickers
+  const stableSetCurrentFarm = (farm: typeof currentFarm) => {
+    if (farm?.id === currentFarmIdRef.current) return;
+    currentFarmIdRef.current = farm?.id ?? null;
+    setCurrentFarm(farm);
+  };
+
+  const clearCurrentFarm = () => {
+    currentFarmIdRef.current = null;
+    setCurrentFarm(null);
+  };
+
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -59,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearUserData = () => {
     setProfile(null);
-    setCurrentFarm(null);
+    clearCurrentFarm();
     setCurrentMember(null);
     setCurrentRole(null);
     setLoading(false);
@@ -73,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 30000); // 30 second timeout
 
     try {
-      // Check if we're impersonating
+      // Check if we're impersonating — will be re-validated against profile below
       let impersonation: any = null;
       try {
         const stored = localStorage.getItem('impersonation_state');
@@ -84,14 +97,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Ignore
       }
 
-      // If impersonating, use target user's ID and farm
-      const effectiveUserId = impersonation?.active && impersonation.targetUserId ? impersonation.targetUserId : userId;
-      const effectiveFarmId = impersonation?.active && impersonation.targetFarmId ? impersonation.targetFarmId : null;
+      // Start with the real user's IDs; only override after confirming super admin
+      let effectiveUserId = userId;
+      let effectiveFarmId: string | null = null;
 
       try {
-        await supabase.rpc('accept_pending_invitations');
-      } catch {
-        // accept_pending_invitations can fail if RPC doesn't exist or user has no pending invites
+        const { error: acceptErr } = await supabase.rpc('accept_pending_invitations');
+        if (acceptErr) {
+          console.warn('[AuthContext] accept_pending_invitations RPC returned error (non-blocking):', acceptErr);
+        }
+      } catch (e) {
+        console.warn('[AuthContext] accept_pending_invitations threw (non-blocking):', e);
       }
 
       // Sync user's farm_id with their active farm membership (if column exists)
@@ -188,6 +204,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } else {
+        // Client-side safety net: if email is confirmed but profile still pending, activate it
+        if (profileData.account_status === 'pending' && authUser.user.email_confirmed_at) {
+          const { error: activateErr } = await supabase
+            .from('profiles')
+            .update({ account_status: 'active' })
+            .eq('id', effectiveUserId)
+            .eq('account_status', 'pending');
+          if (!activateErr) profileData.account_status = 'active';
+        }
+
+        // Only honour impersonation state if the real user is a super admin.
+        // If they're not, clear the stale localStorage state so it can't affect farm loading.
+        if (impersonation?.active) {
+          if (profileData.is_super_admin && impersonation.targetUserId && impersonation.targetFarmId) {
+            effectiveUserId = impersonation.targetUserId;
+            effectiveFarmId = impersonation.targetFarmId;
+          } else {
+            localStorage.removeItem('impersonation_state');
+            impersonation = null;
+          }
+        }
+
         setProfile(profileData);
         // Check if super admin before continuing
         if (profileData.is_super_admin) {
@@ -285,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .order('joined_at', { ascending: false })
             .limit(10);
 
-          const retryTimeoutPromise = new Promise((_, reject) => 
+          const retryTimeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Retry query timeout')), 5000)
           );
 
@@ -301,11 +339,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Last-resort fallback: query farm_members without the JOIN, then fetch the farm separately.
+      // Handles edge cases where the inner join fails due to RLS or query plan issues.
+      if (!memberData && !impersonation?.active) {
+        try {
+          const { data: memberRows } = await supabase
+            .from('farm_members')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_active', true)
+            .order('joined_at', { ascending: false })
+            .limit(1);
+
+          if (memberRows && memberRows.length > 0) {
+            const row = memberRows[0];
+            const { data: farmRow } = await supabase
+              .from('farms')
+              .select('id, name, currency, currency_code')
+              .eq('id', row.farm_id)
+              .maybeSingle();
+            if (farmRow) {
+              memberData = { ...row, farms: farmRow };
+            }
+          }
+        } catch (e) {
+          console.warn('Error on fallback member data:', e);
+        }
+      }
+
       if (!memberData) {
         // If impersonating and no member data found, try to create minimal structure from impersonation state
         if (impersonation?.active && effectiveFarmId && impersonation.targetFarmName) {
           // Create minimal farm/member structure from impersonation state
-          setCurrentFarm({
+          stableSetCurrentFarm({
             id: effectiveFarmId,
             name: impersonation.targetFarmName,
             currency: undefined,
@@ -323,24 +389,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } as any);
           setCurrentRole('owner' as MemberRole);
         } else {
-          // Invited users must never get their own farm — only access via accepting the invite
+          // Invited users must never get their own farm — only access via accepting the invite.
+          // Supabase RPC errors surface in the `error` field (not thrown), so we MUST check both.
           let shouldNotCreateFarm = false;
+          let inviteCheckFailed = false;
+
           try {
-            const { data: hasPendingInvite } = await supabase.rpc('user_has_pending_farm_invite');
-            if (hasPendingInvite) shouldNotCreateFarm = true;
-          } catch (_) {
-            // If RPC fails, assume they might have an invite — do not create a farm
+            const { data: hasPendingInvite, error: pendingErr } = await supabase.rpc('user_has_pending_farm_invite');
+            if (pendingErr) {
+              console.error('[AuthContext] user_has_pending_farm_invite RPC error:', pendingErr);
+              inviteCheckFailed = true;
+              shouldNotCreateFarm = true; // fail-safe: never create an orphan farm on uncertainty
+            } else if (hasPendingInvite) {
+              shouldNotCreateFarm = true;
+            }
+          } catch (e) {
+            console.error('[AuthContext] user_has_pending_farm_invite threw:', e);
+            inviteCheckFailed = true;
             shouldNotCreateFarm = true;
           }
+
           if (!shouldNotCreateFarm) {
             try {
-              const { data: wasInvited } = await supabase.rpc('user_was_invited_to_farm');
-              if (wasInvited) shouldNotCreateFarm = true;
-            } catch (_) {
+              const { data: wasInvited, error: invitedErr } = await supabase.rpc('user_was_invited_to_farm');
+              if (invitedErr) {
+                console.error('[AuthContext] user_was_invited_to_farm RPC error:', invitedErr);
+                inviteCheckFailed = true;
+                shouldNotCreateFarm = true;
+              } else if (wasInvited) {
+                shouldNotCreateFarm = true;
+              }
+            } catch (e) {
+              console.error('[AuthContext] user_was_invited_to_farm threw:', e);
+              inviteCheckFailed = true;
               shouldNotCreateFarm = true;
             }
           }
+
           if (shouldNotCreateFarm) {
+            if (inviteCheckFailed) {
+              console.warn(
+                '[AuthContext] Invitation check could not complete — blocking auto-farm creation as a safety measure. ' +
+                'If this is a new direct signup, they may appear stuck at loading. ' +
+                'Verify user_has_pending_farm_invite and user_was_invited_to_farm RPCs are deployed to production.'
+              );
+            }
             setLoading(false);
             return;
           }
@@ -369,7 +462,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .maybeSingle();
 
             if (newMember) {
-              setCurrentFarm({
+              stableSetCurrentFarm({
                 id: newFarm.id,
                 name: newFarm.name,
                 currency: newFarm.currency,
@@ -382,7 +475,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         const farmData = memberData.farms as any;
-        setCurrentFarm({
+        stableSetCurrentFarm({
           id: farmData.id,
           name: farmData.name,
           currency: farmData.currency,

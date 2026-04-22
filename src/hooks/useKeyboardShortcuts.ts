@@ -31,7 +31,7 @@ export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]) {
   }, [shortcuts]);
 }
 
-export const COMMON_SHORTCUTS: ShortcutConfig[] = [
+export const SHORTCUT_DESCRIPTIONS: ShortcutConfig[] = [
   {
     key: 'k',
     ctrl: true,

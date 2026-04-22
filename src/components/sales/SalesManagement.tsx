@@ -14,6 +14,7 @@ import { EggSalesList } from './EggSalesList';
 import { RecordEggSale } from '../eggs/RecordEggSale';
 import { ReceiptsList } from './ReceiptsList';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
+import { usePermissions } from '../../contexts/PermissionsContext';
 import { formatEggsCompact } from '../../utils/eggFormatting';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 
@@ -47,6 +48,7 @@ function getDateRange(period: TimePeriod): { start: string | null; end: string }
 export function SalesManagement() {
   const { t } = useTranslation();
   const { profile, currentFarm, currentRole } = useAuth();
+  const { farmPermissions } = usePermissions();
   const [activeTab, setActiveTab] = useState<'record' | 'history' | 'customers' | 'invoices'>('record');
   const [historySubTab, setHistorySubTab] = useState<'birds' | 'eggs' | 'receipts'>('birds');
   const [saleType, setSaleType] = useState<'bird' | 'egg'>('bird');
@@ -74,7 +76,7 @@ export function SalesManagement() {
     eggSaleRevenue: 0,
     birdSaleRevenue: 0,
   });
-  const hideFinancials = shouldHideFinancialData(currentRole);
+  const hideFinancials = shouldHideFinancialData(currentRole, farmPermissions);
 
   useEffect(() => {
     if (currentFarm?.id) {

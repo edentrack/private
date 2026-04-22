@@ -3,6 +3,7 @@ import { Egg, Plus, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 interface Flock {
   id: string;
@@ -17,6 +18,7 @@ interface QuickEggCollectionWidgetProps {
 export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidgetProps) {
   const { t } = useTranslation();
   const { currentFarm, profile } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [eggsPerTray, setEggsPerTray] = useState(30);
   const [showForm, setShowForm] = useState(false);
@@ -210,26 +212,34 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
         return;
       }
 
+      const collectionPayload = {
+        farm_id: currentFarm?.id,
+        flock_id: selectedFlockId || null,
+        collection_date: collectionDate,
+        collected_on: collectionDate,
+        trays: totalTrays,
+        broken: damagedEggsNum,
+        small_eggs: nextTotals.small,
+        medium_eggs: nextTotals.medium,
+        large_eggs: nextTotals.large,
+        jumbo_eggs: nextTotals.jumbo,
+        damaged_eggs: damagedEggsNum,
+        total_eggs: totalEggs,
+        collected_by: profile?.id,
+        notes: null,
+      };
+
       const { error: collectionError } = await supabase
         .from('egg_collections')
-        .insert({
-          farm_id: currentFarm?.id,
-          flock_id: selectedFlockId || null,
-          collection_date: collectionDate,
-          collected_on: collectionDate,
-          trays: totalTrays,
-          broken: damagedEggsNum,
-          small_eggs: nextTotals.small,
-          medium_eggs: nextTotals.medium,
-          large_eggs: nextTotals.large,
-          jumbo_eggs: nextTotals.jumbo,
-          damaged_eggs: damagedEggsNum,
-          total_eggs: totalEggs,
-          collected_by: profile?.id,
-          notes: null,
-        });
+        .insert(collectionPayload);
 
-      if (collectionError) throw collectionError;
+      if (collectionError) {
+        if (isNetworkError(collectionError)) {
+          await tryWrite('egg_collections', 'insert', collectionPayload);
+        } else {
+          throw collectionError;
+        }
+      }
 
       const { data: inventory } = await supabase
         .from('egg_inventory')
@@ -238,26 +248,46 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
         .maybeSingle();
 
       if (inventory) {
-        await supabase
+        const inventoryUpdatePayload = {
+          small_eggs: (inventory.small_eggs ?? 0) + nextTotals.small,
+          medium_eggs: (inventory.medium_eggs ?? 0) + nextTotals.medium,
+          large_eggs: (inventory.large_eggs ?? 0) + nextTotals.large,
+          jumbo_eggs: (inventory.jumbo_eggs ?? 0) + nextTotals.jumbo,
+          last_updated: new Date().toISOString(),
+        };
+
+        const { error: inventoryUpdateError } = await supabase
           .from('egg_inventory')
-          .update({
-            small_eggs: (inventory.small_eggs ?? 0) + nextTotals.small,
-            medium_eggs: (inventory.medium_eggs ?? 0) + nextTotals.medium,
-            large_eggs: (inventory.large_eggs ?? 0) + nextTotals.large,
-            jumbo_eggs: (inventory.jumbo_eggs ?? 0) + nextTotals.jumbo,
-            last_updated: new Date().toISOString(),
-          })
+          .update(inventoryUpdatePayload)
           .eq('farm_id', currentFarm?.id);
+
+        if (inventoryUpdateError) {
+          if (isNetworkError(inventoryUpdateError)) {
+            await tryWrite('egg_inventory', 'update', inventoryUpdatePayload, inventory.id);
+          } else {
+            throw inventoryUpdateError;
+          }
+        }
       } else {
-        await supabase
+        const inventoryCreatePayload = {
+          farm_id: currentFarm?.id,
+          small_eggs: nextTotals.small,
+          medium_eggs: nextTotals.medium,
+          large_eggs: nextTotals.large,
+          jumbo_eggs: nextTotals.jumbo,
+        };
+
+        const { error: inventoryCreateError } = await supabase
           .from('egg_inventory')
-          .insert({
-            farm_id: currentFarm?.id,
-            small_eggs: nextTotals.small,
-            medium_eggs: nextTotals.medium,
-            large_eggs: nextTotals.large,
-            jumbo_eggs: nextTotals.jumbo,
-          });
+          .insert(inventoryCreatePayload);
+
+        if (inventoryCreateError) {
+          if (isNetworkError(inventoryCreateError)) {
+            await tryWrite('egg_inventory', 'insert', inventoryCreatePayload);
+          } else {
+            throw inventoryCreateError;
+          }
+        }
       }
 
       setSuccessMessage(`Recorded ${totalEggs} eggs collected!`);

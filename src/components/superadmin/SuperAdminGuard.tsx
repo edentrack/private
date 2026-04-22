@@ -10,38 +10,49 @@ export function SuperAdminGuard({ children }: SuperAdminGuardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkSuperAdmin();
+    let userId: string | null = null;
+
+    const redirect = () => { window.location.hash = ''; };
+
+    const check = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { redirect(); return; }
+        userId = user.id;
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (error || !profile?.is_super_admin) { redirect(); return; }
+        setIsSuperAdmin(true);
+      } catch {
+        redirect();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    check();
+
+    // Subscribe to profile changes — redirect immediately if is_super_admin revoked
+    const channel = supabase
+      .channel('super-admin-guard')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        (payload) => {
+          if (payload.new?.id === userId && !payload.new?.is_super_admin) {
+            redirect();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
-
-  const checkSuperAdmin = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        window.location.hash = '';
-        return;
-      }
-
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('is_super_admin')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      if (error || !profile?.is_super_admin) {
-        // Silently redirect without showing alert
-        window.location.hash = '';
-        return;
-      }
-
-      setIsSuperAdmin(true);
-    } catch (error) {
-      console.error('Super admin check failed:', error);
-      window.location.hash = '';
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -54,9 +65,7 @@ export function SuperAdminGuard({ children }: SuperAdminGuardProps) {
     );
   }
 
-  if (!isSuperAdmin) {
-    return null;
-  }
+  if (!isSuperAdmin) return null;
 
   return <>{children}</>;
 }

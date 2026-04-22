@@ -52,6 +52,8 @@ export function PricingManagement() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      const oldTier = tiers.find(t => t.id === tierId);
+
       const { error } = await supabase
         .from('subscription_tiers')
         .update(updates)
@@ -63,7 +65,17 @@ export function PricingManagement() {
         admin_id: user?.id,
         action_type: 'tier_updated',
         target_user_id: null,
-        details: { tier_id: tierId, updates },
+        details: {
+          tier_id: tierId,
+          tier_name: oldTier?.name,
+          before: {
+            price_monthly: oldTier?.price_monthly,
+            price_yearly: oldTier?.price_yearly,
+            max_flocks: oldTier?.max_flocks,
+            max_team_members: oldTier?.max_team_members,
+          },
+          after: updates,
+        },
       });
 
       showToast('Pricing tier updated successfully', 'success');

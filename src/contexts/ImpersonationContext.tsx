@@ -41,22 +41,89 @@ const defaultState: ImpersonationState = {
 };
 
 export function ImpersonationProvider({ children }: { children: ReactNode }) {
-  const [impersonation, setImpersonation] = useState<ImpersonationState>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : defaultState;
-    } catch {
-      return defaultState;
-    }
-  });
+  // Always start from defaultState — never trust localStorage until DB-verified
+  const [impersonation, setImpersonation] = useState<ImpersonationState>(defaultState);
+  const [verified, setVerified] = useState(false);
 
+  // On mount: verify any stored impersonation session against the DB
   useEffect(() => {
+    async function verifyStoredSession() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) { setVerified(true); return; }
+
+        const parsed: ImpersonationState = JSON.parse(stored);
+        if (!parsed.logId || !parsed.active) {
+          localStorage.removeItem(STORAGE_KEY);
+          setVerified(true);
+          return;
+        }
+
+        // Verify the log record exists, belongs to the current admin, and is still open
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          localStorage.removeItem(STORAGE_KEY);
+          setVerified(true);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('super_admin_impersonation_logs')
+          .select('id, admin_id, target_user_id, target_farm_id, reason, started_at, ended_at')
+          .eq('id', parsed.logId)
+          .eq('admin_id', user.id)
+          .is('ended_at', null)
+          .maybeSingle();
+
+        if (error || !data) {
+          // Log not found, already ended, or belongs to different admin — reject
+          localStorage.removeItem(STORAGE_KEY);
+          setVerified(true);
+          return;
+        }
+
+        // Verified: restore state from DB record (not from localStorage content)
+        setImpersonation({
+          active: true,
+          targetUserId: data.target_user_id,
+          targetFarmId: data.target_farm_id,
+          logId: data.id,
+          startedAt: data.started_at,
+          reason: data.reason,
+          // Display names not in DB — keep from localStorage if IDs match, else null
+          targetUserName: parsed.targetUserId === data.target_user_id ? parsed.targetUserName : null,
+          targetFarmName: parsed.targetFarmId === data.target_farm_id ? parsed.targetFarmName : null,
+        });
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setVerified(true);
+      }
+    }
+
+    verifyStoredSession();
+  }, []);
+
+  // Persist verified state changes to localStorage
+  useEffect(() => {
+    if (!verified) return;
     if (impersonation.active) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(impersonation));
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, [impersonation]);
+  }, [impersonation, verified]);
+
+  // Clear impersonation on sign-out
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setImpersonation(defaultState);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const startImpersonation = async (
     targetUserId: string,

@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Flock, Farm } from '../../types/database';
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { FlockFinancialSummary } from './FlockFinancialSummary';
+import { FlockPnLCard } from '../dashboard/FlockPnLCard';
 import { FarmFinancialSummary } from './FarmFinancialSummary';
 import { EggInventory } from '../eggs/EggInventory';
 import { EggProductionReports } from '../eggs/EggProductionReports';
@@ -98,15 +99,10 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
     if (!currentFlock) return;
 
     try {
-      const { data: expenses } = await supabase
-        .from('expenses')
-        .select('amount, category')
-        .eq('flock_id', currentFlock.id);
-
-      const { data: mortalityLogs } = await supabase
-        .from('mortality_logs')
-        .select('count')
-        .eq('flock_id', currentFlock.id);
+      const [{ data: expenses }, { data: mortalityLogs }] = await Promise.all([
+        supabase.from('expenses').select('amount, category').eq('flock_id', currentFlock.id),
+        supabase.from('mortality_logs').select('count').eq('flock_id', currentFlock.id),
+      ]);
 
       const totalExpenses = expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
       const totalMortality = mortalityLogs?.reduce((sum, log) => sum + log.count, 0) || 0;
@@ -253,6 +249,8 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
         </div>
       ) : (
         <>
+          {!hideFinancials && <FlockPnLCard flock={currentFlock} />}
+
           {!hideFinancials && <FlockFinancialSummary flock={currentFlock} />}
 
           {farm && currentFlock.type === 'Layer' && (

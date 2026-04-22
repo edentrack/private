@@ -75,6 +75,10 @@ export function PlatformSettings() {
   };
 
   const handleSave = async () => {
+    if (settings.maintenance_mode) {
+      const ok = confirm('Maintenance mode is ON — this will lock out all users immediately. Proceed?');
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       // Try to upsert to platform_settings table

@@ -1,16 +1,28 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") || "https://edentrack.app";
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") || "";
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const allowed =
+    origin === ALLOWED_ORIGIN ||
+    origin.startsWith("http://localhost:") ||
+    origin.startsWith("http://127.0.0.1:");
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGIN,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  };
+}
+
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+const CLAUDE_MODEL = Deno.env.get("CLAUDE_IMPORT_MODEL") || "claude-sonnet-4-6";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
+// Admin client: ONLY for auth.getUser(), storage downloads, and audit_log writes
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 interface ImportBundle {
@@ -82,6 +94,7 @@ interface ImportBundle {
 }
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -92,10 +105,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (path === "/health" || path === "") {
       return new Response(
-        JSON.stringify({
-          ok: true,
-          aiConfigured: !!OPENAI_API_KEY,
-        }),
+        JSON.stringify({ ok: true, aiConfigured: !!ANTHROPIC_API_KEY }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -110,7 +120,7 @@ Deno.serve(async (req: Request) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
@@ -118,12 +128,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // User-scoped client — all DB operations go through RLS as the authenticated user
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
     if (path === "/analyze" && req.method === "POST") {
-      return await handleAnalyze(req, user.id);
+      return await handleAnalyze(req, user.id, userClient);
     }
 
     if (path === "/commit" && req.method === "POST") {
-      return await handleCommit(req, user.id);
+      return await handleCommit(req, user.id, userClient);
     }
 
     return new Response(
@@ -139,9 +154,9 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function handleAnalyze(req: Request, userId: string): Promise<Response> {
+async function handleAnalyze(req: Request, userId: string, userClient: ReturnType<typeof createClient>): Promise<Response> {
   const body = await req.json();
-  const { import_id, file_ids, scope, target_flock_id, use_ai } = body;
+  const { import_id, scope, target_flock_id, use_ai } = body;
 
   if (!import_id) {
     return new Response(
@@ -150,7 +165,8 @@ async function handleAnalyze(req: Request, userId: string): Promise<Response> {
     );
   }
 
-  const { data: importRecord, error: importError } = await supabaseAdmin
+  // RLS enforces that the user can only see imports belonging to their farm
+  const { data: importRecord, error: importError } = await userClient
     .from("imports")
     .select("*, import_files(*)")
     .eq("id", import_id)
@@ -163,7 +179,8 @@ async function handleAnalyze(req: Request, userId: string): Promise<Response> {
     );
   }
 
-  const { data: membership } = await supabaseAdmin
+  // Explicit membership check on top of RLS — confirms write-level access
+  const { data: membership } = await userClient
     .from("farm_members")
     .select("role")
     .eq("farm_id", importRecord.farm_id)
@@ -178,139 +195,180 @@ async function handleAnalyze(req: Request, userId: string): Promise<Response> {
     );
   }
 
-  const files = importRecord.import_files || [];
-  let extractedText = "";
-
-  for (const file of files) {
-    if (file.mime_type === "text/csv" || file.file_name.endsWith(".csv")) {
-      const { data: fileData } = await supabaseAdmin.storage
-        .from("imports")
-        .download(file.storage_path);
-      
-      if (fileData) {
-        const text = await fileData.text();
-        extractedText += `\n\n=== ${file.file_name} ===\n${text}`;
-        
-        await supabaseAdmin
-          .from("import_files")
-          .update({ extracted_text: text })
-          .eq("id", file.id);
-      }
-    } else if (file.mime_type === "application/pdf") {
-      extractedText += `\n\n=== ${file.file_name} ===\n[PDF content extraction requires AI]`;
-    } else if (file.mime_type?.startsWith("image/")) {
-      extractedText += `\n\n=== ${file.file_name} ===\n[Image analysis requires AI]`;
-    }
-  }
-
-  if (!use_ai || !OPENAI_API_KEY) {
+  if (!use_ai || !ANTHROPIC_API_KEY) {
     return new Response(
       JSON.stringify({
         success: true,
         import_id,
-        message: "Files uploaded. AI features not configured. Use CSV mapping for structured imports.",
+        message: "Files uploaded. Use CSV mapping for structured imports.",
         items_count: 0,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const { data: flocks } = await supabaseAdmin
+  const files = importRecord.import_files || [];
+
+  // Build Claude message content — text + images side by side
+  type ContentBlock =
+    | { type: "text"; text: string }
+    | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
+  const contentBlocks: ContentBlock[] = [];
+  let hasContent = false;
+
+  for (const file of files) {
+    const isCSV =
+      file.mime_type === "text/csv" ||
+      file.file_name.endsWith(".csv") ||
+      file.file_name.endsWith(".xlsx") ||
+      file.mime_type?.includes("spreadsheet");
+    const isImage = file.mime_type?.startsWith("image/");
+
+    if (isCSV) {
+      const { data: fileData } = await supabaseAdmin.storage
+        .from("imports")
+        .download(file.storage_path);
+      if (fileData) {
+        const text = await fileData.text();
+        contentBlocks.push({
+          type: "text",
+          text: `\n=== ${file.file_name} ===\n${text}`,
+        });
+        await userClient
+          .from("import_files")
+          .update({ extracted_text: text })
+          .eq("id", file.id);
+        hasContent = true;
+      }
+    } else if (isImage) {
+      // Send image directly to Claude Vision
+      const { data: fileData } = await supabaseAdmin.storage
+        .from("imports")
+        .download(file.storage_path);
+      if (fileData) {
+        const buffer = await fileData.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        contentBlocks.push({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: file.mime_type as string,
+            data: base64,
+          },
+        });
+        contentBlocks.push({
+          type: "text",
+          text: `(Image file: ${file.file_name})`,
+        });
+        hasContent = true;
+      }
+    } else if (file.mime_type === "application/pdf") {
+      contentBlocks.push({
+        type: "text",
+        text: `\n=== ${file.file_name} ===\n[PDF detected — please extract key data visible on the document if any text context is available]`,
+      });
+    }
+  }
+
+  if (!hasContent && contentBlocks.length === 0) {
+    return new Response(
+      JSON.stringify({ success: false, error: "No readable content found in uploaded files" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const { data: flocks } = await userClient
     .from("flocks")
     .select("id, name, purpose")
     .eq("farm_id", importRecord.farm_id)
     .eq("is_archived", false);
 
+  const { data: profile } = await userClient
+    .from("profiles")
+    .select("preferred_language")
+    .eq("id", userId)
+    .single();
+
+  const isFrench = profile?.preferred_language === "fr";
   const flockContext = flocks?.length
-    ? `Existing flocks: ${flocks.map(f => `${f.name} (${f.purpose})`).join(", ")}`
+    ? `Existing flocks: ${flocks.map((f) => `${f.name} (${f.purpose})`).join(", ")}`
     : "No existing flocks";
 
-  // Get user's preferred language for AI prompts
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('preferred_language')
-    .eq('id', userId)
-    .single();
-  
-  const userLanguage = profile?.preferred_language || 'en';
-  const isFrench = userLanguage === 'fr';
-
-  const systemPrompt = isFrench 
-    ? `Vous êtes un assistant d'extraction de données agricoles. Extrayez des données structurées à partir de documents de ferme.
+  const systemPrompt = isFrench
+    ? `Vous êtes un assistant d'extraction de données agricoles pour des fermes africaines. Extrayez des données structurées à partir de documents (reçus, factures, photos, tableurs).
 
 Règles:
 1. Sortez UNIQUEMENT du JSON valide correspondant au schéma ImportBundle
-2. Les dates doivent être au format YYYY-MM-DD
-3. La devise doit être XAF par défaut si non spécifiée
-4. La confiance est 0.0-1.0 basée sur votre certitude
-5. source_excerpt doit être l'extrait de texte pertinent
-6. Pour les dépenses, catégorisez comme: Aliments, Médicaments, Équipement, Main-d'œuvre, Services publics, Transport, Autre
-7. Pour les journaux de production, utilisez les types: mortalité, poids, nombre_œufs, utilisation_aliments, consommation_eau, notes
-8. Pour l'inventaire, utilisez les types: aliments, autre
-9. Si la portée est existing_flock, liez les éléments à ce troupeau
-10. Ajoutez des avertissements pour toute donnée ambiguë ou potentiellement incorrecte
-11. Pour les troupeaux détectés, extrayez: nom, type (Broiler ou Layer), nombre d'oiseaux, date de début
-12. Remplissez intelligemment tous les champs disponibles dans le schéma
-13. Si une information est manquante ou incertaine, marquez-la avec une confiance faible et ajoutez un avertissement
+2. Dates au format YYYY-MM-DD
+3. Devise par défaut XAF si non spécifiée
+4. Confiance 0.0–1.0
+5. Pour les dépenses: Aliments, Médicaments, Équipement, Main-d'œuvre, Services, Transport, Autre
+6. Pour les journaux: mortalité, poids, nombre_œufs, utilisation_aliments, eau, notes
+7. Pour l'inventaire: aliments, autre
+8. Ajoutez des avertissements pour données ambiguës
+9. Remplissez intelligemment tous les champs disponibles
 
 ${flockContext}
-Portée cible: ${scope}
-${target_flock_id ? `ID du troupeau cible: ${target_flock_id}` : ''}`
-    : `You are a farm data extraction assistant. Extract structured data from farm documents.
+Portée: ${scope}${target_flock_id ? ` | Troupeau cible: ${target_flock_id}` : ""}`
+    : `You are a farm data extraction assistant for African poultry farms. Extract structured data from documents (receipts, invoices, photos, spreadsheets).
 
 Rules:
 1. Output ONLY valid JSON matching the ImportBundle schema
-2. Dates must be YYYY-MM-DD format
-3. Currency should default to XAF if not specified
-4. Confidence is 0.0-1.0 based on how certain you are
-5. source_excerpt should be the relevant text snippet
-6. For expenses, categorize as: Feed, Medication, Equipment, Labor, Utilities, Transport, Other
-7. For production logs, use types: mortality, weight, egg_count, feed_usage, water_intake, notes
-8. For inventory, use types: feed, other
-9. If scope is existing_flock, link items to that flock
-10. Add warnings for any ambiguous or potentially incorrect data
-11. For detected flocks, extract: name, type (Broiler or Layer), bird count, start date
-12. Intelligently fill all available fields in the schema
-13. If information is missing or uncertain, mark it with low confidence and add a warning
+2. Dates must be YYYY-MM-DD
+3. Default currency XAF if not specified
+4. Confidence is 0.0–1.0
+5. Expenses categories: Feed, Medication, Equipment, Labor, Utilities, Transport, Other
+6. Production log types: mortality, weight, egg_count, feed_usage, water_intake, notes
+7. Inventory types: feed, other
+8. Add warnings for ambiguous data
+9. Fill all available fields intelligently — even from partial information
 
 ${flockContext}
-Target scope: ${scope}
-${target_flock_id ? `Target flock ID: ${target_flock_id}` : ''}`;
+Scope: ${scope}${target_flock_id ? ` | Target flock: ${target_flock_id}` : ""}`;
 
-  const userPrompt = isFrench
-    ? `Extrayez toutes les données de ferme de ce document:\n${extractedText}\n\nRetournez du JSON correspondant au schéma ImportBundle. Pour chaque élément extrait, incluez des questions de vérification dans le champ "verification_questions" si la confiance est inférieure à 0.9.`
-    : `Extract all farm data from this document:\n${extractedText}\n\nReturn JSON matching ImportBundle schema. For each extracted item, include verification questions in the "verification_questions" field if confidence is below 0.9.`;
+  const userTextPrompt = isFrench
+    ? "Extrayez toutes les données agricoles de ce document et retournez du JSON ImportBundle. Incluez des verification_questions pour tout élément avec confiance < 0.9."
+    : "Extract all farm data from this document and return ImportBundle JSON. Include verification_questions for any item with confidence < 0.9.";
+
+  // Final content: instruction text last
+  contentBlocks.push({ type: "text", text: userTextPrompt });
 
   try {
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
+        model: CLAUDE_MODEL,
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: "user", content: contentBlocks }],
       }),
     });
 
     if (!aiResponse.ok) {
-      throw new Error(`OpenAI API error: ${aiResponse.statusText}`);
+      throw new Error(`Claude API error: ${aiResponse.statusText}`);
     }
 
     const aiResult = await aiResponse.json();
-    const content = aiResult.choices?.[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error("No content from AI");
-    }
+    const content = aiResult.content?.[0]?.text;
+    if (!content) throw new Error("No content from AI");
 
-    const bundle: ImportBundle = JSON.parse(content);
+    // Extract JSON even if Claude wraps it in markdown
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) ||
+      content.match(/```\s*([\s\S]*?)\s*```/) ||
+      [null, content];
+    const bundle: ImportBundle = JSON.parse(jsonMatch[1] || content);
+
     const importItems: any[] = [];
 
     for (const flock of bundle.detected_flocks || []) {
@@ -320,15 +378,21 @@ ${target_flock_id ? `Target flock ID: ${target_flock_id}` : ''}`;
         entity_type: "flock",
         payload: {
           ...flock,
-          verification_questions: flock.verification_questions || (flock.confidence < 0.9 ? [
-            `Is the flock name "${flock.name}" correct?`,
-            `Is the type "${flock.type}" correct?`,
-            `Is the bird count ${flock.bird_count} accurate?`,
-            `Is the start date ${flock.start_date} correct?`
-          ] : [])
+          verification_questions:
+            flock.verification_questions ||
+            (flock.confidence < 0.9
+              ? [
+                  `Is the flock name "${flock.name}" correct?`,
+                  `Is the type "${flock.type}" correct?`,
+                  `Is the bird count ${flock.bird_count} accurate?`,
+                  `Is the start date ${flock.start_date} correct?`,
+                ]
+              : []),
         },
         confidence: flock.confidence,
-        needs_review: flock.confidence < 0.8 || (flock.verification_questions && flock.verification_questions.length > 0),
+        needs_review:
+          flock.confidence < 0.8 ||
+          (flock.verification_questions && flock.verification_questions.length > 0),
         source_excerpt: flock.source_excerpt,
         status: "proposed",
       });
@@ -341,14 +405,20 @@ ${target_flock_id ? `Target flock ID: ${target_flock_id}` : ''}`;
         entity_type: "expense",
         payload: {
           ...expense,
-          verification_questions: expense.verification_questions || (expense.confidence < 0.9 ? [
-            `Is the amount ${expense.amount} ${expense.currency} correct?`,
-            `Is the category "${expense.category}" appropriate?`,
-            `Is the date ${expense.incurred_on} accurate?`
-          ] : [])
+          verification_questions:
+            expense.verification_questions ||
+            (expense.confidence < 0.9
+              ? [
+                  `Is the amount ${expense.amount} ${expense.currency} correct?`,
+                  `Is the category "${expense.category}" appropriate?`,
+                  `Is the date ${expense.incurred_on} accurate?`,
+                ]
+              : []),
         },
         confidence: expense.confidence,
-        needs_review: expense.confidence < 0.8 || (expense.verification_questions && expense.verification_questions.length > 0),
+        needs_review:
+          expense.confidence < 0.8 ||
+          (expense.verification_questions && expense.verification_questions.length > 0),
         source_excerpt: expense.source_excerpt,
         status: "proposed",
         linked_flock_id: target_flock_id || null,
@@ -397,24 +467,10 @@ ${target_flock_id ? `Target flock ID: ${target_flock_id}` : ''}`;
     }
 
     if (importItems.length > 0) {
-      await supabaseAdmin.from("import_items").insert(importItems);
+      await userClient.from("import_items").insert(importItems);
     }
 
-    if (bundle.warnings?.length) {
-      await supabaseAdmin
-        .from("import_items")
-        .insert({
-          import_id,
-          farm_id: importRecord.farm_id,
-          entity_type: "expense",
-          payload: { warnings: bundle.warnings },
-          confidence: 1,
-          needs_review: false,
-          status: "proposed",
-        });
-    }
-
-    await supabaseAdmin
+    await userClient
       .from("imports")
       .update({ status: "ready" })
       .eq("id", import_id);
@@ -448,7 +504,7 @@ ${target_flock_id ? `Target flock ID: ${target_flock_id}` : ''}`;
   }
 }
 
-async function handleCommit(req: Request, userId: string): Promise<Response> {
+async function handleCommit(req: Request, userId: string, userClient: ReturnType<typeof createClient>): Promise<Response> {
   const body = await req.json();
   const { import_id, selected_item_ids } = body;
 
@@ -459,7 +515,8 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
     );
   }
 
-  const { data: importRecord, error: importError } = await supabaseAdmin
+  // RLS enforces farm ownership — user can only fetch their own imports
+  const { data: importRecord, error: importError } = await userClient
     .from("imports")
     .select("*")
     .eq("id", import_id)
@@ -472,7 +529,7 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
     );
   }
 
-  const { data: membership } = await supabaseAdmin
+  const { data: membership } = await userClient
     .from("farm_members")
     .select("role")
     .eq("farm_id", importRecord.farm_id)
@@ -480,14 +537,14 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
     .eq("is_active", true)
     .maybeSingle();
 
-  if (!membership || !['owner', 'manager'].includes(membership.role)) {
+  if (!membership || !["owner", "manager"].includes(membership.role)) {
     return new Response(
       JSON.stringify({ error: "Only owners and managers can commit imports" }),
       { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  let itemsQuery = supabaseAdmin
+  let itemsQuery = userClient
     .from("import_items")
     .select("*")
     .eq("import_id", import_id)
@@ -498,7 +555,6 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
   }
 
   const { data: items, error: itemsError } = await itemsQuery;
-
   if (itemsError || !items) {
     return new Response(
       JSON.stringify({ error: "Failed to load items" }),
@@ -506,14 +562,14 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
     );
   }
 
-  const { data: flocks } = await supabaseAdmin
+  const { data: flocks } = await userClient
     .from("flocks")
     .select("id, name, purpose")
     .eq("farm_id", importRecord.farm_id)
     .eq("is_archived", false);
 
-  const broilerOnly = flocks?.every(f => f.purpose?.toLowerCase() === 'broiler');
-  const layerOnly = flocks?.every(f => f.purpose?.toLowerCase() === 'layer');
+  const broilerOnly = flocks?.every((f) => f.purpose?.toLowerCase() === "broiler");
+  const layerOnly = flocks?.every((f) => f.purpose?.toLowerCase() === "layer");
 
   const results = {
     flocks: 0,
@@ -529,10 +585,10 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
       const payload = item.payload;
 
       if (item.entity_type === "flock") {
-        const { error } = await supabaseAdmin.from("flocks").insert({
+        const { error } = await userClient.from("flocks").insert({
           farm_id: importRecord.farm_id,
           name: payload.name,
-          purpose: payload.type?.toLowerCase() === 'layer' ? 'Layer' : 'Broiler',
+          purpose: payload.type?.toLowerCase() === "layer" ? "Layer" : "Broiler",
           initial_count: payload.bird_count,
           current_count: payload.bird_count,
           arrival_date: payload.start_date,
@@ -542,12 +598,12 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
       }
 
       if (item.entity_type === "expense") {
-        const { error } = await supabaseAdmin.from("expenses").insert({
+        const { error } = await userClient.from("expenses").insert({
           farm_id: importRecord.farm_id,
           flock_id: item.linked_flock_id,
-          category: payload.category || 'Other',
+          category: payload.category || "Other",
           amount: payload.amount,
-          currency: payload.currency || 'XAF',
+          currency: payload.currency || "XAF",
           description: payload.description,
           vendor: payload.vendor,
           incurred_on: payload.incurred_on,
@@ -558,17 +614,21 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
 
       if (item.entity_type === "inventory") {
         if (payload.inventory_type === "feed") {
-          const { error } = await supabaseAdmin.from("feed_stock").insert({
+          const { error } = await userClient.from("feed_stock").insert({
             farm_id: importRecord.farm_id,
             flock_id: item.linked_flock_id,
             feed_type: payload.item_name,
-            quantity_kg: payload.unit === 'bags' ? payload.quantity * 50 : payload.quantity,
+            quantity_kg:
+              payload.unit === "bags" ? payload.quantity * 50 : payload.quantity,
             purchase_date: payload.purchased_on,
-            cost_per_kg: payload.cost ? payload.cost / (payload.unit === 'bags' ? payload.quantity * 50 : payload.quantity) : null,
+            cost_per_kg: payload.cost
+              ? payload.cost /
+                (payload.unit === "bags" ? payload.quantity * 50 : payload.quantity)
+              : null,
           });
           if (error) throw error;
         } else {
-          const { error } = await supabaseAdmin.from("other_inventory").insert({
+          const { error } = await userClient.from("other_inventory").insert({
             farm_id: importRecord.farm_id,
             flock_id: item.linked_flock_id,
             item_name: payload.item_name,
@@ -583,9 +643,9 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
       }
 
       if (item.entity_type === "production") {
-        if (broilerOnly && payload.log_type === 'egg_count') {
-          results.errors.push(`Skipped egg_count log - farm has only broiler flocks`);
-          await supabaseAdmin
+        if (broilerOnly && payload.log_type === "egg_count") {
+          results.errors.push("Skipped egg_count log — farm has only broiler flocks");
+          await userClient
             .from("import_items")
             .update({ status: "failed", error_message: "Farm has only broiler flocks" })
             .eq("id", item.id);
@@ -593,15 +653,15 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
         }
 
         if (payload.log_type === "mortality") {
-          await supabaseAdmin.from("mortality_logs").insert({
+          await userClient.from("mortality_logs").insert({
             farm_id: importRecord.farm_id,
             flock_id: item.linked_flock_id,
             count: payload.value,
-            cause: payload.notes || 'Imported',
+            cause: payload.notes || "Imported",
             logged_at: payload.logged_on,
           });
         } else if (payload.log_type === "weight") {
-          await supabaseAdmin.from("weight_logs").insert({
+          await userClient.from("weight_logs").insert({
             farm_id: importRecord.farm_id,
             flock_id: item.linked_flock_id,
             average_weight: payload.value,
@@ -609,7 +669,7 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
             logged_at: payload.logged_on,
           });
         } else if (payload.log_type === "egg_count") {
-          await supabaseAdmin.from("egg_collections").insert({
+          await userClient.from("egg_collections").insert({
             farm_id: importRecord.farm_id,
             flock_id: item.linked_flock_id,
             quantity: payload.value,
@@ -620,48 +680,46 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
       }
 
       if (item.entity_type === "task_template") {
-        if (broilerOnly && payload.flock_type === 'layer') {
-          results.errors.push(`Skipped layer task template - farm has only broiler flocks`);
+        if (broilerOnly && payload.flock_type === "layer") {
+          results.errors.push("Skipped layer task template — farm has only broiler flocks");
           continue;
         }
-        if (layerOnly && payload.flock_type === 'broiler') {
-          results.errors.push(`Skipped broiler task template - farm has only layer flocks`);
+        if (layerOnly && payload.flock_type === "broiler") {
+          results.errors.push("Skipped broiler task template — farm has only layer flocks");
           continue;
         }
-
-        const { error } = await supabaseAdmin.from("task_templates").insert({
+        const { error } = await userClient.from("task_templates").insert({
           farm_id: importRecord.farm_id,
           name: payload.title,
-          category: payload.category || 'General',
-          frequency: payload.kind || 'daily',
-          default_time: payload.default_time || '08:00',
+          category: payload.category || "General",
+          frequency: payload.kind || "daily",
+          default_time: payload.default_time || "08:00",
           completion_window_minutes: payload.completion_window_minutes || 120,
-          flock_type_scope: payload.flock_type || 'general',
+          flock_type_scope: payload.flock_type || "general",
           input_fields: payload.input_fields || [],
           is_active: true,
-          scope: 'flock',
+          scope: "flock",
         });
         if (error) throw error;
         results.tasks++;
       }
 
-      await supabaseAdmin
+      await userClient
         .from("import_items")
         .update({ status: "imported" })
         .eq("id", item.id);
-
     } catch (err) {
       console.error(`Error processing item ${item.id}:`, err);
-      results.errors.push(`Failed to import ${item.entity_type}: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      
-      await supabaseAdmin
+      const msg = `Failed to import ${item.entity_type}: ${err instanceof Error ? err.message : "Unknown error"}`;
+      results.errors.push(msg);
+      await userClient
         .from("import_items")
-        .update({ status: "failed", error_message: err instanceof Error ? err.message : 'Unknown error' })
+        .update({ status: "failed", error_message: msg })
         .eq("id", item.id);
     }
   }
 
-  await supabaseAdmin
+  await userClient
     .from("imports")
     .update({ status: "committed" })
     .eq("id", import_id);
@@ -676,11 +734,7 @@ async function handleCommit(req: Request, userId: string): Promise<Response> {
   });
 
   return new Response(
-    JSON.stringify({
-      success: true,
-      import_id,
-      results,
-    }),
+    JSON.stringify({ success: true, import_id, results }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }

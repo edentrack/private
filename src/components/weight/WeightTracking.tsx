@@ -3,6 +3,8 @@ import { Scale, TrendingUp } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';;
+import { usePermissions } from '../../contexts/PermissionsContext';
+import { canPerformAction } from '../../utils/navigationPermissions';
 import { Flock } from '../../types/database';
 import { WeightCheckInputForm } from './WeightCheckInputForm';
 import { WeightCheckResults } from './WeightCheckResults';
@@ -36,6 +38,8 @@ function calculateConfidenceLevel(sampleSize: number, flockSize: number): string
 export function WeightTracking({ flock: flockProp }: WeightTrackingProps) {
   const { t } = useTranslation();
   const { currentRole, user, currentFarm } = useAuth();
+  const { farmPermissions } = usePermissions();
+  const canLogWeight = canPerformAction(currentRole, 'create', 'weight', farmPermissions);
   const [availableFlocks, setAvailableFlocks] = useState<Flock[]>([]);
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(flockProp);
   const [loadingFlocks, setLoadingFlocks] = useState(true);
@@ -115,6 +119,7 @@ export function WeightTracking({ flock: flockProp }: WeightTrackingProps) {
         farm_id: flock.farm_id,
         date: checkDate,
         average_weight: results.average,
+        bird_count: flock.current_count,
         sample_size: results.count,
         individual_weights: weights,
         min_weight: results.min,
@@ -173,13 +178,13 @@ export function WeightTracking({ flock: flockProp }: WeightTrackingProps) {
     return (
       <div className="bg-white rounded-2xl p-12 text-center">
         <Scale className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('weight.no_active_flocks') || 'No Active Flocks'}</h3>
-        <p className="text-gray-600 mb-4">{t('weight.create_flock_to_track') || 'Create a flock to start tracking weight'}</p>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('weight.no_active_flocks_yet') || 'No Active Flocks'}</h3>
+        <p className="text-gray-600 text-sm max-w-sm mx-auto">{t('weight.create_flock_first') || 'Create a flock to start tracking weight checks and growth'}</p>
       </div>
     );
   }
 
-  if (currentRole === 'viewer') {
+  if (!canLogWeight) {
     return (
       <div className="bg-white rounded-3xl p-12 text-center">
         <Scale className="w-16 h-16 text-gray-400 mx-auto mb-4" />

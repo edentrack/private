@@ -48,6 +48,7 @@ export function WeightCheckPage({ flock, onBack }: WeightCheckPageProps) {
         farm_id: flock.farm_id,
         date: checkDate,
         average_weight: results.average,
+        bird_count: flock.current_count,
         sample_size: results.count,
         individual_weights: weights,
         min_weight: results.min,

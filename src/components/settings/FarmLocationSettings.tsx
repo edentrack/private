@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Navigation, Info } from 'lucide-react';
+import { MapPin, Navigation, Info, CloudSun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -207,6 +207,39 @@ export function FarmLocationSettings() {
       )}
 
       <div className="space-y-4">
+        {/* Weather location — shown prominently at the top */}
+        <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+          <div className="flex items-center gap-2 mb-3">
+            <CloudSun className="w-4 h-4 text-blue-600" />
+            <span className="text-sm font-semibold text-blue-900">Weather Forecast Location</span>
+          </div>
+          <p className="text-xs text-blue-700 mb-3">
+            This city is used to show weather and heat stress alerts on your dashboard. No GPS needed — just type your city name.
+          </p>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">City / Town *</label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g., Douala"
+                className="w-full px-3 py-2.5 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white text-gray-900 text-sm outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Region / State</label>
+              <input
+                type="text"
+                value={regionState}
+                onChange={(e) => setRegionState(e.target.value)}
+                placeholder="e.g., Littoral"
+                className="w-full px-3 py-2.5 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white text-gray-900 text-sm outline-none"
+              />
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {t('settings.street_address') || 'Street Address'}
@@ -231,34 +264,6 @@ export function FarmLocationSettings() {
             placeholder={t('settings.address_line_2_placeholder') || 'e.g., Near Central Market'}
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
           />
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('settings.city_town') || 'City/Town'}
-            </label>
-            <input
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder={t('settings.city_town_placeholder') || 'e.g., Douala'}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('settings.region_state') || 'Region/State'}
-            </label>
-            <input
-              type="text"
-              value={regionState}
-              onChange={(e) => setRegionState(e.target.value)}
-              placeholder={t('settings.region_state_placeholder') || 'e.g., Littoral'}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
-            />
-          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">

@@ -1,5 +1,20 @@
 import { FarmPlan } from '../types/database';
 
+// Bird count limits per flock per plan
+export const MAX_BIRDS_PER_FLOCK: Record<FarmPlan, number> = {
+  basic: 500,
+  pro: 10_000,
+  enterprise: 999_999,
+};
+
+export function getMaxBirdsPerFlock(plan: FarmPlan): number {
+  return MAX_BIRDS_PER_FLOCK[plan] ?? 500;
+}
+
+export function exceedsBirdLimit(plan: FarmPlan, count: number): boolean {
+  return count > getMaxBirdsPerFlock(plan);
+}
+
 export function isPro(plan: FarmPlan): boolean {
   return plan === 'pro' || plan === 'enterprise';
 }

@@ -67,9 +67,6 @@ export function useVoiceCommands(commands: VoiceCommand[]): UseVoiceCommandsRetu
     const codes: Record<string, string> = {
       en: 'en-US',
       fr: 'fr-FR',
-      es: 'es-ES',
-      pt: 'pt-PT',
-      sw: 'sw-KE'
     };
     return codes[lang] || 'en-US';
   };

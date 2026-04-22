@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 interface ReportData {
   farmName: string;
   date: string;
+  currency: string;
   flocks: any[];
   tasks: any[];
   birdSales: any[];
@@ -17,117 +18,62 @@ interface ReportData {
   weightLogs: any[];
   inventoryMovements: any[];
   revenues: any[];
+  prevWeekBirdSales: any[];
+  prevWeekEggSales: any[];
+  prevWeekExpenses: any[];
+  prevWeekMortality: any[];
+  upcomingVaccinations: any[];
+  monthBirdSales: any[];
+  monthEggSales: any[];
+  monthExpenses: any[];
 }
 
-export async function generateDailyReport(farmId: string, farmName: string): Promise<string> {
+export async function generateDailyReport(farmId: string, farmName: string, currency = 'CFA'): Promise<string> {
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(new Date(today).getTime() + 86400000).toISOString().split('T')[0];
+  const weekStart = new Date(new Date(today).getTime() - 6 * 86400000).toISOString().split('T')[0];
+  const prevWeekStart = new Date(new Date(weekStart).getTime() - 7 * 86400000).toISOString().split('T')[0];
+  const nextWeekEnd = new Date(new Date(today).getTime() + 8 * 86400000).toISOString().split('T')[0];
+  const monthStart = today.substring(0, 8) + '01';
 
   try {
     const [
-      flocksData,
-      tasksData,
-      birdSalesData,
-      eggSalesData,
-      expensesData,
-      inventoryData,
-      eggInventoryData,
-      eggCollectionsData,
-      mortalityData,
-      feedUsageData,
-      vaccinationsData,
-      weightLogsData,
-      revenuesData,
+      flocksData, tasksData, birdSalesData, eggSalesData, expensesData,
+      inventoryData, eggInventoryData, eggCollectionsData, mortalityData,
+      feedUsageData, vaccinationsData, weightLogsData, revenuesData,
+      prevBirdSalesData, prevEggSalesData, prevExpensesData, prevMortalityData,
+      upcomingVacsData, monthBirdSalesData, monthEggSalesData, monthExpensesData,
     ] = await Promise.all([
-      supabase
-        .from('flocks')
-        .select('*')
-        .eq('farm_id', farmId)
-        .eq('status', 'active'),
-
-      supabase
-        .from('tasks')
-        .select('*, task_templates(title, category)')
-        .eq('farm_id', farmId)
-        .gte('created_at', today)
-        .lt('created_at', tomorrow),
-
-      supabase
-        .from('bird_sales')
-        .select('*')
-        .eq('farm_id', farmId)
-        .gte('sale_date', today)
-        .lt('sale_date', tomorrow),
-
-      supabase
-        .from('egg_sales')
-        .select('*')
-        .eq('farm_id', farmId)
-        .gte('sale_date', today)
-        .lt('sale_date', tomorrow),
-
-      supabase
-        .from('expenses')
-        .select('*')
-        .eq('farm_id', farmId)
-        .gte('incurred_on', today)
-        .lt('incurred_on', tomorrow),
-
-      supabase
-        .from('feed_stock')
-        .select('*')
-        .eq('farm_id', farmId)
-        .order('feed_type'),
-
-      supabase
-        .from('egg_inventory')
-        .select('*')
-        .eq('farm_id', farmId)
-        .maybeSingle(),
-
-      supabase
-        .from('egg_collections')
-        .select('*, flocks(name)')
-        .eq('farm_id', farmId)
-        .gte('collected_on', today)
-        .lt('collected_on', tomorrow),
-
-      supabase
-        .from('mortality_logs')
-        .select('*, flocks(name)')
-        .eq('farm_id', farmId)
-        .gte('event_date', today)
-        .lt('event_date', tomorrow),
-
-      supabase
-        .from('inventory_usage')
-        .select('*, feed_types(name, unit)')
-        .eq('farm_id', farmId)
-        .eq('usage_date', today),
-
-      supabase
-        .from('vaccinations')
-        .select('*, flocks(name)')
-        .eq('farm_id', farmId)
-        .eq('scheduled_date', today),
-
-      supabase
-        .from('weight_logs')
-        .select('*, flocks(name)')
-        .eq('farm_id', farmId)
-        .eq('date', today),
-
-      supabase
-        .from('revenues')
-        .select('*, flocks(name)')
-        .eq('farm_id', farmId)
-        .gte('revenue_date', today)
-        .lt('revenue_date', tomorrow),
+      supabase.from('flocks').select('*').eq('farm_id', farmId).eq('status', 'active'),
+      supabase.from('tasks').select('*, task_templates(title, category)').eq('farm_id', farmId).gte('created_at', weekStart).lt('created_at', tomorrow),
+      supabase.from('bird_sales').select('*').eq('farm_id', farmId).gte('sale_date', weekStart).lt('sale_date', tomorrow),
+      supabase.from('egg_sales').select('*').eq('farm_id', farmId).gte('sale_date', weekStart).lt('sale_date', tomorrow),
+      supabase.from('expenses').select('*').eq('farm_id', farmId).gte('incurred_on', weekStart).lt('incurred_on', tomorrow),
+      supabase.from('feed_stock').select('*').eq('farm_id', farmId).order('feed_type'),
+      supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle(),
+      supabase.from('egg_collections').select('*, flocks(name)').eq('farm_id', farmId).gte('collected_on', weekStart).lt('collected_on', tomorrow),
+      supabase.from('mortality_logs').select('*, flocks(name)').eq('farm_id', farmId).gte('event_date', weekStart).lt('event_date', tomorrow),
+      supabase.from('inventory_usage').select('*, feed_types(name, unit)').eq('farm_id', farmId).gte('usage_date', weekStart).lt('usage_date', tomorrow),
+      supabase.from('vaccinations').select('*, flocks(name)').eq('farm_id', farmId).gte('scheduled_date', weekStart).lt('scheduled_date', tomorrow),
+      supabase.from('weight_logs').select('*, flocks(name)').eq('farm_id', farmId).gte('date', weekStart).lt('date', tomorrow),
+      supabase.from('revenues').select('*, flocks(name)').eq('farm_id', farmId).gte('revenue_date', weekStart).lt('revenue_date', tomorrow),
+      // Previous week
+      supabase.from('bird_sales').select('*').eq('farm_id', farmId).gte('sale_date', prevWeekStart).lt('sale_date', weekStart),
+      supabase.from('egg_sales').select('*').eq('farm_id', farmId).gte('sale_date', prevWeekStart).lt('sale_date', weekStart),
+      supabase.from('expenses').select('*').eq('farm_id', farmId).gte('incurred_on', prevWeekStart).lt('incurred_on', weekStart),
+      supabase.from('mortality_logs').select('*').eq('farm_id', farmId).gte('event_date', prevWeekStart).lt('event_date', weekStart),
+      // Upcoming vaccinations
+      supabase.from('vaccinations').select('*, flocks(name)').eq('farm_id', farmId).gt('scheduled_date', today).lte('scheduled_date', nextWeekEnd).order('scheduled_date'),
+      // Month-to-date
+      supabase.from('bird_sales').select('*').eq('farm_id', farmId).gte('sale_date', monthStart).lt('sale_date', tomorrow),
+      supabase.from('egg_sales').select('*').eq('farm_id', farmId).gte('sale_date', monthStart).lt('sale_date', tomorrow),
+      supabase.from('expenses').select('*').eq('farm_id', farmId).gte('incurred_on', monthStart).lt('incurred_on', tomorrow),
     ]);
 
     const data: ReportData = {
       farmName,
-      date: today,
+      date: `${weekStart} – ${today}`,
+      currency,
       flocks: flocksData.data || [],
       tasks: tasksData.data || [],
       birdSales: birdSalesData.data || [],
@@ -149,6 +95,14 @@ export async function generateDailyReport(farmId: string, farmName: string): Pro
         return data || [];
       })().catch(() => []),
       revenues: revenuesData.data || [],
+      prevWeekBirdSales: prevBirdSalesData.data || [],
+      prevWeekEggSales: prevEggSalesData.data || [],
+      prevWeekExpenses: prevExpensesData.data || [],
+      prevWeekMortality: prevMortalityData.data || [],
+      upcomingVaccinations: upcomingVacsData.data || [],
+      monthBirdSales: monthBirdSalesData.data || [],
+      monthEggSales: monthEggSalesData.data || [],
+      monthExpenses: monthExpensesData.data || [],
     };
 
     return formatDailyReport(data);
@@ -158,9 +112,21 @@ export async function generateDailyReport(farmId: string, farmName: string): Pro
   }
 }
 
+function pctChange(curr: number, prev: number): string {
+  if (prev === 0) return curr > 0 ? ' (new this week)' : '';
+  const pct = Math.round(((curr - prev) / prev) * 100);
+  return curr >= prev ? ` +${pct}% vs last week` : ` ${pct}% vs last week`;
+}
+
 function formatDailyReport(data: ReportData): string {
   const lines: string[] = [];
-  const { farmName, date, flocks, tasks, birdSales, eggSales, expenses, inventory, eggInventory, eggCollections, mortalityLogs, feedUsage, vaccinations, weightLogs, inventoryMovements, revenues } = data;
+  const {
+    farmName, date, currency, flocks, tasks, birdSales, eggSales, expenses, inventory,
+    eggInventory, eggCollections, mortalityLogs, feedUsage, vaccinations,
+    weightLogs, inventoryMovements, revenues, prevWeekBirdSales, prevWeekEggSales,
+    prevWeekExpenses, prevWeekMortality, upcomingVaccinations, monthBirdSales,
+    monthEggSales, monthExpenses,
+  } = data;
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -179,9 +145,19 @@ function formatDailyReport(data: ReportData): string {
     return `${hours}:${mins} ${ampm}`;
   };
 
-  lines.push('📊 DAILY FARM REPORT');
+  // date is "YYYY-MM-DD – YYYY-MM-DD" after the data fetching update
+  const [startDateStr, endDateStr] = date.includes(' – ') ? date.split(' – ') : [date, date];
+  const formatShortDate = (d: string) => {
+    const dt = new Date(d + 'T00:00:00');
+    return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
+  const displayDate = date.includes(' – ')
+    ? `${formatShortDate(startDateStr)} – ${formatShortDate(endDateStr)}, ${new Date(endDateStr + 'T00:00:00').getFullYear()}`
+    : formatDate(date);
+
+  lines.push('📊 WEEKLY FARM REPORT');
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  lines.push(`📅 Date: ${formatDate(date)}`);
+  lines.push(`📅 Week: ${displayDate}`);
   lines.push(`🏢 Farm: ${farmName}`);
   lines.push('');
 
@@ -198,6 +174,16 @@ function formatDailyReport(data: ReportData): string {
   const totalBirds = flocks.reduce((sum: number, f: any) => sum + (f.current_count || 0), 0);
   const totalDeaths = Object.values(mortalityByFlock).reduce((sum: number, count: any) => sum + count, 0);
   const mortalityRate = totalBirds > 0 ? ((totalDeaths / totalBirds) * 100).toFixed(1) : '0.0';
+  const prevTotalDeaths = prevWeekMortality.reduce((sum: number, m: any) => sum + (m.count || 0), 0);
+
+  // 1. HEALTH ALERT — show at top if mortality > 2%
+  if (parseFloat(mortalityRate) > 2) {
+    lines.push('🚨 HEALTH ALERT');
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines.push(`⚠️ Mortality rate is ${mortalityRate}% — above the 2% safe threshold`);
+    lines.push(`   ${totalDeaths} birds died this week (vs ${prevTotalDeaths} last week). Investigate immediately.`);
+    lines.push('');
+  }
 
   lines.push('🐔 FLOCK SUMMARY');
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -229,8 +215,9 @@ function formatDailyReport(data: ReportData): string {
       const survivalRate = flock.initial_count > 0 
         ? (((flock.current_count / flock.initial_count) * 100)).toFixed(1)
         : '100.0';
-      const costPerBird = flock.current_count > 0 
-        ? (totalFlockExpenses / flock.current_count).toFixed(0)
+      // Use initial_count: expenses were incurred for all birds started, not just survivors
+      const costPerBird = flock.initial_count > 0
+        ? (totalFlockExpenses / flock.initial_count).toFixed(0)
         : '0';
 
       lines.push(`• ${flock.name} (${flock.type || 'Unknown'})`);
@@ -252,15 +239,49 @@ function formatDailyReport(data: ReportData): string {
       }
 
       if ((flock.type?.toLowerCase() === 'layer' || flock.purpose === 'layers') && eggsToday > 0) {
-        const productionRate = flock.current_count > 0 
-          ? ((eggsToday / flock.current_count) * 100).toFixed(1)
+        const productionRate = flock.current_count > 0
+          ? ((eggsToday / flock.current_count * 100) / 7).toFixed(1)
           : '0.0';
-        lines.push(`  → Eggs: ${eggsToday.toLocaleString()} collected (${productionRate}% production rate)`);
+        lines.push(`  → Eggs: ${eggsToday.toLocaleString()} collected (avg ${productionRate}%/day production rate)`);
       }
 
+      // 2. FCR + days-to-sale for broilers
+      const isBroiler = flock.type?.toLowerCase().includes('broil') || flock.purpose?.toLowerCase().includes('broil');
+      if (isBroiler) {
+        const flockWeightLogs = weightLogs.filter((w: any) => w.flock_id === flock.id);
+        if (flockWeightLogs.length > 0) {
+          const latest = flockWeightLogs[flockWeightLogs.length - 1];
+          const avgWeight = Number(latest.average_weight) || 0;
+          const TARGET_KG = 2.0;
+          const dailyGain = ageInDays > 7 ? (avgWeight - 0.04) / ageInDays : 0;
+
+          if (avgWeight >= TARGET_KG) {
+            lines.push(`  → ✅ Ready to sell! Avg weight ${avgWeight.toFixed(2)} kg (target 2.0 kg reached)`);
+          } else if (dailyGain > 0) {
+            const daysLeft = Math.ceil((TARGET_KG - avgWeight) / dailyGain);
+            const saleDate = new Date(Date.now() + daysLeft * 86400000);
+            const saleDateStr = saleDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+            lines.push(`  → Avg weight: ${avgWeight.toFixed(2)} kg | Est. ${daysLeft} days to market (~${saleDateStr})`);
+          } else {
+            lines.push(`  → Avg weight: ${avgWeight.toFixed(2)} kg`);
+          }
+
+          // FCR estimate: total farm feed / total broiler weight gain this week
+          const broilerCount = flocks.filter((fl: any) => fl.type?.toLowerCase().includes('broil') || fl.purpose?.toLowerCase().includes('broil')).length;
+          const totalFeedKg = feedUsage.reduce((sum: number, f: any) => sum + (Number(f.quantity_used) || 0), 0);
+          const flockFeedKg = broilerCount > 0 ? totalFeedKg / broilerCount : 0;
+          const weeklyWeightGain = dailyGain * 7 * flock.current_count;
+          if (flockFeedKg > 0 && weeklyWeightGain > 0) {
+            const fcr = (flockFeedKg / weeklyWeightGain).toFixed(2);
+            const fcrLabel = parseFloat(fcr) < 2.0 ? '✅ excellent' : parseFloat(fcr) < 2.5 ? '👍 good' : '⚠️ above target';
+            lines.push(`  → FCR (est.): ${fcr} ${fcrLabel} (target <2.0)`);
+          }
+        }
+        if (ageInWeeks >= 6) lines.push(`  → ⚠️ ${ageInWeeks} weeks old — assess for sale`);
+      }
 
       if (totalFlockExpenses > 0) {
-        lines.push(`  → Expenses Today: ${totalFlockExpenses.toLocaleString()} CFA (${costPerBird} CFA/bird)`);
+        lines.push(`  → Expenses Today: ${totalFlockExpenses.toLocaleString()} ${currency} (${costPerBird} ${currency}/bird)`);
       }
     });
     lines.push('');
@@ -307,44 +328,58 @@ function formatDailyReport(data: ReportData): string {
   const totalRevenue = totalBirdRevenue + totalEggRevenue;
 
   if (totalRevenue > 0) {
-    lines.push('💰 SALES TODAY');
+    lines.push('💰 SALES THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     if (birdSales.length > 0) {
+      const totalBirdCount = birdSales.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
+      // 5. Revenue per bird
+      const revenuePerBird = totalBirdCount > 0 ? Math.round(totalBirdRevenue / totalBirdCount) : 0;
       lines.push('🐔 Bird Sales:');
       birdSales.forEach((sale: any) => {
-        const pricePerBird = sale.quantity > 0 ? (sale.total_amount / sale.quantity) : 0;
-        lines.push(`  → ${sale.quantity} birds sold @ ${pricePerBird.toLocaleString()} CFA each`);
-        lines.push(`  → Total: ${sale.total_amount.toLocaleString()} CFA`);
-        if (sale.customer_name) {
-          lines.push(`  → Customer: ${sale.customer_name}`);
-        }
+        const pricePerBird = sale.quantity > 0 ? Math.round(sale.total_amount / sale.quantity) : 0;
+        lines.push(`  → ${sale.quantity} birds sold @ ${pricePerBird.toLocaleString()} ${currency} each`);
+        lines.push(`  → Total: ${sale.total_amount.toLocaleString()} ${currency}`);
+        if (sale.customer_name) lines.push(`  → Customer: ${sale.customer_name}`);
       });
+      if (totalBirdCount > 0) lines.push(`  → Avg revenue per bird: ${revenuePerBird.toLocaleString()} ${currency}`);
       lines.push('');
     }
 
     if (eggSales.length > 0) {
+      const totalEggsSold = eggSales.reduce((sum: number, s: any) =>
+        sum + (s.small_eggs_sold || 0) + (s.medium_eggs_sold || 0) + (s.large_eggs_sold || 0) + (s.jumbo_eggs_sold || 0), 0);
+      const revenuePerTray = totalEggsSold > 0 ? Math.round((totalEggRevenue / totalEggsSold) * 30) : 0;
+      const revenuePerEgg = totalEggsSold > 0 ? Math.round(totalEggRevenue / totalEggsSold) : 0;
       lines.push('🥚 Egg Sales:');
       eggSales.forEach((sale: any) => {
-        const totalEggs = (sale.small_eggs_sold || 0) + (sale.medium_eggs_sold || 0) +
+        const saleEggs = (sale.small_eggs_sold || 0) + (sale.medium_eggs_sold || 0) +
                          (sale.large_eggs_sold || 0) + (sale.jumbo_eggs_sold || 0);
-        lines.push(`  → ${totalEggs} eggs sold`);
-        lines.push(`  → Total: ${sale.total_amount.toLocaleString()} CFA`);
-        if (sale.customer_name) {
-          lines.push(`  → Customer: ${sale.customer_name}`);
-        }
+        const trays = (saleEggs / 30).toFixed(1);
+        lines.push(`  → ${saleEggs} eggs (${trays} trays) sold`);
+        lines.push(`  → Total: ${sale.total_amount.toLocaleString()} ${currency}`);
+        if (sale.customer_name) lines.push(`  → Customer: ${sale.customer_name}`);
       });
+      if (totalEggsSold > 0) {
+        lines.push(`  → Avg: ${revenuePerTray.toLocaleString()} ${currency}/tray | ${revenuePerEgg.toLocaleString()} ${currency}/egg`);
+      }
       lines.push('');
     }
 
-    lines.push(`💵 Total Revenue: ${totalRevenue.toLocaleString()} CFA`);
+  // 4. Week-over-week comparison
+  const prevBirdRev = prevWeekBirdSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
+  const prevEggRev = prevWeekEggSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
+  const prevRevenue = prevBirdRev + prevEggRev;
+  const prevExpensesTotal = prevWeekExpenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+
+    lines.push(`💵 Total Revenue: ${totalRevenue.toLocaleString()} ${currency}${pctChange(totalRevenue, prevRevenue)}`);
     lines.push('');
   }
 
   const totalExpenses = expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
 
   if (totalExpenses > 0) {
-    lines.push('💸 EXPENSES TODAY');
+    lines.push('💸 EXPENSES THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const expensesByCategory = expenses.reduce((acc: Record<string, number>, exp: any) => {
@@ -359,28 +394,42 @@ function formatDailyReport(data: ReportData): string {
                    category === 'labor' ? '👷' :
                    category === 'utilities' ? '⚡' :
                    category === 'repairs' ? '🔧' : '💰';
-      lines.push(`${icon} ${category}: ${amount.toLocaleString()} CFA`);
+      lines.push(`${icon} ${category}: ${amount.toLocaleString()} ${currency}`);
     });
     lines.push('');
-    lines.push(`💵 Total Expenses: ${totalExpenses.toLocaleString()} CFA`);
+    lines.push(`💵 Total Expenses: ${totalExpenses.toLocaleString()} ${currency}${pctChange(totalExpenses, prevExpensesTotal)}`);
     lines.push('');
   }
 
-  // Add other revenue sources
   const otherRevenue = revenues
     .filter(r => r.source_type !== 'egg_sale' && r.source_type !== 'bird_sale')
     .reduce((sum: number, r: any) => sum + (r.amount || 0), 0);
   const totalRevenueWithOther = totalRevenue + otherRevenue;
+  const prevNet = prevRevenue - prevExpensesTotal;
 
   if (totalRevenueWithOther > 0 || totalExpenses > 0) {
     const net = totalRevenueWithOther - totalExpenses;
     const sign = net >= 0 ? '+' : '';
     const emoji = net >= 0 ? '📈' : '📉';
-    lines.push(`${emoji} Net Today: ${sign}${net.toLocaleString()} CFA`);
-    if (otherRevenue > 0) {
-      lines.push(`  → Includes ${otherRevenue.toLocaleString()} CFA from other revenue sources`);
-    }
+    lines.push(`${emoji} Net This Week: ${sign}${net.toLocaleString()} ${currency}${pctChange(net, prevNet)}`);
+    if (otherRevenue > 0) lines.push(`  → Includes ${otherRevenue.toLocaleString()} ${currency} from other revenue sources`);
     lines.push('');
+
+    // 6. Month-to-date
+    const monthBirdRev = monthBirdSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
+    const monthEggRev = monthEggSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
+    const totalMonthRevenue = monthBirdRev + monthEggRev;
+    const totalMonthExpenses = monthExpenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+    if (totalMonthRevenue > 0 || totalMonthExpenses > 0) {
+      const monthNet = totalMonthRevenue - totalMonthExpenses;
+      const mtdSign = monthNet >= 0 ? '+' : '';
+      lines.push('📆 MONTH-TO-DATE');
+      lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      lines.push(`💵 Revenue: ${totalMonthRevenue.toLocaleString()} ${currency}`);
+      lines.push(`💸 Expenses: ${totalMonthExpenses.toLocaleString()} ${currency}`);
+      lines.push(`${monthNet >= 0 ? '📈' : '📉'} Net: ${mtdSign}${monthNet.toLocaleString()} ${currency}`);
+      lines.push('');
+    }
   }
 
   // Detailed Expense Breakdown by Flock
@@ -402,14 +451,14 @@ function formatDailyReport(data: ReportData): string {
         const flockName = flock?.name || 'Unassigned Expenses';
         const flockTotal = flockExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
         
-        lines.push(`• ${flockName}: ${flockTotal.toLocaleString()} CFA`);
+        lines.push(`• ${flockName}: ${flockTotal.toLocaleString()} ${currency}`);
         flockExpenses.slice(0, 5).forEach((exp: any) => {
           const icon = exp.category === 'feed' ? '🌾' :
                        exp.category === 'medication' ? '💊' :
                        exp.category === 'labor' ? '👷' :
                        exp.category === 'utilities' ? '⚡' :
                        exp.category === 'repairs' ? '🔧' : '💰';
-          lines.push(`  ${icon} ${exp.category || 'Other'}: ${exp.amount?.toLocaleString() || '0'} CFA`);
+          lines.push(`  ${icon} ${exp.category || 'Other'}: ${exp.amount?.toLocaleString() || '0'} ${currency}`);
           if (exp.description) {
             lines.push(`    → ${exp.description}`);
           }
@@ -424,7 +473,7 @@ function formatDailyReport(data: ReportData): string {
 
   // Feed Usage Details
   if (feedUsage.length > 0) {
-    lines.push('🌾 FEED USAGE TODAY');
+    lines.push('🌾 FEED USAGE THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     const feedByType = feedUsage.reduce((acc: Record<string, { quantity: number; unit: string }>, usage: any) => {
@@ -450,14 +499,23 @@ function formatDailyReport(data: ReportData): string {
 
   // Vaccination Records
   if (vaccinations.length > 0) {
-    lines.push('💉 VACCINATIONS TODAY');
+    lines.push('💉 VACCINATIONS THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
     vaccinations.forEach((vacc: any) => {
       lines.push(`• ${vacc.vaccine_name || 'Vaccination'}`);
       lines.push(`  → Flock: ${vacc.flocks?.name || 'Unknown'}`);
       if (vacc.dosage) lines.push(`  → Dosage: ${vacc.dosage}`);
       if (vacc.notes) lines.push(`  → Notes: ${vacc.notes}`);
+    });
+    lines.push('');
+  }
+
+  // 7. Upcoming vaccinations (next 7 days)
+  if (upcomingVaccinations.length > 0) {
+    lines.push('💉 UPCOMING VACCINATIONS (Next 7 Days)');
+    lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    upcomingVaccinations.forEach((vacc: any) => {
+      lines.push(`• ${vacc.scheduled_date}: ${vacc.vaccine_name || 'Vaccination'} — ${vacc.flocks?.name || 'Unknown flock'}`);
     });
     lines.push('');
   }
@@ -495,7 +553,7 @@ function formatDailyReport(data: ReportData): string {
 
   // Inventory Movements
   if (inventoryMovements.length > 0) {
-    lines.push('📦 INVENTORY MOVEMENTS TODAY');
+    lines.push('📦 INVENTORY MOVEMENTS THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     const movementsByType = inventoryMovements.reduce((acc: Record<string, any[]>, mov: any) => {
@@ -614,11 +672,11 @@ function formatDailyReport(data: ReportData): string {
     
     if (layerFlocks.length > 0) {
       const totalLayerBirds = layerFlocks.reduce((sum, f) => sum + (f.current_count || 0), 0);
-      const totalEggsCollected = eggCollections.reduce((sum, c) => sum + (c.trays || 0) * 30, 0);
-      const productionRate = totalLayerBirds > 0 
+      const totalEggsCollected = eggCollections.reduce((sum, c) => sum + (c.total_eggs || (c.trays || 0) * 30), 0);
+      const productionRate = totalLayerBirds > 0
         ? ((totalEggsCollected / totalLayerBirds) * 100).toFixed(1)
         : '0.0';
-      
+
       lines.push(`🥚 Layer Production:`);
       lines.push(`  → Total Layer Birds: ${totalLayerBirds.toLocaleString()}`);
       lines.push(`  → Eggs Collected: ${totalEggsCollected.toLocaleString()} (${(totalEggsCollected / 30).toFixed(1)} trays)`);
@@ -648,7 +706,7 @@ function formatDailyReport(data: ReportData): string {
                        'NEEDS ATTENTION ⚠️';
 
   lines.push(`✅ Overall Health: ${healthStatus}`);
-  lines.push(`📉 Mortality Rate: ${mortalityRate}% (Target: <2%)`);
+  lines.push(`📉 Mortality Rate: ${mortalityRate}% (target: <2%)${pctChange(totalDeaths, prevTotalDeaths)}`);
   if (tasks.length > 0) {
     lines.push(`✅ Task Completion: ${taskCompletionRate}%`);
   }
@@ -671,14 +729,22 @@ function formatDailyReport(data: ReportData): string {
   const recommendations: string[] = [];
 
   if (inventory.length > 0) {
-    const criticalItems = inventory.filter((item: any) =>
-      item.current_quantity <= item.minimum_quantity
-    );
-    if (criticalItems.length > 0) {
-      criticalItems.forEach((item: any) => {
-        recommendations.push(`• Order ${item.feed_type} TODAY (only ${item.current_quantity} kg left)`);
-      });
-    }
+    const CRITICAL_BAGS = 2;
+    const criticalItems = inventory.filter((item: any) => {
+      const bags = Number(item.current_stock_bags || item.bags_in_stock || item.current_quantity || 0);
+      return bags > 0 && bags <= CRITICAL_BAGS;
+    });
+    const emptyItems = inventory.filter((item: any) => {
+      const bags = Number(item.current_stock_bags || item.bags_in_stock || item.current_quantity || 0);
+      return bags <= 0;
+    });
+    emptyItems.forEach((item: any) => {
+      recommendations.push(`• Order ${item.feed_type} URGENTLY — out of stock`);
+    });
+    criticalItems.forEach((item: any) => {
+      const bags = Number(item.current_stock_bags || item.bags_in_stock || item.current_quantity || 0);
+      recommendations.push(`• Order ${item.feed_type} NOW (only ${bags} bag${bags !== 1 ? 's' : ''} left)`);
+    });
   }
 
   if (pendingTasks.length > 0) {
@@ -698,6 +764,10 @@ function formatDailyReport(data: ReportData): string {
 
   if (parseFloat(mortalityRate) > 2) {
     recommendations.push(`• Investigate high mortality rate (${mortalityRate}%)`);
+  }
+
+  if (upcomingVaccinations.length > 0) {
+    recommendations.push(`• Prepare for ${upcomingVaccinations.length} vaccination${upcomingVaccinations.length > 1 ? 's' : ''} due next week`);
   }
 
   if (tasks.length > 0 && taskCompletionRate < 70) {

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
-import { escapeHtml } from '../../utils/escapeHtml';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { CustomerLookup } from '../customers/CustomerLookup';
 
@@ -230,11 +229,10 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
 
     const printWindow = window.open('', '', 'height=600,width=800');
     if (printWindow) {
-      const safeContent = escapeHtml(receiptContent);
-      printWindow.document.write('<html><head><title>Receipt</title></head><body>');
-      printWindow.document.write('<pre>' + safeContent + '</pre>');
-      printWindow.document.write('</body></html>');
-      printWindow.document.close();
+      const pre = printWindow.document.createElement('pre');
+      pre.textContent = receiptContent;
+      printWindow.document.title = 'Receipt';
+      printWindow.document.body.appendChild(pre);
       printWindow.print();
     }
   };
