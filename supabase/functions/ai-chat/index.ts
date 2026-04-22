@@ -448,10 +448,20 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Tier enforcement ──────────────────────────────────────────────
+    // Use the farm owner's subscription tier so team members (managers, workers)
+    // inherit the farm's plan rather than being capped at their own free tier.
+    const { data: farmOwnerData } = await supabaseClient
+      .from("farms")
+      .select("owner_id")
+      .eq("id", farm_id)
+      .maybeSingle();
+
+    const ownerIdForTier = farmOwnerData?.owner_id || user.id;
+
     const { data: profile } = await supabaseClient
       .from("profiles")
       .select("subscription_tier")
-      .eq("id", user.id)
+      .eq("id", ownerIdForTier)
       .maybeSingle();
 
     const tier: string = profile?.subscription_tier || "free";

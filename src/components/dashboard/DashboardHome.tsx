@@ -24,6 +24,7 @@ import { getTaskTimeStatus, formatTaskDueTime } from '../../utils/taskPermission
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { generateDailyReport } from '../../utils/reportGenerator';
+import { shareViaWhatsApp, copyToClipboard } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 
 interface DashboardHomeProps {
@@ -188,12 +189,22 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     try {
       const report = await generateDailyReport(currentFarm.id, currentFarm.name, currentFarm.currency_code || currentFarm.currency || 'CFA');
 
-      await navigator.clipboard.writeText(report);
-
-      toast.success('Daily report copied! Paste in WhatsApp to share', 5000);
+      // On mobile, open WhatsApp directly — clipboard API is unreliable on mobile Safari
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        shareViaWhatsApp(report);
+      } else {
+        try {
+          await copyToClipboard(report);
+          toast.success('Report copied! Paste in WhatsApp to share', 5000);
+        } catch {
+          // Clipboard blocked (non-HTTPS or permission denied) — fall back to WhatsApp web
+          shareViaWhatsApp(report);
+        }
+      }
     } catch (error) {
       console.error('Error generating report:', error);
-      toast.error('Failed to generate report');
+      toast.error('Failed to generate report. Check your internet connection and try again.');
     } finally {
       setGeneratingReport(false);
     }

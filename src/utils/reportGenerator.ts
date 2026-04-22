@@ -37,38 +37,42 @@ export async function generateDailyReport(farmId: string, farmName: string, curr
   const monthStart = today.substring(0, 8) + '01';
 
   try {
-    const [
-      flocksData, tasksData, birdSalesData, eggSalesData, expensesData,
-      inventoryData, eggInventoryData, eggCollectionsData, mortalityData,
-      feedUsageData, vaccinationsData, weightLogsData, revenuesData,
-      prevBirdSalesData, prevEggSalesData, prevExpensesData, prevMortalityData,
-      upcomingVacsData, monthBirdSalesData, monthEggSalesData, monthExpensesData,
-    ] = await Promise.all([
+    const settled = await Promise.allSettled([
       supabase.from('flocks').select('*').eq('farm_id', farmId).eq('status', 'active'),
-      supabase.from('tasks').select('*, task_templates(title, category)').eq('farm_id', farmId).gte('created_at', weekStart).lt('created_at', tomorrow),
+      supabase.from('tasks').select('*').eq('farm_id', farmId).gte('created_at', weekStart).lt('created_at', tomorrow),
+      supabase.from('task_templates').select('*'),
       supabase.from('bird_sales').select('*').eq('farm_id', farmId).gte('sale_date', weekStart).lt('sale_date', tomorrow),
       supabase.from('egg_sales').select('*').eq('farm_id', farmId).gte('sale_date', weekStart).lt('sale_date', tomorrow),
       supabase.from('expenses').select('*').eq('farm_id', farmId).gte('incurred_on', weekStart).lt('incurred_on', tomorrow),
       supabase.from('feed_stock').select('*').eq('farm_id', farmId).order('feed_type'),
       supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle(),
-      supabase.from('egg_collections').select('*, flocks(name)').eq('farm_id', farmId).gte('collected_on', weekStart).lt('collected_on', tomorrow),
-      supabase.from('mortality_logs').select('*, flocks(name)').eq('farm_id', farmId).gte('event_date', weekStart).lt('event_date', tomorrow),
-      supabase.from('inventory_usage').select('*, feed_types(name, unit)').eq('farm_id', farmId).gte('usage_date', weekStart).lt('usage_date', tomorrow),
-      supabase.from('vaccinations').select('*, flocks(name)').eq('farm_id', farmId).gte('scheduled_date', weekStart).lt('scheduled_date', tomorrow),
-      supabase.from('weight_logs').select('*, flocks(name)').eq('farm_id', farmId).gte('date', weekStart).lt('date', tomorrow),
-      supabase.from('revenues').select('*, flocks(name)').eq('farm_id', farmId).gte('revenue_date', weekStart).lt('revenue_date', tomorrow),
+      supabase.from('egg_collections').select('*').eq('farm_id', farmId).gte('collected_on', weekStart).lt('collected_on', tomorrow),
+      supabase.from('mortality_logs').select('*').eq('farm_id', farmId).gte('event_date', weekStart).lt('event_date', tomorrow),
+      supabase.from('inventory_usage').select('*').eq('farm_id', farmId).gte('usage_date', weekStart).lt('usage_date', tomorrow),
+      supabase.from('vaccinations').select('*').eq('farm_id', farmId).gte('scheduled_date', weekStart).lt('scheduled_date', tomorrow),
+      supabase.from('weight_logs').select('*').eq('farm_id', farmId).gte('date', weekStart).lt('date', tomorrow),
+      supabase.from('revenues').select('*').eq('farm_id', farmId).gte('revenue_date', weekStart).lt('revenue_date', tomorrow),
       // Previous week
       supabase.from('bird_sales').select('*').eq('farm_id', farmId).gte('sale_date', prevWeekStart).lt('sale_date', weekStart),
       supabase.from('egg_sales').select('*').eq('farm_id', farmId).gte('sale_date', prevWeekStart).lt('sale_date', weekStart),
       supabase.from('expenses').select('*').eq('farm_id', farmId).gte('incurred_on', prevWeekStart).lt('incurred_on', weekStart),
       supabase.from('mortality_logs').select('*').eq('farm_id', farmId).gte('event_date', prevWeekStart).lt('event_date', weekStart),
       // Upcoming vaccinations
-      supabase.from('vaccinations').select('*, flocks(name)').eq('farm_id', farmId).gt('scheduled_date', today).lte('scheduled_date', nextWeekEnd).order('scheduled_date'),
+      supabase.from('vaccinations').select('*').eq('farm_id', farmId).gt('scheduled_date', today).lte('scheduled_date', nextWeekEnd).order('scheduled_date'),
       // Month-to-date
       supabase.from('bird_sales').select('*').eq('farm_id', farmId).gte('sale_date', monthStart).lt('sale_date', tomorrow),
       supabase.from('egg_sales').select('*').eq('farm_id', farmId).gte('sale_date', monthStart).lt('sale_date', tomorrow),
       supabase.from('expenses').select('*').eq('farm_id', farmId).gte('incurred_on', monthStart).lt('incurred_on', tomorrow),
     ]);
+
+    const safe = (i: number) => settled[i].status === 'fulfilled' ? (settled[i] as PromiseFulfilledResult<any>).value : { data: null };
+    const [
+      flocksData, tasksData, taskTemplatesData, birdSalesData, eggSalesData, expensesData,
+      inventoryData, eggInventoryData, eggCollectionsData, mortalityData,
+      feedUsageData, vaccinationsData, weightLogsData, revenuesData,
+      prevBirdSalesData, prevEggSalesData, prevExpensesData, prevMortalityData,
+      upcomingVacsData, monthBirdSalesData, monthEggSalesData, monthExpensesData,
+    ] = settled.map((_, i) => safe(i));
 
     const data: ReportData = {
       farmName,
@@ -89,8 +93,9 @@ export async function generateDailyReport(farmId: string, farmName: string, curr
       inventoryMovements: await (async () => {
         const { data, error } = await supabase
           .from('other_inventory_movements')
-          .select('*, other_inventory_items(item_name, category)')
-          .eq('farm_id', farmId);
+          .select('*')
+          .eq('farm_id', farmId)
+          .catch(() => ({ data: [], error: null }));
         if (error) return [];
         return data || [];
       })().catch(() => []),
@@ -116,6 +121,10 @@ function pctChange(curr: number, prev: number): string {
   if (prev === 0) return curr > 0 ? ' (new this week)' : '';
   const pct = Math.round(((curr - prev) / prev) * 100);
   return curr >= prev ? ` +${pct}% vs last week` : ` ${pct}% vs last week`;
+}
+
+function getFlockName(flockId: string, flocks: any[]): string {
+  return flocks.find(f => f.id === flockId)?.name || 'Unknown flock';
 }
 
 function formatDailyReport(data: ReportData): string {
@@ -475,25 +484,25 @@ function formatDailyReport(data: ReportData): string {
   if (feedUsage.length > 0) {
     lines.push('🌾 FEED USAGE THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+
     const feedByType = feedUsage.reduce((acc: Record<string, { quantity: number; unit: string }>, usage: any) => {
-      const feedName = usage.feed_types?.name || 'Unknown Feed';
-      const unit = usage.feed_types?.unit || 'bags';
-      
+      const feedName = usage.feed_type || 'Unknown Feed';
+      const unit = usage.unit || 'bags';
+
       if (!acc[feedName]) {
         acc[feedName] = { quantity: 0, unit };
       }
       acc[feedName].quantity += Number(usage.quantity_used) || 0;
-      
+
       return acc;
     }, {});
 
     Object.entries(feedByType).forEach(([feedName, data]) => {
       lines.push(`• ${feedName}: ${data.quantity.toLocaleString()} ${data.unit}`);
     });
-    
+
     const totalFeedUsed = feedUsage.reduce((sum: number, f: any) => sum + (Number(f.quantity_used) || 0), 0);
-    lines.push(`📊 Total Feed Used: ${totalFeedUsed.toLocaleString()} ${feedUsage[0]?.feed_types?.unit || 'bags'}`);
+    lines.push(`📊 Total Feed Used: ${totalFeedUsed.toLocaleString()} ${feedUsage[0]?.unit || 'bags'}`);
     lines.push('');
   }
 
@@ -503,7 +512,7 @@ function formatDailyReport(data: ReportData): string {
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     vaccinations.forEach((vacc: any) => {
       lines.push(`• ${vacc.vaccine_name || 'Vaccination'}`);
-      lines.push(`  → Flock: ${vacc.flocks?.name || 'Unknown'}`);
+      lines.push(`  → Flock: ${getFlockName(vacc.flock_id, flocks)}`);
       if (vacc.dosage) lines.push(`  → Dosage: ${vacc.dosage}`);
       if (vacc.notes) lines.push(`  → Notes: ${vacc.notes}`);
     });
@@ -515,7 +524,7 @@ function formatDailyReport(data: ReportData): string {
     lines.push('💉 UPCOMING VACCINATIONS (Next 7 Days)');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     upcomingVaccinations.forEach((vacc: any) => {
-      lines.push(`• ${vacc.scheduled_date}: ${vacc.vaccine_name || 'Vaccination'} — ${vacc.flocks?.name || 'Unknown flock'}`);
+      lines.push(`• ${vacc.scheduled_date}: ${vacc.vaccine_name || 'Vaccination'} — ${getFlockName(vacc.flock_id, flocks)}`);
     });
     lines.push('');
   }
@@ -524,7 +533,7 @@ function formatDailyReport(data: ReportData): string {
   if (weightLogs.length > 0) {
     lines.push('⚖️ WEIGHT TRACKING (BROILERS)');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+
     const weightsByFlock = weightLogs.reduce((acc: Record<string, any[]>, log: any) => {
       const flockId = log.flock_id || 'unassigned';
       if (!acc[flockId]) acc[flockId] = [];
@@ -533,12 +542,11 @@ function formatDailyReport(data: ReportData): string {
     }, {});
 
     Object.entries(weightsByFlock).forEach(([flockId, logs]) => {
-      const flock = flocks.find(f => f.id === flockId);
-      const flockName = flock?.name || logs[0]?.flocks?.name || 'Unknown Flock';
+      const flockName = getFlockName(flockId, flocks);
       const avgWeight = logs.reduce((sum: number, l: any) => sum + (l.average_weight || 0), 0) / logs.length;
       const totalWeight = logs.reduce((sum: number, l: any) => sum + (l.total_weight || 0), 0);
       const birdsWeighed = logs.reduce((sum: number, l: any) => sum + (l.birds_weighed || 0), 0);
-      
+
       lines.push(`• ${flockName}`);
       lines.push(`  → Average Weight: ${avgWeight.toFixed(2)} kg`);
       if (totalWeight > 0) {
@@ -555,7 +563,7 @@ function formatDailyReport(data: ReportData): string {
   if (inventoryMovements.length > 0) {
     lines.push('📦 INVENTORY MOVEMENTS THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+
     const movementsByType = inventoryMovements.reduce((acc: Record<string, any[]>, mov: any) => {
       const type = mov.movement_type || 'unknown';
       if (!acc[type]) acc[type] = [];
@@ -567,8 +575,8 @@ function formatDailyReport(data: ReportData): string {
       const typeLabel = type === 'in' ? '📥 ADDED' : type === 'out' ? '📤 REMOVED' : '🔄 ADJUSTED';
       lines.push(`${typeLabel}:`);
       movements.forEach((mov: any) => {
-        const itemName = mov.other_inventory_items?.item_name || 'Unknown Item';
-        const category = mov.other_inventory_items?.category || '';
+        const itemName = mov.item_name || 'Unknown Item';
+        const category = mov.category || '';
         lines.push(`  → ${itemName}${category ? ` (${category})` : ''}: ${mov.quantity} ${mov.unit || 'units'}`);
         if (mov.notes) lines.push(`    Notes: ${mov.notes}`);
       });
