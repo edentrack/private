@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Egg, Plus, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Egg, Plus, CheckCircle, AlertTriangle, MessageCircle, X } from 'lucide-react';
+import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +40,20 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
     jumbo: 0,
     damaged: 0,
     totalGood: 0,
+  });
+  const [savedSummary, setSavedSummary] = useState<{
+    totals: { small: number; medium: number; large: number; jumbo: number };
+    totalGood: number;
+    damaged: number;
+    date: string;
+    flockName: string;
+    traysPerSize: { small: number; medium: number; large: number; jumbo: number };
+  } | null>(null);
+  const [shareOptions, setShareOptions] = useState({
+    total: true,
+    bySize: true,
+    damaged: true,
+    flockAndDate: true,
   });
 
   useEffect(() => {
@@ -290,15 +305,21 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
         }
       }
 
+      const flockName = layerFlocks.find(f => f.id === selectedFlockId)?.name || 'Flock';
+      setSavedSummary({
+        totals: nextTotals,
+        totalGood: totalEggs,
+        damaged: damagedEggsNum,
+        date: collectionDate,
+        flockName,
+        traysPerSize: traysNums,
+      });
       setSuccessMessage(`Recorded ${totalEggs} eggs collected!`);
+      setShowForm(false);
+      setTraysBySize({ small: '', medium: '', large: '', jumbo: '' });
+      setLooseBySize({ small: '', medium: '', large: '', jumbo: '' });
+      setDamagedEggs('');
       onSuccess?.();
-      setTimeout(() => {
-        setSuccessMessage(null);
-        setShowForm(false);
-        setTraysBySize({ small: '', medium: '', large: '', jumbo: '' });
-        setLooseBySize({ small: '', medium: '', large: '', jumbo: '' });
-        setDamagedEggs('');
-      }, 2000);
 
     } catch (error) {
       console.error('Error recording egg collection:', error);
@@ -317,8 +338,135 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
   };
   const totalEggs = liveTotals.small + liveTotals.medium + liveTotals.large + liveTotals.jumbo;
 
+  const handleEggShare = () => {
+    if (!savedSummary) return;
+    const { totals, totalGood, damaged, date, flockName, traysPerSize } = savedSummary;
+    const trays = eggsPerTray > 0 ? Math.floor(totalGood / eggsPerTray) : 0;
+    const loose = eggsPerTray > 0 ? totalGood % eggsPerTray : totalGood;
+    const dateLabel = new Date(date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    let msg = `*🥚 EGG COLLECTION REPORT*\n`;
+    if (shareOptions.flockAndDate) {
+      msg += `*${dateLabel} — ${flockName}*\n`;
+    }
+    msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    if (shareOptions.total) {
+      const trayStr = eggsPerTray > 0 ? ` (${trays} tray${trays !== 1 ? 's' : ''} + ${loose} loose)` : '';
+      msg += `✅ *Good Eggs:* ${totalGood.toLocaleString()}${trayStr}\n`;
+    }
+    if (shareOptions.damaged) {
+      msg += `❌ *Damaged:* ${damaged}\n`;
+    }
+    if (shareOptions.bySize) {
+      msg += `\n*📊 BY SIZE*\n`;
+      const sizes = [
+        { label: 'Small', val: totals.small, trays: traysPerSize.small },
+        { label: 'Medium', val: totals.medium, trays: traysPerSize.medium },
+        { label: 'Large', val: totals.large, trays: traysPerSize.large },
+        { label: 'Jumbo', val: totals.jumbo, trays: traysPerSize.jumbo },
+      ].filter(s => s.val > 0);
+      sizes.forEach(s => {
+        msg += `- ${s.label}: ${s.val}${s.trays > 0 ? ` (${s.trays} tray${s.trays !== 1 ? 's' : ''})` : ''}\n`;
+      });
+    }
+
+    msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `Sent via Edentrack · ${new Date().toLocaleString()}`;
+
+    shareViaWhatsApp(msg);
+  };
+
   if (layerFlocks.length === 0) {
     return null;
+  }
+
+  if (savedSummary && !showForm) {
+    const trays = eggsPerTray > 0 ? Math.floor(savedSummary.totalGood / eggsPerTray) : 0;
+    const loose = eggsPerTray > 0 ? savedSummary.totalGood % eggsPerTray : savedSummary.totalGood;
+    const sizes = [
+      { label: 'Small', val: savedSummary.totals.small },
+      { label: 'Medium', val: savedSummary.totals.medium },
+      { label: 'Large', val: savedSummary.totals.large },
+      { label: 'Jumbo', val: savedSummary.totals.jumbo },
+    ].filter(s => s.val > 0);
+
+    return (
+      <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <span className="text-sm font-bold text-gray-900">Collection saved</span>
+          </div>
+          <button onClick={() => setSavedSummary(null)} className="text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div className="bg-white rounded-xl px-3 py-2 border border-amber-100">
+            <p className="text-xs text-gray-500">Good eggs</p>
+            <p className="font-bold text-gray-900">{savedSummary.totalGood.toLocaleString()}</p>
+            {eggsPerTray > 0 && <p className="text-xs text-gray-400">{trays} trays + {loose} loose</p>}
+          </div>
+          <div className="bg-white rounded-xl px-3 py-2 border border-amber-100">
+            <p className="text-xs text-gray-500">Damaged</p>
+            <p className="font-bold text-gray-900">{savedSummary.damaged}</p>
+          </div>
+        </div>
+
+        {sizes.length > 0 && (
+          <div className="bg-white rounded-xl border border-amber-100 overflow-hidden">
+            <div className="grid grid-cols-4 text-center text-[11px]">
+              {sizes.map(s => (
+                <div key={s.label} className="px-1 py-2 border-r last:border-r-0 border-amber-100">
+                  <p className="text-gray-400">{s.label}</p>
+                  <p className="font-bold text-gray-900">{s.val}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl border border-amber-100 p-3 space-y-2">
+          <p className="text-xs font-semibold text-gray-600">Include in WhatsApp report:</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {([
+              { key: 'total', label: 'Total & trays' },
+              { key: 'bySize', label: 'By size' },
+              { key: 'damaged', label: 'Damaged eggs' },
+              { key: 'flockAndDate', label: 'Flock & date' },
+            ] as const).map(opt => (
+              <label key={opt.key} className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={shareOptions[opt.key]}
+                  onChange={e => setShareOptions(prev => ({ ...prev, [opt.key]: e.target.checked }))}
+                  className="w-3.5 h-3.5 rounded text-green-600 accent-green-600"
+                />
+                <span className="text-xs text-gray-700">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setSavedSummary(null); setShowForm(true); }}
+            className="flex-1 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            + New entry
+          </button>
+          <button
+            onClick={handleEggShare}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-[#25D366] hover:bg-[#20BA5A] rounded-xl transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Share
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (intervalTrackingActive && !showForm) {

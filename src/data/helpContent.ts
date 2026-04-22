@@ -131,19 +131,21 @@ export const helpArticles: HelpArticle[] = [
     id: 'egg-collection',
     title: 'Recording Egg Collection',
     category: 'Sales & Revenue',
-    content: 'Track daily egg collection for layer flocks.',
+    content: 'Track daily egg collection for layer flocks. Good eggs and damaged eggs are recorded separately — only good eggs are counted in your inventory and totals. Damaged eggs are tracked for loss reporting only and never inflate your production numbers.',
     steps: [
       'Go to Egg Production page',
       'Click "Log Collection"',
       'Select flock',
-      'Enter eggs by size (small/medium/large/jumbo)',
-      'Enter broken or damaged eggs',
-      'Add notes if needed',
-      'Save - eggs added to inventory',
+      'Enter trays and loose eggs by size (Small / Medium / Large / Jumbo)',
+      'The app calculates the total good eggs automatically (trays × eggs-per-tray + loose)',
+      'Enter any broken or damaged eggs in the "Eggs Broken" field — this is separate from the good eggs count',
+      'Add notes or a photo if needed',
+      'Save — only the good eggs are added to your inventory; damaged eggs are saved as a loss record',
+      'Tip: loose eggs must be fewer than one full tray per size (e.g. less than 30 if your tray size is 30)',
     ],
     relatedPages: ['/eggs'],
     roles: ['owner', 'manager', 'worker'],
-    keywords: ['eggs', 'collection', 'layers', 'production'],
+    keywords: ['eggs', 'collection', 'layers', 'production', 'broken', 'damaged', 'total', 'inventory'],
   },
 
   {
@@ -666,6 +668,10 @@ export const faqItems = [
   {
     question: 'How do I get support?',
     answer: 'You can access help articles in the Help Center, or contact our support team directly through the app.',
+  },
+  {
+    question: 'Are damaged or broken eggs counted in my total egg production?',
+    answer: 'No. Damaged and good eggs are tracked separately. When you log a collection, you enter good eggs by size (in trays + loose) and broken eggs in a separate field. Only the good eggs are added to your inventory and production totals. Broken eggs are saved as a loss record for reporting purposes — they never inflate your egg count or appear in sales inventory.',
   },
   {
     question: 'Can Eden AI log eggs, sales, and mortality for me?',

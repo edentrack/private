@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu, X, LayoutDashboard, TrendingUp, Brain, FileUp, CheckCircle,
   BarChart3, Users, Package, Calendar, Scale, Syringe, DollarSign,
@@ -241,9 +241,143 @@ const FAQS = [
   },
 ];
 
+const APP_SLIDES = [
+  {
+    label: 'Dashboard',
+    color: '#3D5F42',
+    preview: (
+      <div className="bg-[#f7f5f0] rounded-xl p-4 space-y-3 text-left">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Good morning 👋 — Week 4</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'Birds alive', value: '985', sub: '98.5% survival', color: 'text-[#3D5F42]' },
+            { label: 'Eggs today', value: '412', sub: '83% lay rate', color: 'text-amber-600' },
+            { label: 'Feed stock', value: '8 bags', sub: '3 days left', color: 'text-red-500' },
+            { label: 'Net profit', value: '+42,500', sub: 'this cycle', color: 'text-[#3D5F42]' },
+          ].map(k => (
+            <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+              <p className="text-[10px] text-gray-400 font-medium">{k.label}</p>
+              <p className={`text-base font-bold ${k.color}`}>{k.value}</p>
+              <p className="text-[10px] text-gray-400">{k.sub}</p>
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+          <p className="text-xs font-semibold text-gray-700 mb-2">Today's Tasks</p>
+          {['Morning feed — Batch A', 'Water check — all pens', 'Vaccination — Week 4 Newcastle'].map((t, i) => (
+            <div key={t} className="flex items-center gap-2 py-1">
+              <div className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${i === 0 ? 'bg-[#3D5F42] border-[#3D5F42]' : 'border-gray-300'}`} />
+              <span className={`text-xs ${i === 0 ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{t}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: 'Egg Collection',
+    color: '#d97706',
+    preview: (
+      <div className="bg-[#f7f5f0] rounded-xl p-4 space-y-3 text-left">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Log Egg Collection</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="grid grid-cols-3 bg-gray-50 text-[10px] font-semibold text-gray-500 px-3 py-1.5">
+            <span>Size</span><span className="text-center">Trays</span><span className="text-center">Loose</span>
+          </div>
+          {[
+            { size: 'Small', trays: 2, loose: 12 },
+            { size: 'Medium', trays: 5, loose: 8 },
+            { size: 'Large', trays: 6, loose: 0 },
+            { size: 'Jumbo', trays: 1, loose: 3 },
+          ].map(r => (
+            <div key={r.size} className="grid grid-cols-3 items-center px-3 py-2 border-t border-gray-100">
+              <span className="text-xs font-semibold text-gray-800">{r.size}</span>
+              <span className="text-center text-xs text-gray-600 bg-gray-50 rounded-lg py-1 mx-1">{r.trays}</span>
+              <span className="text-center text-xs text-gray-600 bg-gray-50 rounded-lg py-1 mx-1">{r.loose}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          <span className="text-xs font-semibold text-amber-800">Total good eggs</span>
+          <span className="text-sm font-bold text-amber-900">412</span>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1 bg-gray-100 rounded-xl py-2 text-center text-xs font-medium text-gray-500">Damaged: 6</div>
+          <button className="flex-1 bg-[#3D5F42] text-white rounded-xl py-2 text-xs font-bold">Save Collection</button>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: 'Analytics',
+    color: '#6366f1',
+    preview: (
+      <div className="bg-[#f7f5f0] rounded-xl p-4 space-y-3 text-left">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Insights — Batch A (Layer)</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'Total Revenue', value: '284,500', color: 'text-[#3D5F42]' },
+            { label: 'Total Expenses', value: '242,000', color: 'text-red-500' },
+            { label: 'Net Profit', value: '+42,500', color: 'text-[#3D5F42]' },
+            { label: 'Profit Margin', value: '14.9%', color: 'text-indigo-600' },
+          ].map(k => (
+            <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100">
+              <p className="text-[10px] text-gray-400">{k.label}</p>
+              <p className={`text-sm font-bold ${k.color}`}>{k.value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl p-3 border border-gray-100">
+          <p className="text-xs font-semibold text-gray-700 mb-2">Weekly performance</p>
+          <div className="flex items-end gap-1.5 h-12">
+            {[40, 65, 55, 80, 72, 90, 85].map((h, i) => (
+              <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i === 5 ? '#3D5F42' : '#dcfce7' }} />
+            ))}
+          </div>
+          <div className="flex justify-between mt-1">
+            {['W1','W2','W3','W4','W5','W6','W7'].map(w => (
+              <span key={w} className="text-[9px] text-gray-400 flex-1 text-center">{w}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: 'Eden AI',
+    color: '#7c3aed',
+    preview: (
+      <div className="bg-[#f7f5f0] rounded-xl p-4 space-y-2 text-left">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Eden — Farm Advisor</p>
+        {[
+          { role: 'user', text: '3 birds died this morning in Batch A, cause unknown' },
+          { role: 'eden', text: 'Logging 3 deaths in Batch A. Sudden unexplained loss often means heat stress or water blockage — check drinkers now. Survival rate is still 98.5%. Want me to flag a vet visit?' },
+          { role: 'user', text: 'Yes, and what is my FCR this week?' },
+          { role: 'eden', text: 'FCR this week: 1.82 — excellent for Week 4. Top 20% of farms your size. Vet visit flagged for today.' },
+        ].map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed ${
+              m.role === 'user' ? 'bg-[#3D5F42] text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100 shadow-sm'
+            }`}>
+              {m.role === 'eden' && <span className="block text-[9px] font-bold text-purple-500 mb-0.5">Eden</span>}
+              {m.text}
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+];
+
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setActiveSlide(s => (s + 1) % APP_SLIDES.length), 4000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleGetStarted = () => {
     setMobileMenuOpen(false);
@@ -332,14 +466,15 @@ export default function LandingPage() {
         </div>
 
         {/* Stats bar */}
-        <div className="max-w-3xl mx-auto mt-16 grid grid-cols-3 gap-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="max-w-3xl mx-auto mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           {[
-            { value: '25+', label: 'Built features' },
-            { value: '2', label: 'Languages (EN + FR)' },
+            { value: '40+', label: 'Built features' },
+            { value: 'EN + FR', label: 'Languages' },
             { value: '15+', label: 'African currencies' },
+            { value: '100%', label: 'Offline-capable' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-[#3D5F42]">{value}</div>
+              <div className="text-xl sm:text-2xl font-bold text-[#3D5F42]">{value}</div>
               <div className="text-xs text-gray-500 mt-1">{label}</div>
             </div>
           ))}
@@ -386,6 +521,70 @@ export default function LandingPage() {
                 <p className="text-sm text-gray-500 leading-relaxed">{body}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* APP SCREENSHOTS SLIDER */}
+      <section className="py-20 px-4 sm:px-6 bg-white overflow-hidden">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">See the app in action</h2>
+            <p className="text-gray-500 text-lg">Real screens from the app — exactly what you get.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            {/* Tab buttons */}
+            <div className="space-y-3">
+              {APP_SLIDES.map((slide, i) => (
+                <button
+                  key={slide.label}
+                  type="button"
+                  onClick={() => setActiveSlide(i)}
+                  className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-300 ${
+                    activeSlide === i
+                      ? 'border-[#3D5F42] bg-[#f7f5f0] shadow-md'
+                      : 'border-gray-100 bg-white hover:border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all"
+                      style={{ backgroundColor: activeSlide === i ? slide.color : '#d1d5db' }}
+                    />
+                    <span className={`font-semibold text-sm ${activeSlide === i ? 'text-gray-900' : 'text-gray-500'}`}>
+                      {slide.label}
+                    </span>
+                    {activeSlide === i && (
+                      <div className="ml-auto h-1 rounded-full bg-gray-100 w-16 overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: '100%', backgroundColor: slide.color, animation: 'slide-progress 4s linear' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+              <style>{`@keyframes slide-progress { from { width: 0% } to { width: 100% } }`}</style>
+            </div>
+
+            {/* Preview panel */}
+            <div className="relative">
+              <div className="bg-gray-900 rounded-3xl p-3 shadow-2xl">
+                <div className="bg-gray-800 rounded-2xl px-4 py-2 flex items-center gap-2 mb-3">
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+                  </div>
+                  <div className="flex-1 text-center text-xs text-gray-500 font-mono">edentrack.app</div>
+                </div>
+                <div key={activeSlide} style={{ animation: 'tour-card-in 0.35s ease forwards' }}>
+                  {APP_SLIDES[activeSlide].preview}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

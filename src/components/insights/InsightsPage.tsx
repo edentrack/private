@@ -79,6 +79,7 @@ export function InsightsPage() {
   const [loadingData, setLoadingData] = useState(false);
   const [showAllWeeks, setShowAllWeeks] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<number>>(new Set());
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   const hideFinancials = shouldHideFinancialData(currentRole, farmPermissions);
   const currencyCode = currentFarm?.currency_code || 'XAF';
@@ -599,6 +600,75 @@ export function InsightsPage() {
     shareViaWhatsApp(message);
   };
 
+  const handleSharePeriod = (period: 'daily' | 'weekly' | 'monthly' | 'cycle') => {
+    if (!selectedFlock || !currentFarm) return;
+    setShowShareMenu(false);
+
+    if (period === 'cycle') {
+      handleWhatsAppShare();
+      return;
+    }
+
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    if (period === 'weekly') start.setDate(start.getDate() - 6);
+    if (period === 'monthly') start.setDate(start.getDate() - 29);
+
+    const inRange = (dateStr: string | undefined) => {
+      if (!dateStr) return false;
+      const d = parseLocalDate(dateStr);
+      if (!d) return false;
+      return d >= start && d <= now;
+    };
+
+    const periodExpenses = expenses.filter(e => inRange(e.incurred_on || (e as any).date));
+    const periodMortality = mortality.filter(m => inRange(m.event_date));
+    const periodEggs = eggCollections.filter(c => inRange((c as any).collected_on || (c as any).collection_date));
+    const periodEggSales = eggSales.filter(s => inRange(s.sale_date));
+    const periodBirdSales = birdSales.filter(s => inRange(s.sale_date));
+
+    const totalExp = periodExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const totalDead = periodMortality.reduce((s, m) => s + m.count, 0);
+    const totalEggsCollected = periodEggs.reduce((s, c) => s + ((c as any).total_eggs || 0), 0);
+    const eggRevenue = periodEggSales.reduce((s, s2) => s + Number(s2.total_amount || 0), 0);
+    const birdRevenue = periodBirdSales.reduce((s, s2) => s + Number(s2.total_amount || 0), 0);
+    const totalRev = eggRevenue + birdRevenue;
+    const netProfit = totalRev - totalExp;
+
+    const labels: Record<string, string> = {
+      daily: `Daily Report — ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      weekly: `Weekly Report — Last 7 Days`,
+      monthly: `Monthly Report — Last 30 Days`,
+    };
+
+    const trays = eggsPerTray > 0 ? Math.floor(totalEggsCollected / eggsPerTray) : 0;
+    const loose = eggsPerTray > 0 ? totalEggsCollected % eggsPerTray : totalEggsCollected;
+
+    let msg = `*🌿 EDENTRACK FARM REPORT*\n`;
+    msg += `*${labels[period]}*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    msg += `*Farm:* ${currentFarm.name || 'My Farm'}\n`;
+    msg += `*Flock:* ${selectedFlock.name} (${selectedFlock.type})\n\n`;
+
+    if (isLayerFlock) {
+      const eggTrayStr = eggsPerTray > 0 ? ` (${trays} trays + ${loose})` : '';
+      msg += `🥚 *Eggs Collected:* ${totalEggsCollected.toLocaleString()}${eggTrayStr}\n`;
+    }
+    msg += `💀 *Mortality:* ${totalDead} bird${totalDead !== 1 ? 's' : ''}\n`;
+    if (!hideFinancials) {
+      msg += `💸 *Expenses:* ${totalExp.toLocaleString()} ${currencyCode}\n`;
+      msg += `💰 *Revenue:* ${totalRev.toLocaleString()} ${currencyCode}\n`;
+      msg += `📊 *Net:* ${netProfit >= 0 ? '+' : ''}${netProfit.toLocaleString()} ${currencyCode}\n`;
+    }
+    msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `Sent via Edentrack · ${new Date().toLocaleString()}`;
+
+    shareViaWhatsApp(msg);
+  };
+
   const displayedWeeks = showAllWeeks ? weeklyData : weeklyData.slice(0, 4);
   const remainingProfitBalance = metrics.totalRevenue - profitPoolUsed;
   const toggleWeekExpanded = (week: number) => {
@@ -754,14 +824,39 @@ export function InsightsPage() {
             >
               <Download className="w-5 h-5 text-gray-600" />
             </button>
-            <button
-              onClick={handleWhatsAppShare}
-              className="p-2.5 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-xl transition-colors"
-              title="Share via WhatsApp"
-              disabled={!selectedFlock}
-            >
-              <MessageCircle className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowShareMenu(v => !v)}
+                className="flex items-center gap-1.5 px-3 py-2.5 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-xl transition-colors text-sm font-medium"
+                title="Share via WhatsApp"
+                disabled={!selectedFlock}
+              >
+                <MessageCircle className="w-4 h-4" />
+                Share
+              </button>
+              {showShareMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowShareMenu(false)} />
+                  <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-48">
+                    <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">Send via WhatsApp</p>
+                    {([
+                      { key: 'daily', label: "📅 Today's Report" },
+                      { key: 'weekly', label: '📆 Weekly Report' },
+                      { key: 'monthly', label: '🗓️ Monthly Report' },
+                      { key: 'cycle', label: '📊 Full Cycle Report' },
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.key}
+                        onClick={() => handleSharePeriod(opt.key)}
+                        className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

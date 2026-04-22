@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, DollarSign, Calendar, Edit2, Trash2, Zap, Download, ShoppingBag, Pill, Wrench, Box, ChevronDown } from 'lucide-react';
+import { Plus, DollarSign, Calendar, Edit2, Trash2, Zap, Download, ShoppingBag, Pill, Wrench, Box, ChevronDown, MessageCircle } from 'lucide-react';
+import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -71,6 +72,7 @@ export function ExpenseTracking() {
   const [visibleExpenseCount, setVisibleExpenseCount] = useState(5);
   const [expandedExpenseId, setExpandedExpenseId] = useState<string | null>(null);
   const [totalRevenueGenerated, setTotalRevenueGenerated] = useState(0);
+  const [showExpenseShareMenu, setShowExpenseShareMenu] = useState(false);
 
   const canManageExpenses = currentRole === 'owner' || currentRole === 'manager';
 
@@ -508,6 +510,61 @@ export function ExpenseTracking() {
     });
   };
 
+  const handleExpenseShare = (period: 'today' | 'week' | 'month' | 'all') => {
+    if (!currentFarm) return;
+    setShowExpenseShareMenu(false);
+
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    if (period === 'week') start.setDate(start.getDate() - 6);
+    if (period === 'month') start.setDate(start.getDate() - 29);
+
+    const filtered = period === 'all' ? expenses : expenses.filter(e => {
+      const d = new Date((e.incurred_on || (e as any).date || '').toString());
+      return d >= start && d <= now;
+    });
+
+    const total = filtered.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const byCategory: Record<string, number> = {};
+    filtered.forEach(e => {
+      const cat = e.category || 'other';
+      byCategory[cat] = (byCategory[cat] || 0) + Number(e.amount || 0);
+    });
+
+    const periodLabels: Record<string, string> = {
+      today: `Today — ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      week: 'Last 7 Days',
+      month: 'Last 30 Days',
+      all: 'All Time',
+    };
+
+    const cur = currency;
+    let msg = `*💸 EXPENSE REPORT*\n`;
+    msg += `*${periodLabels[period]} — ${currentFarm.name || 'My Farm'}*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    msg += `*Total Expenses:* ${convertAmount(total)} ${cur}\n`;
+    if (totalRevenueGenerated > 0 && !hideFinancials) {
+      const net = totalRevenueGenerated - total;
+      msg += `*Revenue:* ${convertAmount(totalRevenueGenerated)} ${cur}\n`;
+      msg += `*Net:* ${net >= 0 ? '+' : ''}${convertAmount(net)} ${cur}\n`;
+    }
+    msg += `\n*📊 BY CATEGORY*\n`;
+    Object.entries(byCategory)
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([cat, amt]) => {
+        const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
+        const label = cat.charAt(0).toUpperCase() + cat.slice(1);
+        msg += `- ${label}: ${convertAmount(amt)} ${cur} (${pct}%)\n`;
+      });
+
+    msg += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `Sent via Edentrack · ${new Date().toLocaleString()}`;
+
+    shareViaWhatsApp(msg);
+  };
+
   const handleFlockChange = (flockId: string | null) => {
     setSelectedFlockId(flockId);
   };
@@ -838,6 +895,38 @@ export function ExpenseTracking() {
                 <Download className="w-4 h-4 text-gray-900" />
                 <span className="hidden sm:inline text-gray-900">{t('expenses.export')}</span>
               </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowExpenseShareMenu(v => !v)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-xl transition-colors text-sm font-medium"
+                  title="Share via WhatsApp"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Share</span>
+                </button>
+                {showExpenseShareMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowExpenseShareMenu(false)} />
+                    <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-48">
+                      <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">Send via WhatsApp</p>
+                      {([
+                        { key: 'today', label: "📅 Today's Expenses" },
+                        { key: 'week', label: '📆 Last 7 Days' },
+                        { key: 'month', label: '🗓️ Last 30 Days' },
+                        { key: 'all', label: '📊 All Time' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.key}
+                          onClick={() => handleExpenseShare(opt.key)}
+                          className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-800 transition-colors"
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           )}
         </div>
