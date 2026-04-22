@@ -26,6 +26,8 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom'],
           'supabase-vendor': ['@supabase/supabase-js'],
           'icons': ['lucide-react'],
+          'pdf': ['jspdf', 'jspdf-autotable'],
+          'i18n': ['i18next', 'react-i18next'],
         },
       },
     },

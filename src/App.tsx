@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
@@ -6,61 +6,66 @@ import { PermissionsProvider } from './contexts/PermissionsContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ImpersonationProvider } from './contexts/ImpersonationContext';
 import { ImpersonationBanner } from './components/common/ImpersonationBanner';
+import { OnboardingTour, shouldShowTour } from './components/onboarding/OnboardingTour';
+import { ErrorBoundaryWithTranslation as ErrorBoundary } from './components/ErrorBoundaryWithTranslation';
+import { RequireRole } from './components/common/RequireRole';
+import { LanguageProvider } from './contexts/LanguageContext';
+import { SimpleModeProvider } from './contexts/SimpleModeContext';
+import { Flock } from './types/database';
+
+// Auth screens — kept eager (shown before JS finishes loading)
 import { LoginScreen } from './components/auth/LoginScreen';
 import { SignUpScreen } from './components/auth/SignUpScreen';
 import { ForgotPasswordScreen } from './components/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from './components/auth/ResetPasswordScreen';
 import { InviteAcceptPage } from './components/auth/InviteAcceptPage';
 import { WaitingApprovalPage } from './components/auth/WaitingApprovalPage';
-import { DashboardLayout } from './components/dashboard/DashboardLayout';
-import { SuperAdminGuard } from './components/superadmin/SuperAdminGuard';
-import { SuperAdminDashboard } from './components/superadmin/SuperAdminDashboard';
-import { UserApprovals } from './components/superadmin/UserApprovals';
-import { UsersManagement } from './components/superadmin/UsersManagement';
-import { PricingManagement } from './components/superadmin/PricingManagement';
-import { FarmsManagement } from './components/superadmin/FarmsManagement';
-import { MarketplaceAdmin } from './components/superadmin/MarketplaceAdmin';
-import { Announcements } from './components/superadmin/Announcements';
-import { SupportTickets } from './components/superadmin/SupportTickets';
-import { ActivityLogs } from './components/superadmin/ActivityLogs';
-import { BillingSubscriptions } from './components/superadmin/BillingSubscriptions';
-import { PlatformSettings } from './components/superadmin/PlatformSettings';
-import { DashboardHome } from './components/dashboard/DashboardHome';
-import { SmartDashboard } from './components/dashboard/SmartDashboard';
-import { FlockManagement } from './components/flocks/FlockManagement';
-import { MortalityTracking } from './components/mortality/MortalityTracking';
-import { WeightTracking } from './components/weight/WeightTracking';
-import { WeightCheckPage } from './components/weight/WeightCheckPage';
-import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
-import { VaccinationSchedule } from './components/vaccinations/VaccinationSchedule';
-import { VetLog } from './components/vet/VetLog';
-import { ExpenseTracking } from './components/expenses/ExpenseTracking';
-import { InventoryPage } from './components/inventory/InventoryPage';
-import { SettingsPage } from './components/settings/SettingsPage';
-import { WorkerDashboard } from './components/worker/WorkerDashboard';
-import { SalesManagement } from './components/sales/SalesManagement';
-import { TeamManagement } from './components/team/TeamManagement';
-import { ShiftsPage } from './components/shifts/ShiftsPage';
-import { PayrollPage } from './components/payroll/PayrollPage';
-import { TasksPage2 } from './components/tasks2/TasksPage2';
-import { TaskHistoryPage } from './components/tasks/TaskHistoryPage';
-import { InsightsPage } from './components/insights/InsightsPage';
-import { AIAssistantPage } from './components/ai/AIAssistantPage';
-// import { HelperAssistant } from './components/helper/HelperAssistant'; // Wave 1: KILLED — consolidate into AI Assistant direction
-import { SmartUploadPage } from './components/import/SmartUploadPage';
-import { OnboardingTour, shouldShowTour } from './components/onboarding/OnboardingTour';
-import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
-import { SimpleModeProvider } from './contexts/SimpleModeContext';
-import { SubscribePage } from './components/billing/SubscribePage';
-import { ComparePage } from './components/compare/ComparePage';
-import { MarketplacePage } from './components/marketplace/MarketplacePage';
-// import ComingSoonPage from './components/roadmap/ComingSoonPage';
-import LandingPage from './components/landing/LandingPage';
-import { FarmActivityAudit } from './components/audit/FarmActivityAudit';
-import { ErrorBoundaryWithTranslation as ErrorBoundary } from './components/ErrorBoundaryWithTranslation';
-import { RequireRole } from './components/common/RequireRole';
-import { LanguageProvider } from './contexts/LanguageContext';
-import { Flock } from './types/database';
+
+// All page-level components — lazy-loaded on first visit
+const lazy1 = <T extends { [k: string]: React.ComponentType<any> }>(path: () => Promise<T>, name: keyof T) =>
+  lazy(() => (path() as Promise<T>).then(m => ({ default: m[name] as React.ComponentType<any> })));
+
+const LandingPage            = lazy(() => import('./components/landing/LandingPage'));
+const DashboardLayout        = lazy1(() => import('./components/dashboard/DashboardLayout'), 'DashboardLayout');
+const DashboardHome          = lazy1(() => import('./components/dashboard/DashboardHome'), 'DashboardHome');
+const SmartDashboard         = lazy1(() => import('./components/dashboard/SmartDashboard'), 'SmartDashboard');
+const FlockManagement        = lazy1(() => import('./components/flocks/FlockManagement'), 'FlockManagement');
+const MortalityTracking      = lazy1(() => import('./components/mortality/MortalityTracking'), 'MortalityTracking');
+const WeightTracking         = lazy1(() => import('./components/weight/WeightTracking'), 'WeightTracking');
+const WeightCheckPage        = lazy1(() => import('./components/weight/WeightCheckPage'), 'WeightCheckPage');
+const AnalyticsDashboard     = lazy1(() => import('./components/analytics/AnalyticsDashboard'), 'AnalyticsDashboard');
+const VaccinationSchedule    = lazy1(() => import('./components/vaccinations/VaccinationSchedule'), 'VaccinationSchedule');
+const VetLog                 = lazy1(() => import('./components/vet/VetLog'), 'VetLog');
+const ExpenseTracking        = lazy1(() => import('./components/expenses/ExpenseTracking'), 'ExpenseTracking');
+const InventoryPage          = lazy1(() => import('./components/inventory/InventoryPage'), 'InventoryPage');
+const SettingsPage           = lazy1(() => import('./components/settings/SettingsPage'), 'SettingsPage');
+const WorkerDashboard        = lazy1(() => import('./components/worker/WorkerDashboard'), 'WorkerDashboard');
+const SalesManagement        = lazy1(() => import('./components/sales/SalesManagement'), 'SalesManagement');
+const TeamManagement         = lazy1(() => import('./components/team/TeamManagement'), 'TeamManagement');
+const ShiftsPage             = lazy1(() => import('./components/shifts/ShiftsPage'), 'ShiftsPage');
+const PayrollPage            = lazy1(() => import('./components/payroll/PayrollPage'), 'PayrollPage');
+const TasksPage2             = lazy1(() => import('./components/tasks2/TasksPage2'), 'TasksPage2');
+const TaskHistoryPage        = lazy1(() => import('./components/tasks/TaskHistoryPage'), 'TaskHistoryPage');
+const InsightsPage           = lazy1(() => import('./components/insights/InsightsPage'), 'InsightsPage');
+const AIAssistantPage        = lazy1(() => import('./components/ai/AIAssistantPage'), 'AIAssistantPage');
+const SmartUploadPage        = lazy1(() => import('./components/import/SmartUploadPage'), 'SmartUploadPage');
+const OnboardingWizard       = lazy1(() => import('./components/onboarding/OnboardingWizard'), 'OnboardingWizard');
+const SubscribePage          = lazy1(() => import('./components/billing/SubscribePage'), 'SubscribePage');
+const ComparePage            = lazy1(() => import('./components/compare/ComparePage'), 'ComparePage');
+const MarketplacePage        = lazy1(() => import('./components/marketplace/MarketplacePage'), 'MarketplacePage');
+const FarmActivityAudit      = lazy1(() => import('./components/audit/FarmActivityAudit'), 'FarmActivityAudit');
+const SuperAdminGuard        = lazy1(() => import('./components/superadmin/SuperAdminGuard'), 'SuperAdminGuard');
+const SuperAdminDashboard    = lazy1(() => import('./components/superadmin/SuperAdminDashboard'), 'SuperAdminDashboard');
+const UserApprovals          = lazy1(() => import('./components/superadmin/UserApprovals'), 'UserApprovals');
+const UsersManagement        = lazy1(() => import('./components/superadmin/UsersManagement'), 'UsersManagement');
+const PricingManagement      = lazy1(() => import('./components/superadmin/PricingManagement'), 'PricingManagement');
+const FarmsManagement        = lazy1(() => import('./components/superadmin/FarmsManagement'), 'FarmsManagement');
+const MarketplaceAdmin       = lazy1(() => import('./components/superadmin/MarketplaceAdmin'), 'MarketplaceAdmin');
+const Announcements          = lazy1(() => import('./components/superadmin/Announcements'), 'Announcements');
+const SupportTickets         = lazy1(() => import('./components/superadmin/SupportTickets'), 'SupportTickets');
+const ActivityLogs           = lazy1(() => import('./components/superadmin/ActivityLogs'), 'ActivityLogs');
+const BillingSubscriptions   = lazy1(() => import('./components/superadmin/BillingSubscriptions'), 'BillingSubscriptions');
+const PlatformSettings       = lazy1(() => import('./components/superadmin/PlatformSettings'), 'PlatformSettings');
 
 function AppContent() {
   const { t } = useTranslation();
@@ -969,8 +974,14 @@ function AppContent() {
     }
   };
 
+  const pageFallback = (
+    <div className="flex items-center justify-center h-48">
+      <div className="w-8 h-8 border-2 border-[#3D5F42] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
   if (currentView.startsWith('super-admin')) {
-    return renderView();
+    return <Suspense fallback={pageFallback}>{renderView()}</Suspense>;
   }
 
   return (
@@ -1026,9 +1037,13 @@ function AppContent() {
         }
       `}</style>
       <ImpersonationBanner />
-      <DashboardLayout currentView={currentView} onNavigate={navigateToView}>
-        {renderView()}
-      </DashboardLayout>
+      <Suspense fallback={null}>
+        <DashboardLayout currentView={currentView} onNavigate={navigateToView}>
+          <Suspense fallback={pageFallback}>
+            {renderView()}
+          </Suspense>
+        </DashboardLayout>
+      </Suspense>
       {showTour && (
         <OnboardingTour
           onComplete={() => setShowTour(false)}
