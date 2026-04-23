@@ -245,22 +245,20 @@ export function AIAssistantPage() {
         },
       ];
 
-      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-      const fnUrl = `${supabaseUrl}/functions/v1/ai-chat`;
+      // Use the Vercel proxy route (/api/ai-chat) — same origin, no CORS, works on
+      // mobile networks that block Supabase edge function IPs (Deno Deploy).
       const body = JSON.stringify({ farm_id: currentFarm.id, messages: allMessages, include_context: true });
 
       const doFetch = () => {
         const ctrl = new AbortController();
         // 55-second timeout — AI cold start + Anthropic latency can reach 30-40s on slow mobile
         const timer = setTimeout(() => ctrl.abort(), 55_000);
-        return fetch(fnUrl, {
+        return fetch('/api/ai-chat', {
           method: 'POST',
           signal: ctrl.signal,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
-            'apikey': anonKey,
           },
           body,
         }).finally(() => clearTimeout(timer));
