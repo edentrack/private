@@ -245,31 +245,43 @@ export function AIAssistantPage() {
         },
       ];
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
       const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
       const fnUrl = `${supabaseUrl}/functions/v1/ai-chat`;
+      const body = JSON.stringify({ farm_id: currentFarm.id, messages: allMessages, include_context: true });
 
-      const doFetch = () => fetch(fnUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': anonKey,
-        },
-        body: JSON.stringify({ farm_id: currentFarm.id, messages: allMessages, include_context: true }),
-      });
+      const doFetch = () => {
+        const ctrl = new AbortController();
+        // 55-second timeout — AI cold start + Anthropic latency can reach 30-40s on slow mobile
+        const timer = setTimeout(() => ctrl.abort(), 55_000);
+        return fetch(fnUrl, {
+          method: 'POST',
+          signal: ctrl.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': anonKey,
+          },
+          body,
+        }).finally(() => clearTimeout(timer));
+      };
 
       let response: Response;
       try {
         response = await doFetch();
       } catch (fetchErr: any) {
-        console.error('AI fetch error (attempt 1):', fetchErr?.message, fetchErr);
-        await new Promise(r => setTimeout(r, 2000));
+        const isTimeout = fetchErr?.name === 'AbortError';
+        console.error('AI fetch error (attempt 1):', fetchErr?.name, fetchErr?.message);
+        await new Promise(r => setTimeout(r, 3000));
         try {
           response = await doFetch();
         } catch (fetchErr2: any) {
-          console.error('AI fetch error (attempt 2):', fetchErr2?.message, fetchErr2);
-          throw new Error(`Network error: ${fetchErr2?.message || 'Could not reach AI service. Check your connection.'}`);
+          const isTimeout2 = fetchErr2?.name === 'AbortError';
+          console.error('AI fetch error (attempt 2):', fetchErr2?.name, fetchErr2?.message);
+          const msg = isTimeout || isTimeout2
+            ? 'Request timed out — Eden AI is slow to start. Try again in a moment.'
+            : 'Could not reach Eden AI. Check your connection and try again.';
+          throw new Error(msg);
         }
       }
 

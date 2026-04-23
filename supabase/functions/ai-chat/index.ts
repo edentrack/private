@@ -5,14 +5,23 @@ const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") || "https://edentrack.app"
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("origin") || "";
-  const isAllowed =
+  // Reflect the caller's origin when it's a known trusted source.
+  // For installed PWAs on Android the Origin header is "null" or absent —
+  // in those cases we fall back to ALLOWED_ORIGIN so the CORS check passes.
+  // JWT auth is the real security gate; CORS is defence-in-depth only.
+  const trustedOrigin =
     origin === ALLOWED_ORIGIN ||
     origin.startsWith("http://localhost:") ||
-    origin.startsWith("http://127.0.0.1:");
+    origin.startsWith("http://127.0.0.1:") ||
+    origin.endsWith(".vercel.app");
+
+  const allowOrigin = trustedOrigin ? origin : ALLOWED_ORIGIN;
+
   return {
-    "Access-Control-Allow-Origin": isAllowed ? origin : ALLOWED_ORIGIN,
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+    "Vary": "Origin",
   };
 }
 
@@ -441,10 +450,19 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (!membership) {
-      return new Response(
-        JSON.stringify({ error: "You don't have access to this farm." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Allow super admins to access any farm (support mode / impersonation)
+      const { data: adminCheck } = await supabaseClient
+        .from("profiles")
+        .select("is_super_admin")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!adminCheck?.is_super_admin) {
+        return new Response(
+          JSON.stringify({ error: "You don't have access to this farm." }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // ── Tier enforcement ──────────────────────────────────────────────
@@ -468,7 +486,7 @@ Deno.serve(async (req: Request) => {
 
     // Tier caps: { dailyMsgs, monthlyMsgs, photos, farmContext, dataLogging, voice }
     const TIERS: Record<string, { dailyMsgs: number; monthlyMsgs: number; photos: number; farmContext: boolean; dataLogging: boolean }> = {
-      free:       { dailyMsgs: 5,   monthlyMsgs: 30,    photos: 0,   farmContext: false, dataLogging: false },
+      free:       { dailyMsgs: 5,   monthlyMsgs: 30,    photos: 0,   farmContext: true,  dataLogging: false },
       pro:        { dailyMsgs: 999, monthlyMsgs: 50,    photos: 10,  farmContext: true,  dataLogging: true  },
       enterprise: { dailyMsgs: 999, monthlyMsgs: 200,   photos: 30,  farmContext: true,  dataLogging: true  },
       industry:   { dailyMsgs: 999, monthlyMsgs: 99999, photos: 999, farmContext: true,  dataLogging: true  },
