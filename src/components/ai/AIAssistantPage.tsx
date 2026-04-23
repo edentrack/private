@@ -245,30 +245,38 @@ export function AIAssistantPage() {
         },
       ];
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      const fnUrl = `${supabaseUrl}/functions/v1/ai-chat`;
+
+      const doFetch = () => fetch(fnUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': anonKey,
         },
-        body: JSON.stringify({
-          farm_id: currentFarm.id,
-          messages: allMessages,
-          include_context: true,
-        }),
+        body: JSON.stringify({ farm_id: currentFarm.id, messages: allMessages, include_context: true }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get AI response');
+      let response: Response;
+      try {
+        response = await doFetch();
+      } catch (fetchErr: any) {
+        console.error('AI fetch error (attempt 1):', fetchErr?.message, fetchErr);
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+          response = await doFetch();
+        } catch (fetchErr2: any) {
+          console.error('AI fetch error (attempt 2):', fetchErr2?.message, fetchErr2);
+          throw new Error(`Network error: ${fetchErr2?.message || 'Could not reach AI service. Check your connection.'}`);
+        }
       }
 
       const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get AI response');
+        throw new Error(data?.error || data?.message || `Server error ${response.status}`);
       }
-
       if (data.msgsUsed && data.msgsCap) {
         setUsageInfo({ used: data.msgsUsed, cap: data.msgsCap, tier: data.tier || 'free' });
       }
