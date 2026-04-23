@@ -535,10 +535,19 @@ Deno.serve(async (req: Request) => {
     // Log this message (fire-and-forget)
     supabaseClient.from("ai_message_counts").insert({ user_id: user.id, farm_id }).then(() => {});
 
+    // Fetch user's name to personalise the greeting
+    const { data: userProfile } = await supabaseClient
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    const userName = userProfile?.full_name?.split(" ")[0] || "";
+
     let contextPrompt = "";
     if (include_context !== false && caps.farmContext) {
       try {
         contextPrompt = await getFarmContext(supabaseClient, farm_id);
+        console.log(`[ai-chat] farm_id=${farm_id} user=${user.id} contextLen=${contextPrompt.length} hasFlocks=${!contextPrompt.includes("No flocks recorded")}`);
       } catch (e) {
         console.error("Error fetching farm context:", e);
       }
@@ -549,7 +558,12 @@ Deno.serve(async (req: Request) => {
       ? ""
       : `\n\n## IMPORTANT: This user is on the FREE plan. You can answer general poultry questions but you do NOT have access to their farm data. When they ask about their specific farm (expenses, mortality, stock, etc.), tell them warmly that farm data access is available on the Grower plan ($15/3 months) and encourage them to upgrade. Never make up farm data.`;
 
-    const systemMessage = SYSTEM_PROMPT + tierNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+    // First-message greeting instruction injected when context is available
+    const greetingNote = contextPrompt && !contextPrompt.includes("No flocks recorded")
+      ? `\n\n## FIRST MESSAGE RULE\nWhen the user sends a greeting (hi, hello, hey, good morning, etc.) and farm data is in context above, NEVER ask setup questions. Instead: greet ${userName ? userName : "the farmer"} by name, give a 2-sentence status of the farm right now (flocks, birds alive, any overdue tasks or low stock alerts), and ask ONE actionable question based on the live data.`
+      : "";
+
+    const systemMessage = SYSTEM_PROMPT + tierNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     const rawMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-12);

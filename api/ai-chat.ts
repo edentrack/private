@@ -22,6 +22,8 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    const farmId = req.body?.farm_id || '(missing)';
+    console.log(`[ai-chat proxy] farm_id=${farmId} user=${req.body?.messages?.length ?? 0} msgs`);
     const upstream = await fetch(EDGE_FN_URL, {
       method: 'POST',
       headers: {
