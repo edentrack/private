@@ -1,8 +1,20 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import posthog from 'posthog-js';
 import App from './App.tsx';
 import './index.css';
 import './lib/i18n';
+
+const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
+if (POSTHOG_KEY) {
+  posthog.init(POSTHOG_KEY, {
+    api_host: 'https://us.i.posthog.com',
+    person_profiles: 'identified_only',
+    capture_pageview: true,
+    capture_pageleave: true,
+    autocapture: true,
+  });
+}
 
 // When a lazy chunk fails to load (stale SW cache after deploy), force a fresh page load.
 // Without this, users get "Failed to fetch dynamically imported module" errors indefinitely.

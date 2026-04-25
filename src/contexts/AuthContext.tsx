@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
+import posthog from 'posthog-js';
 import { supabase } from '../lib/supabaseClient';
 import type { Profile, FarmMember, MemberRole } from '../types/database';
 import { AuthContext } from './authContextRef';
@@ -252,6 +253,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setProfile(profileData);
+      posthog.identify(effectiveUserId, {
+        email: profileData.email,
+        name: profileData.full_name,
+        subscription_tier: profileData.subscription_tier,
+        country: profileData.country,
+        account_status: profileData.account_status,
+      });
         // Super admins skip farm loading UNLESS they are actively impersonating someone
         if (profileData.is_super_admin && !effectiveFarmId) {
           if (timeoutId) {
@@ -551,6 +559,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    posthog.reset();
     clearUserData();
   };
 

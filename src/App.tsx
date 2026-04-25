@@ -67,6 +67,34 @@ const ActivityLogs           = lazy1(() => import('./components/superadmin/Activ
 const BillingSubscriptions   = lazy1(() => import('./components/superadmin/BillingSubscriptions'), 'BillingSubscriptions');
 const PlatformSettings       = lazy1(() => import('./components/superadmin/PlatformSettings'), 'PlatformSettings');
 
+function CrispChat() {
+  const { profile, user } = useAuth();
+  useEffect(() => {
+    const id = import.meta.env.VITE_CRISP_WEBSITE_ID;
+    if (!id) return;
+    (window as any).$crisp = [];
+    (window as any).CRISP_WEBSITE_ID = id;
+    const s = document.createElement('script');
+    s.src = 'https://client.crisp.chat/l.js';
+    s.async = true;
+    document.head.appendChild(s);
+  }, []);
+
+  useEffect(() => {
+    const crisp = (window as any).$crisp;
+    if (!crisp || !profile) return;
+    if (profile.email)     crisp.push(['set', 'user:email',    [profile.email]]);
+    if (profile.full_name) crisp.push(['set', 'user:nickname', [profile.full_name]]);
+    crisp.push(['set', 'session:data', [[
+      ['user_id',            user?.id],
+      ['subscription_tier',  profile.subscription_tier],
+      ['country',            profile.country],
+    ]]]);
+  }, [profile, user]);
+
+  return null;
+}
+
 function AppContent() {
   const { t } = useTranslation();
   const { user, profile, loading, refreshSession, signOut, currentRole, currentFarm } = useAuth();
@@ -1066,6 +1094,7 @@ function App() {
               <ToastProvider>
                 <SimpleModeProvider>
                 <LanguageProvider>
+                  <CrispChat />
                   <AppContent />
                 </LanguageProvider>
                 </SimpleModeProvider>
