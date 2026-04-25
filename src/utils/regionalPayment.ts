@@ -2,7 +2,7 @@ export interface RegionConfig {
   countryCode: string;
   countryName: string;
   currency: string;
-  processor: 'campay' | 'paystack' | 'stripe' | 'flutterwave';
+  processor: 'paystack' | 'stripe' | 'flutterwave';
   processorLabel: string;
   paymentMethods: string[];
   phonePrefix: string;
@@ -40,6 +40,30 @@ export const FIXED_PRICES: Record<string, Record<string, Record<string, number>>
     quarterly: { pro: 280,    enterprise: 650,    industry: 1850 },
     yearly:    { pro: 920,    enterprise: 2150,   industry: 6100 },
   },
+  UGX: {
+    quarterly: { pro: 55000,  enterprise: 130000, industry: 375000 },
+    yearly:    { pro: 185000, enterprise: 430000, industry: 1250000 },
+  },
+  TZS: {
+    quarterly: { pro: 40000,  enterprise: 93000,  industry: 265000 },
+    yearly:    { pro: 132000, enterprise: 307000, industry: 875000 },
+  },
+  RWF: {
+    quarterly: { pro: 20000,  enterprise: 47000,  industry: 135000 },
+    yearly:    { pro: 67000,  enterprise: 155000, industry: 445000 },
+  },
+  EGP: {
+    quarterly: { pro: 720,    enterprise: 1680,   industry: 4800 },
+    yearly:    { pro: 2400,   enterprise: 5520,   industry: 15840 },
+  },
+  MAD: {
+    quarterly: { pro: 150,    enterprise: 350,    industry: 1000 },
+    yearly:    { pro: 500,    enterprise: 1150,   industry: 3300 },
+  },
+  ZMW: {
+    quarterly: { pro: 405,    enterprise: 945,    industry: 2700 },
+    yearly:    { pro: 1350,   enterprise: 3105,   industry: 8910 },
+  },
   EUR: {
     quarterly: { pro: 13.99,  enterprise: 31.99,  industry: 91.99 },
     yearly:    { pro: 45.99,  enterprise: 104.99, industry: 299.99 },
@@ -67,6 +91,12 @@ const CURRENCY_FORMAT: Record<string, { prefix: string; suffix: string; decimals
   GHS: { prefix: 'GH₵',  suffix: '',     decimals: 0 },
   KES: { prefix: 'KSh ', suffix: '',     decimals: 0 },
   ZAR: { prefix: 'R',    suffix: '',     decimals: 0 },
+  UGX: { prefix: 'UGX ',suffix: '',     decimals: 0 },
+  TZS: { prefix: 'TZS ',suffix: '',     decimals: 0 },
+  RWF: { prefix: 'RWF ',suffix: '',     decimals: 0 },
+  EGP: { prefix: 'E£',  suffix: '',     decimals: 0 },
+  MAD: { prefix: 'MAD ',suffix: '',     decimals: 0 },
+  ZMW: { prefix: 'K',   suffix: '',     decimals: 0 },
   EUR: { prefix: '€',    suffix: '',     decimals: 2 },
   GBP: { prefix: '£',    suffix: '',     decimals: 2 },
   CAD: { prefix: 'CA$',  suffix: '',     decimals: 2 },
@@ -94,37 +124,81 @@ export function getPriceCurrency(region: RegionConfig): string {
 // ── Region configs ──────────────────────────────────────────────────────
 
 const TZ_TO_COUNTRY: Record<string, string> = {
-  'Africa/Douala': 'CM', 'Africa/Lagos': 'NG', 'Africa/Accra': 'GH',
-  'Africa/Nairobi': 'KE', 'Africa/Johannesburg': 'ZA', 'Africa/Abidjan': 'CI',
-  'Africa/Dakar': 'SN', 'Africa/Addis_Ababa': 'ET', 'Africa/Dar_es_Salaam': 'TZ',
-  'Africa/Kampala': 'UG', 'Africa/Kigali': 'RW', 'Africa/Kinshasa': 'CD',
-  'Africa/Bangui': 'CF', 'Africa/Libreville': 'GA', 'Africa/Ndjamena': 'TD',
-  'Africa/Brazzaville': 'CG', 'Africa/Bamako': 'ML', 'Africa/Ouagadougou': 'BF',
+  // Central Africa
+  'Africa/Douala': 'CM', 'Africa/Bangui': 'CF', 'Africa/Libreville': 'GA',
+  'Africa/Ndjamena': 'TD', 'Africa/Brazzaville': 'CG', 'Africa/Kinshasa': 'CD',
+  'Africa/Lubumbashi': 'CD',
+  // West Africa
+  'Africa/Lagos': 'NG', 'Africa/Accra': 'GH', 'Africa/Abidjan': 'CI',
+  'Africa/Dakar': 'SN', 'Africa/Bamako': 'ML', 'Africa/Ouagadougou': 'BF',
   'Africa/Niamey': 'NE', 'Africa/Lome': 'TG', 'Africa/Cotonou': 'BJ',
   'Africa/Conakry': 'GN', 'Africa/Freetown': 'SL', 'Africa/Monrovia': 'LR',
-  'Africa/Casablanca': 'MA', 'Africa/Cairo': 'EG', 'Africa/Tunis': 'TN',
+  'Africa/Banjul': 'GM', 'Africa/Bissau': 'GW',
+  // East Africa
+  'Africa/Nairobi': 'KE', 'Africa/Addis_Ababa': 'ET', 'Africa/Dar_es_Salaam': 'TZ',
+  'Africa/Kampala': 'UG', 'Africa/Kigali': 'RW', 'Africa/Djibouti': 'DJ',
+  'Africa/Mogadishu': 'SO', 'Africa/Asmara': 'ER', 'Africa/Juba': 'SS',
+  // North Africa
+  'Africa/Cairo': 'EG', 'Africa/Casablanca': 'MA', 'Africa/Tunis': 'TN',
+  'Africa/Tripoli': 'LY', 'Africa/Algiers': 'DZ',
+  // Southern Africa
+  'Africa/Johannesburg': 'ZA', 'Africa/Lusaka': 'ZM', 'Africa/Harare': 'ZW',
+  'Africa/Blantyre': 'MW', 'Africa/Maputo': 'MZ', 'Africa/Gaborone': 'BW',
+  'Africa/Windhoek': 'NA', 'Africa/Mbabane': 'SZ', 'Africa/Maseru': 'LS',
+  // Americas
   'America/New_York': 'US', 'America/Chicago': 'US', 'America/Los_Angeles': 'US',
+  'America/Denver': 'US', 'America/Phoenix': 'US',
   'America/Toronto': 'CA', 'America/Vancouver': 'CA',
+  // Europe
   'Europe/London': 'GB', 'Europe/Paris': 'FR', 'Europe/Berlin': 'DE',
   'Europe/Amsterdam': 'NL', 'Europe/Brussels': 'BE', 'Europe/Madrid': 'ES',
-  'Europe/Rome': 'IT', 'Europe/Lisbon': 'PT',
-  'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU',
+  'Europe/Rome': 'IT', 'Europe/Lisbon': 'PT', 'Europe/Stockholm': 'SE',
+  'Europe/Oslo': 'NO', 'Europe/Copenhagen': 'DK', 'Europe/Warsaw': 'PL',
+  // Oceania
+  'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Perth': 'AU',
 };
 
 export const COUNTRY_CONFIGS: Record<string, RegionConfig> = {
-  CM: { countryCode: 'CM', countryName: 'Cameroon',      currency: 'XAF', processor: 'campay',     processorLabel: 'MTN MoMo / Orange Money', paymentMethods: ['MTN Mobile Money', 'Orange Money'],       phonePrefix: '+237', needsPhone: true  },
-  NG: { countryCode: 'NG', countryName: 'Nigeria',       currency: 'NGN', processor: 'paystack',   processorLabel: 'Card / Bank Transfer',    paymentMethods: ['Card', 'Bank Transfer', 'USSD'],           phonePrefix: '+234', needsPhone: false },
-  GH: { countryCode: 'GH', countryName: 'Ghana',         currency: 'GHS', processor: 'paystack',   processorLabel: 'Card / Mobile Money',     paymentMethods: ['Card', 'MTN MoMo', 'Vodafone Cash'],       phonePrefix: '+233', needsPhone: false },
-  KE: { countryCode: 'KE', countryName: 'Kenya',         currency: 'KES', processor: 'paystack',   processorLabel: 'Card / M-Pesa',           paymentMethods: ['Card', 'M-Pesa'],                          phonePrefix: '+254', needsPhone: false },
-  ZA: { countryCode: 'ZA', countryName: 'South Africa',  currency: 'ZAR', processor: 'paystack',   processorLabel: 'Card',                    paymentMethods: ['Card', 'EFT'],                             phonePrefix: '+27',  needsPhone: false },
-  CI: { countryCode: 'CI', countryName: "Côte d'Ivoire", currency: 'XOF', processor: 'flutterwave',processorLabel: 'MTN MoMo / Orange',       paymentMethods: ['Mobile Money'],                            phonePrefix: '+225', needsPhone: false },
-  SN: { countryCode: 'SN', countryName: 'Senegal',       currency: 'XOF', processor: 'flutterwave',processorLabel: 'Wave / Orange Money',     paymentMethods: ['Mobile Money'],                            phonePrefix: '+221', needsPhone: false },
-  GB: { countryCode: 'GB', countryName: 'United Kingdom',currency: 'GBP', processor: 'stripe',     processorLabel: 'Card',                    paymentMethods: ['Card', 'Apple Pay', 'Google Pay'],         phonePrefix: '+44',  needsPhone: false },
-  FR: { countryCode: 'FR', countryName: 'France',        currency: 'EUR', processor: 'stripe',     processorLabel: 'Card',                    paymentMethods: ['Card'],                                    phonePrefix: '+33',  needsPhone: false },
-  DE: { countryCode: 'DE', countryName: 'Germany',       currency: 'EUR', processor: 'stripe',     processorLabel: 'Card',                    paymentMethods: ['Card', 'SEPA'],                            phonePrefix: '+49',  needsPhone: false },
-  CA: { countryCode: 'CA', countryName: 'Canada',        currency: 'CAD', processor: 'stripe',     processorLabel: 'Card',                    paymentMethods: ['Card'],                                    phonePrefix: '+1',   needsPhone: false },
-  AU: { countryCode: 'AU', countryName: 'Australia',     currency: 'AUD', processor: 'stripe',     processorLabel: 'Card',                    paymentMethods: ['Card'],                                    phonePrefix: '+61',  needsPhone: false },
-  US: { countryCode: 'US', countryName: 'United States', currency: 'USD', processor: 'stripe',     processorLabel: 'Card',                    paymentMethods: ['Card', 'Apple Pay', 'Google Pay'],         phonePrefix: '+1',   needsPhone: false },
+  // ── Flutterwave — Africa (local currencies) ─────────────────────────────
+  NG: { countryCode: 'NG', countryName: 'Nigeria',         currency: 'NGN', processor: 'flutterwave', processorLabel: 'Card / Bank Transfer / USSD',  paymentMethods: ['Card', 'Bank Transfer', 'USSD', 'Mobile Money'], phonePrefix: '+234', needsPhone: false },
+  GH: { countryCode: 'GH', countryName: 'Ghana',           currency: 'GHS', processor: 'flutterwave', processorLabel: 'Card / Mobile Money',           paymentMethods: ['Card', 'MTN MoMo', 'Vodafone Cash'],             phonePrefix: '+233', needsPhone: false },
+  KE: { countryCode: 'KE', countryName: 'Kenya',           currency: 'KES', processor: 'flutterwave', processorLabel: 'Card / M-Pesa',                 paymentMethods: ['Card', 'M-Pesa'],                                phonePrefix: '+254', needsPhone: false },
+  ZA: { countryCode: 'ZA', countryName: 'South Africa',    currency: 'ZAR', processor: 'flutterwave', processorLabel: 'Card / EFT',                    paymentMethods: ['Card', 'EFT'],                                   phonePrefix: '+27',  needsPhone: false },
+  UG: { countryCode: 'UG', countryName: 'Uganda',          currency: 'UGX', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Airtel Money'],                      phonePrefix: '+256', needsPhone: false },
+  TZ: { countryCode: 'TZ', countryName: 'Tanzania',        currency: 'TZS', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['M-Pesa', 'Tigo Pesa', 'Airtel Money'],           phonePrefix: '+255', needsPhone: false },
+  RW: { countryCode: 'RW', countryName: 'Rwanda',          currency: 'RWF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Airtel Money'],                      phonePrefix: '+250', needsPhone: false },
+  ZM: { countryCode: 'ZM', countryName: 'Zambia',          currency: 'ZMW', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Airtel Money'],                      phonePrefix: '+260', needsPhone: false },
+  EG: { countryCode: 'EG', countryName: 'Egypt',           currency: 'EGP', processor: 'flutterwave', processorLabel: 'Card / Mobile Wallet',          paymentMethods: ['Card', 'Vodafone Cash', 'Fawry'],                phonePrefix: '+20',  needsPhone: false },
+  MA: { countryCode: 'MA', countryName: 'Morocco',         currency: 'MAD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+212', needsPhone: false },
+  CM: { countryCode: 'CM', countryName: 'Cameroon',        currency: 'XAF', processor: 'flutterwave', processorLabel: 'MTN MoMo / Orange Money',       paymentMethods: ['MTN Mobile Money', 'Orange Money'],              phonePrefix: '+237', needsPhone: false },
+  CI: { countryCode: 'CI', countryName: "Côte d'Ivoire",   currency: 'XOF', processor: 'flutterwave', processorLabel: 'MTN MoMo / Orange',             paymentMethods: ['MTN MoMo', 'Orange Money', 'Wave'],              phonePrefix: '+225', needsPhone: false },
+  SN: { countryCode: 'SN', countryName: 'Senegal',         currency: 'XOF', processor: 'flutterwave', processorLabel: 'Wave / Orange Money',           paymentMethods: ['Wave', 'Orange Money', 'Free Money'],            phonePrefix: '+221', needsPhone: false },
+  ML: { countryCode: 'ML', countryName: 'Mali',            currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Orange Money', 'Moov Money'],                    phonePrefix: '+223', needsPhone: false },
+  BF: { countryCode: 'BF', countryName: 'Burkina Faso',    currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Orange Money', 'Moov Money'],                    phonePrefix: '+226', needsPhone: false },
+  NE: { countryCode: 'NE', countryName: 'Niger',           currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Airtel Money', 'Orange Money'],                  phonePrefix: '+227', needsPhone: false },
+  TG: { countryCode: 'TG', countryName: 'Togo',            currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['T-Money', 'Flooz'],                              phonePrefix: '+228', needsPhone: false },
+  BJ: { countryCode: 'BJ', countryName: 'Benin',           currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Moov Money'],                        phonePrefix: '+229', needsPhone: false },
+  // ── Flutterwave — Africa (USD billing) ──────────────────────────────────
+  ET: { countryCode: 'ET', countryName: 'Ethiopia',        currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+251', needsPhone: false },
+  ZW: { countryCode: 'ZW', countryName: 'Zimbabwe',        currency: 'USD', processor: 'flutterwave', processorLabel: 'Card / EcoCash',                paymentMethods: ['Card', 'EcoCash'],                               phonePrefix: '+263', needsPhone: false },
+  MZ: { countryCode: 'MZ', countryName: 'Mozambique',      currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card', 'M-Pesa'],                                phonePrefix: '+258', needsPhone: false },
+  MW: { countryCode: 'MW', countryName: 'Malawi',          currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card', 'Airtel Money'],                          phonePrefix: '+265', needsPhone: false },
+  GN: { countryCode: 'GN', countryName: 'Guinea',          currency: 'USD', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Orange Money', 'MTN MoMo'],                      phonePrefix: '+224', needsPhone: false },
+  SL: { countryCode: 'SL', countryName: 'Sierra Leone',    currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card', 'Orange Money'],                          phonePrefix: '+232', needsPhone: false },
+  LR: { countryCode: 'LR', countryName: 'Liberia',         currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+231', needsPhone: false },
+  GM: { countryCode: 'GM', countryName: 'Gambia',          currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+220', needsPhone: false },
+  // ── Stripe — US, UK, Europe, Oceania ────────────────────────────────────
+  US: { countryCode: 'US', countryName: 'United States',   currency: 'USD', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card', 'Apple Pay', 'Google Pay'],               phonePrefix: '+1',   needsPhone: false },
+  GB: { countryCode: 'GB', countryName: 'United Kingdom',  currency: 'GBP', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card', 'Apple Pay', 'Google Pay'],               phonePrefix: '+44',  needsPhone: false },
+  FR: { countryCode: 'FR', countryName: 'France',          currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+33',  needsPhone: false },
+  DE: { countryCode: 'DE', countryName: 'Germany',         currency: 'EUR', processor: 'stripe',      processorLabel: 'Card / SEPA',                   paymentMethods: ['Card', 'SEPA'],                                  phonePrefix: '+49',  needsPhone: false },
+  NL: { countryCode: 'NL', countryName: 'Netherlands',     currency: 'EUR', processor: 'stripe',      processorLabel: 'Card / iDEAL',                  paymentMethods: ['Card', 'iDEAL'],                                 phonePrefix: '+31',  needsPhone: false },
+  BE: { countryCode: 'BE', countryName: 'Belgium',         currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+32',  needsPhone: false },
+  ES: { countryCode: 'ES', countryName: 'Spain',           currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+34',  needsPhone: false },
+  IT: { countryCode: 'IT', countryName: 'Italy',           currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+39',  needsPhone: false },
+  PT: { countryCode: 'PT', countryName: 'Portugal',        currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+351', needsPhone: false },
+  CA: { countryCode: 'CA', countryName: 'Canada',          currency: 'CAD', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+1',   needsPhone: false },
+  AU: { countryCode: 'AU', countryName: 'Australia',       currency: 'AUD', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+61',  needsPhone: false },
 };
 
 export const DEFAULT_REGION: RegionConfig = {

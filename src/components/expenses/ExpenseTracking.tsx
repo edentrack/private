@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, DollarSign, Calendar, Edit2, Trash2, Zap, Download, ShoppingBag, Pill, Wrench, Box, ChevronDown, MessageCircle } from 'lucide-react';
+import { Plus, DollarSign, Calendar, Edit2, Trash2, Zap, Download, ChevronDown, MessageCircle } from 'lucide-react';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
@@ -30,6 +30,20 @@ const getCategoryLabel = (cat: string, t: (key: string) => string): string => {
     'other': t('expenses.categories.other')
   };
   return categoryMap[cat] || cat;
+};
+
+const getCategoryEmoji = (cat: string): string => {
+  const emojiMap: Record<string, string> = {
+    'feed': '🌾',
+    'medication': '💊',
+    'equipment': '🔧',
+    'labor': '👷',
+    'chicks purchase': '🐣',
+    'chicks transport': '🚛',
+    'transport': '🚛',
+    'other': '📦',
+  };
+  return emojiMap[(cat || '').toLowerCase()] || '📦';
 };
 
 export function ExpenseTracking() {
@@ -957,8 +971,8 @@ export function ExpenseTracking() {
             title={t('expenses.record_feed_purchase_tooltip')}
           >
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <ShoppingBag className="w-4 h-4 text-orange-600" />
+              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 text-lg">
+                🌾
               </div>
               <h4 className="font-semibold text-gray-900 text-sm">{t('expenses.record_feed_purchase')}</h4>
             </div>
@@ -976,8 +990,8 @@ export function ExpenseTracking() {
             title={t('expenses.record_medication_purchase_tooltip')}
           >
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Pill className="w-4 h-4 text-blue-600" />
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 text-lg">
+                💊
               </div>
               <h4 className="font-semibold text-gray-900 text-sm">{t('expenses.record_medication_purchase')}</h4>
             </div>
@@ -995,8 +1009,8 @@ export function ExpenseTracking() {
             title={t('expenses.record_equipment_purchase_tooltip')}
           >
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Wrench className="w-4 h-4 text-purple-600" />
+              <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 text-lg">
+                🔧
               </div>
               <h4 className="font-semibold text-gray-900 text-sm">{t('expenses.record_equipment_purchase')}</h4>
             </div>
@@ -1014,8 +1028,8 @@ export function ExpenseTracking() {
             title={t('expenses.record_supplies_purchase_tooltip')}
           >
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Box className="w-4 h-4 text-green-600" />
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 text-lg">
+                📦
               </div>
               <h4 className="font-semibold text-gray-900 text-sm">{t('expenses.record_supplies_purchase')}</h4>
             </div>
@@ -1239,7 +1253,7 @@ export function ExpenseTracking() {
               return (
                 <div key={cat} className="p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900 text-sm">{getCategoryLabel(cat, t)}</span>
+                    <span className="font-medium text-gray-900 text-sm">{getCategoryEmoji(cat)} {getCategoryLabel(cat, t)}</span>
                     <span className="text-sm font-semibold text-gray-900">
                       {convertAmount(total)} {currency}
                     </span>
@@ -1289,9 +1303,7 @@ export function ExpenseTracking() {
                   className="flex items-center justify-between gap-2"
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <DollarSign className="w-3 h-3 text-gray-900" />
-                    </div>
+                    <span className="text-base leading-none flex-shrink-0">{getCategoryEmoji(expense.category)}</span>
                     <span className="font-medium text-gray-900 text-xs whitespace-nowrap">
                       {getCategoryLabel(expense.category, t)}
                     </span>

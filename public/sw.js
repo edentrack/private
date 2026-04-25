@@ -1,7 +1,7 @@
 // Service worker — network-first for HTML, cache-first for assets.
 // Key rule: NEVER cache index.html (it references hashed chunks that change on deploy).
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const STATIC_CACHE = `edentrack-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `edentrack-runtime-${CACHE_VERSION}`;
 

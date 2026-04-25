@@ -64,8 +64,11 @@ export interface Profile {
   created_at: string;
   is_super_admin?: boolean;
   account_status?: 'pending' | 'active' | 'suspended' | 'rejected';
-  subscription_tier?: 'free' | 'pro' | 'enterprise';
+  subscription_tier?: 'free' | 'pro' | 'enterprise' | 'industry';
   subscription_expires_at?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  cancel_at_period_end?: boolean | null;
   approved_by?: string | null;
   approved_at?: string | null;
   onboarding_completed?: boolean;

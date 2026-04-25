@@ -7,6 +7,9 @@ import {
   ClipboardList, Egg,
 } from 'lucide-react';
 
+const Y = '#ffdd00';   // brand yellow
+const YD = '#e6c700';  // yellow hover
+
 const PLANS = [
   {
     id: 'starter',
@@ -21,18 +24,18 @@ const PLANS = [
     features: [
       '1 active flock',
       'Daily task management',
-      'Mortality & weight tracking',
+      'Mortality and weight tracking',
       'Expense recording',
       'Basic inventory management',
       'WhatsApp report sharing',
     ],
-    notIncluded: ['Analytics & KPIs', 'Weekly email reports', 'Eden AI advisor', 'Smart Import', 'Team members'],
+    notIncluded: ['Analytics and KPIs', 'Weekly email reports', 'Eden AI advisor', 'Smart Import', 'Team members'],
   },
   {
     id: 'grower',
     name: 'Grower',
     icon: <Sprout className="w-5 h-5" />,
-    iconBg: 'bg-green-100 text-[#3D5F42]',
+    iconBg: 'bg-yellow-100 text-yellow-800',
     price: 15,
     priceSub: 'every 3 months',
     badge: 'Most Popular',
@@ -40,14 +43,14 @@ const PLANS = [
     ctaLabel: 'Start free trial',
     features: [
       'Up to 5 active flocks',
-      'Full analytics & KPIs',
+      'Full analytics and KPIs',
       'Automated weekly email reports',
-      'Eden AI advisor (50 msg/month)',
-      'Eden voice & photo logging',
-      'Smart receipt & document import',
-      'Vaccination scheduling & vet log',
-      'Sales tracking & invoices',
-      '2 team members + role permissions',
+      'Eden AI advisor (50 messages/month)',
+      'Eden voice and photo logging',
+      'Smart receipt and document import',
+      'Vaccination scheduling and vet log',
+      'Sales tracking and invoices',
+      '2 team members with role permissions',
     ],
     notIncluded: [],
   },
@@ -62,10 +65,10 @@ const PLANS = [
     highlighted: false,
     ctaLabel: 'Subscribe',
     features: [
-      'Unlimited flocks & team members',
-      'Eden AI — unlimited messages',
+      'Unlimited flocks and team members',
+      'Eden AI with unlimited messages',
       'Photo disease diagnosis',
-      'Payroll & shift management',
+      'Payroll and shift management',
       'Benchmarking vs similar farms',
       'Loan-readiness PDF report',
       'Priority WhatsApp support',
@@ -84,15 +87,15 @@ const PLANS = [
     highlighted: false,
     ctaLabel: 'Contact us',
     features: [
-      'Up to 10 farms, one account',
+      'Up to 10 farms under one account',
       'Multi-farm analytics dashboard',
-      'Eden AI — unlimited, best model',
-      'Unlimited team & custom roles',
+      'Eden AI unlimited with best model',
+      'Unlimited team with custom roles',
       'Custom-branded PDF reports',
-      'Excel / CSV data export',
+      'Excel and CSV data export',
       'Webhook API integrations',
       'Dedicated WhatsApp support',
-      'Onboarding & quarterly review call',
+      'Onboarding and quarterly review call',
     ],
     notIncluded: [],
   },
@@ -102,105 +105,105 @@ const FEATURES = [
   {
     icon: LayoutDashboard,
     title: 'Farm Dashboard',
-    description: 'Birds alive, today\'s tasks, egg collections, spending overview — everything at a glance the moment you open the app.',
-    color: 'text-[#3D5F42]',
-    bg: 'bg-green-50',
+    description: 'Everything you need the moment you open the app. Birds alive, today\'s tasks, egg collections and spending at a glance.',
+    color: 'text-yellow-700',
+    bg: 'bg-yellow-50',
   },
   {
     icon: Brain,
     title: 'Eden AI Advisor',
-    description: 'Ask Eden anything — flock health, feed optimization, when to sell. It knows your farm data and can log mortality, eggs, and expenses directly on your behalf.',
+    description: 'Ask Eden anything about flock health, feed costs or when to sell. It knows your farm data and logs mortality, eggs and expenses on your behalf.',
     color: 'text-purple-600',
     bg: 'bg-purple-50',
   },
   {
     icon: FileUp,
     title: 'Smart Receipt Import',
-    description: 'Photo a paper receipt and Eden reads it — auto-importing expenses with the right category, amount, and description. No typing.',
+    description: 'Photograph a paper receipt and Eden reads it, pulling out amounts, categories and descriptions automatically. No typing required.',
     color: 'text-orange-600',
     bg: 'bg-orange-50',
   },
   {
     icon: Shield,
     title: 'Role-Based Access Control',
-    description: 'Owner, Manager, Worker, Viewer — each with their own access level. Toggle exactly what managers and workers can see, log, or delete.',
+    description: 'Four roles with individual permission toggles. Decide exactly what each person on your farm can see, log or delete.',
     color: 'text-blue-600',
     bg: 'bg-blue-50',
   },
   {
     icon: TrendingUp,
-    title: 'Analytics & KPIs',
-    description: 'Track FCR, survival rate, profit per flock, cost-per-bird, and laying rate. View week-by-week breakdowns and share reports via WhatsApp.',
+    title: 'Analytics and KPIs',
+    description: 'FCR, survival rate, profit per flock, laying rate and cost-per-bird in one view. Week-by-week breakdowns you can share straight to WhatsApp.',
     color: 'text-indigo-600',
     bg: 'bg-indigo-50',
   },
   {
     icon: Egg,
-    title: 'Egg Collection & Sales',
-    description: 'Log eggs by size (small/medium/large/jumbo), track damaged eggs, manage inventory, and sell with automatic stock deduction.',
-    color: 'text-yellow-600',
-    bg: 'bg-yellow-50',
+    title: 'Egg Collection and Sales',
+    description: 'Track every size, grade and damaged egg. Manage your egg stock and record sales with automatic inventory updates.',
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
   },
   {
     icon: Scale,
-    title: 'Weight & Growth Tracking',
-    description: 'Record batch weights, compare against breed standards, and get sell-now vs wait recommendations from Eden.',
-    color: 'text-[#3D5F42]',
-    bg: 'bg-green-50',
+    title: 'Weight and Growth Tracking',
+    description: 'Record batch weights and compare against breed standards. Eden tells you whether to sell now or wait for better returns.',
+    color: 'text-yellow-700',
+    bg: 'bg-yellow-50',
   },
   {
     icon: Syringe,
-    title: 'Vaccinations & Vet Log',
-    description: 'Schedule vaccinations, get reminders, mark administered dates, and keep a full vet visit log including diagnosis, medication, and dosage.',
+    title: 'Vaccinations and Vet Log',
+    description: 'Schedule vaccinations, get reminders and keep a full vet log with diagnosis, medication and dosage records all in one place.',
     color: 'text-red-600',
     bg: 'bg-red-50',
   },
   {
     icon: Package,
     title: 'Inventory Management',
-    description: 'Track feed, medication, and supplies. Get low-stock alerts before you run out. Log daily usage from the dashboard in one tap.',
+    description: 'Know exactly what you have before you run out. Track feed, medication and supplies with one-tap daily usage logging and low-stock alerts.',
     color: 'text-amber-600',
     bg: 'bg-amber-50',
   },
   {
     icon: DollarSign,
-    title: 'Expense & Sales Tracking',
-    description: 'Log every cost and sale. View profit per flock, per week, or across the whole farm. Export to PDF for your bank or accountant.',
+    title: 'Expense and Sales Tracking',
+    description: 'Every cost and sale in one place. View profit per flock, per week or across the whole farm and export to PDF for your bank or accountant.',
     color: 'text-emerald-600',
     bg: 'bg-emerald-50',
   },
   {
     icon: Wifi,
     title: 'Works Offline',
-    description: 'No internet on the farm? Everything still works. Data queues locally and syncs automatically when you reconnect — nothing is ever lost.',
+    description: 'No signal? Everything still works. Data queues on your device and syncs silently the moment you reconnect.',
     color: 'text-teal-600',
     bg: 'bg-teal-50',
   },
   {
     icon: Users,
-    title: 'Team & Payroll',
-    description: 'Add managers and workers. Assign shifts, track hours, and process payroll — all from the same app.',
+    title: 'Team and Payroll',
+    description: 'Add managers and workers, assign shifts, track hours and run payroll all from the same app.',
     color: 'text-pink-600',
     bg: 'bg-pink-50',
   },
   {
     icon: BarChart3,
     title: 'Weekly Email Reports',
-    description: 'Get a full 7-day farm performance summary in your inbox every week, on the day you choose. Automatic, no setup needed.',
+    description: 'A full 7-day farm summary lands in your inbox every week on the day you pick. Fully automatic, no setup needed.',
     color: 'text-cyan-600',
     bg: 'bg-cyan-50',
   },
   {
     icon: MessageCircle,
     title: 'WhatsApp Sharing',
-    description: 'One tap to share your farm report, flock summary, or sales receipt via WhatsApp with your partner, investor, or supply chain.',
+    description: 'One tap and your farm report, flock summary or sales receipt is on WhatsApp. Perfect for partners, investors and buyers.',
     color: 'text-green-600',
     bg: 'bg-green-50',
   },
   {
     icon: ClipboardList,
-    title: 'Tasks & Forecasting',
-    description: 'Create task templates that repeat daily or weekly. Use the Forecast page to plan upcoming expenses before a batch starts.',
+    title: 'Tasks and Forecasting',
+    description: 'Set up recurring task templates and use the Forecast page to plan costs before a batch even starts.',
     color: 'text-violet-600',
     bg: 'bg-violet-50',
   },
@@ -209,51 +212,51 @@ const FEATURES = [
 const FAQS = [
   {
     q: 'Does it work without internet?',
-    a: 'Yes. Edentrack is a PWA (Progressive Web App). All features work offline — data queues locally and syncs automatically when you reconnect. Nothing is lost.',
+    a: 'Yes. Every feature works without a connection. Your data queues on the device and syncs automatically when you\'re back online. Nothing gets lost.',
   },
   {
     q: 'Can Eden AI actually log my data?',
-    a: 'Yes. Just tell Eden what happened — "50 large eggs collected from Batch A" or "bought 3 bags of feed for 45,000 CFA" — Eden extracts the details and asks you to confirm before saving. It also reads receipt photos.',
+    a: 'Yes. Tell Eden what happened in plain language and it extracts the details and asks you to confirm before saving. It also reads receipt photos so you don\'t have to type anything.',
   },
   {
     q: 'Can I manage broilers and layers on the same farm?',
-    a: 'Yes. Edentrack supports both broiler and layer flocks at the same time. The dashboard adapts — layer farms show egg KPIs, broiler farms show FCR and weight targets.',
+    a: 'Yes. Edentrack supports both at the same time. The dashboard adapts automatically, showing egg KPIs for layer farms and FCR and weight targets for broiler farms.',
   },
   {
     q: 'How does role access work?',
-    a: 'There are four roles: Owner (full access), Manager (configurable — you choose what they can touch), Worker (tasks and logging only), and Viewer (read-only). You control every toggle individually in Settings.',
+    a: 'Four roles: Owner, Manager, Worker and Viewer. Each has its own default permissions and you can adjust every individual toggle in Settings to suit your setup.',
   },
   {
     q: 'What is Smart Import?',
-    a: 'Take a photo of any paper receipt or invoice. Eden reads it using AI vision and imports the expense — amount, category, description — directly. No manual entry.',
+    a: 'Take a photo of any receipt or invoice. Eden reads it and imports the amount, category and description straight into your expense log. No manual typing.',
   },
   {
     q: 'What currencies are supported?',
-    a: 'All major African currencies (XAF, NGN, GHS, KES, ZAR, RWF, XOF and more), plus USD, EUR, and GBP.',
+    a: 'All major currencies worldwide including USD, GBP, EUR, NGN, GHS, KES, XAF, ZAR and more. You set your currency when you create your farm.',
   },
   {
     q: 'How does the weekly email report work?',
-    a: 'Pick your preferred day (e.g. Monday) in Settings. Every week, Edentrack sends a full 7-day summary — production, expenses, mortality, and revenue — straight to your inbox.',
+    a: 'Pick your preferred day in Settings and Edentrack sends a full 7-day summary covering production, expenses, mortality and revenue every week.',
   },
   {
-    q: 'Can I add workers and control what they see?',
-    a: 'Yes. Workers can be limited to tasks only, or you can enable mortality logging, egg collection, weight recording, and Eden AI individually for each farm. All under Settings → Permissions.',
+    q: 'Can I control what workers see?',
+    a: 'Yes. Workers default to task-only access but you can enable mortality logging, egg collection, weight recording and Eden AI per farm under Settings.',
   },
 ];
 
 const APP_SLIDES = [
   {
     label: 'Dashboard',
-    color: '#3D5F42',
+    color: '#d97706',
     preview: (
       <div className="bg-[#f7f5f0] rounded-xl p-4 space-y-3 text-left">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Good morning 👋 — Week 4</p>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Good morning 👋</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { label: 'Birds alive', value: '985', sub: '98.5% survival', color: 'text-[#3D5F42]' },
+            { label: 'Birds alive', value: '985', sub: '98.5% survival', color: 'text-gray-900' },
             { label: 'Eggs today', value: '412', sub: '83% lay rate', color: 'text-amber-600' },
             { label: 'Feed stock', value: '8 bags', sub: '3 days left', color: 'text-red-500' },
-            { label: 'Net profit', value: '+42,500', sub: 'this cycle', color: 'text-[#3D5F42]' },
+            { label: 'Net profit', value: '+42,500', sub: 'this cycle', color: 'text-gray-900' },
           ].map(k => (
             <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
               <p className="text-[10px] text-gray-400 font-medium">{k.label}</p>
@@ -264,9 +267,10 @@ const APP_SLIDES = [
         </div>
         <div className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
           <p className="text-xs font-semibold text-gray-700 mb-2">Today's Tasks</p>
-          {['Morning feed — Batch A', 'Water check — all pens', 'Vaccination — Week 4 Newcastle'].map((t, i) => (
+          {['Morning feed, Batch A', 'Water check, all pens', 'Vaccination, Newcastle Week 4'].map((t, i) => (
             <div key={t} className="flex items-center gap-2 py-1">
-              <div className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${i === 0 ? 'bg-[#3D5F42] border-[#3D5F42]' : 'border-gray-300'}`} />
+              <div className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${i === 0 ? 'border-yellow-400' : 'border-gray-300'}`}
+                   style={i === 0 ? { background: Y } : {}} />
               <span className={`text-xs ${i === 0 ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{t}</span>
             </div>
           ))}
@@ -303,7 +307,7 @@ const APP_SLIDES = [
         </div>
         <div className="flex gap-2">
           <div className="flex-1 bg-gray-100 rounded-xl py-2 text-center text-xs font-medium text-gray-500">Damaged: 6</div>
-          <button className="flex-1 bg-[#3D5F42] text-white rounded-xl py-2 text-xs font-bold">Save Collection</button>
+          <button className="flex-1 rounded-xl py-2 text-xs font-bold text-gray-900" style={{ background: Y }}>Save Collection</button>
         </div>
       </div>
     ),
@@ -313,12 +317,12 @@ const APP_SLIDES = [
     color: '#6366f1',
     preview: (
       <div className="bg-[#f7f5f0] rounded-xl p-4 space-y-3 text-left">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Insights — Batch A (Layer)</p>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Insights, Batch A</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { label: 'Total Revenue', value: '284,500', color: 'text-[#3D5F42]' },
+            { label: 'Total Revenue', value: '284,500', color: 'text-gray-900' },
             { label: 'Total Expenses', value: '242,000', color: 'text-red-500' },
-            { label: 'Net Profit', value: '+42,500', color: 'text-[#3D5F42]' },
+            { label: 'Net Profit', value: '+42,500', color: 'text-gray-900' },
             { label: 'Profit Margin', value: '14.9%', color: 'text-indigo-600' },
           ].map(k => (
             <div key={k.label} className="bg-white rounded-xl p-3 border border-gray-100">
@@ -331,7 +335,7 @@ const APP_SLIDES = [
           <p className="text-xs font-semibold text-gray-700 mb-2">Weekly performance</p>
           <div className="flex items-end gap-1.5 h-12">
             {[40, 65, 55, 80, 72, 90, 85].map((h, i) => (
-              <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i === 5 ? '#3D5F42' : '#dcfce7' }} />
+              <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: i === 5 ? Y : '#fef9c3' }} />
             ))}
           </div>
           <div className="flex justify-between mt-1">
@@ -348,16 +352,16 @@ const APP_SLIDES = [
     color: '#7c3aed',
     preview: (
       <div className="bg-[#f7f5f0] rounded-xl p-4 space-y-2 text-left">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Eden — Farm Advisor</p>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Eden, Farm Advisor</p>
         {[
           { role: 'user', text: '3 birds died this morning in Batch A, cause unknown' },
-          { role: 'eden', text: 'Logging 3 deaths in Batch A. Sudden unexplained loss often means heat stress or water blockage — check drinkers now. Survival rate is still 98.5%. Want me to flag a vet visit?' },
+          { role: 'eden', text: 'Logging 3 deaths in Batch A. Sudden unexplained loss often points to heat stress or water blockage. Check drinkers first. Survival is still at 98.5%. Want me to flag a vet visit?' },
           { role: 'user', text: 'Yes, and what is my FCR this week?' },
-          { role: 'eden', text: 'FCR this week: 1.82 — excellent for Week 4. Top 20% of farms your size. Vet visit flagged for today.' },
+          { role: 'eden', text: 'FCR this week: 1.82, excellent for Week 4 and top 20% of farms your size. Vet visit flagged for today.' },
         ].map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-[11px] leading-relaxed ${
-              m.role === 'user' ? 'bg-[#3D5F42] text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100 shadow-sm'
+              m.role === 'user' ? 'bg-gray-900 text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100 shadow-sm'
             }`}>
               {m.role === 'eden' && <span className="block text-[9px] font-bold text-purple-500 mb-0.5">Eden</span>}
               {m.text}
@@ -401,19 +405,14 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow" style={{ background: 'linear-gradient(135deg,#ffe833,#ffdd00)' }}>
-                <span className="text-gray-900 font-bold text-base">E</span>
-              </div>
-              <span className="text-xl font-bold tracking-tight">EDENTRACK</span>
-            </div>
+            <span className="text-xl font-bold tracking-tight">EDENTRACK</span>
 
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" onClick={e => scrollTo(e, 'features')} className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Features</a>
               <a href="#pricing" onClick={e => scrollTo(e, 'pricing')} className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Pricing</a>
               <a href="#faq" onClick={e => scrollTo(e, 'faq')} className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">FAQ</a>
               <button type="button" onClick={handleSignIn} className="text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">Sign In</button>
-              <button type="button" onClick={handleGetStarted} className="bg-[#3D5F42] text-white text-sm px-5 py-2 rounded-full font-semibold hover:bg-[#2F4A34] transition-colors">
+              <button type="button" onClick={handleGetStarted} className="text-gray-900 text-sm px-5 py-2 rounded-full font-semibold transition-colors" style={{ background: Y }}>
                 Get Started Free
               </button>
             </div>
@@ -431,7 +430,7 @@ export default function LandingPage() {
             <a href="#faq" onClick={e => scrollTo(e, 'faq')} className="block text-sm text-gray-700 font-medium py-1">FAQ</a>
             <hr className="border-gray-100" />
             <button type="button" onClick={handleSignIn} className="block w-full text-left text-sm text-gray-700 font-medium py-1">Sign In</button>
-            <button type="button" onClick={handleGetStarted} className="w-full bg-[#3D5F42] text-white py-2.5 rounded-xl font-semibold text-sm">Get Started Free</button>
+            <button type="button" onClick={handleGetStarted} className="w-full text-gray-900 py-2.5 rounded-xl font-semibold text-sm" style={{ background: Y }}>Get Started Free</button>
           </div>
         )}
       </nav>
@@ -439,30 +438,34 @@ export default function LandingPage() {
       {/* HERO */}
       <section className="py-20 px-4 sm:px-6 text-center bg-gradient-to-b from-[#f7f5f0] to-white">
         <div className="max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold px-4 py-1.5 rounded-full mb-8">
+          <div className="flex justify-center mb-6">
+            <img src="/img_9286.png" alt="EDENTRACK" className="h-24 w-auto" style={{ objectFit: 'contain' }} />
+          </div>
+
+          <div className="inline-flex items-center gap-2 bg-yellow-50 border border-yellow-200 text-yellow-800 text-xs font-semibold px-4 py-1.5 rounded-full mb-8">
             <Zap className="w-3.5 h-3.5" />
-            Eden AI now logs data, reads receipts, and diagnoses flock health
+            Eden AI now logs data, reads receipts and diagnoses flock health
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 leading-tight mb-6">
             Run your poultry farm<br />
-            <span style={{ color: '#3D5F42' }}>like a professional</span>
+            <span className="px-3 py-1 rounded-lg" style={{ background: Y }}>like a professional</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Track flocks, expenses, egg production, sales, health and team — all in one place. Built for broiler and layer farmers across Africa. Works offline.
+            Track flocks, expenses, egg production, sales and team all in one place. Built for broiler and layer farmers everywhere. Works without internet.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button type="button" onClick={handleGetStarted} className="w-full sm:w-auto bg-[#3D5F42] text-white px-8 py-3.5 rounded-full font-semibold text-base hover:bg-[#2F4A34] transition-colors shadow-md">
-              Start for free — no card needed
+            <button type="button" onClick={handleGetStarted} className="w-full sm:w-auto text-gray-900 px-8 py-3.5 rounded-full font-semibold text-base transition-colors shadow-md" style={{ background: Y }}>
+              Start for free, no card needed
             </button>
             <a href="#features" onClick={e => scrollTo(e, 'features')} className="w-full sm:w-auto flex items-center justify-center gap-2 text-gray-700 font-medium text-base hover:text-gray-900">
               See what's included <ArrowRight className="w-4 h-4" />
             </a>
           </div>
 
-          <p className="text-xs text-gray-400 mt-5">Free forever on Starter · No credit card required</p>
+          <p className="text-xs text-gray-400 mt-5">Free forever on Starter. No credit card required.</p>
         </div>
 
         {/* Stats bar */}
@@ -470,11 +473,11 @@ export default function LandingPage() {
           {[
             { value: '40+', label: 'Built features' },
             { value: 'EN + FR', label: 'Languages' },
-            { value: '15+', label: 'African currencies' },
+            { value: '40+', label: 'Currencies' },
             { value: '100%', label: 'Offline-capable' },
           ].map(({ value, label }) => (
             <div key={label} className="text-center">
-              <div className="text-xl sm:text-2xl font-bold text-[#3D5F42]">{value}</div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">{value}</div>
               <div className="text-xs text-gray-500 mt-1">{label}</div>
             </div>
           ))}
@@ -511,12 +514,12 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {[
-              { step: '1', title: 'Create your farm', body: 'Sign up, name your farm, pick your country and currency. Takes 60 seconds.' },
-              { step: '2', title: 'Add your flock', body: 'Enter your bird count and arrival date. Edentrack sets up tasks, phases, and targets automatically.' },
-              { step: '3', title: 'Track everything', body: 'Log daily tasks, snap receipt photos, ask Eden AI for advice — and watch your data build into real farm intelligence.' },
+              { step: '1', title: 'Create your farm', body: 'Sign up, name your farm and pick your country and currency. Takes 60 seconds.' },
+              { step: '2', title: 'Add your flock', body: 'Enter your bird count and arrival date and Edentrack sets up your tasks, phases and targets automatically.' },
+              { step: '3', title: 'Track everything', body: 'Log daily tasks, photograph receipts and ask Eden for advice. Watch your data turn into real farm intelligence.' },
             ].map(({ step, title, body }) => (
               <div key={step} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-left">
-                <div className="w-9 h-9 rounded-full bg-[#3D5F42] text-white flex items-center justify-center font-bold text-sm mb-4">{step}</div>
+                <div className="w-9 h-9 rounded-full text-gray-900 flex items-center justify-center font-bold text-sm mb-4" style={{ background: Y }}>{step}</div>
                 <h3 className="font-semibold text-gray-900 mb-2">{title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{body}</p>
               </div>
@@ -530,11 +533,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">See the app in action</h2>
-            <p className="text-gray-500 text-lg">Real screens from the app — exactly what you get.</p>
+            <p className="text-gray-500 text-lg">Real screens from the live app.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-            {/* Tab buttons */}
             <div className="space-y-3">
               {APP_SLIDES.map((slide, i) => (
                 <button
@@ -542,25 +544,19 @@ export default function LandingPage() {
                   type="button"
                   onClick={() => setActiveSlide(i)}
                   className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-300 ${
-                    activeSlide === i
-                      ? 'border-[#3D5F42] bg-[#f7f5f0] shadow-md'
-                      : 'border-gray-100 bg-white hover:border-gray-200'
+                    activeSlide === i ? 'bg-[#f7f5f0] shadow-md' : 'border-gray-100 bg-white hover:border-gray-200'
                   }`}
+                  style={activeSlide === i ? { borderColor: Y } : {}}
                 >
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all"
-                      style={{ backgroundColor: activeSlide === i ? slide.color : '#d1d5db' }}
-                    />
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all"
+                         style={{ backgroundColor: activeSlide === i ? Y : '#d1d5db' }} />
                     <span className={`font-semibold text-sm ${activeSlide === i ? 'text-gray-900' : 'text-gray-500'}`}>
                       {slide.label}
                     </span>
                     {activeSlide === i && (
                       <div className="ml-auto h-1 rounded-full bg-gray-100 w-16 overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: '100%', backgroundColor: slide.color, animation: 'slide-progress 4s linear' }}
-                        />
+                        <div className="h-full rounded-full" style={{ width: '100%', background: Y, animation: 'slide-progress 4s linear' }} />
                       </div>
                     )}
                   </div>
@@ -569,7 +565,6 @@ export default function LandingPage() {
               <style>{`@keyframes slide-progress { from { width: 0% } to { width: 100% } }`}</style>
             </div>
 
-            {/* Preview panel */}
             <div className="relative">
               <div className="bg-gray-900 rounded-3xl p-3 shadow-2xl">
                 <div className="bg-gray-800 rounded-2xl px-4 py-2 flex items-center gap-2 mb-3">
@@ -597,18 +592,18 @@ export default function LandingPage() {
               <div>
                 <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 text-xs font-semibold px-3 py-1 rounded-full mb-5">
                   <Brain className="w-3.5 h-3.5" />
-                  Eden AI — Powered by Claude
+                  Eden AI, Powered by Claude
                 </div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">Your farm advisor that actually does things</h2>
                 <p className="text-gray-600 leading-relaxed mb-6">
-                  Eden doesn't just answer questions — it acts. Tell it what happened on the farm and it logs the data for you. Send it a receipt photo and it imports the expense. Ask it about a sick bird and it gives you a diagnosis with treatment steps.
+                  Eden doesn't just answer questions, it acts. Tell it what happened on the farm and it logs the data for you. Send it a receipt photo and it imports the expense. Ask it about a sick bird and it gives you a diagnosis with treatment steps.
                 </p>
                 <ul className="space-y-2">
                   {[
                     'Diagnose flock health from symptoms or photos',
-                    'Log eggs, mortality, and expenses by voice or text',
+                    'Log eggs, mortality and expenses by voice or text',
                     'Read and import paper receipt photos',
-                    'Analyze your farm KPIs and explain them plainly',
+                    'Analyse your farm KPIs and explain them plainly',
                   ].map(item => (
                     <li key={item} className="flex items-center gap-2 text-sm text-gray-700">
                       <CheckCircle className="w-4 h-4 text-purple-500 flex-shrink-0" />
@@ -621,15 +616,13 @@ export default function LandingPage() {
               <div className="bg-white rounded-2xl shadow-md border border-purple-100 p-5 space-y-3">
                 {[
                   { role: 'user', text: 'We collected 420 large eggs and 80 medium from Batch B this morning. 6 were cracked.' },
-                  { role: 'eden', text: 'Got it — 420 large + 80 medium = 500 good eggs, 6 damaged. That\'s a 98.8% quality rate. Confirming below. Also, your batch B laying rate is now 84% — slightly above last week.' },
+                  { role: 'eden', text: '420 large plus 80 medium is 500 good eggs with 6 damaged, a 98.8% quality rate. Your batch B laying rate is now 84%, slightly above last week. Confirming below.' },
                   { role: 'user', text: 'Yes save it. Also 3 birds died, cause unknown.' },
-                  { role: 'eden', text: 'Saving egg collection. For the mortality: a sudden 3-bird loss with no known cause often points to heat stress or water access issues this time of year. Check drinkers first. Logging the 3 deaths — confirm below.' },
+                  { role: 'eden', text: 'Saving egg collection. For the mortality: sudden 3-bird loss with no known cause often points to heat stress or water access issues. Check your drinkers first. Logging the 3 deaths, confirm below.' },
                 ].map((msg, i) => (
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                      msg.role === 'user'
-                        ? 'bg-purple-600 text-white rounded-br-sm'
-                        : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                      msg.role === 'user' ? 'bg-gray-900 text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                     }`}>
                       {msg.role === 'eden' && <span className="block text-xs font-semibold text-purple-600 mb-1">Eden</span>}
                       {msg.text}
@@ -653,14 +646,14 @@ export default function LandingPage() {
               </div>
               <h2 className="text-3xl font-bold text-gray-900 mb-4">Your farm, your rules</h2>
               <p className="text-gray-600 leading-relaxed mb-6">
-                Invite your manager, workers, and farm partners — and control exactly what each person can do. Not just read vs write. Individual toggles per feature.
+                Invite your manager, workers and farm partners and control exactly what each person can do. Not just read vs write. Individual toggles per feature.
               </p>
               <div className="space-y-3">
                 {[
-                  { role: 'Owner', desc: 'Full access to everything', color: 'bg-green-100 text-green-800' },
-                  { role: 'Manager', desc: '14 configurable permissions — financials, team, payroll, delete', color: 'bg-blue-100 text-blue-800' },
-                  { role: 'Worker', desc: 'Tasks + configurable logging — eggs, mortality, weight, Eden AI', color: 'bg-amber-100 text-amber-800' },
-                  { role: 'Viewer', desc: 'Read-only across all data — ideal for investors or advisors', color: 'bg-gray-100 text-gray-700' },
+                  { role: 'Owner', desc: 'Full access to everything', color: 'bg-yellow-100 text-yellow-800' },
+                  { role: 'Manager', desc: '14 configurable permissions covering financials, team, payroll and delete', color: 'bg-blue-100 text-blue-800' },
+                  { role: 'Worker', desc: 'Tasks plus configurable logging for eggs, mortality, weight and Eden AI', color: 'bg-amber-100 text-amber-800' },
+                  { role: 'Viewer', desc: 'Read-only across all data, perfect for investors and advisors', color: 'bg-gray-100 text-gray-700' },
                 ].map(({ role, desc, color }) => (
                   <div key={role} className="flex items-start gap-3 bg-white rounded-xl p-4 border border-gray-100">
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${color}`}>{role}</span>
@@ -671,7 +664,7 @@ export default function LandingPage() {
             </div>
 
             <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Settings → Permissions → Worker</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Settings, Permissions, Worker</p>
               <div className="space-y-3">
                 {[
                   { label: 'Log Mortality', sub: 'Workers can report dead birds', on: true },
@@ -685,7 +678,7 @@ export default function LandingPage() {
                       <p className="text-sm font-medium text-gray-900">{label}</p>
                       <p className="text-xs text-gray-400">{sub}</p>
                     </div>
-                    <div className={`w-10 h-5 rounded-full flex items-center px-0.5 transition-colors ${on ? 'bg-[#3D5F42]' : 'bg-gray-200'}`}>
+                    <div className="w-10 h-5 rounded-full flex items-center px-0.5 transition-colors" style={{ background: on ? Y : '#e5e7eb' }}>
                       <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0'}`} />
                     </div>
                   </div>
@@ -701,8 +694,8 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           {[
             { icon: Wifi, title: 'Works offline', body: 'Log data with no signal. Syncs when you reconnect.', color: 'text-teal-600', bg: 'bg-teal-50' },
-            { icon: MessageCircle, title: 'WhatsApp sharing', body: 'Share reports, receipts, and farm summaries in one tap.', color: 'text-green-600', bg: 'bg-green-50' },
-            { icon: Stethoscope, title: 'Photo diagnosis', body: 'Send a photo of a sick bird or droppings. Eden gives a diagnosis.', color: 'text-red-600', bg: 'bg-red-50' },
+            { icon: MessageCircle, title: 'WhatsApp sharing', body: 'Share reports, receipts and farm summaries in one tap.', color: 'text-green-600', bg: 'bg-green-50' },
+            { icon: Stethoscope, title: 'Photo diagnosis', body: 'Send a photo of a sick bird or droppings and Eden gives you a diagnosis.', color: 'text-red-600', bg: 'bg-red-50' },
           ].map(({ icon: Icon, title, body, color, bg }) => (
             <div key={title} className="flex flex-col items-center gap-3">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${bg}`}>
@@ -720,7 +713,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Simple, honest pricing</h2>
-            <p className="text-gray-500 text-lg">Pay every 3 months. Cancel anytime. Start free.</p>
+            <p className="text-gray-500 text-lg">Billed every 3 months. Cancel anytime.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -728,12 +721,13 @@ export default function LandingPage() {
               <div
                 key={plan.id}
                 className={`bg-white rounded-2xl p-6 border-2 flex flex-col shadow-sm ${
-                  plan.highlighted ? 'border-[#3D5F42] ring-2 ring-[#3D5F42] ring-offset-2' : 'border-gray-200'
+                  plan.highlighted ? 'ring-2 ring-offset-2' : 'border-gray-200'
                 }`}
+                style={plan.highlighted ? { borderColor: Y, ringColor: Y } : {}}
               >
                 {plan.badge && (
                   <div className="text-center mb-3">
-                    <span className="bg-[#3D5F42] text-white text-xs font-bold px-3 py-1 rounded-full">{plan.badge}</span>
+                    <span className="text-gray-900 text-xs font-bold px-3 py-1 rounded-full" style={{ background: Y }}>{plan.badge}</span>
                   </div>
                 )}
 
@@ -753,7 +747,7 @@ export default function LandingPage() {
                 <ul className="space-y-2 flex-1 mb-4">
                   {plan.features.map(f => (
                     <li key={f} className="flex items-start gap-2 text-sm text-gray-700">
-                      <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <Check className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                       {f}
                     </li>
                   ))}
@@ -769,14 +763,15 @@ export default function LandingPage() {
                   type="button"
                   onClick={handleGetStarted}
                   className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                    plan.highlighted
-                      ? 'bg-[#3D5F42] text-white hover:bg-[#2F4A34]'
-                      : plan.id === 'farmboss'
+                    plan.id === 'farmboss'
                       ? 'bg-amber-500 text-white hover:bg-amber-600'
                       : plan.id === 'industry'
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
+                      : !plan.highlighted
+                      ? 'border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
+                      : 'text-gray-900'
                   }`}
+                  style={plan.highlighted ? { background: Y } : {}}
                 >
                   {plan.ctaLabel}
                 </button>
@@ -784,7 +779,7 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <p className="text-center text-xs text-gray-400 mt-6">Payments via Flutterwave — card, mobile money, and bank transfer accepted</p>
+          <p className="text-center text-xs text-gray-400 mt-6">Payments via Flutterwave. Card, mobile money and bank transfer accepted.</p>
         </div>
       </section>
 
@@ -813,27 +808,22 @@ export default function LandingPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="py-20 px-4 sm:px-6 bg-[#3D5F42] text-white text-center">
+      <section className="py-20 px-4 sm:px-6 bg-gray-900 text-white text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Start managing your farm today</h2>
-          <p className="text-green-200 text-lg mb-8">Free forever on Starter. Upgrade only when you're ready.</p>
-          <button type="button" onClick={handleGetStarted} className="bg-white text-[#3D5F42] px-8 py-3.5 rounded-full font-bold text-base hover:bg-green-50 transition-colors shadow-lg">
-            Create your free account
+          <p className="text-gray-400 text-lg mb-8">Start free. Grow on your own terms.</p>
+          <button type="button" onClick={handleGetStarted} className="text-gray-900 px-8 py-3.5 rounded-full font-bold text-base transition-colors shadow-lg" style={{ background: Y }}>
+            Get started free
           </button>
-          <p className="text-green-300 text-xs mt-4">No credit card required · Takes 60 seconds</p>
+          <p className="text-gray-500 text-xs mt-4">No card needed. Takes 60 seconds.</p>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-gray-900 text-gray-400 py-10 px-4 sm:px-6">
+      <footer className="bg-gray-900 text-gray-400 border-t border-gray-800 py-10 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#ffe833,#ffdd00)' }}>
-              <span className="text-gray-900 font-bold text-sm">E</span>
-            </div>
-            <span className="text-white font-bold">EDENTRACK</span>
-          </div>
-          <p className="text-xs text-center">Built for African poultry farmers · English & French · Broilers & Layers · Works offline</p>
+          <span className="text-white font-bold">EDENTRACK</span>
+          <p className="text-xs text-center">Poultry farm management for everyone, everywhere.</p>
           <div className="flex items-center gap-6 text-xs">
             <button type="button" onClick={handleSignIn} className="hover:text-white transition-colors">Sign In</button>
             <button type="button" onClick={handleGetStarted} className="hover:text-white transition-colors">Get Started</button>

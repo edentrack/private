@@ -23,14 +23,43 @@ function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
-// Quarterly prices per plan (USD)
-const PLAN_PRICES: Record<string, { amount: number; display_name: string }> = {
-  pro: { amount: 9.00, display_name: 'Grower' },
-  enterprise: { amount: 21.00, display_name: 'Farm Boss' },
+// Minimum amounts per plan/currency to guard against manipulation.
+// Keys: `${plan}:${currency}` — omitted currencies fall back to USD minimums.
+const MIN_AMOUNTS: Record<string, number> = {
+  // USD
+  'pro:USD': 14.99, 'enterprise:USD': 34.99,
+  // NGN
+  'pro:NGN': 24000, 'enterprise:NGN': 56000,
+  // GHS
+  'pro:GHS': 230, 'enterprise:GHS': 540,
+  // KES
+  'pro:KES': 2000, 'enterprise:KES': 4600,
+  // ZAR
+  'pro:ZAR': 280, 'enterprise:ZAR': 650,
+  // UGX
+  'pro:UGX': 55000, 'enterprise:UGX': 130000,
+  // TZS
+  'pro:TZS': 40000, 'enterprise:TZS': 93000,
+  // RWF
+  'pro:RWF': 20000, 'enterprise:RWF': 47000,
+  // XAF / XOF
+  'pro:XAF': 9000, 'enterprise:XAF': 21000,
+  'pro:XOF': 9000, 'enterprise:XOF': 21000,
+  // EGP
+  'pro:EGP': 720, 'enterprise:EGP': 1680,
+  // MAD
+  'pro:MAD': 150, 'enterprise:MAD': 350,
+  // ZMW
+  'pro:ZMW': 405, 'enterprise:ZMW': 945,
+  // EUR
+  'pro:EUR': 13.99, 'enterprise:EUR': 31.99,
+  // GBP
+  'pro:GBP': 11.99, 'enterprise:GBP': 27.99,
 };
 
-// How many months a quarterly subscription extends
-const QUARTERLY_MONTHS = 3;
+const BILLING_MONTHS: Record<string, number> = { quarterly: 3, yearly: 12 };
+
+const PLAN_DISPLAY: Record<string, string> = { pro: 'Grower', enterprise: 'Farm Boss', industry: 'Industry' };
 
 serve(async (req) => {
   const ch = corsHeaders(req);
@@ -45,7 +74,6 @@ serve(async (req) => {
     });
   }
 
-  // Verify caller JWT
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const { data: { user }, error: authError } = await supabase.auth.getUser(
     authHeader.replace('Bearer ', '')
@@ -61,10 +89,10 @@ serve(async (req) => {
 
   try {
     if (path === 'create' || path === '') {
-      return await handleCreate(req, user, supabase);
+      return await handleCreate(req, user, supabase, ch);
     }
     if (path === 'verify') {
-      return await handleVerify(req, user, supabase);
+      return await handleVerify(req, user, supabase, ch);
     }
     return new Response(JSON.stringify({ error: 'Not found' }), {
       status: 404, headers: { ...ch, 'Content-Type': 'application/json' },
@@ -77,42 +105,54 @@ serve(async (req) => {
   }
 });
 
-async function handleCreate(req: Request, user: any, supabase: any) {
+async function handleCreate(req: Request, user: any, supabase: any, ch: Record<string, string>) {
   const body = await req.json().catch(() => ({}));
-  const { plan, currency = 'USD', redirect_url } = body;
+  const {
+    plan,
+    currency = 'USD',
+    amount: clientAmount,
+    billing_period = 'quarterly',
+    redirect_url,
+  } = body;
 
-  if (!plan || !PLAN_PRICES[plan]) {
-    return jsonError('Invalid plan. Must be "pro" or "enterprise"', 400);
+  if (!plan || !PLAN_DISPLAY[plan]) {
+    return err('Invalid plan', 400, ch);
   }
   if (!FLW_SECRET_KEY) {
-    return jsonError('Payment system not configured. Contact support.', 503);
+    return err('Payment system not configured. Contact support.', 503, ch);
   }
 
-  const planInfo = PLAN_PRICES[plan];
+  // Validate amount is at least the minimum for this plan/currency
+  const minKey = `${plan}:${currency}`;
+  const minUsdKey = `${plan}:USD`;
+  const minimum = MIN_AMOUNTS[minKey] ?? MIN_AMOUNTS[minUsdKey] ?? 14.99;
+  const amount = typeof clientAmount === 'number' && clientAmount >= minimum
+    ? clientAmount
+    : minimum;
+
   const tx_ref = `edentrack-${user.id}-${Date.now()}`;
 
-  // Get user profile for name/email
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, email')
     .eq('id', user.id)
     .single();
 
-  // Record pending payment
   await supabase.from('payments').insert({
     user_id: user.id,
     tx_ref,
-    amount: planInfo.amount,
+    amount,
     currency,
     plan,
-    billing_period: 'quarterly',
+    billing_period,
     status: 'pending',
+    processor: 'flutterwave',
   });
 
-  // Call Flutterwave to create payment link
+  const billingLabel = billing_period === 'yearly' ? '12 months' : '3 months';
   const flwPayload = {
     tx_ref,
-    amount: planInfo.amount,
+    amount,
     currency,
     redirect_url: redirect_url || 'https://edentrack.app/#/billing/callback',
     customer: {
@@ -121,13 +161,10 @@ async function handleCreate(req: Request, user: any, supabase: any) {
     },
     customizations: {
       title: 'Edentrack',
-      description: `${planInfo.display_name} Plan — 3 months`,
+      description: `${PLAN_DISPLAY[plan] ?? plan} Plan — ${billingLabel}`,
       logo: 'https://edentrack.app/logo.png',
     },
-    meta: {
-      user_id: user.id,
-      plan,
-    },
+    meta: { user_id: user.id, plan, billing_period },
   };
 
   const flwRes = await fetch('https://api.flutterwave.com/v3/payments', {
@@ -143,24 +180,23 @@ async function handleCreate(req: Request, user: any, supabase: any) {
 
   if (flwData.status !== 'success') {
     console.error('[flutterwave-payment] Create error:', flwData);
-    return jsonError('Failed to create payment. Try again.', 502);
+    return err('Failed to create payment. Try again.', 502, ch);
   }
 
-  return json({ payment_link: flwData.data.link, tx_ref });
+  return ok({ payment_link: flwData.data.link, tx_ref }, ch);
 }
 
-async function handleVerify(req: Request, user: any, supabase: any) {
+async function handleVerify(req: Request, user: any, supabase: any, ch: Record<string, string>) {
   const body = await req.json().catch(() => ({}));
   const { transaction_id, tx_ref } = body;
 
   if (!transaction_id && !tx_ref) {
-    return jsonError('transaction_id or tx_ref required', 400);
+    return err('transaction_id or tx_ref required', 400, ch);
   }
   if (!FLW_SECRET_KEY) {
-    return jsonError('Payment system not configured', 503);
+    return err('Payment system not configured', 503, ch);
   }
 
-  // Look up pending payment
   const { data: payment, error: paymentErr } = await supabase
     .from('payments')
     .select('*')
@@ -169,15 +205,12 @@ async function handleVerify(req: Request, user: any, supabase: any) {
     .single();
 
   if (paymentErr || !payment) {
-    return jsonError('Payment record not found', 404);
+    return err('Payment record not found', 404, ch);
   }
 
-  // Verify with Flutterwave
   const verifyRes = await fetch(
     `https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`,
-    {
-      headers: { Authorization: `Bearer ${FLW_SECRET_KEY}` },
-    }
+    { headers: { Authorization: `Bearer ${FLW_SECRET_KEY}` } }
   );
   const verifyData = await verifyRes.json();
 
@@ -192,59 +225,60 @@ async function handleVerify(req: Request, user: any, supabase: any) {
       .from('payments')
       .update({ status: 'failed', flutterwave_data: verifyData, updated_at: new Date().toISOString() })
       .eq('tx_ref', tx_ref);
-    return jsonError('Payment verification failed', 400);
+    return err('Payment verification failed', 400, ch);
   }
 
-  // Payment is good — update record + extend subscription
-  const flw_ref = verifyData.data.flw_ref;
   await supabase
     .from('payments')
     .update({
       status: 'successful',
-      flw_ref,
+      flw_ref: verifyData.data.flw_ref,
       flutterwave_data: verifyData.data,
       updated_at: new Date().toISOString(),
     })
     .eq('tx_ref', tx_ref);
 
-  // Extend subscription: if user already has a future expiry, extend from there; else extend from now
   const { data: profile } = await supabase
     .from('profiles')
-    .select('subscription_expires_at, subscription_tier')
+    .select('subscription_expires_at')
     .eq('id', user.id)
     .single();
 
+  const months = BILLING_MONTHS[payment.billing_period] ?? 3;
   const base = profile?.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date()
     ? new Date(profile.subscription_expires_at)
     : new Date();
+  base.setMonth(base.getMonth() + months);
 
-  base.setMonth(base.getMonth() + QUARTERLY_MONTHS);
-  const new_expires_at = base.toISOString();
+  // Save card token for future auto-renewals (card payments only)
+  const card = verifyData.data?.card;
+  const profileUpdate: Record<string, unknown> = {
+    subscription_tier: payment.plan,
+    subscription_expires_at: base.toISOString(),
+    billing_period: payment.billing_period || 'quarterly',
+    renewal_failure_count: 0,
+    updated_at: new Date().toISOString(),
+  };
+  if (card?.token) {
+    profileUpdate.flw_card_token = card.token;
+    profileUpdate.flw_card_last4 = card.last_4digits || null;
+    profileUpdate.flw_card_expiry = card.expiry || null;
+    profileUpdate.flw_card_currency = payment.currency || 'USD';
+  }
 
-  await supabase
-    .from('profiles')
-    .update({
-      subscription_tier: payment.plan,
-      subscription_expires_at: new_expires_at,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', user.id);
+  await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
 
-  return json({
-    success: true,
-    plan: payment.plan,
-    expires_at: new_expires_at,
-  });
+  return ok({ success: true, plan: payment.plan, expires_at: base.toISOString() }, ch);
 }
 
-function json(data: unknown, status = 200) {
+function ok(data: unknown, ch: Record<string, string>) {
   return new Response(JSON.stringify(data), {
-    status,
+    status: 200,
     headers: { ...ch, 'Content-Type': 'application/json' },
   });
 }
 
-function jsonError(message: string, status: number) {
+function err(message: string, status: number, ch: Record<string, string>) {
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers: { ...ch, 'Content-Type': 'application/json' },

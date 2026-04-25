@@ -49,8 +49,13 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
       } else if (data) {
         setFarmPermissions(data);
       } else {
-        // Only owners (and managers if allowed) can INSERT; avoid RLS violation for others
-        const canInsert = role === 'owner' || role === 'manager';
+        // Only owners (and managers if allowed) can INSERT; avoid RLS violation for others.
+        // Also skip INSERT when in support mode (super admin impersonating) — their JWT
+        // doesn't have write access to a farm they aren't a member of.
+        const isImpersonating = (() => {
+          try { const s = localStorage.getItem('impersonation_state'); return s ? JSON.parse(s)?.active === true : false; } catch { return false; }
+        })();
+        const canInsert = (role === 'owner' || role === 'manager') && !isImpersonating;
         if (!canInsert) {
           setFarmPermissions(null);
           setLoading(false);

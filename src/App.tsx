@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
 import { PermissionsProvider } from './contexts/PermissionsContext';
 import { ToastProvider } from './contexts/ToastContext';
-import { ImpersonationProvider } from './contexts/ImpersonationContext';
+import { ImpersonationProvider, useImpersonation } from './contexts/ImpersonationContext';
 import { ImpersonationBanner } from './components/common/ImpersonationBanner';
 import { OnboardingTour, shouldShowTour } from './components/onboarding/OnboardingTour';
 import { ErrorBoundaryWithTranslation as ErrorBoundary } from './components/ErrorBoundaryWithTranslation';
@@ -70,6 +70,7 @@ const PlatformSettings       = lazy1(() => import('./components/superadmin/Platf
 function AppContent() {
   const { t } = useTranslation();
   const { user, profile, loading, refreshSession, signOut, currentRole, currentFarm } = useAuth();
+  const { isImpersonating } = useImpersonation();
   const [authRoute, setAuthRoute] = useState<'login' | 'signup' | 'forgot-password' | 'reset-password' | 'invite'>('login');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
@@ -98,14 +99,15 @@ function AppContent() {
   }, [user, loading, currentFarm, authRoute, inviteToken, profile?.is_super_admin]);
 
   useEffect(() => {
-    if (user && profile?.is_super_admin && !window.location.hash.includes('#/super-admin')) {
+    // Don't redirect super admin when they're actively impersonating — let them view the target user's farm
+    if (user && profile?.is_super_admin && !isImpersonating && !window.location.hash.includes('#/super-admin')) {
       window.location.hash = '#/super-admin';
       setCurrentView('super-admin');
       return;
     }
 
     // Onboarding wizard removed - users go directly to dashboard after approval
-  }, [user, profile, currentRole]);
+  }, [user, profile, currentRole, isImpersonating]);
 
   useEffect(() => {
     if (user && pendingInviteToken) {

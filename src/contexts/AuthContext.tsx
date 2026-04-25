@@ -214,12 +214,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!activateErr) profileData.account_status = 'active';
         }
 
-        // Only honour impersonation state if the real user is a super admin.
-        // If they're not, clear the stale localStorage state so it can't affect farm loading.
+        // Only honour impersonation state if the real user is a super admin AND the log is still open in the DB.
+        // Verify with a 3-second timeout — if the query hangs or RLS blocks it, clear stale state and
+        // fall back to normal super admin load rather than hanging the entire auth flow.
         if (impersonation?.active) {
-          if (profileData.is_super_admin && impersonation.targetUserId && impersonation.targetFarmId) {
-            effectiveUserId = impersonation.targetUserId;
-            effectiveFarmId = impersonation.targetFarmId;
+          if (profileData.is_super_admin && impersonation.targetUserId && impersonation.targetFarmId && impersonation.logId) {
+            let logIsOpen = false;
+            try {
+              const logQueryPromise = supabase
+                .from('super_admin_impersonation_logs')
+                .select('id')
+                .eq('id', impersonation.logId)
+                .eq('admin_id', userId)
+                .is('ended_at', null)
+                .maybeSingle();
+              const logTimeoutPromise = new Promise<{ data: null }>((resolve) =>
+                setTimeout(() => resolve({ data: null }), 3000)
+              );
+              const logResult = await Promise.race([logQueryPromise, logTimeoutPromise]) as any;
+              logIsOpen = !!(logResult?.data && !logResult?.error);
+            } catch {
+              logIsOpen = false;
+            }
+
+            if (logIsOpen) {
+              effectiveUserId = impersonation.targetUserId;
+              effectiveFarmId = impersonation.targetFarmId;
+            } else {
+              // Log is stale, ended, or query failed — clear it so super admin dashboard loads normally
+              localStorage.removeItem('impersonation_state');
+              impersonation = null;
+            }
           } else {
             localStorage.removeItem('impersonation_state');
             impersonation = null;
@@ -227,8 +252,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         setProfile(profileData);
-        // Check if super admin before continuing
-        if (profileData.is_super_admin) {
+        // Super admins skip farm loading UNLESS they are actively impersonating someone
+        if (profileData.is_super_admin && !effectiveFarmId) {
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;

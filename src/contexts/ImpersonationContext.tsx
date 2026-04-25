@@ -152,6 +152,9 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         targetFarmName,
       };
 
+      // Write synchronously so AuthContext reads the correct state on the
+      // immediately following refreshSession() call (React effects run async)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
       setImpersonation(newState);
     } catch (error) {
       console.error('Failed to start impersonation:', error);

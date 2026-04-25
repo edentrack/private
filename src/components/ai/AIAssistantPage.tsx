@@ -13,7 +13,7 @@ interface ImageAttachment {
 }
 
 interface LogAction {
-  type: 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'COMPLETE_TASK' | 'LOG_WEIGHT' | 'LOG_FEED_USAGE' | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE';
+  type: 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE' | 'COMPLETE_TASK' | 'LOG_WEIGHT' | 'LOG_FEED_USAGE' | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE';
   // Common
   flock_name?: string;
   notes?: string;
@@ -32,6 +32,13 @@ interface LogAction {
   category?: string;
   amount?: number;
   description?: string;
+  // Purchase (expense + inventory card in one shot)
+  item_name?: string;
+  inventory_category?: 'feed' | 'Medication' | 'Equipment' | 'Supplies';
+  quantity?: number;
+  unit?: string;
+  purchase_date?: string;
+  paid_from_profit?: boolean;
   // Weight
   avg_weight_kg?: number;
   sample_size?: number;
@@ -53,6 +60,7 @@ interface LogAction {
   customer_name?: string;
   customer_phone?: string;
   payment_status?: string;
+  sale_date?: string;
   // Bird sale
   birds_sold?: number;
   price_per_bird?: number;
@@ -380,8 +388,9 @@ export function AIAssistantPage() {
         const totalAmount = logAction.total_amount ||
           (smallSold * (logAction.small_price || 0)) + (mediumSold * (logAction.medium_price || 0)) +
           (largeSold * (logAction.large_price || 0)) + (jumboSold * (logAction.jumbo_price || 0));
+        const saleDay = logAction.sale_date || today;
         await supabase.from('egg_sales').insert({
-          farm_id: currentFarm.id, sold_on: today, sale_date: today,
+          farm_id: currentFarm.id, sold_on: saleDay, sale_date: saleDay,
           trays: logAction.trays_sold || Math.floor(totalSold / 30),
           unit_price: logAction.small_price || logAction.medium_price || logAction.large_price || logAction.jumbo_price || 0,
           customer_name: logAction.customer_name || null, customer_phone: logAction.customer_phone || null,
@@ -414,8 +423,9 @@ export function AIAssistantPage() {
         const pricePerBird = logAction.price_per_bird || 0;
         const totalAmount = logAction.total_amount || (birdsSold * pricePerBird);
         const saleMethod = pricePerBird > 0 ? 'per_bird' : 'lump_sum';
+        const birdSaleDay = logAction.sale_date || today;
         await supabase.from('bird_sales').insert({
-          farm_id: currentFarm.id, flock_id: flock.id, sale_date: today,
+          farm_id: currentFarm.id, flock_id: flock.id, sale_date: birdSaleDay,
           birds_sold: birdsSold, price_per_bird: pricePerBird || null, total_amount: totalAmount,
           sale_method: saleMethod, sale_type: 'sale',
           customer_name: logAction.customer_name || null, customer_phone: logAction.customer_phone || null,
@@ -425,6 +435,55 @@ export function AIAssistantPage() {
           notes: logAction.notes || null, recorded_by: user?.id,
         });
         showToast(`Logged sale of ${birdsSold} birds from ${flock.name}${totalAmount ? ` — ${totalAmount.toLocaleString()} ${currency}` : ''}`, 'success');
+
+      } else if (logAction.type === 'LOG_PURCHASE') {
+        const invCat = logAction.inventory_category!;
+        const expenseCat = invCat === 'feed' ? 'feed' : invCat === 'Medication' ? 'medication' : invCat === 'Equipment' ? 'equipment' : 'other';
+        const flock = logAction.flock_name ? await findFlock(logAction.flock_name) : null;
+
+        const purchaseDate = logAction.purchase_date || today;
+
+        // 1. Log the expense
+        await supabase.from('expenses').insert({
+          farm_id: currentFarm.id,
+          category: expenseCat,
+          amount: logAction.amount,
+          description: logAction.description || `${logAction.quantity} ${logAction.unit} ${logAction.item_name}`,
+          currency,
+          date: purchaseDate,
+          incurred_on: purchaseDate,
+          flock_id: flock?.id || null,
+          paid_from_profit: logAction.paid_from_profit ?? false,
+        });
+
+        // 2. Create / update inventory card
+        if (invCat === 'feed') {
+          // Look up or create the feed type
+          let { data: ft } = await supabase.from('feed_types').select('id').eq('farm_id', currentFarm.id).ilike('name', logAction.item_name!).maybeSingle();
+          if (!ft) {
+            const { data: newFt } = await supabase.from('feed_types').insert({ farm_id: currentFarm.id, name: logAction.item_name, unit: logAction.unit || 'bags' }).select('id').single();
+            ft = newFt;
+          }
+          if (ft) {
+            const { data: existing } = await supabase.from('feed_inventory').select('id, quantity_bags').eq('farm_id', currentFarm.id).eq('feed_type_id', ft.id).maybeSingle();
+            if (existing) {
+              await supabase.from('feed_inventory').update({ quantity_bags: (existing.quantity_bags || 0) + (logAction.quantity || 0), last_updated: new Date().toISOString() }).eq('id', existing.id);
+            } else {
+              await supabase.from('feed_inventory').insert({ farm_id: currentFarm.id, feed_type_id: ft.id, quantity_bags: logAction.quantity || 0, last_updated: new Date().toISOString() });
+            }
+          }
+        } else {
+          // Medication, Equipment, Supplies → other_inventory
+          const { data: existing } = await supabase.from('other_inventory').select('id, quantity').eq('farm_id', currentFarm.id).ilike('item_name', logAction.item_name!).eq('category', invCat).maybeSingle();
+          if (existing) {
+            await supabase.from('other_inventory').update({ quantity: (existing.quantity || 0) + (logAction.quantity || 0) }).eq('id', existing.id);
+          } else {
+            await supabase.from('other_inventory').insert({ farm_id: currentFarm.id, item_name: logAction.item_name, category: invCat, quantity: logAction.quantity || 1, unit: logAction.unit || 'units' });
+          }
+        }
+
+        const emoji = invCat === 'feed' ? '🌾' : invCat === 'Medication' ? '💊' : invCat === 'Equipment' ? '🔧' : '📦';
+        showToast(`${emoji} ${logAction.item_name} added to ${invCat} inventory & expense logged`, 'success');
 
       } else if (logAction.type === 'LOG_EXPENSE') {
         await supabase.from('expenses').insert({ farm_id: currentFarm.id, category: logAction.category, amount: logAction.amount, description: logAction.description, currency, date: today });
@@ -469,6 +528,12 @@ export function AIAssistantPage() {
     if (a.type === 'LOG_BIRD_SALE') {
       const total = a.total_amount || ((a.birds_sold||0)*(a.price_per_bird||0));
       return `Sell ${a.birds_sold} bird(s) from "${a.flock_name}"${total ? ` for ${total.toLocaleString()} ${cur}` : ''}${a.customer_name ? ` → ${a.customer_name}` : ''}`;
+    }
+    if (a.type === 'LOG_PURCHASE') {
+      const emoji = a.inventory_category === 'feed' ? '🌾' : a.inventory_category === 'Medication' ? '💊' : a.inventory_category === 'Equipment' ? '🔧' : '📦';
+      const dateLabel = a.purchase_date ? new Date(a.purchase_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'today';
+      const source = a.paid_from_profit ? '💰 paid from farm revenue' : '💵 external cash';
+      return `${emoji} ${a.quantity} ${a.unit} "${a.item_name}" → ${a.inventory_category} · ${(a.amount||0).toLocaleString()} ${cur} · ${dateLabel} · ${source}`;
     }
     if (a.type === 'LOG_EXPENSE') return `${a.description} — ${(a.amount||0).toLocaleString()} ${cur}`;
     if (a.type === 'LOG_WEIGHT') return `Weight for "${a.flock_name}": ${a.avg_weight_kg} kg avg`;

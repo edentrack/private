@@ -4,6 +4,12 @@ import App from './App.tsx';
 import './index.css';
 import './lib/i18n';
 
+// When a lazy chunk fails to load (stale SW cache after deploy), force a fresh page load.
+// Without this, users get "Failed to fetch dynamically imported module" errors indefinitely.
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload();
+});
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

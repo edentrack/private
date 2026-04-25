@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import { LogoIcon } from '../common/Logo';
 
 interface FooterProps {
   onGetStarted: () => void;
@@ -14,9 +15,7 @@ export default function Footer({ onGetStarted, onSignIn }: FooterProps) {
           {/* Logo & Description */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-neon-400 to-neon-500 rounded-lg flex items-center justify-center shadow-md">
-                <span className="text-agri-brown-900 font-bold">E</span>
-              </div>
+              <LogoIcon size="sm" blend />
               <span className="text-2xl font-bold">EDENTRACK</span>
             </div>
             <p className="text-agri-brown-300 text-sm leading-relaxed">

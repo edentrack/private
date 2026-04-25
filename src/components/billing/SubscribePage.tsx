@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 import { Check, Crown, Sprout, Leaf, Building2, Globe, ChevronDown, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,8 +52,6 @@ interface SubscribePageProps {
   onBack: () => void;
 }
 
-type CampayStatus = 'idle' | 'initiating' | 'pending' | 'success' | 'failed';
-
 export function SubscribePage({ onBack }: SubscribePageProps) {
   const { profile, refreshSession } = useAuth();
   const [billingPeriod, setBillingPeriod] = useState<'quarterly' | 'yearly'>('quarterly');
@@ -62,19 +60,17 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  // Campay mobile money
-  const [campayPlan, setCampayPlan] = useState<string | null>(null);
-  const [campayPhone, setCampayPhone] = useState('');
-  const [campayStatus, setCampayStatus] = useState<CampayStatus>('idle');
-  const campayPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelDone, setCancelDone] = useState(false);
 
   const currentTier = profile?.subscription_tier || 'free';
+  const isStripeSubscriber = !!(profile?.stripe_subscription_id);
+  const isCancelPending = profile?.cancel_at_period_end === true || cancelDone;
+  const expiryDate = profile?.subscription_expires_at
+    ? new Date(profile.subscription_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
 
   useEffect(() => { setRegion(detectRegion()); }, []);
-
-  // Clean up campay polling on unmount
-  useEffect(() => () => { if (campayPollRef.current) clearInterval(campayPollRef.current); }, []);
 
   // Check for Stripe redirect back (?stripe_session=xxx&ref=xxx)
   useEffect(() => {
@@ -156,57 +152,6 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
     }
   };
 
-  // ── Campay ────────────────────────────────────────────────────────────
-  const startCampay = async () => {
-    if (!campayPlan || !campayPhone.trim()) return;
-    setCampayStatus('initiating');
-    setError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not signed in');
-      const xafAmount = getPrice(campayPlan, billingPeriod, 'XAF');
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/campay-checkout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'initiate', plan: campayPlan, billing_period: billingPeriod, phone: campayPhone, amount_xaf: xafAmount }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to initiate payment');
-      setCampayStatus('pending');
-      let polls = 0;
-      campayPollRef.current = setInterval(async () => {
-        polls++;
-        if (polls > 22) {
-          clearInterval(campayPollRef.current!);
-          setCampayStatus('failed');
-          setError('Payment timed out. Please try again.');
-          return;
-        }
-        const { data: { session: s } } = await supabase.auth.getSession();
-        if (!s) return;
-        const sr = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/campay-checkout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${s.access_token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'check', reference: data.reference }),
-        });
-        const sd = await sr.json();
-        if (sd.status === 'SUCCESSFUL') {
-          clearInterval(campayPollRef.current!);
-          setCampayStatus('success');
-          setSuccess(true);
-          await refreshSession?.();
-        } else if (sd.status === 'FAILED') {
-          clearInterval(campayPollRef.current!);
-          setCampayStatus('failed');
-          setError('Payment was declined. Please try again.');
-        }
-      }, 4000);
-    } catch (err: any) {
-      setCampayStatus('failed');
-      setError(err.message);
-    }
-  };
-
   // ── Stripe ────────────────────────────────────────────────────────────
   const startStripe = useCallback(async (plan: string) => {
     setError(null);
@@ -242,6 +187,50 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
     } catch {}
   };
 
+  // ── Stripe cancel / reactivate ────────────────────────────────────────
+  const cancelStripe = async () => {
+    if (!confirm('Cancel your subscription? You keep access until the end of your billing period. No refund is issued.')) return;
+    setCancelLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not signed in');
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel_subscription' }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to cancel');
+      setCancelDone(true);
+      await refreshSession?.();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const reactivateStripe = async () => {
+    setCancelLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not signed in');
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reactivate_subscription' }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to reactivate');
+      setCancelDone(false);
+      await refreshSession?.();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   // ── Flutterwave (fallback for unrecognised regions) ───────────────────
   const flwConfig = {
     public_key: FLW_PUBLIC_KEY,
@@ -260,17 +249,19 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setError('Not signed in'); setLoading(null); return; }
     try {
+      const localAmount = getPrice(plan, billingPeriod, priceCurrency);
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flutterwave-payment/create`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, currency: 'USD', billing_period: billingPeriod }),
+        body: JSON.stringify({ plan, currency: priceCurrency, amount: localAmount, billing_period: billingPeriod }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create payment');
       handleFLW({
         ...flwConfig,
         tx_ref: data.tx_ref,
-        amount: usdAmount(plan),
+        amount: localAmount,
+        currency: priceCurrency,
         callback: async (response: any) => {
           closePaymentModal();
           const vr = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/flutterwave-payment/verify`, {
@@ -290,11 +281,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   const handleSubscribe = (planId: string) => {
     if (!region) return;
     setError(null);
-    if (region.processor === 'campay') {
-      setCampayPlan(planId);
-      setCampayStatus('idle');
-      setCampayPhone(region.phonePrefix);
-    } else if (region.processor === 'paystack') {
+    if (region.processor === 'paystack') {
       startPaystack(planId);
     } else if (region.processor === 'stripe') {
       startStripe(planId);
@@ -302,63 +289,6 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
       startFlutterwave(planId);
     }
   };
-
-  // ── Campay phone entry modal ──────────────────────────────────────────
-  if (campayPlan && campayStatus !== 'success') {
-    const localAmt = formatPrice(getPrice(campayPlan, billingPeriod, 'XAF'), 'XAF');
-    return (
-      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 shadow-lg max-w-sm w-full">
-          <h2 className="text-xl font-bold text-gray-900 mb-1">
-            {campayPlan === 'pro' ? 'Grower' : campayPlan === 'enterprise' ? 'Farm Boss' : 'Industry'} — Mobile Money
-          </h2>
-          <p className="text-gray-500 text-sm mb-5">{localAmt} / {billingPeriod === 'yearly' ? '12 months' : '3 months'}</p>
-
-          {(campayStatus === 'idle' || campayStatus === 'initiating') && (
-            <>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Your MTN or Orange number</label>
-              <input
-                type="tel"
-                value={campayPhone}
-                onChange={e => setCampayPhone(e.target.value)}
-                placeholder="+237 6XX XXX XXX"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
-                disabled={campayStatus === 'initiating'}
-              />
-              {error && <p className="text-red-500 text-xs mb-3">{error}</p>}
-              <button type="button" onClick={startCampay} disabled={campayStatus === 'initiating' || !campayPhone.trim()}
-                className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
-                {campayStatus === 'initiating' ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : 'Send payment request'}
-              </button>
-              <button type="button" onClick={() => { setCampayPlan(null); setCampayStatus('idle'); setError(null); }}
-                className="w-full text-gray-400 text-sm mt-3 py-2">Cancel</button>
-            </>
-          )}
-
-          {campayStatus === 'pending' && (
-            <div className="text-center py-6">
-              <Loader2 className="w-10 h-10 animate-spin text-[#3D5F42] mx-auto mb-3" />
-              <p className="font-semibold text-gray-800">Check your phone</p>
-              <p className="text-gray-500 text-sm mt-1">A payment request was sent to <strong>{campayPhone}</strong>. Approve it in your MoMo or Orange Money app.</p>
-              <p className="text-gray-400 text-xs mt-4">Waiting for confirmation…</p>
-            </div>
-          )}
-
-          {campayStatus === 'failed' && (
-            <div className="text-center py-4">
-              <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-              <p className="font-semibold text-gray-800">Payment failed</p>
-              <p className="text-gray-500 text-sm mt-1">{error || 'The payment was declined or timed out.'}</p>
-              <button type="button" onClick={() => { setCampayStatus('idle'); setError(null); }}
-                className="mt-4 w-full bg-[#3D5F42] text-white py-3 rounded-xl font-semibold">Try again</button>
-              <button type="button" onClick={() => { setCampayPlan(null); setCampayStatus('idle'); setError(null); }}
-                className="w-full text-gray-400 text-sm mt-2 py-2">Cancel</button>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   if (success) {
     return (
@@ -505,6 +435,44 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             );
           })}
         </div>
+
+        {/* Cancellation policy + controls for active Stripe subscribers */}
+        {isStripeSubscriber && currentTier !== 'free' && (
+          <div className="mt-6 border border-gray-200 bg-white rounded-2xl p-4 text-sm">
+            {isCancelPending ? (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1">
+                  <p className="font-medium text-amber-700">Subscription cancelled</p>
+                  <p className="text-gray-500 mt-0.5">
+                    Your {currentTier === 'pro' ? 'Grower' : currentTier === 'enterprise' ? 'Farm Boss' : 'Industry'} plan stays active
+                    {expiryDate ? <> until <strong>{expiryDate}</strong></> : ' until your billing period ends'}.
+                    After that your account moves to the free Starter plan.
+                  </p>
+                </div>
+                <button type="button" onClick={reactivateStripe} disabled={cancelLoading}
+                  className="shrink-0 px-4 py-2 bg-[#3D5F42] text-white text-sm font-medium rounded-xl hover:bg-[#2F4A34] disabled:opacity-50 flex items-center gap-2">
+                  {cancelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  Keep my plan
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-gray-500">
+                    Auto-renews{expiryDate ? <> on <strong>{expiryDate}</strong></> : ''}.
+                    Cancel anytime — you keep access until the end of your billing period.
+                    No refunds are issued.
+                  </p>
+                </div>
+                <button type="button" onClick={cancelStripe} disabled={cancelLoading}
+                  className="shrink-0 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-xl hover:bg-red-50 disabled:opacity-50 flex items-center gap-2">
+                  {cancelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  Cancel subscription
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {region && (
           <p className="text-center text-xs text-gray-400 mt-4">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Package, AlertTriangle, Plus, Receipt, Pill, Wrench, Box, Pencil, Trash2, Info, Eye, EyeOff, Egg, X, ChevronDown } from 'lucide-react';
+import { Package, AlertTriangle, Plus, Receipt, Pencil, Trash2, Info, Eye, EyeOff, Egg, X, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -645,8 +645,8 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
       <div className="bg-white rounded-3xl shadow-soft p-6 animate-fade-in-up">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-              <Package className="w-5 h-5 text-green-600" />
+            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-xl">
+              🌾
             </div>
             <h2 className="text-xl font-bold text-gray-900">{t('inventory.feed')} <span className="text-gray-500 font-normal">({feedStock.length})</span></h2>
           </div>
@@ -756,8 +756,8 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
       <div className="bg-white rounded-3xl shadow-soft p-6 animate-fade-in-up">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-              <Pill className="w-5 h-5 text-red-600" />
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-xl">
+              💊
             </div>
             <h2 className="text-xl font-bold text-gray-900">{t('inventory.medication')} <span className="text-gray-500 font-normal">({medicationItems.length})</span></h2>
           </div>
@@ -775,7 +775,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
 
         {medicationItems.length === 0 ? (
           <div className="text-center py-8">
-            <Pill className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <div className="text-6xl mx-auto mb-4 text-center">💊</div>
             <p className="text-gray-500">{t('inventory.no_medication_items')}</p>
             <p className="text-sm text-gray-400 mt-1">{t('inventory.click_add_medication')}</p>
           </div>
@@ -844,8 +844,8 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
       <div className="bg-white rounded-3xl shadow-soft p-6 animate-fade-in-up">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Wrench className="w-5 h-5 text-purple-600" />
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-xl">
+              🔧
             </div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-gray-900">{t('inventory.equipment')}</h2>
@@ -868,7 +868,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
 
         {equipmentItems.length === 0 ? (
           <div className="text-center py-8">
-            <Wrench className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <div className="text-6xl mx-auto mb-4 text-center">🔧</div>
             <p className="text-gray-500">{t('inventory.no_equipment_items')}</p>
             <p className="text-sm text-gray-400 mt-1">{t('inventory.click_add_equipment')}</p>
           </div>
@@ -922,8 +922,8 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
       <div className="bg-white rounded-3xl shadow-soft p-6 animate-fade-in-up">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Box className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl">
+              📦
             </div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-gray-900">{t('inventory.supplies')}</h2>
@@ -946,7 +946,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
 
         {suppliesItems.length === 0 ? (
           <div className="text-center py-8">
-            <Box className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <div className="text-6xl mx-auto mb-4 text-center">📦</div>
             <p className="text-gray-500">{t('inventory.no_supplies_items')}</p>
             <p className="text-sm text-gray-400 mt-1">{t('inventory.click_add_supplies')}</p>
           </div>
