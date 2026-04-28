@@ -23,41 +23,63 @@ function corsHeaders(req: Request): Record<string, string> {
   };
 }
 
-// Minimum amounts per plan/currency to guard against manipulation.
-// Keys: `${plan}:${currency}` — omitted currencies fall back to USD minimums.
-const MIN_AMOUNTS: Record<string, number> = {
-  // USD
-  'pro:USD': 14.99, 'enterprise:USD': 34.99,
-  // NGN
-  'pro:NGN': 24000, 'enterprise:NGN': 56000,
-  // GHS
-  'pro:GHS': 230, 'enterprise:GHS': 540,
-  // KES
-  'pro:KES': 2000, 'enterprise:KES': 4600,
-  // ZAR
-  'pro:ZAR': 280, 'enterprise:ZAR': 650,
-  // UGX
-  'pro:UGX': 55000, 'enterprise:UGX': 130000,
-  // TZS
-  'pro:TZS': 40000, 'enterprise:TZS': 93000,
-  // RWF
-  'pro:RWF': 20000, 'enterprise:RWF': 47000,
-  // XAF / XOF
-  'pro:XAF': 9000, 'enterprise:XAF': 21000,
-  'pro:XOF': 9000, 'enterprise:XOF': 21000,
-  // EGP
-  'pro:EGP': 720, 'enterprise:EGP': 1680,
-  // MAD
-  'pro:MAD': 150, 'enterprise:MAD': 350,
-  // ZMW
-  'pro:ZMW': 405, 'enterprise:ZMW': 945,
-  // EUR
-  'pro:EUR': 13.99, 'enterprise:EUR': 31.99,
-  // GBP
-  'pro:GBP': 11.99, 'enterprise:GBP': 27.99,
+// Minimum amounts per plan/billing_period/currency to guard against manipulation.
+// Keys: `${plan}:${billing_period}:${currency}` — falls back to quarterly if period missing.
+const MIN_AMOUNTS: Record<string, Record<string, Record<string, number>>> = {
+  monthly: {
+    'pro:USD': 6.99, 'enterprise:USD': 14.99,
+    'pro:NGN': 11000, 'enterprise:NGN': 24000,
+    'pro:GHS': 105, 'enterprise:GHS': 235,
+    'pro:KES': 900, 'enterprise:KES': 2000,
+    'pro:ZAR': 129, 'enterprise:ZAR': 279,
+    'pro:UGX': 26000, 'enterprise:UGX': 57000,
+    'pro:TZS': 19000, 'enterprise:TZS': 41000,
+    'pro:RWF': 9500, 'enterprise:RWF': 21000,
+    'pro:XAF': 4500, 'enterprise:XAF': 10000,
+    'pro:XOF': 4500, 'enterprise:XOF': 10000,
+    'pro:EGP': 330, 'enterprise:EGP': 760,
+    'pro:MAD': 70, 'enterprise:MAD': 162,
+    'pro:ZMW': 185, 'enterprise:ZMW': 430,
+    'pro:EUR': 6.49, 'enterprise:EUR': 13.99,
+    'pro:GBP': 5.99, 'enterprise:GBP': 11.99,
+  } as Record<string, number>,
+  quarterly: {
+    'pro:USD': 14.99, 'enterprise:USD': 34.99,
+    'pro:NGN': 24000, 'enterprise:NGN': 56000,
+    'pro:GHS': 230, 'enterprise:GHS': 540,
+    'pro:KES': 2000, 'enterprise:KES': 4600,
+    'pro:ZAR': 280, 'enterprise:ZAR': 650,
+    'pro:UGX': 55000, 'enterprise:UGX': 130000,
+    'pro:TZS': 40000, 'enterprise:TZS': 93000,
+    'pro:RWF': 20000, 'enterprise:RWF': 47000,
+    'pro:XAF': 9000, 'enterprise:XAF': 21000,
+    'pro:XOF': 9000, 'enterprise:XOF': 21000,
+    'pro:EGP': 720, 'enterprise:EGP': 1680,
+    'pro:MAD': 150, 'enterprise:MAD': 350,
+    'pro:ZMW': 405, 'enterprise:ZMW': 945,
+    'pro:EUR': 13.99, 'enterprise:EUR': 31.99,
+    'pro:GBP': 11.99, 'enterprise:GBP': 27.99,
+  } as Record<string, number>,
+  yearly: {
+    'pro:USD': 49.99, 'enterprise:USD': 114.99,
+    'pro:NGN': 80000, 'enterprise:NGN': 185000,
+    'pro:GHS': 760, 'enterprise:GHS': 1790,
+    'pro:KES': 6500, 'enterprise:KES': 15000,
+    'pro:ZAR': 920, 'enterprise:ZAR': 2150,
+    'pro:UGX': 185000, 'enterprise:UGX': 430000,
+    'pro:TZS': 132000, 'enterprise:TZS': 307000,
+    'pro:RWF': 67000, 'enterprise:RWF': 155000,
+    'pro:XAF': 30000, 'enterprise:XAF': 69000,
+    'pro:XOF': 30000, 'enterprise:XOF': 69000,
+    'pro:EGP': 2400, 'enterprise:EGP': 5520,
+    'pro:MAD': 500, 'enterprise:MAD': 1150,
+    'pro:ZMW': 1350, 'enterprise:ZMW': 3105,
+    'pro:EUR': 45.99, 'enterprise:EUR': 104.99,
+    'pro:GBP': 39.99, 'enterprise:GBP': 91.99,
+  } as Record<string, number>,
 };
 
-const BILLING_MONTHS: Record<string, number> = { quarterly: 3, yearly: 12 };
+const BILLING_MONTHS: Record<string, number> = { monthly: 1, quarterly: 3, yearly: 12 };
 
 const PLAN_DISPLAY: Record<string, string> = { pro: 'Grower', enterprise: 'Farm Boss', industry: 'Industry' };
 
@@ -122,10 +144,11 @@ async function handleCreate(req: Request, user: any, supabase: any, ch: Record<s
     return err('Payment system not configured. Contact support.', 503, ch);
   }
 
-  // Validate amount is at least the minimum for this plan/currency
+  // Validate amount is at least the minimum for this plan/billing_period/currency
+  const periodMins = MIN_AMOUNTS[billing_period] ?? MIN_AMOUNTS.quarterly;
   const minKey = `${plan}:${currency}`;
   const minUsdKey = `${plan}:USD`;
-  const minimum = MIN_AMOUNTS[minKey] ?? MIN_AMOUNTS[minUsdKey] ?? 14.99;
+  const minimum = (periodMins as Record<string, number>)[minKey] ?? (periodMins as Record<string, number>)[minUsdKey] ?? 14.99;
   const amount = typeof clientAmount === 'number' && clientAmount >= minimum
     ? clientAmount
     : minimum;
@@ -149,7 +172,7 @@ async function handleCreate(req: Request, user: any, supabase: any, ch: Record<s
     processor: 'flutterwave',
   });
 
-  const billingLabel = billing_period === 'yearly' ? '12 months' : '3 months';
+  const billingLabel = billing_period === 'yearly' ? '12 months' : billing_period === 'monthly' ? '1 month' : '3 months';
   const flwPayload = {
     tx_ref,
     amount,
@@ -206,6 +229,16 @@ async function handleVerify(req: Request, user: any, supabase: any, ch: Record<s
 
   if (paymentErr || !payment) {
     return err('Payment record not found', 404, ch);
+  }
+
+  // Idempotency: already processed — return without re-running rewards/subscription logic
+  if (payment.status === 'successful') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier, subscription_expires_at')
+      .eq('id', user.id)
+      .single();
+    return ok({ success: true, plan: payment.plan, expires_at: profile?.subscription_expires_at }, ch);
   }
 
   const verifyRes = await fetch(
@@ -267,6 +300,29 @@ async function handleVerify(req: Request, user: any, supabase: any, ch: Record<s
   }
 
   await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
+
+  // Reward referral on first ever successful payment
+  const { count: priorPayments } = await supabase
+    .from('payments')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('status', 'successful')
+    .neq('tx_ref', tx_ref);
+  if (priorPayments === 0) {
+    await supabase.rpc('reward_referral', { p_referred_user_id: user.id });
+  }
+
+  // Send "set your password" email for new checkout signups (account < 1 hour old)
+  try {
+    const userAge = Date.now() - new Date((user as any).created_at || 0).getTime();
+    if (userAge < 3_600_000) {
+      await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_SERVICE_ROLE_KEY },
+        body: JSON.stringify({ email: user.email }),
+      });
+    }
+  } catch {}
 
   return ok({ success: true, plan: payment.plan, expires_at: base.toISOString() }, ch);
 }
