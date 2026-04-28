@@ -50,19 +50,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
         try {
           setSession(session);
           setUser(session?.user ?? null);
           if (session?.user) {
+            // Consume pending invite token saved during signup flow
+            if (event === 'SIGNED_IN') {
+              const pendingToken = sessionStorage.getItem('pending_invite_token');
+              if (pendingToken) {
+                sessionStorage.removeItem('pending_invite_token');
+                try {
+                  await supabase.rpc('accept_team_invitation', { p_token: pendingToken });
+                } catch (err) {
+                  console.error('Failed to bind invite after signup:', err);
+                }
+              }
+            }
             await loadUserData(session.user.id);
           } else {
             clearUserData();
           }
         } catch (error) {
           console.error('Error in auth state change:', error);
-          // Ensure loading is cleared on error
           setLoading(false);
         }
       })();
@@ -84,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let timeoutId: NodeJS.Timeout | null = setTimeout(() => {
       if (import.meta.env.DEV) console.warn('loadUserData is taking too long');
       setLoading(false);
-    }, 30000); // 30 second timeout
+    }, 10000); // 10 second timeout
 
     try {
       // Check if we're impersonating — will be re-validated against profile below

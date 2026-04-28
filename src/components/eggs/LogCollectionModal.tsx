@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { ConfirmEggCollectionModal } from './ConfirmEggCollectionModal';
 
 type EggSize = 'small' | 'medium' | 'large' | 'jumbo';
 
@@ -14,7 +15,10 @@ interface LogCollectionModalProps {
 
 export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskRecord = false }: LogCollectionModalProps) {
   const { user, currentFarm } = useAuth();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [eggsPerTray, setEggsPerTray] = useState(30);
   const [traysBySize, setTraysBySize] = useState({ small: '', medium: '', large: '', jumbo: '' });
   const [looseBySize, setLooseBySize] = useState({ small: '', medium: '', large: '', jumbo: '' });
@@ -23,6 +27,7 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     if (!currentFarm?.id) return;
@@ -88,19 +93,13 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
       return;
     }
 
-    const confirmed = window.confirm(
-      `Confirm egg collection:\n\n` +
-        `Small: ${liveTotals.totals.small}\n` +
-        `Medium: ${liveTotals.totals.medium}\n` +
-        `Large: ${liveTotals.totals.large}\n` +
-        `Jumbo: ${liveTotals.totals.jumbo}\n\n` +
-        `Total good eggs: ${liveTotals.totalGood}\n` +
-        `Damaged eggs: ${Math.round(brokenNum)}\n\n` +
-        `Save this record?`
-    );
-    if (!confirmed) return;
-
     setError('');
+    setShowConfirm(true);
+  };
+
+  const handleConfirmedSave = async () => {
+    if (!user || !currentFarm?.id) return;
+    setShowConfirm(false);
     setLoading(true);
 
     try {
@@ -220,6 +219,15 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
   };
 
   return (
+    <>
+    <ConfirmEggCollectionModal
+      isOpen={showConfirm}
+      totals={liveTotals.totals}
+      totalGood={liveTotals.totalGood}
+      damaged={Math.round(parseFloat(eggsBroken) || 0)}
+      onConfirm={handleConfirmedSave}
+      onCancel={() => setShowConfirm(false)}
+    />
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl max-w-md w-full p-8">
         <div className="flex items-center justify-between mb-6">
@@ -367,5 +375,6 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
         </form>
       </div>
     </div>
+    </>
   );
 }

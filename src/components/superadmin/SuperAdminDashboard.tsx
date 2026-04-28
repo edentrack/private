@@ -483,6 +483,7 @@ function AdvancedMenuDrawer({ onClose }: { onClose: () => void }) {
     { label: 'Pricing Tiers', path: '/super-admin/pricing' },
     { label: 'Marketplace Admin', path: '/super-admin/marketplace' },
     { label: 'Announcements', path: '/super-admin/announcements' },
+    { label: 'Broadcast Banners', path: '/super-admin/broadcasts' },
     { label: 'Support Tickets', path: '/super-admin/support' },
     { label: 'Activity Logs', path: '/super-admin/activity' },
     { label: 'Billing & Subscriptions', path: '/super-admin/billing' },

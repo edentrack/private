@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
+import { ConfirmEggCollectionModal } from '../eggs/ConfirmEggCollectionModal';
 
 interface Flock {
   id: string;
@@ -23,6 +24,13 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [eggsPerTray, setEggsPerTray] = useState(30);
   const [showForm, setShowForm] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingSave, setPendingSave] = useState<{
+    nextTotals: { small: number; medium: number; large: number; jumbo: number };
+    totalEggs: number;
+    damagedEggsNum: number;
+    totalTrays: number;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -164,69 +172,61 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setErrorMessage(null);
+
+    const traysNums = {
+      small: Number(traysBySize.small) || 0,
+      medium: Number(traysBySize.medium) || 0,
+      large: Number(traysBySize.large) || 0,
+      jumbo: Number(traysBySize.jumbo) || 0,
+    };
+    const looseNums = {
+      small: Number(looseBySize.small) || 0,
+      medium: Number(looseBySize.medium) || 0,
+      large: Number(looseBySize.large) || 0,
+      jumbo: Number(looseBySize.jumbo) || 0,
+    };
+    const damagedEggsNum = Number(damagedEggs) || 0;
+    const totalLoose = looseNums.small + looseNums.medium + looseNums.large + looseNums.jumbo;
+    const totalTraysCount = traysNums.small + traysNums.medium + traysNums.large + traysNums.jumbo;
+
+    const nextTotals = {
+      small: Math.round(traysNums.small * eggsPerTray + looseNums.small),
+      medium: Math.round(traysNums.medium * eggsPerTray + looseNums.medium),
+      large: Math.round(traysNums.large * eggsPerTray + looseNums.large),
+      jumbo: Math.round(traysNums.jumbo * eggsPerTray + looseNums.jumbo),
+    };
+
+    const totalEggs = nextTotals.small + nextTotals.medium + nextTotals.large + nextTotals.jumbo;
+
+    if (totalEggs === 0 && damagedEggsNum === 0) {
+      setErrorMessage('Please enter at least some eggs collected');
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    const badLoose = (Object.values(looseNums) as number[]).some((v) => v >= eggsPerTray);
+    if (badLoose) {
+      setErrorMessage(`Loose eggs for each size must be less than ${eggsPerTray}.`);
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    const totalTrays = Math.round(totalTraysCount) + (totalLoose > 0 ? 1 : 0);
+
+    setPendingSave({ nextTotals, totalEggs, damagedEggsNum, totalTrays });
+    setShowConfirm(true);
+  }
+
+  async function handleConfirmedSave() {
+    if (!pendingSave) return;
+    const { nextTotals, totalEggs, damagedEggsNum, totalTrays } = pendingSave;
+    setShowConfirm(false);
+    setPendingSave(null);
     setLoading(true);
     setErrorMessage(null);
 
     try {
-      const traysNums = {
-        small: Number(traysBySize.small) || 0,
-        medium: Number(traysBySize.medium) || 0,
-        large: Number(traysBySize.large) || 0,
-        jumbo: Number(traysBySize.jumbo) || 0,
-      };
-      const looseNums = {
-        small: Number(looseBySize.small) || 0,
-        medium: Number(looseBySize.medium) || 0,
-        large: Number(looseBySize.large) || 0,
-        jumbo: Number(looseBySize.jumbo) || 0,
-      };
-      const damagedEggsNum = Number(damagedEggs) || 0;
-      const totalLoose =
-        looseNums.small + looseNums.medium + looseNums.large + looseNums.jumbo;
-      const totalTraysCount =
-        traysNums.small + traysNums.medium + traysNums.large + traysNums.jumbo;
-
-      const nextTotals = {
-        small: Math.round(traysNums.small * eggsPerTray + looseNums.small),
-        medium: Math.round(traysNums.medium * eggsPerTray + looseNums.medium),
-        large: Math.round(traysNums.large * eggsPerTray + looseNums.large),
-        jumbo: Math.round(traysNums.jumbo * eggsPerTray + looseNums.jumbo),
-      };
-
-      const totalEggs = nextTotals.small + nextTotals.medium + nextTotals.large + nextTotals.jumbo;
-
-      if (totalEggs === 0 && damagedEggsNum === 0) {
-        setErrorMessage('Please enter at least some eggs collected');
-        setTimeout(() => setErrorMessage(null), 3000);
-        setLoading(false);
-        return;
-      }
-
-      const badLoose = (Object.values(looseNums) as number[]).some((v) => v >= eggsPerTray);
-      if (badLoose) {
-        setErrorMessage(`Loose eggs for each size must be less than ${eggsPerTray}.`);
-        setTimeout(() => setErrorMessage(null), 3000);
-        setLoading(false);
-        return;
-      }
-
-      const totalTrays = Math.round(totalTraysCount) + (totalLoose > 0 ? 1 : 0); // keep legacy meaning: "full trays plus 1 if any loose"
-
-      const confirmed = window.confirm(
-        `Confirm egg collection:\n\n` +
-          `Small: ${nextTotals.small}\n` +
-          `Medium: ${nextTotals.medium}\n` +
-          `Large: ${nextTotals.large}\n` +
-          `Jumbo: ${nextTotals.jumbo}\n\n` +
-          `Total good eggs: ${totalEggs}\n` +
-          `Damaged eggs: ${damagedEggsNum}\n\n` +
-          `Save this record?`
-      );
-      if (!confirmed) {
-        setLoading(false);
-        return;
-      }
-
       const collectionPayload = {
         farm_id: currentFarm?.id,
         flock_id: selectedFlockId || null,
@@ -665,6 +665,15 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
           </button>
         </div>
       </form>
+
+      <ConfirmEggCollectionModal
+        isOpen={showConfirm}
+        totals={pendingSave?.nextTotals ?? { small: 0, medium: 0, large: 0, jumbo: 0 }}
+        totalGood={pendingSave?.totalEggs ?? 0}
+        damaged={pendingSave?.damagedEggsNum ?? 0}
+        onConfirm={handleConfirmedSave}
+        onCancel={() => { setShowConfirm(false); setPendingSave(null); }}
+      />
     </div>
   );
 }

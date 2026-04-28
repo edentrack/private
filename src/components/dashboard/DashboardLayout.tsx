@@ -1,5 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, Stethoscope, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, Wallet, User, ChevronDown, Menu, Shield, Scale, Store, GitCompare, ChevronRight, History, HelpCircle, FileText, ListChecks, Upload, Crown, Zap, Sprout } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout } from 'lucide-react';
+import { FarmHealthRing } from './FarmHealthRing';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -100,14 +101,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       // { id: 'payroll', label: t('nav.payroll'), icon: Wallet }, // Wave 1: HIDDEN — owner-only, will move to Settings sub-tab
       // { id: 'audit', label: t('nav.audit'), icon: FileText }, // Wave 1: HIDDEN — owner-only compliance, will move to Settings sub-tab
       { id: 'ai-assistant', label: t('nav.ai_assistant') || 'Eden AI', icon: Zap },
-      { id: 'smart-upload', label: t('nav.import') || 'Smart Import', icon: Upload },
       { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },
-      // { id: 'marketplace', label: t('nav.marketplace'), icon: Store }, // Wave 1: KILLED — no suppliers, no GTM. Keep component dormant, revive if supplier strategy emerges
-      // { id: 'roadmap', label: 'Coming Soon', icon: Rocket }, // KILLED — use external roadmap tool
     ];
 
     // Items hidden in Simple Mode (advanced features)
-    const simpleModeHidden = new Set(['vet-log', 'smart-upload', 'shifts']);
+    const simpleModeHidden = new Set(['vet-log', 'shifts']);
     // Items only relevant when eggs are tracked (layer/mixed farms)
     const eggOnlyItems = new Set(['sales']); // egg sales shown for all; only hide if pure broiler
 
@@ -148,21 +146,20 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   };
 
   const expandAll = () => {
-    const all = new Set<NavigationGroupId>(['core', 'production', 'financial', 'operations', 'tools', 'other']);
+    const all = new Set<NavigationGroupId>(['analytics', 'health', 'money', 'team', 'other']);
     setExpandedGroups(all);
     saveExpandedGroups(all);
   };
 
-  // Separate main tabs from others for mobile
-  // (Keep "Expenses" as a primary tab on mobile as requested.)
-  const mainTabIds = ['dashboard', 'flocks', 'insights', 'expenses'];
-  
+  // Primary tabs on mobile: Dashboard, Flocks, Tasks, Eden AI
+  const mainTabIds = ['dashboard', 'flocks', 'tasks', 'ai-assistant'];
+
   const getMobileMainTabs = () => {
     return [
       navItems.find(item => item.id === 'dashboard'),
       navItems.find(item => item.id === 'flocks'),
-      navItems.find(item => item.id === 'insights'),
-      navItems.find(item => item.id === 'expenses')
+      navItems.find(item => item.id === 'tasks'),
+      navItems.find(item => item.id === 'ai-assistant'),
     ].filter((item): item is { id: ModuleName; label: string; icon: any } => item !== undefined);
   };
 
@@ -219,10 +216,8 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
               {[
                 navItems.find(item => item.id === 'dashboard'),
                 navItems.find(item => item.id === 'flocks'),
-                navItems.find(item => item.id === 'insights'),
-                navItems.find(item => item.id === 'vaccinations'),
-                navItems.find(item => item.id === 'inventory'),
-                navItems.find(item => item.id === 'expenses'),
+                navItems.find(item => item.id === 'tasks'),
+                navItems.find(item => item.id === 'ai-assistant'),
               ].filter((item): item is { id: ModuleName; label: string; icon: any } => item !== undefined).map((item) => {
                 const Icon = item.icon;
                 const isActive = currentView === item.id;
@@ -263,7 +258,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                   </button>
                 );
               })}
-              {navItems.length > 6 && (
+              {navItems.length > 4 && (
                 <div className="relative" ref={desktopMoreMenuRef}>
                   <button
                     onClick={() => setDesktopMoreMenuOpen(!desktopMoreMenuOpen)}
@@ -357,21 +352,23 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
               <div className="relative" ref={accountMenuRef}>
                 <button
                   onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                  className="flex items-center gap-2 p-1.5 hover:bg-white/60 rounded-full transition-colors"
+                  className="flex items-center gap-2 p-1.5 hover:bg-white/60 rounded-2xl transition-colors"
                 >
-                  {/* Tier ring around avatar */}
+                  {/* Health ring + tier badge around avatar */}
                   {(() => {
                     const tier = getTierStyle(profile?.subscription_tier);
                     return (
-                      <div className={`relative p-0.5 rounded-full border-2 ${tier.border}`}>
-                        <div className="w-8 h-8 bg-gradient-to-br from-neon-400 to-neon-500 rounded-full flex items-center justify-center shadow-md">
-                          <User className="w-4 h-4 text-gray-900" />
+                      <FarmHealthRing size={42} showLabel>
+                        <div className="relative w-8 h-8">
+                          <div className="w-8 h-8 bg-gradient-to-br from-neon-400 to-neon-500 rounded-full flex items-center justify-center shadow-md">
+                            <User className="w-4 h-4 text-gray-900" />
+                          </div>
+                          {/* Tier icon badge */}
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${tier.bg} border ${tier.border} flex items-center justify-center`}>
+                            <tier.Icon className={`w-2.5 h-2.5 ${tier.text}`} />
+                          </div>
                         </div>
-                        {/* Tier icon badge */}
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full ${tier.bg} border ${tier.border} flex items-center justify-center`}>
-                          <tier.Icon className={`w-2.5 h-2.5 ${tier.text}`} />
-                        </div>
-                      </div>
+                      </FarmHealthRing>
                     );
                   })()}
                 </button>

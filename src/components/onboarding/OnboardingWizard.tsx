@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronRight, ChevronLeft, Check, Building2, MapPin, Target, Sprout } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { ChevronRight, CheckCircle, ArrowRight, AlertCircle, Copy, Check, Share2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { SUPPORTED_COUNTRIES, getCurrencyForCountry } from '../../utils/currency';
@@ -8,309 +8,467 @@ interface OnboardingWizardProps {
   onComplete: () => void;
 }
 
-type Step = 'welcome' | 'farm' | 'location' | 'goals' | 'complete';
+type Step = 'welcome' | 'farm' | 'flock' | 'team' | 'done';
+type SpeciesType = 'layer' | 'broiler' | 'mixed' | 'turkey';
 
-const GOALS = [
-  { id: 'profit',     label: 'Maximize Profit',     desc: 'Track costs closely, optimize feed conversion', emoji: '💰' },
-  { id: 'growth',     label: 'Scale My Farm',        desc: 'Add more flocks, expand operations',            emoji: '📈' },
-  { id: 'efficiency', label: 'Improve Efficiency',   desc: 'Reduce mortality, streamline daily tasks',      emoji: '⚡' },
-  { id: 'quality',    label: 'Premium Quality',       desc: 'Focus on bird health and product quality',      emoji: '🌟' },
+const SPECIES_OPTIONS: { id: SpeciesType; emoji: string; label: string; sub: string }[] = [
+  { id: 'layer', emoji: '🥚', label: 'Layers', sub: 'Egg production' },
+  { id: 'broiler', emoji: '🍗', label: 'Broilers', sub: 'Meat production' },
+  { id: 'mixed', emoji: '🐔', label: 'Mixed', sub: 'Eggs & meat' },
+  { id: 'turkey', emoji: '🦃', label: 'Turkey', sub: 'Meat production' },
 ];
 
+const defaultFlockName = (species: SpeciesType) => {
+  const map: Record<SpeciesType, string> = {
+    layer: 'Layer Flock 1',
+    broiler: 'Broiler Batch 1',
+    mixed: 'Mixed Flock 1',
+    turkey: 'Turkey Flock 1',
+  };
+  return map[species];
+};
+
 export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
-  const { user, currentFarm, refreshAuth } = useAuth();
-  const [currentStep, setCurrentStep] = useState<Step>('welcome');
-  const [loading, setLoading] = useState(false);
+  const { user, refreshSession, currentFarm } = useAuth();
+  const [step, setStep] = useState<Step>('welcome');
+
+  // If this user already has a farm, onboarding is done — fix the DB flag and exit immediately
+  useEffect(() => {
+    if (currentFarm && user) {
+      supabase.from('profiles').update({ onboarding_completed: true }).eq('id', user.id).then(() => {
+        onComplete();
+      });
+    }
+  }, [currentFarm, user, onComplete]);
+
+  // Farm data
+  const [farmName, setFarmName] = useState('');
+  const [country, setCountry] = useState('Nigeria');
+  const [species, setSpecies] = useState<SpeciesType>('layer');
+
+  // Flock data
+  const [flockName, setFlockName] = useState('');
+  const [flockCount, setFlockCount] = useState('');
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  // After creation
+  const [createdFarmId, setCreatedFarmId] = useState('');
+  const [joinLink, setJoinLink] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const [farmName, setFarmName] = useState('');
-  const [country, setCountry] = useState('Cameroon');
-  const [city, setCity] = useState('');
-  const [regionState, setRegionState] = useState('');
-  const [primaryGoal, setPrimaryGoal] = useState<string>('profit');
+  // Auto-fill flock name when species changes (only if not manually edited)
+  const [flockNameTouched, setFlockNameTouched] = useState(false);
+  useEffect(() => {
+    if (!flockNameTouched) setFlockName(defaultFlockName(species));
+  }, [species, flockNameTouched]);
 
-  const steps: Step[] = ['welcome', 'farm', 'location', 'goals', 'complete'];
-  const currentIndex = steps.indexOf(currentStep);
-  const progress = (currentIndex / (steps.length - 1)) * 100;
-
-  const handleSkip = async () => {
+  const createFarmAndFlock = useCallback(async () => {
     if (!user) return;
-    try {
-      await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', user.id);
-      if (refreshAuth) await refreshAuth();
-      onComplete();
-    } catch (err) {
-      console.error('Skip onboarding error:', err);
-      onComplete();
-    }
-  };
+    const count = parseInt(flockCount, 10);
+    if (!farmName.trim() || isNaN(count) || count <= 0) return;
 
-  const handleNext = async () => {
+    setSaving(true);
     setError('');
-    if (currentStep === 'farm' && !farmName.trim()) {
-      setError('Please enter your farm name');
-      return;
-    }
-    if (currentStep === 'goals') {
-      await saveOnboardingData();
-      return;
-    }
-    const nextIndex = currentIndex + 1;
-    if (nextIndex < steps.length) setCurrentStep(steps[nextIndex]);
-  };
 
-  const handleBack = () => {
-    const prevIndex = currentIndex - 1;
-    if (prevIndex >= 0) setCurrentStep(steps[prevIndex]);
-  };
-
-  const saveOnboardingData = async () => {
-    if (!user) return;
-    setLoading(true);
-    setError('');
     try {
       const currencyCode = getCurrencyForCountry(country);
-      let farmId = currentFarm?.id;
 
-      if (!farmId) {
-        const { data: newFarm, error: farmError } = await supabase
-          .from('farms')
-          .insert({ name: farmName, owner_id: user.id, country, currency_code: currencyCode, city: city || null, region_state: regionState || null })
-          .select()
-          .single();
-        if (farmError) throw farmError;
-        farmId = newFarm.id;
-        await supabase.from('farm_members').insert({ farm_id: farmId, user_id: user.id, role: 'owner', is_active: true });
-      } else {
-        await supabase
-          .from('farms')
-          .update({ name: farmName, country, currency_code: currencyCode, city: city || null, region_state: regionState || null, updated_at: new Date().toISOString() })
-          .eq('id', farmId);
+      // 1. Create farm
+      const { data: farm, error: farmError } = await supabase
+        .from('farms')
+        .insert({ name: farmName.trim(), owner_id: user.id, country, currency_code: currencyCode })
+        .select('id, join_secret')
+        .single();
+      if (farmError) throw farmError;
+
+      // 2. Add owner as farm member
+      await supabase.from('farm_members').insert({
+        farm_id: farm.id,
+        user_id: user.id,
+        role: 'owner',
+        is_active: true,
+      });
+
+      // 3. Update profile
+      await supabase.from('profiles').update({
+        onboarding_completed: true,
+        farm_name: farmName.trim(),
+        country,
+        updated_at: new Date().toISOString(),
+      }).eq('id', user.id);
+
+      // 4. Create first flock
+      const finalFlockName = flockName.trim() || defaultFlockName(species);
+      await supabase.from('flocks').insert({
+        user_id: user.id,
+        farm_id: farm.id,
+        name: finalFlockName,
+        type: species,
+        species: 'poultry',
+        start_date: startDate,
+        arrival_date: startDate,
+        initial_count: count,
+        current_count: count,
+        purchase_price_per_bird: 0,
+        purchase_transport_cost: 0,
+        status: 'active',
+      });
+
+      // 5. Build join link from join_secret
+      const secret = farm.join_secret;
+      if (secret) {
+        setJoinLink(`${window.location.origin}${window.location.pathname}#/join/${farm.id}/${secret}`);
       }
+      setCreatedFarmId(farm.id);
 
-      await supabase
-        .from('profiles')
-        .update({ onboarding_completed: true, primary_goal: primaryGoal, farm_name: farmName, country, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
-
-      await refreshAuth?.();
-      setCurrentStep('complete');
+      // 6. Refresh session so currentFarm is populated
+      await refreshSession?.();
+      setStep('team');
     } catch (err: any) {
       console.error('Onboarding error:', err);
-      setError(err.message || 'Failed to save. Please try again.');
+      if (err.message?.includes('duplicate') || err.message?.includes('unique')) {
+        setError('A farm with that name already exists. Choose a different name.');
+      } else {
+        setError(err.message || 'Something went wrong. Please try again.');
+      }
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
+  }, [user, farmName, country, species, flockName, flockCount, startDate, refreshSession]);
+
+  const copyLink = async () => {
+    if (!joinLink) return;
+    await navigator.clipboard.writeText(joinLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 'welcome':
-        return (
-          <div className="text-center">
-            <div className="w-20 h-20 mx-auto mb-6 bg-[#3D5F42]/10 rounded-full flex items-center justify-center">
-              <Sprout className="w-10 h-10 text-[#3D5F42]" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">Welcome to Edentrack</h2>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto leading-relaxed">
-              Your complete poultry farm management tool. Let's get your farm set up in 3 quick steps.
-            </p>
-            <div className="flex justify-center gap-6 text-sm text-gray-500 mb-8">
-              {[['Track flocks', '🐔'], ['Manage sales', '💵'], ['Grow faster', '📊']].map(([label, emoji]) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <span>{emoji}</span>
-                  <span>{label}</span>
-                </div>
-              ))}
-            </div>
-            <button onClick={handleSkip} className="text-sm text-gray-400 hover:text-gray-600 underline transition-colors">
-              Skip setup for now
-            </button>
-          </div>
-        );
-
-      case 'farm':
-        return (
-          <div>
-            <div className="text-center mb-8">
-              <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Building2 className="w-7 h-7 text-amber-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Name your farm</h2>
-              <p className="text-gray-500 mt-1">What would you like to call it?</p>
-            </div>
-            <div className="max-w-md mx-auto space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Farm Name *</label>
-                <input
-                  type="text"
-                  value={farmName}
-                  onChange={(e) => setFarmName(e.target.value)}
-                  placeholder="e.g., Sunrise Poultry Farm"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42] outline-none transition-all"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Country</label>
-                <select
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42] outline-none transition-all bg-white"
-                >
-                  {SUPPORTED_COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <p className="text-xs text-gray-400 mt-1.5">Currency: {getCurrencyForCountry(country)}</p>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'location':
-        return (
-          <div>
-            <div className="text-center mb-8">
-              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <MapPin className="w-7 h-7 text-blue-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Where is your farm?</h2>
-              <p className="text-gray-500 mt-1">Optional — helps with supplier recommendations</p>
-            </div>
-            <div className="max-w-md mx-auto space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">City / Town</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g., Douala"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42] outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Region / State</label>
-                <input
-                  type="text"
-                  value={regionState}
-                  onChange={(e) => setRegionState(e.target.value)}
-                  placeholder="e.g., Littoral"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42] outline-none transition-all"
-                />
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'goals':
-        return (
-          <div>
-            <div className="text-center mb-8">
-              <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Target className="w-7 h-7 text-purple-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">What's your main goal?</h2>
-              <p className="text-gray-500 mt-1">We'll tailor your dashboard to focus on what matters most</p>
-            </div>
-            <div className="max-w-md mx-auto space-y-3">
-              {GOALS.map((goal) => (
-                <button
-                  key={goal.id}
-                  type="button"
-                  onClick={() => setPrimaryGoal(goal.id)}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                    primaryGoal === goal.id
-                      ? 'border-[#3D5F42] bg-[#3D5F42]/5'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{goal.emoji}</span>
-                    <div>
-                      <div className="font-semibold text-gray-900">{goal.label}</div>
-                      <div className="text-sm text-gray-500">{goal.desc}</div>
-                    </div>
-                    {primaryGoal === goal.id && (
-                      <Check className="w-5 h-5 text-[#3D5F42] ml-auto flex-shrink-0" />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-
-      case 'complete':
-        return (
-          <div className="text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">You're all set!</h2>
-            <p className="text-gray-500 mb-3 max-w-md mx-auto leading-relaxed">
-              <strong className="text-gray-800">{farmName}</strong> is ready. Your next step is to create your first flock — that's how all KPIs, reports, and AI insights come to life.
-            </p>
-            <p className="text-sm text-gray-400 mb-8">The app tour will walk you through everything once you land on the dashboard.</p>
-            <button
-              onClick={onComplete}
-              className="px-8 py-3 bg-[#3D5F42] text-white rounded-xl font-semibold hover:bg-[#2F4A34] transition-colors"
-            >
-              Go to Dashboard →
-            </button>
-          </div>
-        );
-
-      default:
-        return null;
+  const shareLink = async () => {
+    if (!joinLink) return;
+    const text = `Join my farm on Edentrack — tap the link to create your account:`;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Join my farm on Edentrack', text, url: joinLink }); return; } catch {}
     }
+    copyLink();
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col">
-      {currentStep !== 'welcome' && currentStep !== 'complete' && (
-        <div className="px-6 py-4">
-          <div className="max-w-lg mx-auto">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-medium text-gray-500">Step {currentIndex} of 3</span>
-              <span className="text-xs text-gray-400">{Math.round(progress)}%</span>
-            </div>
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-[#3D5F42] transition-all duration-500 rounded-full" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-        </div>
-      )}
+  // ─── Welcome ────────────────────────────────────────────────────────────────
+  if (step === 'welcome') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-8 text-center">
+          <span className="text-3xl font-black tracking-tight">
+            <span className="text-gray-900">EDEN</span>
+            <span style={{ color: '#d97706' }}>TRACK</span>
+          </span>
 
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-lg">
-          {error && (
-            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-              {error}
-            </div>
-          )}
-          <div key={currentStep}>{renderStep()}</div>
+          <div
+            className="w-20 h-20 mx-auto rounded-3xl flex items-center justify-center text-4xl"
+            style={{ background: 'rgba(255,221,0,0.12)', border: '2px solid rgba(255,221,0,0.3)' }}
+          >
+            🐔
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-extrabold text-gray-900">Welcome to Edentrack</h1>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              Set up your farm in 3 quick steps.
+            </p>
+          </div>
+
+          <div className="text-left space-y-3 bg-gray-50 rounded-2xl p-5">
+            {[
+              { e: '📊', t: 'Track flocks, sales, expenses & mortality' },
+              { e: '🤖', t: 'Eden AI diagnoses problems & answers questions' },
+              { e: '📱', t: 'Works offline on your phone' },
+              { e: '🆓', t: 'Free forever on Starter plan' },
+            ].map(({ e, t }) => (
+              <div key={t} className="flex items-center gap-3 text-sm text-gray-700">
+                <span>{e}</span>
+                <span>{t}</span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setStep('farm')}
+            className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-gray-900 hover:brightness-105 transition-all"
+            style={{ background: '#ffdd00', boxShadow: '0 4px 16px rgba(255,221,0,0.3)' }}
+          >
+            Get Started
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
+    );
+  }
 
-      {currentStep !== 'complete' && (
-        <div className="px-6 py-5 border-t border-gray-100 bg-white">
-          <div className="max-w-lg mx-auto flex justify-between items-center">
-            {currentStep !== 'welcome' ? (
-              <button onClick={handleBack} className="px-5 py-2.5 text-gray-500 font-medium hover:text-gray-800 flex items-center gap-1.5 transition-colors">
-                <ChevronLeft className="w-4 h-4" />
-                Back
-              </button>
-            ) : <div />}
+  // ─── Step 1: Farm name + species ────────────────────────────────────────────
+  if (step === 'farm') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-1">
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Step 1 of 3</p>
+            <h1 className="text-2xl font-extrabold text-gray-900">Your farm</h1>
+            <p className="text-gray-400 text-sm">Name it and tell us what you raise.</p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Farm Name <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={farmName}
+                onChange={(e) => setFarmName(e.target.value)}
+                placeholder="e.g., Sunrise Poultry Farm"
+                autoFocus
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Country</label>
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all"
+              >
+                {SUPPORTED_COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1.5">
+                Currency: <strong>{getCurrencyForCountry(country)}</strong>
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                What do you raise? <span className="text-red-400">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {SPECIES_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSpecies(opt.id)}
+                    className={`flex flex-col items-center gap-1.5 p-4 rounded-xl border-2 transition-all text-center ${
+                      species === opt.id
+                        ? 'border-amber-400 bg-amber-50'
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">{opt.emoji}</span>
+                    <span className="text-sm font-bold text-gray-900">{opt.label}</span>
+                    <span className="text-[11px] text-gray-500">{opt.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setStep('flock')}
+            disabled={!farmName.trim()}
+            className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-gray-900 hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: '#ffdd00', boxShadow: '0 4px 16px rgba(255,221,0,0.3)' }}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Step 2: First flock ─────────────────────────────────────────────────────
+  if (step === 'flock') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-1">
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Step 2 of 3</p>
+            <h1 className="text-2xl font-extrabold text-gray-900">First flock</h1>
+            <p className="text-gray-400 text-sm">Add your birds — you can update details later.</p>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-xl">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <span className="text-sm text-red-600">{error}</span>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Flock Name</label>
+              <input
+                type="text"
+                value={flockName}
+                onChange={(e) => { setFlockNameTouched(true); setFlockName(e.target.value); }}
+                placeholder={defaultFlockName(species)}
+                disabled={saving}
+                autoFocus
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all disabled:opacity-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Number of Birds <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                value={flockCount}
+                onChange={(e) => setFlockCount(e.target.value)}
+                placeholder="e.g., 500"
+                min="1"
+                disabled={saving}
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all disabled:opacity-50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={saving}
+                className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-400 transition-all disabled:opacity-50"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
             <button
-              onClick={handleNext}
-              disabled={loading}
-              className="px-7 py-2.5 bg-[#3D5F42] text-white rounded-xl font-semibold hover:bg-[#2F4A34] transition-colors disabled:opacity-60 flex items-center gap-2"
+              onClick={() => { setError(''); setStep('farm'); }}
+              disabled={saving}
+              className="h-12 px-5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
             >
-              {loading ? 'Saving...' : currentStep === 'goals' ? 'Complete Setup' : currentStep === 'welcome' ? 'Get Started' : 'Continue'}
-              {!loading && currentStep !== 'goals' && <ChevronRight className="w-4 h-4" />}
+              Back
+            </button>
+            <button
+              onClick={createFarmAndFlock}
+              disabled={saving || !flockCount || parseInt(flockCount, 10) <= 0}
+              className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-gray-900 hover:brightness-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: '#ffdd00', boxShadow: '0 4px 16px rgba(255,221,0,0.3)' }}
+            >
+              {saving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-900/30 border-t-gray-900 rounded-full animate-spin" />
+                  Creating farm…
+                </>
+              ) : (
+                <>
+                  Create Farm & Flock
+                  <ChevronRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  // ─── Step 3: Team invite ─────────────────────────────────────────────────────
+  if (step === 'team') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-1">
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Step 3 of 3</p>
+            <h1 className="text-2xl font-extrabold text-gray-900">Invite your team</h1>
+            <p className="text-gray-400 text-sm">Share this link with workers to join your farm instantly.</p>
+          </div>
+
+          {joinLink ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                <span className="text-sm">👥</span>
+                <p className="text-xs text-gray-600">
+                  Send this to one worker at a time. The link changes after each use — forward it again for the next person.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <p className="flex-1 text-xs text-gray-500 truncate font-mono">{joinLink}</p>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={copyLink}
+                    className="p-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    {copied
+                      ? <Check className="w-3.5 h-3.5 text-green-500" />
+                      : <Copy className="w-3.5 h-3.5 text-gray-500" />}
+                  </button>
+                  <button
+                    onClick={shareLink}
+                    className="p-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-400 text-center">
+                Workers join with no email verification. You can generate a new link anytime in Settings.
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 bg-gray-50 rounded-xl text-sm text-gray-500 text-center">
+              Team invite link available in Settings after setup.
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={onComplete}
+              className="flex-1 h-12 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all"
+            >
+              Skip for now
+            </button>
+            <button
+              onClick={onComplete}
+              className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-gray-900 hover:brightness-105 transition-all"
+              style={{ background: '#ffdd00', boxShadow: '0 4px 16px rgba(255,221,0,0.3)' }}
+            >
+              Go to Dashboard
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Done (fallback) ─────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm text-center space-y-8">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+          <CheckCircle className="w-10 h-10 text-green-500" />
+        </div>
+        <div className="space-y-3">
+          <h1 className="text-2xl font-extrabold text-gray-900">You're all set!</h1>
+          <p className="text-gray-500 text-sm">Your farm is ready. Head to the dashboard to get started.</p>
+        </div>
+        <button
+          onClick={onComplete}
+          className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-gray-900 hover:brightness-105 transition-all"
+          style={{ background: '#ffdd00', boxShadow: '0 4px 16px rgba(255,221,0,0.3)' }}
+        >
+          Go to Dashboard
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

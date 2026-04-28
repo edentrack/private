@@ -6,6 +6,7 @@ import { PermissionsProvider } from './contexts/PermissionsContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ImpersonationProvider, useImpersonation } from './contexts/ImpersonationContext';
 import { ImpersonationBanner } from './components/common/ImpersonationBanner';
+import { BroadcastBanner } from './components/common/BroadcastBanner';
 import { OnboardingTour, shouldShowTour } from './components/onboarding/OnboardingTour';
 import { ErrorBoundaryWithTranslation as ErrorBoundary } from './components/ErrorBoundaryWithTranslation';
 import { RequireRole } from './components/common/RequireRole';
@@ -62,6 +63,8 @@ const PricingManagement      = lazy1(() => import('./components/superadmin/Prici
 const FarmsManagement        = lazy1(() => import('./components/superadmin/FarmsManagement'), 'FarmsManagement');
 const MarketplaceAdmin       = lazy1(() => import('./components/superadmin/MarketplaceAdmin'), 'MarketplaceAdmin');
 const Announcements          = lazy1(() => import('./components/superadmin/Announcements'), 'Announcements');
+const BroadcastManager       = lazy1(() => import('./components/superadmin/BroadcastManager'), 'BroadcastManager');
+const NotificationsPage      = lazy1(() => import('./components/notifications/NotificationsPage'), 'NotificationsPage');
 const SupportTickets         = lazy1(() => import('./components/superadmin/SupportTickets'), 'SupportTickets');
 const ActivityLogs           = lazy1(() => import('./components/superadmin/ActivityLogs'), 'ActivityLogs');
 const BillingSubscriptions   = lazy1(() => import('./components/superadmin/BillingSubscriptions'), 'BillingSubscriptions');
@@ -78,6 +81,14 @@ function CrispChat() {
     s.src = 'https://client.crisp.chat/l.js';
     s.async = true;
     document.head.appendChild(s);
+    // Keep chat closed by default — user opens it manually
+    s.onload = () => {
+      const crisp = (window as any).$crisp;
+      if (crisp) {
+        crisp.push(['do', 'chat:close']);
+        crisp.push(['on', 'session:loaded', () => crisp.push(['do', 'chat:close'])]);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -109,6 +120,18 @@ function AppContent() {
   const [showNoFarmMessage, setShowNoFarmMessage] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
+  // Detect Flutterwave payment return (lands at origin with ?status=...&tx_ref=...&transaction_id=...)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('tx_ref') && params.has('transaction_id') && params.has('status')) {
+      // guest=1 means unauthenticated checkout — LandingPage handles it, don't redirect
+      if (params.get('guest') === '1') return;
+      if (!window.location.hash || window.location.hash === '#') {
+        window.location.hash = '#/subscribe';
+      }
+    }
+  }, []);
+
   // Show onboarding tour for first-time users once farm loads
   useEffect(() => {
     if (user && currentFarm && !loading && shouldShowTour()) {
@@ -117,9 +140,10 @@ function AppContent() {
     }
   }, [user, currentFarm, loading]);
 
-  // Only show "No farm assigned" after farm data has had time to load (avoid flash before currentFarm is set)
+  // Only show "No farm assigned" for users who completed onboarding but lost their farm link (edge case).
+  // New users who haven't completed onboarding go to the OnboardingWizard instead.
   useEffect(() => {
-    if (user && !loading && !currentFarm && authRoute !== 'invite' && !inviteToken && !profile?.is_super_admin) {
+    if (user && !loading && !currentFarm && authRoute !== 'invite' && !inviteToken && !profile?.is_super_admin && profile?.onboarding_completed) {
       const t = window.setTimeout(() => setShowNoFarmMessage(true), 600);
       return () => clearTimeout(t);
     }
@@ -143,6 +167,77 @@ function AppContent() {
       setPendingInviteToken(null);
     }
   }, [user, pendingInviteToken]);
+
+  // Auto-create farm from details collected during sign-up (stored in localStorage)
+  useEffect(() => {
+    if (!user || loading) return;
+    const pendingFarmName = localStorage.getItem('pending_farm_name');
+    if (!pendingFarmName) return;
+    const pendingCountry = localStorage.getItem('pending_farm_country') || 'Nigeria';
+    localStorage.removeItem('pending_farm_name');
+    localStorage.removeItem('pending_farm_country');
+
+    import('./lib/supabaseClient').then(async ({ supabase }) => {
+      // Don't create if already has a farm membership
+      const { data: existing } = await supabase
+        .from('farm_members')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (existing) {
+        await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', user.id);
+        refreshSession?.();
+        return;
+      }
+
+      const { getCurrencyForCountry } = await import('./utils/currency');
+      const currencyCode = getCurrencyForCountry(pendingCountry);
+
+      const { data: farm, error: farmError } = await supabase
+        .from('farms')
+        .insert({ name: pendingFarmName, owner_id: user.id, country: pendingCountry, currency_code: currencyCode })
+        .select('id')
+        .single();
+      if (farmError || !farm) {
+        console.error('Auto-farm creation failed:', farmError);
+        return;
+      }
+
+      await Promise.all([
+        supabase.from('farm_members').insert({ farm_id: farm.id, user_id: user.id, role: 'owner', is_active: true }),
+        supabase.from('profiles').update({ onboarding_completed: true, country: pendingCountry }).eq('id', user.id),
+      ]);
+
+      refreshSession?.();
+    });
+  }, [user, loading]);
+
+
+  // Apply pending farm join after signup — triggered when user auth resolves
+  useEffect(() => {
+    if (!user || loading) return;
+    const pendingFarmId = sessionStorage.getItem('pending_farm_join_id');
+    if (!pendingFarmId) return;
+    const pendingSecret = sessionStorage.getItem('pending_farm_join_secret') || '';
+    sessionStorage.removeItem('pending_farm_join_id');
+    sessionStorage.removeItem('pending_farm_join_secret');
+    import('./lib/supabaseClient').then(({ supabase }) => {
+      supabase.rpc('join_farm_by_id', { p_farm_id: pendingFarmId, p_secret: pendingSecret }).then(({ data }) => {
+        if (data?.ok) {
+          if (data.already_member) {
+            // Owner tapped their own link — just continue
+          } else {
+            // Worker successfully joined — mark onboarding complete so wizard doesn't show
+            supabase.from('profiles').update({ onboarding_completed: true }).eq('id', user.id).then(() => {
+              refreshSession?.().then(() => {
+                window.location.hash = '#/dashboard';
+              });
+            });
+          }
+        }
+      });
+    });
+  }, [user, loading]);
 
   // Pull-to-refresh functionality for mobile
   useEffect(() => {
@@ -370,6 +465,11 @@ function AppContent() {
         return;
       }
 
+      if (hash.includes('#/super-admin/broadcasts')) {
+        setCurrentView('super-admin-broadcasts');
+        return;
+      }
+
       if (hash.includes('#/super-admin/support')) {
         setCurrentView('super-admin-support');
         return;
@@ -402,6 +502,39 @@ function AppContent() {
           setPendingInviteToken(inviteMatch[1]);
         }
         setAuthRoute('invite');
+        return;
+      }
+
+      // Farm join link: #/join/:farm_id/:secret
+      const joinMatch = hash.match(/#\/join\/([0-9a-f-]{36})\/([0-9a-f]{32})/i);
+      if (joinMatch) {
+        const farmId = joinMatch[1];
+        const secret = joinMatch[2];
+        if (!user) {
+          // Not logged in — store farm ID + secret and send to signup
+          sessionStorage.setItem('pending_farm_join_id', farmId);
+          sessionStorage.setItem('pending_farm_join_secret', secret);
+          setAuthRoute('signup');
+          window.location.hash = '#/signup';
+        } else {
+          // Already logged in — join directly
+          import('./lib/supabaseClient').then(({ supabase }) => {
+            supabase.rpc('join_farm_by_id', { p_farm_id: farmId, p_secret: secret }).then(({ data }) => {
+              if (data?.ok) {
+                if (!data.already_member) {
+                  // Worker joined — mark onboarding complete so wizard doesn't show
+                  supabase.from('profiles').update({ onboarding_completed: true }).eq('id', user.id).then(() => {
+                    refreshSession?.().then(() => {
+                      window.location.hash = '#/dashboard';
+                    });
+                  });
+                } else {
+                  window.location.hash = '#/dashboard';
+                }
+              }
+            });
+          });
+        }
         return;
       }
 
@@ -484,8 +617,12 @@ function AppContent() {
         setCurrentView('marketplace');
         return;
       }
-      if (hash.includes('#/subscribe') || hash.includes('#/billing')) {
+      if (hash.includes('#/subscribe') || hash.includes('#/billing') || hash.includes('#/subscription')) {
         setCurrentView('subscribe');
+        return;
+      }
+      if (hash.includes('#/notifications')) {
+        setCurrentView('notifications');
         return;
       }
       if (hash.includes('#/dashboard')) {
@@ -690,56 +827,8 @@ function AppContent() {
     );
   }
 
-  // Logged-in user with no farm — show message only after load has settled (avoid flash before farm data loads)
-  if (user && !loading && !currentFarm && authRoute !== 'invite' && !inviteToken && !profile?.is_super_admin) {
-    if (!showNoFarmMessage) {
-      return (
-        <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full mx-4 text-center">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">{t('auth.setting_up_account', 'Setting up...')}</h2>
-            <p className="text-gray-600 text-sm">{t('auth.loading_farm', 'Loading your farm')}</p>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full mx-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('auth.no_farm_title', 'No farm assigned')}</h2>
-          <p className="text-gray-600 text-sm mb-6">
-            {t('auth.no_farm_message', 'Your account is not linked to a farm yet. If you accepted an invitation, try refreshing or sign out and sign in again.')}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              type="button"
-              onClick={() => refreshSession?.()}
-              className="px-4 py-2.5 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2F4A34] transition-colors font-medium"
-            >
-              {t('auth.retry_load', 'Retry')}
-            </button>
-            <button
-              type="button"
-              onClick={() => signOut?.()}
-              className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-            >
-              {t('auth.sign_out', 'Sign Out')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show onboarding wizard for new users who haven't set up their farm yet
-  if (
-    user &&
-    !loading &&
-    profile &&
-    profile.account_status === 'active' &&
-    !profile.is_super_admin &&
-    !profile.onboarding_completed
-  ) {
+  // New users who haven't completed onboarding — show wizard before anything else
+  if (user && !loading && profile && !profile.is_super_admin && !profile.onboarding_completed) {
     return (
       <OnboardingWizard
         onComplete={async () => {
@@ -748,6 +837,8 @@ function AppContent() {
       />
     );
   }
+
+
 
   const renderView = () => {
     switch (currentView) {
@@ -791,6 +882,12 @@ function AppContent() {
         return (
           <SuperAdminGuard>
             <Announcements />
+          </SuperAdminGuard>
+        );
+      case 'super-admin-broadcasts':
+        return (
+          <SuperAdminGuard>
+            <BroadcastManager />
           </SuperAdminGuard>
         );
       case 'super-admin-support':
@@ -984,6 +1081,8 @@ function AppContent() {
             setCurrentView('dashboard');
           }} />
         );
+      case 'notifications':
+        return <NotificationsPage />;
       // case 'roadmap': // Disabled for now
       //   return (
       //     <RequireRole moduleId="roadmap" onUnauthorized={handleUnauthorized}>
@@ -1066,6 +1165,7 @@ function AppContent() {
           to { transform: rotate(360deg); }
         }
       `}</style>
+      <BroadcastBanner />
       <ImpersonationBanner />
       <Suspense fallback={null}>
         <DashboardLayout currentView={currentView} onNavigate={navigateToView}>

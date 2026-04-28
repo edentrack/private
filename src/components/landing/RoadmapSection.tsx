@@ -68,7 +68,7 @@ export default function RoadmapSection() {
     {
       icon: Globe,
       title: 'Multi-Language Expansion',
-      description: 'Support for Swahili, Hausa, Yoruba, and more African languages',
+      description: 'Support for Swahili, Hausa, Yoruba, and more regional languages',
       quarter: 'Q2 2026',
     },
     {

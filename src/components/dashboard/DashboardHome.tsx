@@ -25,6 +25,7 @@ import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
+import { cleanHistoricalDuplicateTasks } from '../../utils/unifiedTaskSystem';
 
 interface DashboardHomeProps {
   onNavigate: (view: string) => void;
@@ -81,6 +82,23 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
     // Only show the loading spinner on first load — subsequent refreshes update silently
     if (isInitialLoad) setLoading(true);
+
+    // Auto-archive old pending recurring tasks (template-based) older than yesterday.
+    // Prevents a wall of 60+ overdue tasks piling up from flock creation date.
+    if (isInitialLoad) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const cutoff = yesterday.toISOString().split('T')[0];
+      supabase
+        .from('tasks')
+        .update({ is_archived: true, archived_at: new Date().toISOString() })
+        .eq('farm_id', farm.id)
+        .eq('is_archived', false)
+        .eq('status', 'pending')
+        .not('template_id', 'is', null)
+        .lt('scheduled_for', `${cutoff}T00:00:00`)
+        .then(() => {/* fire and forget */});
+    }
 
     try {
       const { data: farmData } = await supabase
@@ -154,7 +172,8 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
   useEffect(() => {
     if (user && currentFarm?.id) {
-      loadDashboardData(true); // initial load — show spinner
+      loadDashboardData(true);
+      cleanHistoricalDuplicateTasks(supabase, currentFarm.id); // fire-and-forget cleanup
     }
   }, [user, currentFarm?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -369,26 +388,69 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
   if (flocks.length === 0) {
     const isWorker = currentRole?.toLowerCase() === 'worker' || currentRole?.toLowerCase() === 'viewer';
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center max-w-md">
-          <div className="w-32 h-32 mx-auto mb-8 relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-neon-300/50 to-neon-500/30 rounded-full blur-2xl" />
-            <img src="/image.png" alt="Layer Hen" className="relative w-full h-full object-contain" />
+      <div className="flex items-center justify-center min-h-[70vh] px-4">
+        <div className="w-full max-w-sm">
+          {/* Card */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Top strip */}
+            <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #ffdd00 0%, #f59e0b 100%)' }} />
+
+            <div className="p-8 text-center">
+              {/* Icon */}
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center text-3xl"
+                style={{ background: 'rgba(255,221,0,0.12)', border: '2px solid rgba(255,221,0,0.25)' }}>
+                🐣
+              </div>
+
+              <h3 className="text-xl font-extrabold text-gray-900 mb-2">
+                {isWorker ? 'No flocks yet' : 'Add your first flock'}
+              </h3>
+
+              {isWorker ? (
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  Your manager hasn't added any flocks yet. Check back soon.
+                </p>
+              ) : (
+                <>
+                  <p className="text-gray-400 text-sm leading-relaxed mb-8">
+                    A flock is how Edentrack tracks everything — mortality, weight, feed, expenses, and sales all tie back to it.
+                  </p>
+
+                  {/* Steps */}
+                  <div className="text-left space-y-3 mb-8">
+                    {[
+                      { n: '1', text: 'Create a flock (breed, count, start date)' },
+                      { n: '2', text: 'Log daily tasks — feed, water, mortality' },
+                      { n: '3', text: 'Watch your KPIs & AI insights populate' },
+                    ].map(({ n, text }) => (
+                      <div key={n} className="flex items-start gap-3">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-gray-900 shrink-0 mt-0.5"
+                          style={{ background: '#ffdd00' }}>
+                          {n}
+                        </div>
+                        <p className="text-sm text-gray-600">{text}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => onNavigate('flocks')}
+                    className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-gray-900 hover:brightness-105 transition-all"
+                    style={{ background: '#ffdd00', boxShadow: '0 4px 16px rgba(255,221,0,0.3)' }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create My First Flock
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">{t('dashboard.welcome_to_farm')}</h3>
-          {isWorker ? (
-            <p className="text-gray-500 text-sm">{t('dashboard.no_flocks_yet_worker') || 'No flocks set up yet. Your manager will add flocks when ready. Check back soon!'}</p>
-          ) : (
-            <>
-              <p className="text-gray-500 mb-8 text-sm">{t('dashboard.create_first_flock_desc') || 'Create your first flock to start tracking daily operations, expenses, sales, and bird health.'}</p>
-              <button
-                onClick={() => onNavigate('flocks')}
-                className="btn-neon inline-flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                {t('flocks.create_flock')}
-              </button>
-            </>
+
+          {/* Hint */}
+          {!isWorker && (
+            <p className="text-center text-xs text-gray-400 mt-4">
+              You can manage multiple flocks — broilers, layers, or both.
+            </p>
           )}
         </div>
       </div>
@@ -455,6 +517,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
         onOpenSettings={() => onNavigate('settings')}
       />
 
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-fade-in-up stagger-1">
         <div className="flex items-center gap-3">
           <div className="stat-label">{t('dashboard.total_birds')}</div>
@@ -473,12 +536,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
           <div className="text-xl sm:text-4xl font-bold text-gray-900">
             {selectedFlock ? (() => {
               const age = getFlockAge(selectedFlock.arrival_date);
-              return (
-                <>
-                  {age.weeks}
-                  {age.days > 0 && <span className="text-xl font-normal text-gray-400 ml-1.5">{age.days}d</span>}
-                </>
-              );
+              return `Week ${age.weeks}`;
             })() : '-'}
           </div>
         </div>
@@ -590,7 +648,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
               )}
             </div>
           </div>
-          {showEggs && (
+          {showEggs && selectedFlock?.type?.toLowerCase() !== 'broiler' && (
             <div className="animate-fade-in-up stagger-4">
               <div>
                 <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">Egg Quick Entry</div>
