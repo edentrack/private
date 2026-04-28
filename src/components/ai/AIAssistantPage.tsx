@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, Lightbulb, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot } from 'lucide-react';
+import { Send, Loader2, Lightbulb, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
-import { useTranslation } from 'react-i18next';;
+import { useTranslation } from 'react-i18next';
+import { EdenAvatarAnimated } from './EdenAvatarAnimated';
 
 interface ImageAttachment {
   data: string;       // base64 (no prefix)
@@ -12,8 +13,15 @@ interface ImageAttachment {
   preview: string;    // data URL for display
 }
 
+interface PendingFile {
+  name: string;
+  content: string;  // CSV/text content (capped at 200 rows)
+  rowCount: number;
+}
+
 interface LogAction {
   type: 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE' | 'COMPLETE_TASK' | 'LOG_WEIGHT' | 'LOG_FEED_USAGE' | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE';
+  log_date?: string;  // universal ISO date override for bulk imports
   // Common
   flock_name?: string;
   notes?: string;
@@ -32,7 +40,7 @@ interface LogAction {
   category?: string;
   amount?: number;
   description?: string;
-  // Purchase (expense + inventory card in one shot)
+  // Purchase
   item_name?: string;
   inventory_category?: 'feed' | 'Medication' | 'Equipment' | 'Supplies';
   quantity?: number;
@@ -72,9 +80,29 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   images?: ImageAttachment[];
+  attachedFile?: { name: string; rowCount: number };
   actions?: Array<{ type: string; label: string; href: string }>;
   logAction?: LogAction;
   logConfirmed?: boolean;
+  bulkLogActions?: LogAction[];
+  bulkLogSelected?: boolean[];
+  bulkLogConfirmed?: boolean;
+  bulkLogResult?: { saved: number; total: number; failed: number };
+  bulkLogProgress?: { done: number; total: number };
+  payRunAction?: { worker_name: string; worker_id?: string; amount: number; bonus?: number; pay_date: string; pay_period_start?: string; pay_period_end?: string; currency: string; notes?: string };
+  payRunConfirmed?: boolean;
+  saveConfigAction?: { egg_prices?: Record<string, number>; payout_account?: string; default_pay_day?: number };
+  saveConfigConfirmed?: boolean;
+  updateRecordAction?: { table: string; match: Record<string, any>; update: Record<string, any> };
+  updateRecordConfirmed?: boolean;
+  voidRecordAction?: { table: string; match: Record<string, any>; reason?: string };
+  voidRecordConfirmed?: boolean;
+  logWorkerAction?: { name: string; role?: string; pay_type?: string; monthly_salary?: number; hourly_rate?: number; currency?: string; phone?: string; notes?: string };
+  logWorkerConfirmed?: boolean;
+  updateWorkerAction?: { match_name: string; update: Record<string, any> };
+  updateWorkerConfirmed?: boolean;
+  updateTeamMemberAction?: { farm_member_id: string; member_name: string; old_role: string; new_role: string };
+  updateTeamMemberConfirmed?: boolean;
   timestamp: Date;
 }
 
@@ -89,35 +117,6 @@ const SUGGESTIONS = [
   "What's my profit margin?",
 ];
 
-function EdenAvatar({ size = 'sm' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const dim = size === 'lg' ? 48 : size === 'md' ? 32 : 20;
-  return (
-    <svg width={dim} height={dim} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Body */}
-      <ellipse cx="20" cy="24" rx="12" ry="11" fill="#5C3D2E"/>
-      {/* Head */}
-      <circle cx="20" cy="14" r="10" fill="#8C7560"/>
-      {/* Beak */}
-      <path d="M17 16 L20 20 L23 16 Z" fill="#F5A623"/>
-      {/* Eyes */}
-      <circle cx="16" cy="12" r="2.5" fill="white"/>
-      <circle cx="24" cy="12" r="2.5" fill="white"/>
-      <circle cx="17" cy="12" r="1.2" fill="#2B1C14"/>
-      <circle cx="25" cy="12" r="1.2" fill="#2B1C14"/>
-      {/* Eye shine */}
-      <circle cx="17.5" cy="11.3" r="0.5" fill="white"/>
-      <circle cx="25.5" cy="11.3" r="0.5" fill="white"/>
-      {/* Comb */}
-      <path d="M17 5 Q18 2 19 5 Q20 2 21 5 Q22 2 23 5" stroke="#F5A623" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
-      {/* Wings */}
-      <ellipse cx="9" cy="26" rx="4" ry="6" fill="#4A3124" transform="rotate(-15 9 26)"/>
-      <ellipse cx="31" cy="26" rx="4" ry="6" fill="#4A3124" transform="rotate(15 31 26)"/>
-      {/* Feet */}
-      <path d="M15 35 L13 38 M15 35 L15 38 M15 35 L17 38" stroke="#F5A623" strokeWidth="1.2" strokeLinecap="round"/>
-      <path d="M25 35 L23 38 M25 35 L25 38 M25 35 L27 38" stroke="#F5A623" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  );
-}
 
 const STORAGE_KEY = 'eden_chat_messages';
 const STORAGE_DATE_KEY = 'eden_chat_date';
@@ -156,11 +155,13 @@ export function AIAssistantPage() {
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
+  const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [usageInfo, setUsageInfo] = useState<{ used: number; cap: number; tier: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     saveTodayMessages(messages);
@@ -169,6 +170,18 @@ export function AIAssistantPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Auto-send prefill message from setup score card or other navigation triggers
+  useEffect(() => {
+    try {
+      const prefill = sessionStorage.getItem('eden_prefill_message');
+      if (prefill) {
+        sessionStorage.removeItem('eden_prefill_message');
+        setTimeout(() => sendMessage(prefill), 400);
+      }
+    } catch {}
+  }, []);
+
 
   const toggleVoice = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -213,9 +226,487 @@ export function AIAssistantPage() {
     setPendingImages(prev => [...prev, ...newImgs].slice(0, 3));
   };
 
+  const addFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      const lines = text.split('\n');
+      const header = lines[0] || '';
+      const dataLines = lines.slice(1).filter(l => l.trim());
+      const capped = dataLines.slice(0, 200);
+      const content = [header, ...capped].join('\n');
+      setPendingFile({ name: file.name, content, rowCount: capped.length });
+    } catch {
+      showToast('Could not read file — make sure it is a plain CSV or text file', 'error');
+    }
+  };
+
+  const checkForDuplicate = async (logAction: LogAction, farmId: string): Promise<string | null> => {
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      if (logAction.type === 'LOG_EGG_SALE') {
+        const saleDay = logAction.sale_date || logAction.log_date || today;
+        if (logAction.customer_name) {
+          const { data } = await supabase.from('egg_sales').select('id, total_eggs').eq('farm_id', farmId).eq('sale_date', saleDay).ilike('customer_name', `%${logAction.customer_name}%`).limit(1);
+          if (data?.length) return `Egg sale to "${logAction.customer_name}" on ${saleDay} already exists (${data[0].total_eggs} eggs)`;
+        }
+      } else if (logAction.type === 'LOG_EXPENSE') {
+        const expDay = logAction.log_date || today;
+        const { data } = await supabase.from('expenses').select('id, amount').eq('farm_id', farmId).eq('incurred_on', expDay).eq('category', logAction.category || '').eq('amount', logAction.amount || 0).limit(1);
+        if (data?.length) return `Expense "${logAction.description}" on ${expDay} for ${logAction.amount} already exists`;
+      } else if (logAction.type === 'LOG_PURCHASE') {
+        const purchDay = logAction.purchase_date || logAction.log_date || today;
+        const { data } = await supabase.from('expenses').select('id, amount').eq('farm_id', farmId).eq('incurred_on', purchDay).eq('amount', logAction.amount || 0).ilike('description', `%${logAction.item_name}%`).limit(1);
+        if (data?.length) return `Purchase of "${logAction.item_name}" on ${purchDay} already exists`;
+      }
+    } catch {}
+    return null;
+  };
+
+  // Core DB write logic, reused by both single confirmLog and bulk confirmBulkLog
+  const executeLogAction = async (logAction: LogAction, farmId: string, currency: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const recordDate = logAction.log_date || today;
+
+    const findFlock = async (name?: string) => {
+      if (!name) return null;
+      const { data } = await supabase.from('flocks').select('id,name,current_count').eq('farm_id', farmId).ilike('name', `%${name}%`).limit(1);
+      return data?.[0] || null;
+    };
+
+    if (logAction.type === 'LOG_MORTALITY') {
+      const flock = await findFlock(logAction.flock_name);
+      if (!flock) throw new Error(`Flock "${logAction.flock_name}" not found`);
+      await supabase.from('mortality_logs').insert({ farm_id: farmId, flock_id: flock.id, count: logAction.count, cause: logAction.cause || 'unknown', notes: logAction.notes || '', date: recordDate, event_date: recordDate });
+
+    } else if (logAction.type === 'LOG_EGGS') {
+      const flock = await findFlock(logAction.flock_name);
+      if (!flock) throw new Error(`Flock "${logAction.flock_name}" not found`);
+      const small = logAction.small_eggs || 0;
+      const medium = logAction.medium_eggs || 0;
+      const large = logAction.large_eggs || 0;
+      const jumbo = logAction.jumbo_eggs || 0;
+      const damaged = logAction.damaged_eggs || logAction.cracked || 0;
+      const totalGood = small + medium + large + jumbo;
+      const eggsPerTray = 30;
+      const trays = Math.floor(totalGood / eggsPerTray);
+      await supabase.from('egg_collections').insert({
+        farm_id: farmId, flock_id: flock.id,
+        collection_date: recordDate, collected_on: recordDate,
+        small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo,
+        damaged_eggs: damaged, broken: damaged,
+        total_eggs: totalGood, trays,
+        notes: logAction.notes || null, created_by: user?.id,
+      });
+      const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
+      if (inv) {
+        await supabase.from('egg_inventory').update({ small_eggs: (inv.small_eggs || 0) + small, medium_eggs: (inv.medium_eggs || 0) + medium, large_eggs: (inv.large_eggs || 0) + large, jumbo_eggs: (inv.jumbo_eggs || 0) + jumbo, last_updated: new Date().toISOString() }).eq('farm_id', farmId);
+      } else {
+        await supabase.from('egg_inventory').insert({ farm_id: farmId, small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo, last_updated: new Date().toISOString() });
+      }
+
+    } else if (logAction.type === 'LOG_EGG_SALE') {
+      const smallSold = logAction.small_eggs_sold || 0;
+      const mediumSold = logAction.medium_eggs_sold || 0;
+      const largeSold = logAction.large_eggs_sold || 0;
+      const jumboSold = logAction.jumbo_eggs_sold || 0;
+      const traysCount = logAction.trays_sold || 0;
+      // total_eggs: prefer per-size breakdown; fall back to trays * 30
+      const totalSoldFromBreakdown = smallSold + mediumSold + largeSold + jumboSold;
+      const totalSold = totalSoldFromBreakdown > 0 ? totalSoldFromBreakdown : traysCount * 30;
+      const unitPrice = logAction.small_price || logAction.medium_price || logAction.large_price || logAction.jumbo_price || 0;
+      const totalAmount = logAction.total_amount ||
+        (totalSoldFromBreakdown > 0
+          ? (smallSold * (logAction.small_price || 0)) + (mediumSold * (logAction.medium_price || 0)) +
+            (largeSold * (logAction.large_price || 0)) + (jumboSold * (logAction.jumbo_price || 0))
+          : traysCount * unitPrice);
+      const saleDay = logAction.sale_date || logAction.log_date || today;
+      const { error: saleInsertErr } = await supabase.from('egg_sales').insert({
+        farm_id: farmId, sold_on: saleDay, sale_date: saleDay,
+        trays: traysCount || Math.floor(totalSold / 30),
+        unit_price: unitPrice,
+        total_eggs: totalSold,
+        total_amount: totalAmount,
+        customer_name: logAction.customer_name || null, customer_phone: logAction.customer_phone || null,
+        small_eggs_sold: smallSold, medium_eggs_sold: mediumSold, large_eggs_sold: largeSold, jumbo_eggs_sold: jumboSold,
+        small_price: logAction.small_price || 0, medium_price: logAction.medium_price || 0,
+        large_price: logAction.large_price || 0, jumbo_price: logAction.jumbo_price || 0,
+        payment_status: logAction.payment_status || 'paid', notes: logAction.notes || null,
+        sold_by: user?.id || null,
+      });
+      if (saleInsertErr) throw new Error(`Egg sale save failed: ${saleInsertErr.message}`);
+      const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
+      if (inv) {
+        await supabase.from('egg_inventory').update({
+          small_eggs: Math.max(0, (inv.small_eggs || 0) - smallSold),
+          medium_eggs: Math.max(0, (inv.medium_eggs || 0) - mediumSold),
+          large_eggs: Math.max(0, (inv.large_eggs || 0) - largeSold),
+          jumbo_eggs: Math.max(0, (inv.jumbo_eggs || 0) - jumboSold),
+          last_updated: new Date().toISOString(),
+        }).eq('farm_id', farmId);
+      }
+      if (totalAmount > 0) {
+        await supabase.from('revenues').insert({ farm_id: farmId, source_type: 'egg_sale', amount: totalAmount, currency, description: logAction.customer_name ? `Egg sale to ${logAction.customer_name} — ${totalSold} eggs` : `Egg sale — ${totalSold} eggs`, revenue_date: saleDay });
+      }
+
+    } else if (logAction.type === 'LOG_BIRD_SALE') {
+      const flock = await findFlock(logAction.flock_name);
+      if (!flock) throw new Error(`Flock "${logAction.flock_name}" not found`);
+      const birdsSold = logAction.birds_sold || 0;
+      const pricePerBird = logAction.price_per_bird || 0;
+      const totalAmount = logAction.total_amount || (birdsSold * pricePerBird);
+      const saleMethod = pricePerBird > 0 ? 'per_bird' : 'lump_sum';
+      const birdSaleDay = logAction.sale_date || logAction.log_date || today;
+      await supabase.from('bird_sales').insert({
+        farm_id: farmId, flock_id: flock.id, sale_date: birdSaleDay,
+        birds_sold: birdsSold, price_per_bird: pricePerBird || null, total_amount: totalAmount,
+        sale_method: saleMethod, sale_type: 'sale',
+        customer_name: logAction.customer_name || null, customer_phone: logAction.customer_phone || null,
+        payment_status: logAction.payment_status || 'paid',
+        amount_paid: logAction.payment_status === 'pending' ? 0 : totalAmount,
+        amount_pending: logAction.payment_status === 'pending' ? totalAmount : 0,
+        notes: logAction.notes || null, recorded_by: user?.id,
+      });
+
+    } else if (logAction.type === 'LOG_PURCHASE') {
+      const invCat = logAction.inventory_category!;
+      const expenseCat = invCat === 'feed' ? 'feed' : invCat === 'Medication' ? 'medication' : invCat === 'Equipment' ? 'equipment' : 'other';
+      const flock = logAction.flock_name ? await findFlock(logAction.flock_name) : null;
+      const purchaseDate = logAction.purchase_date || logAction.log_date || today;
+      await supabase.from('expenses').insert({
+        farm_id: farmId, category: expenseCat, amount: logAction.amount,
+        description: logAction.description || `${logAction.quantity} ${logAction.unit} ${logAction.item_name}`,
+        currency, date: purchaseDate, incurred_on: purchaseDate,
+        flock_id: flock?.id || null, paid_from_profit: logAction.paid_from_profit ?? false,
+      });
+      if (invCat === 'feed') {
+        let { data: ft } = await supabase.from('feed_types').select('id').eq('farm_id', farmId).ilike('name', logAction.item_name!).maybeSingle();
+        if (!ft) {
+          const { data: newFt } = await supabase.from('feed_types').insert({ farm_id: farmId, name: logAction.item_name, unit: logAction.unit || 'bags' }).select('id').single();
+          ft = newFt;
+        }
+        if (ft) {
+          const { data: existing } = await supabase.from('feed_inventory').select('id, quantity_bags').eq('farm_id', farmId).eq('feed_type_id', ft.id).maybeSingle();
+          if (existing) {
+            await supabase.from('feed_inventory').update({ quantity_bags: (existing.quantity_bags || 0) + (logAction.quantity || 0), last_updated: new Date().toISOString() }).eq('id', existing.id);
+          } else {
+            await supabase.from('feed_inventory').insert({ farm_id: farmId, feed_type_id: ft.id, quantity_bags: logAction.quantity || 0, last_updated: new Date().toISOString() });
+          }
+        }
+      } else {
+        const { data: existing } = await supabase.from('other_inventory').select('id, quantity').eq('farm_id', farmId).ilike('item_name', logAction.item_name!).eq('category', invCat).maybeSingle();
+        if (existing) {
+          await supabase.from('other_inventory').update({ quantity: (existing.quantity || 0) + (logAction.quantity || 0) }).eq('id', existing.id);
+        } else {
+          await supabase.from('other_inventory').insert({ farm_id: farmId, item_name: logAction.item_name, category: invCat, quantity: logAction.quantity || 1, unit: logAction.unit || 'units' });
+        }
+      }
+
+    } else if (logAction.type === 'LOG_EXPENSE') {
+      await supabase.from('expenses').insert({ farm_id: farmId, category: logAction.category, amount: logAction.amount, description: logAction.description, currency, date: recordDate, incurred_on: recordDate });
+
+    } else if (logAction.type === 'LOG_WEIGHT') {
+      const flock = await findFlock(logAction.flock_name);
+      if (!flock) throw new Error(`Flock "${logAction.flock_name}" not found`);
+      await supabase.from('weight_records').insert({ farm_id: farmId, flock_id: flock.id, avg_weight: logAction.avg_weight_kg, sample_size: logAction.sample_size || 10, record_date: recordDate });
+
+    } else if (logAction.type === 'LOG_FEED_USAGE') {
+      const { data: stock } = await supabase.from('feed_stock').select('id,current_stock_bags').eq('farm_id', farmId).ilike('feed_type', `%${logAction.feed_type}%`).limit(1);
+      if (stock?.[0]) {
+        await supabase.from('feed_stock').update({ current_stock_bags: Math.max(0, (stock[0].current_stock_bags || 0) - (logAction.bags_used || 0)) }).eq('id', stock[0].id);
+      }
+    }
+  };
+
+  const confirmLog = async (messageId: string, logAction: LogAction) => {
+    if (!currentFarm) return;
+
+    // Duplicate detection for single logs
+    const dupeMsg = await checkForDuplicate(logAction, currentFarm.id);
+    if (dupeMsg) {
+      const ok = window.confirm(`⚠️ Possible duplicate detected:\n${dupeMsg}\n\nSave anyway?`);
+      if (!ok) return;
+    }
+
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: true } : m));
+    const currency = logAction.currency || 'XAF';
+
+    try {
+      await executeLogAction(logAction, currentFarm.id, currency);
+
+      if (logAction.type === 'LOG_MORTALITY') {
+        showToast(`Logged ${logAction.count} deaths in "${logAction.flock_name}"`, 'success');
+      } else if (logAction.type === 'LOG_EGGS') {
+        const total = (logAction.small_eggs||0)+(logAction.medium_eggs||0)+(logAction.large_eggs||0)+(logAction.jumbo_eggs||0);
+        showToast(`Logged ${total} eggs from "${logAction.flock_name}"`, 'success');
+      } else if (logAction.type === 'LOG_EGG_SALE') {
+        const total = (logAction.small_eggs_sold||0)+(logAction.medium_eggs_sold||0)+(logAction.large_eggs_sold||0)+(logAction.jumbo_eggs_sold||0);
+        showToast(`Logged sale of ${total} eggs`, 'success');
+      } else if (logAction.type === 'LOG_BIRD_SALE') {
+        showToast(`Logged sale of ${logAction.birds_sold} birds`, 'success');
+      } else if (logAction.type === 'LOG_PURCHASE') {
+        const emoji = logAction.inventory_category === 'feed' ? '🌾' : logAction.inventory_category === 'Medication' ? '💊' : logAction.inventory_category === 'Equipment' ? '🔧' : '📦';
+        showToast(`${emoji} ${logAction.item_name} logged`, 'success');
+      } else if (logAction.type === 'LOG_EXPENSE') {
+        showToast(`Expense logged: ${logAction.description}`, 'success');
+      } else if (logAction.type === 'LOG_WEIGHT') {
+        showToast(`Weight logged for "${logAction.flock_name}"`, 'success');
+      } else if (logAction.type === 'LOG_FEED_USAGE') {
+        showToast(`Recorded ${logAction.bags_used} bag(s) of ${logAction.feed_type} used`, 'success');
+      }
+    } catch (err: any) {
+      showToast('Failed to save: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: false } : m));
+    }
+  };
+
+  const confirmBulkLog = async (messageId: string, actions: LogAction[], selected: boolean[]) => {
+    if (!currentFarm) return;
+
+    const selectedActions = actions.filter((_, i) => selected[i]);
+    if (selectedActions.length === 0) return;
+
+    // Pre-check for duplicates
+    const dupeMessages: string[] = [];
+    for (const action of selectedActions) {
+      const dupe = await checkForDuplicate(action, currentFarm.id);
+      if (dupe) dupeMessages.push(dupe);
+    }
+    if (dupeMessages.length > 0) {
+      const ok = window.confirm(`⚠️ ${dupeMessages.length} possible duplicate(s) detected:\n\n${dupeMessages.slice(0, 5).join('\n')}${dupeMessages.length > 5 ? `\n...and ${dupeMessages.length - 5} more` : ''}\n\nImport anyway (duplicates will be skipped)?`);
+      if (!ok) return;
+    }
+
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bulkLogConfirmed: true, bulkLogProgress: { done: 0, total: selectedActions.length } } : m));
+
+    const currency = actions[0]?.currency || 'XAF';
+    let successCount = 0;
+    const errors: string[] = [];
+    const CHUNK = 10;
+
+    for (let i = 0; i < selectedActions.length; i += CHUNK) {
+      const chunk = selectedActions.slice(i, i + CHUNK);
+      for (const action of chunk) {
+        try {
+          const dupe = await checkForDuplicate(action, currentFarm.id);
+          if (dupe) { errors.push(`Skipped: ${dupe}`); continue; }
+          await executeLogAction(action, currentFarm.id, currency);
+          successCount++;
+        } catch (err: any) {
+          errors.push(err.message || 'Unknown error');
+        }
+      }
+      // Update live progress after each chunk
+      setMessages(prev => prev.map(m => m.id === messageId
+        ? { ...m, bulkLogProgress: { done: Math.min(i + CHUNK, selectedActions.length), total: selectedActions.length } }
+        : m));
+    }
+
+    const result = { saved: successCount, total: selectedActions.length, failed: errors.length };
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bulkLogResult: result, bulkLogProgress: undefined } : m));
+
+    if (successCount > 0) {
+      showToast(`Imported ${successCount} of ${selectedActions.length} record${selectedActions.length !== 1 ? 's' : ''}${errors.length ? ` (${errors.length} skipped/failed)` : ''}`, 'success');
+    } else {
+      showToast(`Import failed: ${errors[0] || 'Unknown error'}`, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bulkLogConfirmed: false, bulkLogProgress: undefined } : m));
+    }
+  };
+
+  const confirmPayRun = async (messageId: string, action: NonNullable<ChatMessage['payRunAction']>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, payRunConfirmed: true } : m));
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const monthStart = today.slice(0, 8) + '01';
+      const totalAmount = (action.amount || 0) + (action.bonus || 0);
+
+      const { data: run, error: runError } = await supabase
+        .from('payroll_runs')
+        .insert({
+          farm_id: currentFarm!.id,
+          pay_period_start: action.pay_period_start || monthStart,
+          pay_period_end: action.pay_period_end || action.pay_date || today,
+          status: 'completed',
+          total_amount: totalAmount,
+          total_workers: 1,
+          currency: action.currency || currentFarm?.currency_code || 'XAF',
+          created_by: user!.id,
+          processed_at: new Date().toISOString(),
+          notes: action.notes || `Pay run for ${action.worker_name}`,
+        })
+        .select()
+        .single();
+
+      if (runError) throw runError;
+
+      // Look up from farm_workers first (offline workers), then fall back to auth team members
+      let authWorkerId: string | null = action.worker_id || null;
+      let farmWorkerId: string | null = null;
+
+      if (!authWorkerId) {
+        const { data: fw } = await supabase
+          .from('farm_workers')
+          .select('id')
+          .eq('farm_id', currentFarm!.id)
+          .ilike('name', `%${action.worker_name}%`)
+          .maybeSingle();
+        if (fw) {
+          farmWorkerId = fw.id;
+        } else {
+          // Fallback: try auth-based team member
+          const { data: tm } = await supabase
+            .from('team_members')
+            .select('user_id')
+            .eq('farm_id', currentFarm!.id)
+            .ilike('name', `%${action.worker_name}%`)
+            .maybeSingle();
+          authWorkerId = tm?.user_id || null;
+        }
+      }
+
+      await supabase.from('payroll_items').insert({
+        payroll_run_id: run.id,
+        farm_id: currentFarm!.id,
+        worker_id: authWorkerId,
+        farm_worker_id: farmWorkerId,
+        worker_name: action.worker_name,
+        pay_type: 'salary',
+        base_pay: action.amount || 0,
+        bonus_amount: action.bonus || 0,
+        net_pay: totalAmount,
+        currency: action.currency || currentFarm?.currency_code || 'XAF',
+        status: 'paid',
+        notes: action.notes,
+      });
+
+      showToast(`Pay run saved — ${action.worker_name} paid ${(action.currency || 'XAF')} ${totalAmount.toLocaleString()}`, 'success');
+    } catch (err: any) {
+      showToast('Failed to save pay run: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, payRunConfirmed: false } : m));
+    }
+  };
+
+  const confirmSaveConfig = async (messageId: string, action: NonNullable<ChatMessage['saveConfigAction']>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, saveConfigConfirmed: true } : m));
+    try {
+      const { data: existing } = await supabase
+        .from('farm_setup_config')
+        .select('egg_prices, payout_account, default_pay_day')
+        .eq('farm_id', currentFarm!.id)
+        .maybeSingle();
+
+      await supabase.from('farm_setup_config').upsert({
+        farm_id: currentFarm!.id,
+        egg_prices: { ...(existing?.egg_prices || {}), ...(action.egg_prices || {}) },
+        payout_account: action.payout_account ?? existing?.payout_account,
+        default_pay_day: action.default_pay_day ?? existing?.default_pay_day ?? 30,
+        updated_at: new Date().toISOString(),
+      });
+
+      showToast('Farm setup saved', 'success');
+    } catch (err: any) {
+      showToast('Failed to save config: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, saveConfigConfirmed: false } : m));
+    }
+  };
+
+  const confirmUpdateRecord = async (messageId: string, action: NonNullable<ChatMessage['updateRecordAction']>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, updateRecordConfirmed: true } : m));
+    try {
+      const matchConditions = Object.entries(action.match);
+      let query = supabase.from(action.table as any).update(action.update).eq('farm_id', currentFarm!.id);
+      for (const [key, value] of matchConditions) {
+        if (typeof value === 'string' && key.includes('name')) {
+          query = query.ilike(key, `%${value}%`);
+        } else {
+          query = query.eq(key, value);
+        }
+      }
+      const { error, count } = await query;
+      if (error) throw error;
+      showToast(`Record updated successfully${count ? ` (${count} row${count !== 1 ? 's' : ''})` : ''}`, 'success');
+    } catch (err: any) {
+      showToast('Update failed: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, updateRecordConfirmed: false } : m));
+    }
+  };
+
+  const confirmVoidRecord = async (messageId: string, action: NonNullable<ChatMessage['voidRecordAction']>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, voidRecordConfirmed: true } : m));
+    try {
+      const matchConditions = Object.entries(action.match);
+      let query = supabase.from(action.table as any).delete().eq('farm_id', currentFarm!.id);
+      for (const [key, value] of matchConditions) {
+        if (typeof value === 'string' && key.includes('name')) {
+          query = query.ilike(key, `%${value}%`);
+        } else {
+          query = query.eq(key, value);
+        }
+      }
+      const { error } = await query;
+      if (error) throw error;
+      showToast(`Record voided: ${action.reason || 'Removed from database'}`, 'success');
+    } catch (err: any) {
+      showToast('Void failed: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, voidRecordConfirmed: false } : m));
+    }
+  };
+
+  const confirmUpdateTeamMember = async (messageId: string, action: NonNullable<ChatMessage['updateTeamMemberAction']>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, updateTeamMemberConfirmed: true } : m));
+    try {
+      const { error } = await supabase.rpc('update_farm_member_role', {
+        p_farm_member_id: action.farm_member_id,
+        p_new_role: action.new_role,
+      });
+      if (error) throw error;
+      showToast(`${action.member_name} is now a ${action.new_role}`, 'success');
+    } catch (err: any) {
+      showToast('Failed to update role: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, updateTeamMemberConfirmed: false } : m));
+    }
+  };
+
+  const confirmLogWorker = async (messageId: string, action: NonNullable<ChatMessage['logWorkerAction']>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logWorkerConfirmed: true } : m));
+    try {
+      await supabase.from('farm_workers').insert({
+        farm_id: currentFarm!.id,
+        name: action.name,
+        role: action.role || 'worker',
+        pay_type: action.pay_type || 'salary',
+        monthly_salary: action.monthly_salary || null,
+        hourly_rate: action.hourly_rate || null,
+        currency: action.currency || currentFarm?.currency_code || 'XAF',
+        phone: action.phone || null,
+        notes: action.notes || null,
+        is_active: true,
+      });
+      showToast(`${action.name} added as ${action.role || 'worker'}`, 'success');
+    } catch (err: any) {
+      showToast('Failed to add worker: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logWorkerConfirmed: false } : m));
+    }
+  };
+
+  const confirmUpdateWorker = async (messageId: string, action: NonNullable<ChatMessage['updateWorkerAction']>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, updateWorkerConfirmed: true } : m));
+    try {
+      const { error } = await supabase
+        .from('farm_workers')
+        .update({ ...action.update, updated_at: new Date().toISOString() })
+        .eq('farm_id', currentFarm!.id)
+        .ilike('name', `%${action.match_name}%`);
+      if (error) throw error;
+      showToast(`${action.match_name} updated`, 'success');
+    } catch (err: any) {
+      showToast('Failed to update worker: ' + err.message, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, updateWorkerConfirmed: false } : m));
+    }
+  };
+
   const sendMessage = async (messageText?: string) => {
     const text = messageText || input.trim();
-    if ((!text && pendingImages.length === 0) || loading) return;
+    if ((!text && pendingImages.length === 0 && !pendingFile) || loading) return;
 
     if (!currentFarm) {
       showToast('Please select a farm first', 'error');
@@ -223,22 +714,39 @@ export function AIAssistantPage() {
     }
 
     const imgs = [...pendingImages];
+    const fileAttachment = pendingFile;
+
+    // Append CSV content to the text message
+    const fileBlock = fileAttachment
+      ? `\n\n--- Attached File: ${fileAttachment.name} (${fileAttachment.rowCount} data rows) ---\n${fileAttachment.content}\n---`
+      : '';
+    const fullText = (text || '') + fileBlock;
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: text || '',
+      content: text || (fileAttachment ? `Please import ${fileAttachment.name}` : ''),
       images: imgs.length > 0 ? imgs : undefined,
+      attachedFile: fileAttachment ? { name: fileAttachment.name, rowCount: fileAttachment.rowCount } : undefined,
       timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setPendingImages([]);
+    setPendingFile(null);
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      let { data: { session } } = await supabase.auth.getSession();
+      // Refresh if token is expired or within 60 seconds of expiry
+      if (!session || (session.expires_at && session.expires_at * 1000 - Date.now() < 60_000)) {
+        const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+        if (refreshErr || !refreshed.session) {
+          throw new Error('Your session expired — please reload the page and try again.');
+        }
+        session = refreshed.session;
+      }
 
       const allMessages = [
         ...messages.slice(-9).map(m => ({
@@ -248,18 +756,15 @@ export function AIAssistantPage() {
         })),
         {
           role: 'user' as const,
-          content: text || '',
+          content: fullText || '',
           images: imgs.length > 0 ? imgs.map(img => ({ data: img.data, mediaType: img.mediaType })) : undefined,
         },
       ];
 
-      // Use the Vercel proxy route (/api/ai-chat) — same origin, no CORS, works on
-      // mobile networks that block Supabase edge function IPs (Deno Deploy).
       const body = JSON.stringify({ farm_id: currentFarm.id, messages: allMessages, include_context: true });
 
       const doFetch = () => {
         const ctrl = new AbortController();
-        // 55-second timeout — AI cold start + Anthropic latency can reach 30-40s on slow mobile
         const timer = setTimeout(() => ctrl.abort(), 55_000);
         return fetch('/api/ai-chat', {
           method: 'POST',
@@ -291,7 +796,16 @@ export function AIAssistantPage() {
         }
       }
 
-      const data = await response.json();
+      let data: any;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          response.status === 504 || response.status === 524
+            ? 'Eden AI is taking too long to respond. Please try again.'
+            : `Server error ${response.status} — please try again.`
+        );
+      }
       if (!response.ok) {
         throw new Error(data?.error || data?.message || `Server error ${response.status}`);
       }
@@ -299,12 +813,23 @@ export function AIAssistantPage() {
         setUsageInfo({ used: data.msgsUsed, cap: data.msgsCap, tier: data.tier || 'free' });
       }
 
+      const bulkActions: LogAction[] = data.bulkLogActions || [];
+
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.message || 'I apologize, but I could not generate a response.',
         actions: data.actions || [],
         logAction: data.logAction || null,
+        bulkLogActions: bulkActions.length > 0 ? bulkActions : undefined,
+        bulkLogSelected: bulkActions.length > 0 ? bulkActions.map(() => true) : undefined,
+        payRunAction: data.payRunAction || undefined,
+        saveConfigAction: data.saveConfigAction || undefined,
+        updateRecordAction: data.updateRecordAction || undefined,
+        voidRecordAction: data.voidRecordAction || undefined,
+        logWorkerAction: data.logWorkerAction || undefined,
+        updateWorkerAction: data.updateWorkerAction || undefined,
+        updateTeamMemberAction: data.updateTeamMemberAction || undefined,
         timestamp: new Date(),
       };
 
@@ -332,185 +857,26 @@ export function AIAssistantPage() {
     }
   };
 
-  const confirmLog = async (messageId: string, logAction: LogAction) => {
-    if (!currentFarm) return;
-    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: true } : m));
-    const today = new Date().toISOString().split('T')[0];
-    const currency = logAction.currency || 'XAF';
+  const toggleBulkRow = (messageId: string, rowIdx: number) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId || !m.bulkLogSelected) return m;
+      const next = [...m.bulkLogSelected];
+      next[rowIdx] = !next[rowIdx];
+      return { ...m, bulkLogSelected: next };
+    }));
+  };
 
-    const findFlock = async (name?: string) => {
-      if (!name) return null;
-      const { data } = await supabase.from('flocks').select('id,name,current_count').eq('farm_id', currentFarm.id).ilike('name', `%${name}%`).limit(1);
-      return data?.[0] || null;
-    };
-
-    try {
-      if (logAction.type === 'LOG_MORTALITY') {
-        const flock = await findFlock(logAction.flock_name);
-        if (!flock) { showToast(`Flock "${logAction.flock_name}" not found`, 'error'); return; }
-        await supabase.from('mortality_logs').insert({ farm_id: currentFarm.id, flock_id: flock.id, count: logAction.count, cause: logAction.cause || 'unknown', notes: logAction.notes || '', date: today });
-        showToast(`Logged ${logAction.count} deaths in ${flock.name}`, 'success');
-
-      } else if (logAction.type === 'LOG_EGGS') {
-        const flock = await findFlock(logAction.flock_name);
-        if (!flock) { showToast(`Flock "${logAction.flock_name}" not found`, 'error'); return; }
-        const small = logAction.small_eggs || 0;
-        const medium = logAction.medium_eggs || 0;
-        const large = logAction.large_eggs || 0;
-        const jumbo = logAction.jumbo_eggs || 0;
-        const damaged = logAction.damaged_eggs || logAction.cracked || 0;
-        const totalGood = small + medium + large + jumbo;
-        const eggsPerTray = 30;
-        const trays = Math.floor(totalGood / eggsPerTray);
-        await supabase.from('egg_collections').insert({
-          farm_id: currentFarm.id, flock_id: flock.id,
-          collection_date: today, collected_on: today,
-          small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo,
-          damaged_eggs: damaged, broken: damaged,
-          total_eggs: totalGood, trays,
-          notes: logAction.notes || null, created_by: user?.id,
-        });
-        // Sync egg_inventory
-        const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', currentFarm.id).maybeSingle();
-        if (inv) {
-          await supabase.from('egg_inventory').update({ small_eggs: (inv.small_eggs || 0) + small, medium_eggs: (inv.medium_eggs || 0) + medium, large_eggs: (inv.large_eggs || 0) + large, jumbo_eggs: (inv.jumbo_eggs || 0) + jumbo, last_updated: new Date().toISOString() }).eq('farm_id', currentFarm.id);
-        } else {
-          await supabase.from('egg_inventory').insert({ farm_id: currentFarm.id, small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo, last_updated: new Date().toISOString() });
-        }
-        showToast(`Logged ${totalGood} eggs from ${flock.name}${damaged ? ` (${damaged} damaged)` : ''}`, 'success');
-
-      } else if (logAction.type === 'LOG_EGG_SALE') {
-        const smallSold = logAction.small_eggs_sold || 0;
-        const mediumSold = logAction.medium_eggs_sold || 0;
-        const largeSold = logAction.large_eggs_sold || 0;
-        const jumboSold = logAction.jumbo_eggs_sold || 0;
-        const totalSold = smallSold + mediumSold + largeSold + jumboSold;
-        const totalAmount = logAction.total_amount ||
-          (smallSold * (logAction.small_price || 0)) + (mediumSold * (logAction.medium_price || 0)) +
-          (largeSold * (logAction.large_price || 0)) + (jumboSold * (logAction.jumbo_price || 0));
-        const saleDay = logAction.sale_date || today;
-        await supabase.from('egg_sales').insert({
-          farm_id: currentFarm.id, sold_on: saleDay, sale_date: saleDay,
-          trays: logAction.trays_sold || Math.floor(totalSold / 30),
-          unit_price: logAction.small_price || logAction.medium_price || logAction.large_price || logAction.jumbo_price || 0,
-          customer_name: logAction.customer_name || null, customer_phone: logAction.customer_phone || null,
-          small_eggs_sold: smallSold, medium_eggs_sold: mediumSold, large_eggs_sold: largeSold, jumbo_eggs_sold: jumboSold,
-          small_price: logAction.small_price || 0, medium_price: logAction.medium_price || 0,
-          large_price: logAction.large_price || 0, jumbo_price: logAction.jumbo_price || 0,
-          payment_status: logAction.payment_status || 'paid', notes: logAction.notes || null,
-        });
-        // Deduct from egg_inventory
-        const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', currentFarm.id).maybeSingle();
-        if (inv) {
-          await supabase.from('egg_inventory').update({
-            small_eggs: Math.max(0, (inv.small_eggs || 0) - smallSold),
-            medium_eggs: Math.max(0, (inv.medium_eggs || 0) - mediumSold),
-            large_eggs: Math.max(0, (inv.large_eggs || 0) - largeSold),
-            jumbo_eggs: Math.max(0, (inv.jumbo_eggs || 0) - jumboSold),
-            last_updated: new Date().toISOString(),
-          }).eq('farm_id', currentFarm.id);
-        }
-        // Record revenue
-        if (totalAmount > 0) {
-          await supabase.from('revenues').insert({ farm_id: currentFarm.id, source_type: 'egg_sale', amount: totalAmount, currency, description: logAction.customer_name ? `Egg sale to ${logAction.customer_name} — ${totalSold} eggs` : `Egg sale — ${totalSold} eggs`, revenue_date: today });
-        }
-        showToast(`Logged sale of ${totalSold} eggs${totalAmount ? ` for ${totalAmount.toLocaleString()} ${currency}` : ''}`, 'success');
-
-      } else if (logAction.type === 'LOG_BIRD_SALE') {
-        const flock = await findFlock(logAction.flock_name);
-        if (!flock) { showToast(`Flock "${logAction.flock_name}" not found`, 'error'); return; }
-        const birdsSold = logAction.birds_sold || 0;
-        const pricePerBird = logAction.price_per_bird || 0;
-        const totalAmount = logAction.total_amount || (birdsSold * pricePerBird);
-        const saleMethod = pricePerBird > 0 ? 'per_bird' : 'lump_sum';
-        const birdSaleDay = logAction.sale_date || today;
-        await supabase.from('bird_sales').insert({
-          farm_id: currentFarm.id, flock_id: flock.id, sale_date: birdSaleDay,
-          birds_sold: birdsSold, price_per_bird: pricePerBird || null, total_amount: totalAmount,
-          sale_method: saleMethod, sale_type: 'sale',
-          customer_name: logAction.customer_name || null, customer_phone: logAction.customer_phone || null,
-          payment_status: logAction.payment_status || 'paid',
-          amount_paid: logAction.payment_status === 'pending' ? 0 : totalAmount,
-          amount_pending: logAction.payment_status === 'pending' ? totalAmount : 0,
-          notes: logAction.notes || null, recorded_by: user?.id,
-        });
-        showToast(`Logged sale of ${birdsSold} birds from ${flock.name}${totalAmount ? ` — ${totalAmount.toLocaleString()} ${currency}` : ''}`, 'success');
-
-      } else if (logAction.type === 'LOG_PURCHASE') {
-        const invCat = logAction.inventory_category!;
-        const expenseCat = invCat === 'feed' ? 'feed' : invCat === 'Medication' ? 'medication' : invCat === 'Equipment' ? 'equipment' : 'other';
-        const flock = logAction.flock_name ? await findFlock(logAction.flock_name) : null;
-
-        const purchaseDate = logAction.purchase_date || today;
-
-        // 1. Log the expense
-        await supabase.from('expenses').insert({
-          farm_id: currentFarm.id,
-          category: expenseCat,
-          amount: logAction.amount,
-          description: logAction.description || `${logAction.quantity} ${logAction.unit} ${logAction.item_name}`,
-          currency,
-          date: purchaseDate,
-          incurred_on: purchaseDate,
-          flock_id: flock?.id || null,
-          paid_from_profit: logAction.paid_from_profit ?? false,
-        });
-
-        // 2. Create / update inventory card
-        if (invCat === 'feed') {
-          // Look up or create the feed type
-          let { data: ft } = await supabase.from('feed_types').select('id').eq('farm_id', currentFarm.id).ilike('name', logAction.item_name!).maybeSingle();
-          if (!ft) {
-            const { data: newFt } = await supabase.from('feed_types').insert({ farm_id: currentFarm.id, name: logAction.item_name, unit: logAction.unit || 'bags' }).select('id').single();
-            ft = newFt;
-          }
-          if (ft) {
-            const { data: existing } = await supabase.from('feed_inventory').select('id, quantity_bags').eq('farm_id', currentFarm.id).eq('feed_type_id', ft.id).maybeSingle();
-            if (existing) {
-              await supabase.from('feed_inventory').update({ quantity_bags: (existing.quantity_bags || 0) + (logAction.quantity || 0), last_updated: new Date().toISOString() }).eq('id', existing.id);
-            } else {
-              await supabase.from('feed_inventory').insert({ farm_id: currentFarm.id, feed_type_id: ft.id, quantity_bags: logAction.quantity || 0, last_updated: new Date().toISOString() });
-            }
-          }
-        } else {
-          // Medication, Equipment, Supplies → other_inventory
-          const { data: existing } = await supabase.from('other_inventory').select('id, quantity').eq('farm_id', currentFarm.id).ilike('item_name', logAction.item_name!).eq('category', invCat).maybeSingle();
-          if (existing) {
-            await supabase.from('other_inventory').update({ quantity: (existing.quantity || 0) + (logAction.quantity || 0) }).eq('id', existing.id);
-          } else {
-            await supabase.from('other_inventory').insert({ farm_id: currentFarm.id, item_name: logAction.item_name, category: invCat, quantity: logAction.quantity || 1, unit: logAction.unit || 'units' });
-          }
-        }
-
-        const emoji = invCat === 'feed' ? '🌾' : invCat === 'Medication' ? '💊' : invCat === 'Equipment' ? '🔧' : '📦';
-        showToast(`${emoji} ${logAction.item_name} added to ${invCat} inventory & expense logged`, 'success');
-
-      } else if (logAction.type === 'LOG_EXPENSE') {
-        await supabase.from('expenses').insert({ farm_id: currentFarm.id, category: logAction.category, amount: logAction.amount, description: logAction.description, currency, date: today });
-        showToast(`Logged expense: ${logAction.description}`, 'success');
-
-      } else if (logAction.type === 'LOG_WEIGHT') {
-        const flock = await findFlock(logAction.flock_name);
-        if (!flock) { showToast(`Flock "${logAction.flock_name}" not found`, 'error'); return; }
-        await supabase.from('weight_records').insert({ farm_id: currentFarm.id, flock_id: flock.id, avg_weight: logAction.avg_weight_kg, sample_size: logAction.sample_size || 10, record_date: today });
-        showToast(`Logged weight for ${flock.name}`, 'success');
-
-      } else if (logAction.type === 'LOG_FEED_USAGE') {
-        const { data: stock } = await supabase.from('feed_stock').select('id,current_stock_bags').eq('farm_id', currentFarm.id).ilike('feed_type', `%${logAction.feed_type}%`).limit(1);
-        if (stock?.[0]) {
-          await supabase.from('feed_stock').update({ current_stock_bags: Math.max(0, (stock[0].current_stock_bags || 0) - (logAction.bags_used || 0)) }).eq('id', stock[0].id);
-          showToast(`Recorded ${logAction.bags_used} bag(s) of ${logAction.feed_type} used`, 'success');
-        }
-      }
-    } catch (err: any) {
-      showToast('Failed to save: ' + err.message, 'error');
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: false } : m));
-    }
+  const toggleAllBulkRows = (messageId: string, value: boolean) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId || !m.bulkLogSelected) return m;
+      return { ...m, bulkLogSelected: m.bulkLogSelected.map(() => value) };
+    }));
   };
 
   const summariseLogAction = (a: LogAction): string => {
     const cur = a.currency || '';
-    if (a.type === 'LOG_MORTALITY') return `${a.count} death(s) in "${a.flock_name}"${a.cause ? ` — cause: ${a.cause}` : ''}`;
+    const dateLabel = a.log_date ? ` · ${a.log_date}` : '';
+    if (a.type === 'LOG_MORTALITY') return `${a.count} death(s) in "${a.flock_name}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
     if (a.type === 'LOG_EGGS') {
       const parts = [];
       if (a.small_eggs) parts.push(`${a.small_eggs} small`);
@@ -518,26 +884,24 @@ export function AIAssistantPage() {
       if (a.large_eggs) parts.push(`${a.large_eggs} large`);
       if (a.jumbo_eggs) parts.push(`${a.jumbo_eggs} jumbo`);
       const total = (a.small_eggs||0)+(a.medium_eggs||0)+(a.large_eggs||0)+(a.jumbo_eggs||0);
-      return `Collect ${total} eggs (${parts.join(', ') || 'ungraded'}) from "${a.flock_name}"${(a.damaged_eggs||a.cracked) ? ` · ${a.damaged_eggs||a.cracked} damaged` : ''}`;
+      return `${total} eggs from "${a.flock_name}"${dateLabel}`;
     }
     if (a.type === 'LOG_EGG_SALE') {
       const total = (a.small_eggs_sold||0)+(a.medium_eggs_sold||0)+(a.large_eggs_sold||0)+(a.jumbo_eggs_sold||0);
-      const amount = a.total_amount || ((a.small_eggs_sold||0)*(a.small_price||0)+(a.medium_eggs_sold||0)*(a.medium_price||0)+(a.large_eggs_sold||0)*(a.large_price||0)+(a.jumbo_eggs_sold||0)*(a.jumbo_price||0));
-      return `Sell ${total} eggs${amount ? ` for ${amount.toLocaleString()} ${cur}` : ''}${a.customer_name ? ` → ${a.customer_name}` : ''}`;
+      const amount = a.total_amount || 0;
+      return `${total} eggs sold${amount ? ` · ${amount.toLocaleString()} ${cur}` : ''}${a.customer_name ? ` → ${a.customer_name}` : ''}${dateLabel}`;
     }
     if (a.type === 'LOG_BIRD_SALE') {
       const total = a.total_amount || ((a.birds_sold||0)*(a.price_per_bird||0));
-      return `Sell ${a.birds_sold} bird(s) from "${a.flock_name}"${total ? ` for ${total.toLocaleString()} ${cur}` : ''}${a.customer_name ? ` → ${a.customer_name}` : ''}`;
+      return `${a.birds_sold} bird(s) sold${total ? ` · ${total.toLocaleString()} ${cur}` : ''}${dateLabel}`;
     }
     if (a.type === 'LOG_PURCHASE') {
       const emoji = a.inventory_category === 'feed' ? '🌾' : a.inventory_category === 'Medication' ? '💊' : a.inventory_category === 'Equipment' ? '🔧' : '📦';
-      const dateLabel = a.purchase_date ? new Date(a.purchase_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'today';
-      const source = a.paid_from_profit ? '💰 paid from farm revenue' : '💵 external cash';
-      return `${emoji} ${a.quantity} ${a.unit} "${a.item_name}" → ${a.inventory_category} · ${(a.amount||0).toLocaleString()} ${cur} · ${dateLabel} · ${source}`;
+      return `${emoji} ${a.quantity} ${a.unit} "${a.item_name}" · ${(a.amount||0).toLocaleString()} ${cur}${dateLabel}`;
     }
-    if (a.type === 'LOG_EXPENSE') return `${a.description} — ${(a.amount||0).toLocaleString()} ${cur}`;
-    if (a.type === 'LOG_WEIGHT') return `Weight for "${a.flock_name}": ${a.avg_weight_kg} kg avg`;
-    if (a.type === 'LOG_FEED_USAGE') return `${a.bags_used} bag(s) of ${a.feed_type} used`;
+    if (a.type === 'LOG_EXPENSE') return `${a.description} · ${(a.amount||0).toLocaleString()} ${cur}${dateLabel}`;
+    if (a.type === 'LOG_WEIGHT') return `Weight "${a.flock_name}": ${a.avg_weight_kg} kg avg${dateLabel}`;
+    if (a.type === 'LOG_FEED_USAGE') return `${a.bags_used} bag(s) of ${a.feed_type} used${dateLabel}`;
     return 'Log data';
   };
 
@@ -554,7 +918,7 @@ export function AIAssistantPage() {
       <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="text-center">
           <Bot className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">Please select a farm to use the AI Assistant</p>
+          <p className="text-gray-500">Please select a farm to use Eden</p>
         </div>
       </div>
     );
@@ -565,10 +929,10 @@ export function AIAssistantPage() {
       {/* Header */}
       <div data-tour="ai-header" className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
         <div className="flex items-center gap-3">
-          <EdenAvatar size="md" />
+          <EdenAvatarAnimated size="md" />
           <div className="flex-1">
             <h1 className="text-xl font-bold text-agri-brown-700">Eden</h1>
-            <p className="text-sm text-gray-500">Farm performance · Flock health · Diagnostics</p>
+            <p className="text-sm text-gray-500">Farm performance · Flock health · Diagnostics · Data import</p>
           </div>
           <div className="flex items-center gap-2">
             {usageInfo && (
@@ -598,15 +962,14 @@ export function AIAssistantPage() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="mb-3">
-              <EdenAvatar size="lg" />
+            <div className="mb-4">
+              <EdenAvatarAnimated size="lg" expanded />
             </div>
             <h2 className="text-xl font-bold text-agri-brown-700 mb-1">Hey, I'm Eden!</h2>
             <p className="text-gray-600 mb-6 max-w-md text-sm">
-              Your farm advisor. Ask about flock health, performance, expenses, or just tell me what happened today and I'll log it for you.
+              Your farm advisor. Ask about flock health, performance, expenses — or attach a CSV file and I'll import your historical data.
             </p>
-            
-            {/* Suggestions */}
+
             <div className="w-full max-w-2xl">
               <p className="text-sm font-medium text-gray-700 mb-3">Try asking:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -620,6 +983,13 @@ export function AIAssistantPage() {
                     {suggestion}
                   </button>
                 ))}
+                <button
+                  onClick={() => csvInputRef.current?.click()}
+                  className="text-left px-4 py-3 bg-white border border-gray-200 rounded-lg hover:border-agri-gold-400 hover:bg-agri-gold-50 transition-colors text-sm text-gray-700"
+                >
+                  <FileSpreadsheet className="w-4 h-4 inline mr-2 text-green-600" />
+                  Import historical data from a CSV file
+                </button>
               </div>
             </div>
           </div>
@@ -631,7 +1001,7 @@ export function AIAssistantPage() {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                     message.role === 'user'
                       ? 'bg-agri-brown-600 text-white'
                       : 'bg-white border border-gray-200 text-gray-900'
@@ -639,7 +1009,7 @@ export function AIAssistantPage() {
                 >
                   {message.role === 'assistant' && (
                     <div className="flex items-center gap-1.5 mb-2">
-                      <EdenAvatar size="sm" />
+                      <EdenAvatarAnimated size="sm" />
                       <span className="text-xs font-bold text-agri-brown-700 tracking-wide">Eden</span>
                     </div>
                   )}
@@ -650,11 +1020,28 @@ export function AIAssistantPage() {
                       ))}
                     </div>
                   )}
-                  {message.content && (
-                    <div className={`prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:font-semibold prose-hr:my-2 ${message.role === 'user' ? 'prose-invert' : ''}`}>
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                  {message.attachedFile && (
+                    <div className="flex items-center gap-2 mb-2 bg-white/10 rounded-lg px-3 py-2">
+                      <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-xs font-medium">{message.attachedFile.name}</span>
+                      <span className="text-xs opacity-70">· {message.attachedFile.rowCount} rows</span>
                     </div>
                   )}
+                  {message.content && (() => {
+                    const clean = message.content
+                      .replace(/\[BULK_LOG\][\s\S]*?\[\/BULK_LOG\]/g, '')
+                      .replace(/\[BULK_LOG\][\s\S]*/g, '')
+                      .replace(/\[LOG\][\s\S]*?\[\/LOG\]/g, '')
+                      .replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/g, '')
+                      .trim();
+                    return clean ? (
+                      <div className={`prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:font-semibold prose-hr:my-2 ${message.role === 'user' ? 'prose-invert' : ''}`}>
+                        <ReactMarkdown>{clean}</ReactMarkdown>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  {/* Single log confirm */}
                   {message.logAction && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       {message.logConfirmed ? (
@@ -683,6 +1070,338 @@ export function AIAssistantPage() {
                       )}
                     </div>
                   )}
+
+                  {/* Bulk log confirm (CSV import) */}
+                  {message.bulkLogActions && message.bulkLogActions.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.bulkLogConfirmed ? (
+                        <div>
+                          {message.bulkLogProgress && !message.bulkLogResult ? (
+                            <div>
+                              <p className="text-xs text-blue-600 flex items-center gap-1 font-semibold mb-1">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Saving… {message.bulkLogProgress.done} of {message.bulkLogProgress.total}
+                              </p>
+                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                                  style={{ width: `${(message.bulkLogProgress.done / message.bulkLogProgress.total) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : message.bulkLogResult ? (
+                            <div>
+                              <p className="text-xs text-green-600 flex items-center gap-1 font-semibold">
+                                <CheckCircle className="w-3 h-3" />
+                                {message.bulkLogResult.saved} of {message.bulkLogResult.total} records saved
+                                {message.bulkLogResult.failed > 0 && ` (${message.bulkLogResult.failed} skipped/failed)`}
+                              </p>
+                              {message.bulkLogResult.saved < message.bulkLogResult.total && (
+                                <p className="text-xs text-amber-600 mt-1">⚠️ Some records were skipped. Re-paste the remaining rows for Eden to import the rest.</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-green-600 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Records imported successfully
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-gray-700">
+                              {message.bulkLogActions.length} records to import
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => toggleAllBulkRows(message.id, true)}
+                                className="text-xs text-blue-600 hover:underline"
+                              >
+                                All
+                              </button>
+                              <span className="text-xs text-gray-300">·</span>
+                              <button
+                                onClick={() => toggleAllBulkRows(message.id, false)}
+                                className="text-xs text-gray-500 hover:underline"
+                              >
+                                None
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="max-h-48 overflow-y-auto space-y-1 bg-gray-50 rounded-lg p-2">
+                            {message.bulkLogActions.map((action, idx) => (
+                              <label key={idx} className="flex items-start gap-2 cursor-pointer hover:bg-white rounded px-1 py-0.5">
+                                <input
+                                  type="checkbox"
+                                  checked={message.bulkLogSelected?.[idx] ?? true}
+                                  onChange={() => toggleBulkRow(message.id, idx)}
+                                  className="mt-0.5 flex-shrink-0"
+                                />
+                                <span className="text-xs text-gray-600 leading-relaxed">{summariseLogAction(action)}</span>
+                              </label>
+                            ))}
+                          </div>
+
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => {
+                                const selected = message.bulkLogSelected || message.bulkLogActions!.map(() => true);
+                                const count = selected.filter(Boolean).length;
+                                if (count === 0) { showToast('Select at least one record', 'error'); return; }
+                                confirmBulkLog(message.id, message.bulkLogActions!, selected);
+                              }}
+                              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle className="w-3 h-3" />
+                              Import {(message.bulkLogSelected || message.bulkLogActions.map(() => true)).filter(Boolean).length} records
+                            </button>
+                            <button
+                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, bulkLogActions: undefined } : m))}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium flex items-center gap-1"
+                            >
+                              <X className="w-3 h-3" /> Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Pay run confirm */}
+                  {message.payRunAction && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.payRunConfirmed ? (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Pay run saved successfully
+                        </p>
+                      ) : (
+                        <div className="bg-amber-50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-amber-900">Confirm Pay Run</p>
+                          <div className="text-xs text-amber-800 space-y-0.5">
+                            <p><strong>Worker:</strong> {message.payRunAction.worker_name}</p>
+                            <p><strong>Base pay:</strong> {message.payRunAction.currency} {(message.payRunAction.amount || 0).toLocaleString()}</p>
+                            {(message.payRunAction.bonus || 0) > 0 && (
+                              <p><strong>Bonus:</strong> {message.payRunAction.currency} {message.payRunAction.bonus!.toLocaleString()}</p>
+                            )}
+                            <p><strong>Total:</strong> {message.payRunAction.currency} {((message.payRunAction.amount || 0) + (message.payRunAction.bonus || 0)).toLocaleString()}</p>
+                            <p><strong>Period:</strong> {message.payRunAction.pay_period_start || '—'} to {message.payRunAction.pay_period_end || message.payRunAction.pay_date}</p>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => confirmPayRun(message.id, message.payRunAction!)}
+                              className="flex-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 text-xs font-medium flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle className="w-3 h-3" /> Confirm & Save
+                            </button>
+                            <button
+                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, payRunAction: undefined } : m))}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Save setup config confirm */}
+                  {message.saveConfigAction && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.saveConfigConfirmed ? (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Farm setup saved
+                        </p>
+                      ) : (
+                        <div className="bg-green-50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-green-900">Save to Farm Setup?</p>
+                          <div className="text-xs text-green-800 space-y-0.5">
+                            {message.saveConfigAction.egg_prices && Object.keys(message.saveConfigAction.egg_prices).length > 0 && (
+                              <p><strong>Egg prices:</strong> {Object.entries(message.saveConfigAction.egg_prices).map(([k, v]) => `${k}: ${v}`).join(', ')}</p>
+                            )}
+                            {message.saveConfigAction.payout_account && (
+                              <p><strong>Payout account:</strong> {message.saveConfigAction.payout_account}</p>
+                            )}
+                            {message.saveConfigAction.default_pay_day && (
+                              <p><strong>Pay day:</strong> {message.saveConfigAction.default_pay_day}th of each month</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => confirmSaveConfig(message.id, message.saveConfigAction!)}
+                              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle className="w-3 h-3" /> Save Setup
+                            </button>
+                            <button
+                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, saveConfigAction: undefined } : m))}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Update record confirm */}
+                  {message.updateRecordAction && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.updateRecordConfirmed ? (
+                        <p className="text-xs text-blue-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Record updated</p>
+                      ) : (
+                        <div className="bg-blue-50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-blue-900">Confirm Update</p>
+                          <p className="text-xs text-blue-800">Table: <strong>{message.updateRecordAction.table}</strong></p>
+                          <p className="text-xs text-blue-800">Match: {Object.entries(message.updateRecordAction.match).map(([k,v]) => `${k}="${v}"`).join(', ')}</p>
+                          <p className="text-xs text-blue-800">Set: {Object.entries(message.updateRecordAction.update).map(([k,v]) => `${k}→${v}`).join(', ')}</p>
+                          <div className="flex gap-2 pt-1">
+                            <button onClick={() => confirmUpdateRecord(message.id, message.updateRecordAction!)} className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium flex items-center justify-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Confirm Update
+                            </button>
+                            <button onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, updateRecordAction: undefined } : m))} className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium"><X className="w-3 h-3" /></button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Void record confirm */}
+                  {message.voidRecordAction && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.voidRecordConfirmed ? (
+                        <p className="text-xs text-red-600 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Record voided</p>
+                      ) : (
+                        <div className="bg-red-50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-red-900">Confirm Delete / Void</p>
+                          <p className="text-xs text-red-800">Table: <strong>{message.voidRecordAction.table}</strong></p>
+                          <p className="text-xs text-red-800">Matching: {Object.entries(message.voidRecordAction.match).map(([k,v]) => `${k}="${v}"`).join(', ')}</p>
+                          {message.voidRecordAction.reason && <p className="text-xs text-red-700">Reason: {message.voidRecordAction.reason}</p>}
+                          <p className="text-xs text-red-600 font-medium">⚠️ This cannot be undone.</p>
+                          <div className="flex gap-2 pt-1">
+                            <button onClick={() => confirmVoidRecord(message.id, message.voidRecordAction!)} className="flex-1 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 text-xs font-medium flex items-center justify-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Yes, Delete
+                            </button>
+                            <button onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, voidRecordAction: undefined } : m))} className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium"><X className="w-3 h-3" /></button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Add worker confirm */}
+                  {message.logWorkerAction && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.logWorkerConfirmed ? (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Worker added successfully
+                        </p>
+                      ) : (
+                        <div className="bg-indigo-50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-indigo-900">Add Worker to Farm?</p>
+                          <div className="text-xs text-indigo-800 space-y-0.5">
+                            <p><strong>Name:</strong> {message.logWorkerAction.name}</p>
+                            <p><strong>Role:</strong> {message.logWorkerAction.role || 'worker'}</p>
+                            {message.logWorkerAction.monthly_salary && (
+                              <p><strong>Monthly salary:</strong> {message.logWorkerAction.currency || 'XAF'} {message.logWorkerAction.monthly_salary.toLocaleString()}</p>
+                            )}
+                            {message.logWorkerAction.hourly_rate && (
+                              <p><strong>Hourly rate:</strong> {message.logWorkerAction.currency || 'XAF'} {message.logWorkerAction.hourly_rate}/hr</p>
+                            )}
+                            {message.logWorkerAction.phone && (
+                              <p><strong>Phone:</strong> {message.logWorkerAction.phone}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => confirmLogWorker(message.id, message.logWorkerAction!)}
+                              className="flex-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-xs font-medium flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle className="w-3 h-3" /> Yes, Add Worker
+                            </button>
+                            <button
+                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, logWorkerAction: undefined } : m))}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Update worker confirm */}
+                  {message.updateWorkerAction && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.updateWorkerConfirmed ? (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Worker updated
+                        </p>
+                      ) : (
+                        <div className="bg-violet-50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-violet-900">Update Worker?</p>
+                          <p className="text-xs text-violet-800"><strong>Worker:</strong> {message.updateWorkerAction.match_name}</p>
+                          <div className="text-xs text-violet-800 space-y-0.5">
+                            {Object.entries(message.updateWorkerAction.update).map(([k, v]) => (
+                              <p key={k}><strong>{k}:</strong> {String(v)}</p>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => confirmUpdateWorker(message.id, message.updateWorkerAction!)}
+                              className="flex-1 px-3 py-1.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-xs font-medium flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle className="w-3 h-3" /> Confirm Update
+                            </button>
+                            <button
+                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, updateWorkerAction: undefined } : m))}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Update team member role confirm */}
+                  {message.updateTeamMemberAction && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {message.updateTeamMemberConfirmed ? (
+                        <p className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Role updated
+                        </p>
+                      ) : (
+                        <div className="bg-teal-50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-semibold text-teal-900">Change Team Member Role?</p>
+                          <div className="text-xs text-teal-800 space-y-0.5">
+                            <p><strong>Member:</strong> {message.updateTeamMemberAction.member_name}</p>
+                            <p><strong>Current role:</strong> {message.updateTeamMemberAction.old_role}</p>
+                            <p><strong>New role:</strong> <span className="font-semibold">{message.updateTeamMemberAction.new_role}</span></p>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => confirmUpdateTeamMember(message.id, message.updateTeamMemberAction!)}
+                              className="flex-1 px-3 py-1.5 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-xs font-medium flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle className="w-3 h-3" /> Confirm Change
+                            </button>
+                            <button
+                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, updateTeamMemberAction: undefined } : m))}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {message.actions && message.actions.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1">
@@ -712,7 +1431,7 @@ export function AIAssistantPage() {
               <div className="flex justify-start">
                 <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <EdenAvatar size="sm" />
+                    <EdenAvatarAnimated size="sm" />
                     <span className="text-xs font-bold text-agri-brown-700">Eden</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -747,8 +1466,24 @@ export function AIAssistantPage() {
               <p className="text-xs text-gray-400 self-end pb-1">Eden will analyze {pendingImages.length === 1 ? 'this image' : 'these images'}</p>
             </div>
           )}
+
+          {/* File attachment chip */}
+          {pendingFile && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <FileSpreadsheet className="w-4 h-4 text-green-600 flex-shrink-0" />
+              <span className="text-xs font-medium text-green-800 flex-1">{pendingFile.name}</span>
+              <span className="text-xs text-green-600">{pendingFile.rowCount} rows</span>
+              <button
+                onClick={() => setPendingFile(null)}
+                className="text-green-600 hover:text-red-500 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="flex gap-2">
-            {/* Hidden file input */}
+            {/* Hidden file inputs */}
             <input
               ref={fileInputRef}
               type="file"
@@ -757,15 +1492,34 @@ export function AIAssistantPage() {
               className="hidden"
               onChange={e => addImages(e.target.files)}
             />
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,.tsv,.txt,.xlsx,.xls"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) addFile(f); e.target.value = ''; }}
+            />
+
             {/* Camera/photo button */}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={loading || pendingImages.length >= 3}
-              title="Attach photo (bird, droppings, lesion)"
+              title="Attach photo (bird, droppings, lesion, receipt)"
               className="px-3 py-3 rounded-lg bg-gray-100 text-gray-500 hover:bg-agri-gold-50 hover:text-agri-brown-600 disabled:opacity-40 transition-colors flex items-center justify-center"
             >
               <Camera className="w-5 h-5" />
             </button>
+
+            {/* CSV/file import button */}
+            <button
+              onClick={() => csvInputRef.current?.click()}
+              disabled={loading || !!pendingFile}
+              title="Attach CSV/spreadsheet for bulk import"
+              className="px-3 py-3 rounded-lg bg-gray-100 text-gray-500 hover:bg-green-50 hover:text-green-700 disabled:opacity-40 transition-colors flex items-center justify-center"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+
             {/* Mic button */}
             <button
               onClick={toggleVoice}
@@ -779,19 +1533,25 @@ export function AIAssistantPage() {
             >
               {listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
+
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={listening ? 'Listening...' : pendingImages.length > 0 ? 'Describe what you see, or just hit Send...' : 'Ask anything, log data, or send a photo...'}
+              placeholder={
+                listening ? 'Listening...'
+                : pendingFile ? `Ask Eden to import ${pendingFile.name}…`
+                : pendingImages.length > 0 ? 'Describe what you see, or just hit Send…'
+                : 'Ask anything, log data, or attach a file…'
+              }
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-gold-500 focus:border-transparent outline-none"
               disabled={loading}
             />
             <button
               onClick={() => sendMessage()}
-              disabled={loading || (!input.trim() && pendingImages.length === 0)}
+              disabled={loading || (!input.trim() && pendingImages.length === 0 && !pendingFile)}
               className="px-6 py-3 bg-agri-brown-600 text-white rounded-lg hover:bg-agri-brown-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
