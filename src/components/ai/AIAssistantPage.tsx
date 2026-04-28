@@ -84,6 +84,7 @@ interface ChatMessage {
   actions?: Array<{ type: string; label: string; href: string }>;
   logAction?: LogAction;
   logConfirmed?: boolean;
+  logSaving?: boolean;
   logError?: string;
   bulkLogActions?: LogAction[];
   bulkLogSelected?: boolean[];
@@ -474,11 +475,15 @@ export function AIAssistantPage() {
       if (!ok) return;
     }
 
-    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: true } : m));
+    // Show saving spinner — do NOT set logConfirmed yet (only after DB write confirmed)
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logSaving: true, logError: undefined } : m));
     const currency = logAction.currency || 'XAF';
 
     try {
       await executeLogAction(logAction, currentFarm.id, currency);
+
+      // Only set logConfirmed AFTER the insert actually succeeded
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logSaving: false, logConfirmed: true } : m));
 
       if (logAction.type === 'LOG_MORTALITY') {
         showToast(`Logged ${logAction.count} deaths in "${logAction.flock_name}"`, 'success');
@@ -487,7 +492,7 @@ export function AIAssistantPage() {
         showToast(`Logged ${total} eggs from "${logAction.flock_name}"`, 'success');
       } else if (logAction.type === 'LOG_EGG_SALE') {
         const total = (logAction.small_eggs_sold||0)+(logAction.medium_eggs_sold||0)+(logAction.large_eggs_sold||0)+(logAction.jumbo_eggs_sold||0);
-        showToast(`Logged sale of ${total} eggs`, 'success');
+        showToast(`Logged sale of ${total || (logAction.trays_sold || 0) * 30} eggs`, 'success');
       } else if (logAction.type === 'LOG_BIRD_SALE') {
         showToast(`Logged sale of ${logAction.birds_sold} birds`, 'success');
       } else if (logAction.type === 'LOG_PURCHASE') {
@@ -504,7 +509,7 @@ export function AIAssistantPage() {
       console.error('[Eden AI] Save failed:', err);
       const errMsg = err.message || String(err);
       showToast('Save failed: ' + errMsg, 'error');
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: false, logError: errMsg } : m));
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logSaving: false, logConfirmed: false, logError: errMsg } : m));
     }
   };
 
@@ -1096,6 +1101,10 @@ export function AIAssistantPage() {
                       {message.logConfirmed ? (
                         <p className="text-xs text-green-600 flex items-center gap-1">
                           <CheckCircle className="w-3 h-3" /> Saved to your farm records
+                        </p>
+                      ) : message.logSaving ? (
+                        <p className="text-xs text-blue-600 flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Saving...
                         </p>
                       ) : (
                         <div>
