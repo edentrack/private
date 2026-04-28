@@ -84,6 +84,7 @@ interface ChatMessage {
   actions?: Array<{ type: string; label: string; href: string }>;
   logAction?: LogAction;
   logConfirmed?: boolean;
+  logError?: string;
   bulkLogActions?: LogAction[];
   bulkLogSelected?: boolean[];
   bulkLogConfirmed?: boolean;
@@ -478,8 +479,10 @@ export function AIAssistantPage() {
         showToast(`Recorded ${logAction.bags_used} bag(s) of ${logAction.feed_type} used`, 'success');
       }
     } catch (err: any) {
-      showToast('Failed to save: ' + err.message, 'error');
-      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: false } : m));
+      console.error('[Eden AI] Save failed:', err);
+      const errMsg = err.message || String(err);
+      showToast('Save failed: ' + errMsg, 'error');
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logConfirmed: false, logError: errMsg } : m));
     }
   };
 
@@ -1074,6 +1077,11 @@ export function AIAssistantPage() {
                         </p>
                       ) : (
                         <div>
+                          {message.logError && (
+                            <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 mb-2 break-all">
+                              Save failed: {message.logError}
+                            </p>
+                          )}
                           <p className="text-xs font-medium text-gray-700 mb-1">Save this to your records?</p>
                           <p className="text-xs text-gray-500 mb-2 bg-gray-50 rounded px-2 py-1">{summariseLogAction(message.logAction)}</p>
                           <div className="flex gap-2">
