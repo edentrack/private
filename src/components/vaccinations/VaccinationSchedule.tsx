@@ -49,12 +49,12 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
   const [vaccinations, setVaccinations] = useState<Vaccination[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState('');
-  const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
+  const [scheduledDate, setScheduledDate] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
   const [dosage, setDosage] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
-  const [administeredDate, setAdministeredDate] = useState(new Date().toISOString().split('T')[0]);
+  const [administeredDate, setAdministeredDate] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
 
   useEffect(() => {
     if (selectedFlockId) {
@@ -139,7 +139,7 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
 
     if (!error) {
       setCompletingId(null);
-      setAdministeredDate(new Date().toISOString().split('T')[0]);
+      const _d = new Date(); setAdministeredDate(`${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`);
       loadVaccinations();
     }
   };
@@ -300,7 +300,7 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
                         <div className="text-sm text-gray-600 space-y-1 ml-8">
                           <div>
                             <span className="font-medium">{t('vaccinations.date')}:</span>{' '}
-                            {new Date(vaccination.scheduled_date).toLocaleDateString()}
+                            {new Date(String(vaccination.scheduled_date).slice(0,10) + 'T12:00:00').toLocaleDateString()}
                           </div>
                           {vaccination.dosage && (
                             <div>
@@ -380,7 +380,7 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
                         <div>
                           <h4 className="font-medium text-gray-900">{vaccination.vaccine_name}</h4>
                           <div className="text-sm text-gray-600">
-                            {t('vaccinations.administered_on')} {new Date(vaccination.administered_date!).toLocaleDateString()}
+                            {t('vaccinations.administered_on')} {new Date(String(vaccination.administered_date!).slice(0,10) + 'T12:00:00').toLocaleDateString()}
                           </div>
                         </div>
                       </div>

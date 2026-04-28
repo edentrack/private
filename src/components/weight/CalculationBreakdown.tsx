@@ -236,10 +236,10 @@ export function CalculationBreakdown({ analysis, flock }: CalculationBreakdownPr
                   <p className="text-sm font-medium mb-2 text-gray-700">Per Bird Method:</p>
                   <div className="bg-gray-50 p-3 rounded border border-gray-200 space-y-1">
                     <p className="font-mono text-xs text-gray-700">
-                      {flock.current_count} birds × {transparency.pricePerBird.toLocaleString()} CFA/bird
+                      {flock.current_count} birds × {transparency.pricePerBird.toLocaleString()} XAF/bird
                     </p>
                     <p className="font-mono text-base font-bold text-gray-900">
-                      = {analysis.saleAnalysis.sellNowPerBird.toLocaleString()} CFA
+                      = {analysis.saleAnalysis.sellNowPerBird.toLocaleString()} XAF
                     </p>
                   </div>
                 </div>
@@ -248,10 +248,10 @@ export function CalculationBreakdown({ analysis, flock }: CalculationBreakdownPr
                   <p className="text-sm font-medium mb-2 text-gray-700">Per Kg Method:</p>
                   <div className="bg-gray-50 p-3 rounded border border-gray-200 space-y-1">
                     <p className="font-mono text-xs text-gray-700">
-                      {analysis.totalFlockWeight.toLocaleString()} kg × {transparency.pricePerKg.toLocaleString()} CFA/kg
+                      {analysis.totalFlockWeight.toLocaleString()} kg × {transparency.pricePerKg.toLocaleString()} XAF/kg
                     </p>
                     <p className="font-mono text-base font-bold text-gray-900">
-                      = {analysis.saleAnalysis.sellNowPerKg.toLocaleString()} CFA
+                      = {analysis.saleAnalysis.sellNowPerKg.toLocaleString()} XAF
                     </p>
                   </div>
                 </div>
@@ -261,7 +261,7 @@ export function CalculationBreakdown({ analysis, flock }: CalculationBreakdownPr
                     ✅ Best method: {analysis.saleAnalysis.sellNowPerKg > analysis.saleAnalysis.sellNowPerBird ? 'Per Kg' : 'Per Bird'}
                   </p>
                   <p className="text-xs text-gray-600 mt-1">
-                    Extra profit: +{Math.abs(analysis.saleAnalysis.sellNowPerKg - analysis.saleAnalysis.sellNowPerBird).toLocaleString()} CFA
+                    Extra profit: +{Math.abs(analysis.saleAnalysis.sellNowPerKg - analysis.saleAnalysis.sellNowPerBird).toLocaleString()} XAF
                   </p>
                 </div>
               </div>

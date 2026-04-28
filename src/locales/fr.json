@@ -402,7 +402,7 @@
     "shifts": "Postes",
     "payroll": "Paie",
     "forecast": "Prévision",
-    "ai_assistant": "Assistant IA",
+    "ai_assistant": "Eden AI",
     "task_history": "Historique des Tâches",
     "audit": "Audit d'Activité",
     "collapse_all": "Tout réduire",
@@ -601,6 +601,8 @@
     "broiler_growth_targets": "Objectifs de Croissance des Poulets de Chair",
     "layer_growth_targets": "Objectifs de Croissance des Poules Pondeuses",
     "settings_saved": "Paramètres enregistrés avec succès",
+    "country": "Pays",
+    "task_settings": "Paramètres des Tâches",
     "task_templates": "Modèles de Tâches",
     "daily_task_limit": "Limite de Tâches Quotidiennes par Troupeau",
     "limit_description": "Nombre maximum de tâches à afficher par troupeau et par jour"
@@ -1158,6 +1160,7 @@
     "click_week_to_edit_water": "Cliquez sur une semaine pour modifier les enregistrements d'eau",
     "edit_feed_records": "Modifier les Enregistrements d'Aliments",
     "edit_water_records": "Modifier les Enregistrements d'Eau",
+    "edit_water_button": "Modifier les Enregistrements d'Eau",
     "no_records_for_week": "Aucun enregistrement pour cette semaine",
     "add_new_record": "Ajouter un Nouvel Enregistrement",
     "select_feed_type": "Sélectionner le Type d'Aliment",
@@ -1692,7 +1695,7 @@
     "no_farm_title": "Aucune ferme assignée",
     "no_farm_message": "Votre compte n'est pas encore lié à une ferme. Si vous avez accepté une invitation, réessayez ou déconnectez-vous puis reconnectez-vous.",
     "retry_load": "Réessayer",
-    "welcome": "Bienvenue sur Ebenezer",
+    "welcome": "Bienvenue sur Edentrack",
     "email": "Email",
     "password": "Mot de passe",
     "confirm_password": "Confirmer le mot de passe",
@@ -1962,7 +1965,7 @@
     "next_day": "Lendemain"
   },
   "onboarding": {
-    "welcome": "Bienvenue sur les Fermes Ebenezer !",
+    "welcome": "Bienvenue sur Edentrack !",
     "where_located": "Où se trouve votre ferme ?",
     "select_country": "Sélectionner le Pays",
     "what_raise": "Qu'élevez-vous ?",
@@ -1986,7 +1989,7 @@
     "number_format": "Format des Nombres",
     "setup_complete": "Configuration Terminée !",
     "farm_configured": "Votre ferme est configurée",
-    "start_using": "Commencer à utiliser Ebenezer",
+    "start_using": "Commencer à utiliser Edentrack",
     "watch_tutorial": "Regarder la vidéo du tutoriel"
   },
   "location": {

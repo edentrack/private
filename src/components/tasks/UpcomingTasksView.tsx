@@ -1,400 +1,153 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Clock, Circle, CheckCircle, Database, ClipboardList } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle, Circle, Clock, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { getFlockTypesForFarm, TaskWithMetadata } from '../../utils/unifiedTaskSystem';
+import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 
-interface UpcomingTasksViewProps {
-  onTaskClick?: (task: TaskWithMetadata) => void;
+interface UpcomingTask {
+  id: string;
+  title: string;
+  scheduled_time: string | null;
+  due_date: string;
+  status: string;
+  flock_name?: string;
 }
 
-interface DayTaskCount {
-  date: string;
-  count: number;
+interface DayGroup {
+  dateISO: string;
+  label: string;
+  tasks: UpcomingTask[];
 }
 
-export function UpcomingTasksView({ onTaskClick }: UpcomingTasksViewProps) {
+export function UpcomingTasksView() {
   const { currentFarm } = useAuth();
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayDate());
-  const [tasks, setTasks] = useState<TaskWithMetadata[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [taskCounts, setTaskCounts] = useState<Map<string, number>>(new Map());
-  const [rangeMode, setRangeMode] = useState<'week' | 'month'>('week');
+  const farmTz = getFarmTimeZone(currentFarm);
+  const [groups, setGroups] = useState<DayGroup[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (currentFarm?.id) {
-      loadTaskCountsForMonth();
-    }
-  }, [currentFarm?.id, currentMonth]);
+    if (currentFarm?.id) load();
+  }, [currentFarm?.id]);
 
-  useEffect(() => {
-    if (currentFarm?.id && selectedDate) {
-      loadTasksForDate();
-    }
-  }, [currentFarm?.id, selectedDate]);
-
-  function getTodayDate(): string {
-    return new Date().toISOString().split('T')[0];
-  }
-
-  const loadTaskCountsForMonth = async () => {
+  const load = async () => {
     if (!currentFarm?.id) return;
-
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1).toISOString().split('T')[0];
-    const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0];
-
-    const { data } = await supabase
-      .from('tasks')
-      .select('due_date, scheduled_for')
-      .eq('farm_id', currentFarm.id)
-      .eq('status', 'pending')
-      .eq('is_archived', false)
-      .gte('scheduled_for', `${firstDay}T00:00:00`)
-      .lte('scheduled_for', `${lastDay}T23:59:59`);
-
-    const counts = new Map<string, number>();
-    data?.forEach((task: any) => {
-      const date = task.scheduled_for?.split('T')[0] || task.due_date;
-      if (date) {
-        counts.set(date, (counts.get(date) || 0) + 1);
-      }
-    });
-    setTaskCounts(counts);
-  };
-
-  const loadTasksForDate = async () => {
-    if (!currentFarm?.id) return;
-
     setLoading(true);
     try {
-      const flockTypes = await getFlockTypesForFarm(supabase, currentFarm.id);
+      const today = getFarmTodayISO(farmTz);
+      const in7Days = new Date(today);
+      in7Days.setDate(in7Days.getDate() + 7);
+      const end = in7Days.toISOString().split('T')[0];
 
-      const startOfDay = `${selectedDate}T00:00:00`;
-      const endOfDay = `${selectedDate}T23:59:59`;
-
-      const { data: tasksData } = await supabase
+      const { data } = await supabase
         .from('tasks')
         .select(`
-          *,
-          task_templates(title, category, icon, scope, type_category, requires_input),
-          flocks(name, type)
+          id, status, scheduled_time, due_date,
+          title_override,
+          task_templates(title),
+          flocks(name)
         `)
         .eq('farm_id', currentFarm.id)
         .eq('is_archived', false)
-        .gte('scheduled_for', startOfDay)
-        .lte('scheduled_for', endOfDay)
-        .order('scheduled_for', { ascending: true });
+        .gt('due_date', today)
+        .lte('due_date', end)
+        .order('due_date', { ascending: true })
+        .order('scheduled_time', { ascending: true, nullsFirst: false });
 
-      if (!tasksData) {
-        setTasks([]);
-        return;
-      }
+      const tasks: UpcomingTask[] = (data || []).map((t: any) => ({
+        id: t.id,
+        title: t.title_override || t.task_templates?.title || 'Task',
+        scheduled_time: t.scheduled_time,
+        due_date: t.due_date,
+        status: t.status,
+        flock_name: t.flocks?.name,
+      }));
 
-      const seenTemplates = new Set<string>();
-      const uniqueTasks = tasksData.filter((task: any) => {
-        const key = `${task.template_id || task.id}-${task.due_date || selectedDate}`;
-        if (seenTemplates.has(key)) return false;
-        seenTemplates.add(key);
-        return true;
+      // Group by date
+      const map = new Map<string, UpcomingTask[]>();
+      tasks.forEach(t => {
+        const existing = map.get(t.due_date) || [];
+        existing.push(t);
+        map.set(t.due_date, existing);
       });
 
-      const mappedTasks: TaskWithMetadata[] = uniqueTasks
-        .filter((task: any) => {
-          if (!flockTypes || flockTypes.length === 0) return true;
-          const template = task.task_templates;
-          if (!template) return true;
-          const taskScope = template.scope || 'general';
-          if (taskScope === 'general') return true;
-          if (taskScope === 'broiler' && !flockTypes.includes('Broiler')) return false;
-          if (taskScope === 'layer' && !flockTypes.includes('Layer')) return false;
-          return true;
-        })
-        .map((task: any) => {
-          const template = task.task_templates;
-          const flock = task.flocks;
-          const todayStr = getTodayDate();
-          const taskDate = task.scheduled_for?.split('T')[0] || task.due_date;
-          const isOverdue = task.status === 'pending' && taskDate < todayStr;
+      const dayGroups: DayGroup[] = [];
+      for (let i = 1; i <= 7; i++) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        const iso = d.toISOString().split('T')[0];
+        const label = i === 1
+          ? 'Tomorrow'
+          : d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        dayGroups.push({ dateISO: iso, label, tasks: map.get(iso) || [] });
+      }
 
-          return {
-            id: task.id,
-            farm_id: task.farm_id,
-            flock_id: task.flock_id,
-            template_id: task.template_id,
-            title_override: task.title_override,
-            scheduled_for: task.scheduled_for,
-            window_start: task.window_start,
-            window_end: task.window_end,
-            status: task.status,
-            requires_input: task.requires_input || template?.requires_input || false,
-            data_payload: task.data_payload,
-            completed_at: task.completed_at,
-            completed_by: task.completed_by,
-            due_date: task.due_date,
-            scheduled_time: task.scheduled_time,
-            assigned_to: task.assigned_to,
-            notes: task.notes,
-            is_archived: task.is_archived || false,
-            archived_at: task.archived_at,
-            archived_by: task.archived_by,
-            created_at: task.created_at,
-            updated_at: task.updated_at,
-            taskType: template?.type_category || 'daily',
-            scope: template?.scope || 'general',
-            isOverdue,
-            templateTitle: task.title_override || template?.title || 'Task',
-            templateCategory: template?.category || 'General',
-            templateIcon: template?.icon || null,
-            isRecording: template?.type_category === 'recording',
-            flockName: flock?.name,
-          };
-        });
-
-      setTasks(mappedTasks);
-    } catch (error) {
-      console.error('Error loading tasks:', error);
+      setGroups(dayGroups);
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePreviousMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const fmtTime = (t: string | null) => {
+    if (!t) return '';
+    const d = new Date(`1970-01-01T${t.slice(0, 5)}:00`);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
-  const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-  const handleDateClick = (date: Date) => {
-    setSelectedDate(date.toISOString().split('T')[0]);
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  };
-
-  const calendarDays = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    const startDay = firstDayOfMonth.getDay();
-
-    const days: (Date | null)[] = [];
-
-    for (let i = 0; i < startDay; i++) {
-      days.push(null);
-    }
-
-    for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
-      days.push(new Date(year, month, day));
-    }
-
-    return days;
-  }, [currentMonth]);
-
-  const isToday = (date: Date | null) => {
-    if (!date) return false;
-    return date.toISOString().split('T')[0] === getTodayDate();
-  };
-
-  const isSelected = (date: Date | null) => {
-    if (!date) return false;
-    return date.toISOString().split('T')[0] === selectedDate;
-  };
-
-  const isPast = (date: Date | null) => {
-    if (!date) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
-  };
-
-  const getTaskCount = (date: Date | null) => {
-    if (!date) return 0;
-    return taskCounts.get(date.toISOString().split('T')[0]) || 0;
-  };
-
-  const getTypeBadgeStyle = (task: TaskWithMetadata) => {
-    if (task.isRecording) return 'bg-blue-50 text-blue-700';
-    if (task.taskType === 'one_time') return 'bg-teal-50 text-teal-700';
-    return 'bg-green-50 text-green-700';
-  };
-
-  const getScopeBadgeStyle = (scope: string) => {
-    if (scope === 'broiler') return 'bg-amber-50 text-amber-700';
-    if (scope === 'layer') return 'bg-sky-50 text-sky-700';
-    return '';
-  };
-
-  const getTypeLabel = (task: TaskWithMetadata) => {
-    if (task.isRecording) return 'Recording';
-    if (task.taskType === 'one_time') return 'Custom';
-    return 'Daily';
-  };
-
-  const getTypeIcon = (task: TaskWithMetadata) => {
-    if (task.isRecording) return <Database className="w-3 h-3" />;
-    return <ClipboardList className="w-3 h-3" />;
-  };
+  const hasAny = groups.some(g => g.tasks.length > 0);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Upcoming Tasks</h2>
-          <p className="text-sm text-gray-600">Select a date to view tasks</p>
+    <div className="space-y-3">
+      {!hasAny && (
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+          <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">Nothing scheduled</p>
+          <p className="text-gray-400 text-sm mt-1">No tasks in the next 7 days</p>
         </div>
-      </div>
+      )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <button
-            onClick={handlePreviousMonth}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <h3 className="font-semibold text-gray-900">
-            {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </h3>
-          <button
-            onClick={handleNextMonth}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
-
-        <div className="p-2">
-          <div className="grid grid-cols-7 mb-1">
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-              <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-0.5">
-            {calendarDays.map((day, index) => {
-              if (!day) {
-                return <div key={index} className="aspect-square" />;
-              }
-
-              const taskCount = getTaskCount(day);
-              const selected = isSelected(day);
-              const today = isToday(day);
-              const past = isPast(day);
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => handleDateClick(day)}
-                  className={`aspect-square p-1 rounded-lg text-center transition-all relative ${
-                    selected
-                      ? 'bg-[#3D5F42] text-white'
-                      : past
-                      ? 'text-gray-400 hover:bg-gray-50'
-                      : today
-                      ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                      : 'text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="text-sm font-medium">{day.getDate()}</span>
-                  {taskCount > 0 && (
-                    <span className={`absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center ${
-                      selected ? 'bg-white/30 text-white' : 'bg-[#3D5F42] text-white'
-                    }`}>
-                      {taskCount > 9 ? '9+' : taskCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#3D5F42]" />
-            <h3 className="font-semibold text-gray-900">
-              {new Date(selectedDate).toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric'
-              })}
-            </h3>
-          </div>
-          <span className="text-sm text-gray-500">
-            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
-          </span>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-5 h-5 border-2 border-gray-200 border-t-[#3D5F42] rounded-full animate-spin" />
-          </div>
-        ) : tasks.length === 0 ? (
-          <div className="text-center py-6">
-            <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500 text-sm">No tasks scheduled</p>
-          </div>
-        ) : (
-          <div className="space-y-1 max-h-[300px] overflow-y-auto">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => onTaskClick?.(task)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                  task.status === 'completed'
-                    ? 'bg-gray-50 opacity-60'
-                    : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
-                }`}
-              >
-                <div className="flex-shrink-0">
-                  {task.status === 'completed' ? (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Circle className="w-4 h-4 text-gray-300" />
+      {groups.map(group => {
+        if (group.tasks.length === 0) return null;
+        return (
+          <div key={group.dateISO} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+              <span className="text-sm font-semibold text-gray-700">{group.label}</span>
+              <span className="ml-2 text-xs text-gray-400">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {group.tasks.map(task => (
+                <div key={task.id} className="flex items-center gap-3 px-4 py-3">
+                  {task.status === 'completed'
+                    ? <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    : <Circle className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${task.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                      {task.title}
+                    </p>
+                    {task.flock_name && (
+                      <p className="text-xs text-gray-400 mt-0.5">{task.flock_name}</p>
+                    )}
+                  </div>
+                  {task.scheduled_time && (
+                    <div className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
+                      <Clock className="w-3 h-3" />
+                      {fmtTime(task.scheduled_time)}
+                    </div>
                   )}
                 </div>
-
-                <div className="flex-1 min-w-0 flex items-center gap-2">
-                  <span className={`text-sm font-medium truncate ${
-                    task.status === 'completed' ? 'text-gray-500 line-through' : 'text-gray-900'
-                  }`}>
-                    {task.templateTitle}
-                  </span>
-                  <span className={`flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded ${getTypeBadgeStyle(task)}`}>
-                    {getTypeIcon(task)}
-                    {getTypeLabel(task)}
-                  </span>
-                  {task.scope !== 'general' && (
-                    <span className={`flex-shrink-0 px-1.5 py-0.5 text-xs font-medium rounded ${getScopeBadgeStyle(task.scope)}`}>
-                      {task.scope === 'broiler' ? 'Broiler' : 'Layer'}
-                    </span>
-                  )}
-                </div>
-
-                <span className="text-xs text-gray-500 flex-shrink-0 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {formatTime(task.scheduled_for)}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        )}
-      </div>
+        );
+      })}
     </div>
   );
 }

@@ -120,7 +120,7 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
             {financials.totalExpenses.toLocaleString()}
           </div>
           <div className="text-xs text-red-700 mt-1">
-            {profile?.currency_preference || 'CFA'}
+            {profile?.currency_preference || 'XAF'}
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
             {financials.totalRevenue.toLocaleString()}
           </div>
           <div className="text-xs text-neon-700 mt-1">
-            {profile?.currency_preference || 'CFA'}
+            {profile?.currency_preference || 'XAF'}
           </div>
         </div>
 

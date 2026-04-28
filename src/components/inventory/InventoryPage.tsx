@@ -1406,7 +1406,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
                         <span className="font-semibold text-gray-900">{t('inventory.total_spent')}:</span>
                         <span className="text-xl font-bold text-[#3D5F42]">
                           {relatedExpenses.reduce((sum, e) => sum + e.amount, 0).toLocaleString()}{' '}
-                          {relatedExpenses[0]?.currency || 'CFA'}
+                          {relatedExpenses[0]?.currency || 'XAF'}
                         </span>
                       </div>
                     </div>

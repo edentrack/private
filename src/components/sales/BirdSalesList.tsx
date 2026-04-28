@@ -39,7 +39,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
   const [expandedSale, setExpandedSale] = useState<string | null>(null);
   const hideFinancials = shouldHideFinancialData(currentRole);
 
-  const currency = profile?.currency_preference || currentFarm?.currency_code || 'CFA';
+  const currency = profile?.currency_preference || currentFarm?.currency_code || 'XAF';
 
   useEffect(() => {
     if (currentFarm?.id) {

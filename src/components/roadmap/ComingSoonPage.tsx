@@ -250,7 +250,7 @@ export default function ComingSoonPage() {
         <div className="max-w-4xl mx-auto text-center">
           <h3 className="text-3xl font-bold mb-4">Have a Feature Request?</h3>
           <p className="text-lg text-amber-100 mb-6">
-            We're building Ebenezer for YOU. Tell us what features would make your farm management easier!
+            We're building Edentrack for YOU. Tell us what features would make your farm management easier!
           </p>
           <button className="px-8 py-3 bg-white text-[#3D5F42] font-bold rounded-lg hover:bg-amber-50 transition-colors inline-flex items-center gap-2">
             <Sparkles className="w-5 h-5" />

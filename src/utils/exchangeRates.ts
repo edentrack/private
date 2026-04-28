@@ -40,11 +40,11 @@ const NO_DECIMALS = new Set(['XAF', 'XOF', 'NGN', 'GHS', 'KES', 'ETB', 'TZS', 'U
 const SYMBOLS: Record<string, string> = {
   USD: '$', EUR: '€', GBP: '£', CAD: 'CA$', AUD: 'AU$',
   NGN: '₦', GHS: 'GH₵', KES: 'KSh', ZAR: 'R',
-  XAF: 'FCFA', XOF: 'CFA', ETB: 'ETB ', TZS: 'TZS ', UGX: 'USh', RWF: 'RWF ', MAD: 'MAD ', EGP: 'EGP ',
+  XAF: 'XAF', XOF: 'CFA', ETB: 'ETB ', TZS: 'TZS ', UGX: 'USh', RWF: 'RWF ', MAD: 'MAD ', EGP: 'EGP ',
 };
 
 // Symbols that go after the amount
-const SUFFIX_SYMBOLS = new Set(['FCFA', 'CFA', 'ETB ', 'TZS ', 'RWF ', 'MAD ', 'EGP ']);
+const SUFFIX_SYMBOLS = new Set(['XAF', 'CFA', 'ETB ', 'TZS ', 'RWF ', 'MAD ', 'EGP ']);
 
 export function toLocalPrice(usdAmount: number, currency: string, rate: number): number {
   const raw = usdAmount * rate;

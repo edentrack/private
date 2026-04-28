@@ -21,9 +21,15 @@ export default async function handler(req: any, res: any) {
     return res.status(401).json({ error: 'Missing authorization header. Please log in again.' });
   }
 
+  if (!SUPABASE_URL) {
+    console.error('[ai-chat proxy] VITE_SUPABASE_URL not set');
+    return res.status(503).json({ error: 'AI service is not configured. Contact support.' });
+  }
+
   try {
     const farmId = req.body?.farm_id || '(missing)';
-    console.log(`[ai-chat proxy] farm_id=${farmId} user=${req.body?.messages?.length ?? 0} msgs`);
+    console.log(`[ai-chat proxy] farm_id=${farmId} msgs=${req.body?.messages?.length ?? 0}`);
+
     const upstream = await fetch(EDGE_FN_URL, {
       method: 'POST',
       headers: {
@@ -31,13 +37,22 @@ export default async function handler(req: any, res: any) {
         'Authorization': authHeader,
         'apikey': SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(req.body || {}),
     });
 
-    const data = await upstream.json();
+    // Always parse as text first to avoid SyntaxError crashing the proxy
+    const text = await upstream.text();
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error('[ai-chat proxy] upstream returned non-JSON:', upstream.status, text.slice(0, 200));
+      return res.status(502).json({ error: 'Eden AI returned an unexpected response. Please try again.' });
+    }
+
     return res.status(upstream.status).json(data);
   } catch (err: any) {
-    console.error('ai-chat proxy error:', err?.message);
-    return res.status(502).json({ error: 'Could not reach AI service. Please try again.' });
+    console.error('[ai-chat proxy] fetch error:', err?.message);
+    return res.status(502).json({ error: 'Could not reach Eden AI. Please check your connection and try again.' });
   }
 }

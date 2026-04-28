@@ -422,3 +422,27 @@ export function getTypeBadgeColor(type: TaskTypeCategory): string {
     default: return 'bg-green-100 text-green-700';
   }
 }
+
+// One-time cleanup: delete tasks whose due_date contains a 'T' (ISO timestamp written
+// into a DATE column by the old smartTasks generator). Fire-and-forget — safe to call
+// on every dashboard load since it becomes a no-op once the data is clean.
+export async function cleanHistoricalDuplicateTasks(
+  supabaseClient: SupabaseClient,
+  farmId: string
+): Promise<void> {
+  try {
+    const { data } = await supabaseClient
+      .from('tasks')
+      .select('id, due_date')
+      .eq('farm_id', farmId)
+      .like('due_date', '%T%');
+
+    if (data && data.length > 0) {
+      const ids = data.map((t: any) => t.id);
+      await supabaseClient.from('tasks').delete().in('id', ids);
+    }
+  } catch {
+    // Non-blocking — ignore errors
+  }
+}
+

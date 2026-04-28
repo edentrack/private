@@ -80,7 +80,7 @@ export function FarmLocationSettings() {
           `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
           {
             headers: {
-              'User-Agent': 'Ebenezer Farm Manager'
+              'User-Agent': 'Edentrack Farm Manager'
             }
           }
         );

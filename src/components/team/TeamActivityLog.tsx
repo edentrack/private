@@ -3,6 +3,42 @@ import { Clock, Loader2, ChevronDown, ChevronRight, RefreshCw, AlertCircle, Down
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  invite_created: 'Sent a team invitation',
+  invite_accepted: 'Accepted team invitation',
+  invite_revoked: 'Revoked a team invitation',
+  member_added: 'Added a team member',
+  member_removed: 'Removed a team member',
+  role_changed: 'Changed member role',
+  member_deactivated: 'Deactivated team member',
+  member_reactivated: 'Reactivated team member',
+  flock_created: 'Created a new flock',
+  flock_updated: 'Updated flock details',
+  flock_archived: 'Archived a flock',
+  flock_deleted: 'Deleted a flock',
+  mortality_logged: 'Logged bird deaths',
+  egg_collected: 'Logged egg collection',
+  egg_sale_recorded: 'Recorded egg sale',
+  bird_sale_recorded: 'Recorded bird sale',
+  expense_logged: 'Logged an expense',
+  purchase_logged: 'Logged a purchase',
+  payroll_run_created: 'Created a payroll run',
+  payroll_approved: 'Approved payroll',
+  payroll_processed: 'Processed payroll payment',
+  task_created: 'Created a task',
+  task_completed: 'Completed a task',
+  task_deleted: 'Deleted a task',
+  weight_logged: 'Logged bird weight',
+  vaccination_logged: 'Logged vaccination',
+  settings_updated: 'Updated farm settings',
+  login: 'Logged in',
+  logout: 'Logged out',
+};
+
+function formatEventType(eventType: string): string {
+  return EVENT_TYPE_LABELS[eventType] || eventType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 interface ActivityLog {
   id: string;
   event_type: string;
@@ -182,7 +218,7 @@ export function TeamActivityLog({ farmId, refreshTrigger = 0 }: TeamActivityLogP
 
           <div>
             <span className="text-xs font-medium text-gray-500 uppercase">{t('team.action_type') || 'Action Type'}</span>
-            <p className="text-sm text-gray-900 mt-0.5 capitalize">{log.event_type.replace(/_/g, ' ')}</p>
+            <p className="text-sm text-gray-900 mt-0.5">{formatEventType(log.event_type)}</p>
           </div>
 
           <div>
@@ -277,7 +313,7 @@ export function TeamActivityLog({ farmId, refreshTrigger = 0 }: TeamActivityLogP
 
       <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-          <span className="font-medium">{t('team.note') || 'Note:'}</span> {t('team.activity_log_note') || 'Activity logs are automatically deleted every week to maintain optimal performance.'}
+          <span className="font-medium">{t('team.note') || 'Note:'}</span> {'Activity logs are retained for 90 days.'}
         </p>
       </div>
 

@@ -137,6 +137,12 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
     setErrorMessage(null);
 
     try {
+      if (!farmId) {
+        setErrorMessage('Farm not loaded. Please refresh the page and try again.');
+        setLoading(false);
+        return;
+      }
+
       if (formData.small_eggs_sold > (inventory?.small_eggs || 0)) {
         setErrorMessage(`Not enough small eggs! Only ${inventory?.small_eggs || 0} in stock`);
         setTimeout(() => setErrorMessage(null), 3000);
@@ -181,7 +187,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
         return;
       }
 
-      const { error: saleError } = await supabase
+      const { data: saleData, error: saleError } = await supabase
         .from('egg_sales')
         .insert({
           farm_id: farmId,
@@ -205,9 +211,11 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
           payment_method: formData.payment_method,
           sold_by: profile?.id,
           notes: formData.notes || null,
-        });
+        })
+        .select('id');
 
       if (saleError) throw saleError;
+      if (!saleData || saleData.length === 0) throw new Error('Sale was not saved. Please check your connection and try again.');
 
       // Deduct sold eggs from egg_inventory (fetch current row so it can't drift)
       const { data: invRow } = await supabase
@@ -245,7 +253,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
 
       const currencyCode = currentFarm?.currency_code || 'XAF';
 
-      await supabase
+      const { error: revenueError } = await supabase
         .from('revenues')
         .insert({
           farm_id: farmId,
@@ -259,6 +267,8 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
             : `Egg sale - ${totalEggs} eggs`,
           revenue_date: formData.sale_date,
         });
+
+      if (revenueError) console.error('Revenue record failed:', revenueError);
 
       setLastSaleDetails({
         farmName: currentFarm?.name || 'My Farm',

@@ -58,7 +58,7 @@ export function ExpenseTracking() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [currency, setCurrency] = useState<Currency>('CFA');
+  const [currency, setCurrency] = useState<Currency>('XAF');
   const [selectedExpenseFlock, setSelectedExpenseFlock] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -174,18 +174,22 @@ export function ExpenseTracking() {
     }
 
     const { data } = await query;
-    // Exclude "chicks purchase" and "chicks transport" from expense totals (we'll use flocks table instead)
-    // But include "transport" category expenses directly
-    const total = (data || []).reduce((sum, e) => {
-      const cat = (e.category || '').toLowerCase();
-      if (cat === 'chicks purchase' || cat === 'chicks transport') {
-        return sum; // Skip old chicks transport - we'll count from flocks table
-      }
-      return sum + parseFloat((e.amount || 0).toString());
-    }, 0);
-    
-    // Include flock-derived chick costs (source of truth - flocks table)
-    // Note: flock transport costs will be added to "transport" category, not "chicks transport"
+    const rows = data || [];
+
+    // If chick purchase expenses exist in the expenses table, trust that as the
+    // source of truth and sum everything directly — no flocks-table lookup needed.
+    const hasChickExpenses = rows.some(e =>
+      ['chicks purchase', 'chicks transport'].includes((e.category || '').toLowerCase())
+    );
+
+    if (hasChickExpenses) {
+      const total = rows.reduce((sum, e) => sum + parseFloat((e.amount || 0).toString()), 0);
+      setTotalExpensesAmount(total);
+      return;
+    }
+
+    // Fallback: no expense records for chick costs — derive from flocks table.
+    const total = rows.reduce((sum, e) => sum + parseFloat((e.amount || 0).toString()), 0);
     const chickCosts = await getChickCostsFromFlocks(selectedFlockId);
     setTotalExpensesAmount(total + chickCosts.purchase + chickCosts.transport);
   };
@@ -203,25 +207,27 @@ export function ExpenseTracking() {
     }
 
     const { data } = await query;
+    const rows = data || [];
     const totals: Record<string, number> = {};
-    (data || []).forEach((row: any) => {
-      const key = (row.category || 'other').toLowerCase();
-      // Skip "chicks purchase" and old "chicks transport" from expense entries (we'll use flocks table instead)
-      // But include new "transport" category expenses directly
-      if (key === 'chicks purchase' || key === 'chicks transport') {
-        return;
-      }
-      const amt = Number(row.amount || 0);
-      totals[key] = (totals[key] || 0) + amt;
-    });
 
-    // Use flock-derived chicks purchase costs (source of truth - flocks table)
-    const chickCosts = await getChickCostsFromFlocks(selectedFlockId);
-    totals['chicks purchase'] = chickCosts.purchase;
-    
-    // Add flock transport costs to "transport" category (consolidate all transport)
-    // This includes both old "chicks transport" from flocks and any new "transport" expenses
-    totals['transport'] = (totals['transport'] || 0) + chickCosts.transport;
+    const hasChickExpenses = rows.some((row: any) =>
+      ['chicks purchase', 'chicks transport'].includes((row.category || '').toLowerCase())
+    );
+
+    if (hasChickExpenses) {
+      rows.forEach((row: any) => {
+        const key = (row.category || 'other').toLowerCase();
+        totals[key] = (totals[key] || 0) + Number(row.amount || 0);
+      });
+    } else {
+      rows.forEach((row: any) => {
+        const key = (row.category || 'other').toLowerCase();
+        totals[key] = (totals[key] || 0) + Number(row.amount || 0);
+      });
+      const chickCosts = await getChickCostsFromFlocks(selectedFlockId);
+      totals['chicks purchase'] = (totals['chicks purchase'] || 0) + chickCosts.purchase;
+      totals['transport'] = (totals['transport'] || 0) + chickCosts.transport;
+    }
 
     setCategoryTotals(totals);
   };

@@ -153,7 +153,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
     return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   };
 
-  const currency = profile?.currency_preference || currentFarm?.currency_code || 'CFA';
+  const currency = profile?.currency_preference || currentFarm?.currency_code || 'XAF';
 
   if (!flock) {
     return (

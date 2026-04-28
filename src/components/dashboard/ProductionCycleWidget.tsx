@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Check, Circle, ArrowRight, Scale, Egg, AlertCircle } from 'lucide-react';
+import { RefreshCw, Check, Circle, ArrowRight, Scale, Egg, AlertCircle, Zap } from 'lucide-react';
 import { Flock } from '../../types/database';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -34,6 +34,7 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
   const [feedType, setFeedType] = useState('');
   const [targetWeek, setTargetWeek] = useState(72); // Default to layer duration
   const [currentPhaseData, setCurrentPhaseData] = useState<{ startWeek: number; endWeek: number; name: string; feedType: string } | null>(null);
+  const [nextPhaseData, setNextPhaseData] = useState<{ name: string; feedType: string } | null>(null);
   const [weightData, setWeightData] = useState<WeightData>({
     averageWeight: null,
     date: null,
@@ -248,16 +249,19 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
 
     setMilestones(broilerMilestones);
 
-    // Find current phase
-    const foundPhase = phases.find(p => week >= p.startWeek && week <= p.endWeek);
-    if (foundPhase) {
+    // Find current phase and next phase
+    const foundPhaseIdx = phases.findIndex(p => week >= p.startWeek && week <= p.endWeek);
+    if (foundPhaseIdx >= 0) {
+      const foundPhase = phases[foundPhaseIdx];
       setCurrentPhase(foundPhase.name);
       setFeedType(foundPhase.feedType);
       setCurrentPhaseData(foundPhase);
+      setNextPhaseData(phases[foundPhaseIdx + 1] || null);
     } else {
       setCurrentPhase('Unknown');
       setFeedType('N/A');
       setCurrentPhaseData(null);
+      setNextPhaseData(null);
     }
   };
 
@@ -452,20 +456,29 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
           </div>
         </div>
 
-        {isBroiler && currentWeek >= 5 && (
-          <div className="p-2.5 bg-green-100 rounded-xl mb-3">
-            <p className="text-sm font-medium text-green-800">
-              {currentWeek >= 6 ? 'Market Ready' : 'Approaching market weight'}
-            </p>
-            <p className="text-xs text-green-600">
-              Target: 2.5 kg at Week 6-8
-            </p>
+        {isBroiler && weeksUntilNextPhase === 0 && currentPhaseData && (
+          <div className={`p-3 rounded-xl mb-3 border ${nextPhaseData ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+            <div className="flex items-start gap-2">
+              <Zap className={`w-4 h-4 mt-0.5 flex-shrink-0 ${nextPhaseData ? 'text-amber-600' : 'text-green-600'}`} />
+              <div>
+                <p className={`text-sm font-semibold ${nextPhaseData ? 'text-amber-800' : 'text-green-800'}`}>
+                  {nextPhaseData
+                    ? `${currentPhaseData.name} phase complete!`
+                    : '🥩 Harvest time!'}
+                </p>
+                <p className={`text-xs mt-0.5 ${nextPhaseData ? 'text-amber-700' : 'text-green-700'}`}>
+                  {nextPhaseData
+                    ? `Switch feed to ${nextPhaseData.feedType} and move birds to ${nextPhaseData.name} phase.`
+                    : `Your birds have completed the ${currentPhaseData.name} phase — they're ready to sell.`}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
         {onNavigate && (
           <button
-            onClick={() => onNavigate('settings')}
+            onClick={() => onNavigate('insights')}
             className="w-full py-2 text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center justify-center gap-1 bg-white/40 rounded-xl hover:bg-white/60 transition-colors"
           >
             View Production Details

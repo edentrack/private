@@ -82,7 +82,7 @@ export function CompactKPICards({ farmId }: { farmId?: string }) {
           {kpis.totalExpenses.toLocaleString()}
         </div>
         <div className="text-xs text-gray-500 mt-0.5">
-          {profile?.currency_preference || 'CFA'}
+          {profile?.currency_preference || 'XAF'}
         </div>
       </div>
 
@@ -97,7 +97,7 @@ export function CompactKPICards({ farmId }: { farmId?: string }) {
           {kpis.totalRevenue.toLocaleString()}
         </div>
         <div className="text-xs text-gray-500 mt-0.5">
-          {profile?.currency_preference || 'CFA'}
+          {profile?.currency_preference || 'XAF'}
         </div>
       </div>
 

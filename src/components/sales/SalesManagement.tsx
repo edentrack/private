@@ -50,7 +50,7 @@ export function SalesManagement() {
   const { profile, currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();
   const [activeTab, setActiveTab] = useState<'record' | 'history' | 'customers' | 'invoices'>('record');
-  const [historySubTab, setHistorySubTab] = useState<'birds' | 'eggs' | 'receipts'>('birds');
+  const [historySubTab, setHistorySubTab] = useState<'birds' | 'eggs' | 'receipts'>('eggs');
   const [saleType, setSaleType] = useState<'bird' | 'egg'>('bird');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -140,7 +140,7 @@ export function SalesManagement() {
 
       let eggSalesQuery = supabase
         .from('egg_sales')
-        .select('total_eggs, total_amount')
+        .select('total_eggs, total_amount, customer_name')
         .eq('farm_id', currentFarm.id);
 
       if (dateRange.start) {
@@ -199,8 +199,15 @@ export function SalesManagement() {
       const totalEggsSold = eggSalesData.reduce((sum: number, sale: any) => sum + (sale.total_eggs || 0), 0);
       const totalRevenue = revenueData.reduce((sum: number, rev: any) => sum + (rev.amount || 0), 0);
 
+      // Count unique customers across all sources
+      const uniqueCustomerNames = new Set<string>([
+        ...customerData.map((c: any) => (c.name || '').toLowerCase().trim()).filter(Boolean),
+        ...(eggSalesRes.data || []).map((s: any) => (s.customer_name || '').toLowerCase().trim()).filter(Boolean),
+        ...(birdSalesRes.data || []).map((s: any) => (s.customer_name || '').toLowerCase().trim()).filter(Boolean),
+      ]);
+
       setStats({
-        totalCustomers: customerData.length,
+        totalCustomers: uniqueCustomerNames.size,
         totalRevenue,
         pendingInvoices: invoiceData.filter((inv) => inv.status !== 'paid' && inv.status !== 'cancelled').length,
         paidInvoices: invoiceData.filter((inv) => inv.status === 'paid').length,
@@ -388,7 +395,7 @@ export function SalesManagement() {
               <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('sales.total_revenue')}</div>
             </div>
             <div className="text-3xl font-bold text-gray-900">
-              {profile?.currency_preference} {stats.totalRevenue.toLocaleString()}
+              {currentFarm?.currency_code || currentFarm?.currency || 'XAF'} {stats.totalRevenue.toLocaleString()}
             </div>
           </div>
         )}

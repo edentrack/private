@@ -118,7 +118,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
             id: expense.id,
             type: 'expense',
             title: expense.description,
-            subtitle: `${expense.category} - ${currentFarm?.currency_code || currentFarm?.currency || 'CFA'} ${expense.amount}`,
+            subtitle: `${expense.category} - ${currentFarm?.currency_code || currentFarm?.currency || 'XAF'} ${expense.amount}`,
             action: () => {
               onNavigate('expenses');
               setShowResults(false);

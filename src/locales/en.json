@@ -106,7 +106,7 @@
     "shifts": "Shifts",
     "payroll": "Payroll",
     "forecast": "Forecast",
-    "ai_assistant": "AI Assistant",
+    "ai_assistant": "Eden AI",
     "task_history": "Task History",
     "audit": "Activity Audit",
     "collapse_all": "Collapse All",
@@ -462,7 +462,7 @@
     }
   },
   "auth": {
-    "welcome": "Welcome to Ebenezer",
+    "welcome": "Welcome to Edentrack",
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
     "email": "Email",
@@ -1412,6 +1412,7 @@
     "click_week_to_edit_water": "Click on a week to edit water records",
     "edit_feed_records": "Edit Feed Records",
     "edit_water_records": "Edit Water Records",
+    "edit_water_button": "Edit Water Records",
     "no_records_for_week": "No records for this week",
     "add_new_record": "Add New Record",
     "select_feed_type": "Select Feed Type",
@@ -1516,6 +1517,8 @@
     "save_settings": "Save Settings",
     "saving": "Saving...",
     "settings_saved": "Settings saved successfully",
+    "country": "Country",
+    "task_settings": "Task Settings",
     "task_templates": "Task Templates",
     "daily_task_limit": "Daily Task Limit per Flock",
     "limit_description": "Maximum number of tasks to show per flock per day",
@@ -1813,7 +1816,7 @@
     "record": "Record Mortality"
   },
   "onboarding": {
-    "welcome": "Welcome to Ebenezer Farms!",
+    "welcome": "Welcome to Edentrack!",
     "where_located": "Where is your farm located?",
     "select_country": "Select Country",
     "what_raise": "What do you raise?",
@@ -1837,7 +1840,7 @@
     "number_format": "Number Format",
     "setup_complete": "Setup Complete!",
     "farm_configured": "Your farm is configured",
-    "start_using": "Start Using Ebenezer",
+    "start_using": "Start Using Edentrack",
     "watch_tutorial": "Watch Tutorial Video"
   },
   "location": {

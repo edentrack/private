@@ -96,7 +96,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
           flock: flockData,
           userId: user.id,
           farmId: currentFarm.id,
-          currencyCode: currentFarm.currency_code || currentFarm.currency || 'CFA',
+          currencyCode: currentFarm.currency_code || currentFarm.currency || 'XAF',
         });
 
         if (initialMortality > 0) {
@@ -106,7 +106,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             event_date: arrivalDate,
             count: initialMortality,
             cause: 'Pre-app mortality',
-            notes: 'Mortality that occurred before using Ebenezer Farm app',
+            notes: 'Mortality that occurred before using Edentrack app',
             created_by: user.id,
           });
         }
@@ -330,7 +330,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               </div>
             </div>
             {purchasePricePerBird && initialCount && (
-              <p className="text-xs text-gray-900">{t('flocks.total_purchase_cost')} {(parseFloat(purchasePricePerBird) * parseFloat(initialCount)).toLocaleString()} {currentFarm?.currency_code || currentFarm?.currency || 'CFA'}</p>
+              <p className="text-xs text-gray-900">{t('flocks.total_purchase_cost')} {(parseFloat(purchasePricePerBird) * parseFloat(initialCount)).toLocaleString()} {currentFarm?.currency_code || currentFarm?.currency || 'XAF'}</p>
             )}
           </div>
 

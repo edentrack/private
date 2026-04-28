@@ -39,7 +39,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastSaleDetails, setLastSaleDetails] = useState<any>(null);
 
-  const currency = profile?.currency_preference || currentFarm?.currency_code || 'CFA';
+  const currency = profile?.currency_preference || currentFarm?.currency_code || 'XAF';
 
   useEffect(() => {
     loadFlocks();

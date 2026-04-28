@@ -27,7 +27,7 @@ export function PlatformSettings() {
     app_version: '1.0.0',
     min_app_version: '1.0.0',
     whatsapp_support_number: '',
-    whatsapp_support_message: 'Hello! I need help with Ebenezer Farms app.',
+    whatsapp_support_message: 'Hello! I need help with Edentrack app.',
     feature_flags: {
       ai_assistant: true,
       smart_upload: true,
@@ -244,7 +244,7 @@ export function PlatformSettings() {
                   onChange={(e) => setSettings(prev => ({ ...prev, whatsapp_support_message: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                   rows={3}
-                  placeholder="Hello! I need help with Ebenezer Farms app."
+                  placeholder="Hello! I need help with Edentrack app."
                 />
                 <p className="mt-1 text-sm text-gray-500">
                   Pre-filled message when users click support

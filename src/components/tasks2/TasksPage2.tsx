@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, Clock, Plus, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Calendar, Clock, Plus, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -120,6 +120,7 @@ export function TasksPage2() {
   const [completeTaskModal, setCompleteTaskModal] = useState<TaskWithMetadata | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [dismissingOverdue, setDismissingOverdue] = useState(false);
   const [tasks, setTasks] = useState<TaskWithMetadata[]>([]);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const DAILY_TASKS_PAGE_SIZE = 8;
@@ -194,6 +195,27 @@ export function TasksPage2() {
   useEffect(() => {
     setVisibleDailyTaskCount(DAILY_TASKS_PAGE_SIZE);
   }, [dateISO, tab]);
+
+  const overdueCount = useMemo(() => dailyTasks.filter((t) => t.isOverdue).length, [dailyTasks]);
+
+  const dismissAllOverdue = async () => {
+    if (!currentFarm?.id || currentRole !== 'owner') return;
+    setDismissingOverdue(true);
+    try {
+      const todayISO = getFarmTodayISO(farmTz);
+      await supabase
+        .from('tasks')
+        .update({ is_archived: true, archived_at: new Date().toISOString() })
+        .eq('farm_id', currentFarm.id)
+        .eq('status', 'pending')
+        .eq('is_archived', false)
+        .or(`due_date.lt.${todayISO},scheduled_for.lt.${todayISO}`);
+      const t = await fetchTasksForDate({ farmId: currentFarm.id, dateISO, farmTz });
+      setTasks(t);
+    } finally {
+      setDismissingOverdue(false);
+    }
+  };
 
   const toggleTemplate = async (templateId: string, nextEnabled: boolean) => {
     if (!currentFarm?.id) return;
@@ -292,19 +314,32 @@ export function TasksPage2() {
                   Mark tasks complete (past dates included).
                 </div>
               </div>
-              {canManage && (
-                <button
-                  type="button"
-                  className="btn-primary inline-flex items-center gap-2 whitespace-nowrap"
-                  onClick={() => {
-                    setTab('schedule');
-                    setShowTaskSettingsModal(true);
-                  }}
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Task
-                </button>
-              )}
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {currentRole === 'owner' && overdueCount > 0 && (
+                  <button
+                    type="button"
+                    disabled={dismissingOverdue}
+                    onClick={dismissAllOverdue}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-60 whitespace-nowrap"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    {dismissingOverdue ? 'Archiving…' : `Dismiss ${overdueCount} overdue`}
+                  </button>
+                )}
+                {canManage && (
+                  <button
+                    type="button"
+                    className="btn-primary inline-flex items-center gap-2 whitespace-nowrap"
+                    onClick={() => {
+                      setTab('schedule');
+                      setShowTaskSettingsModal(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Task
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-4">
@@ -334,6 +369,11 @@ export function TasksPage2() {
                         </div>
 
                         <div className="flex items-center gap-2">
+                          {t.isOverdue && (
+                            <span className="text-xs px-2 py-1 rounded-full border bg-amber-50 border-amber-200 text-amber-700 whitespace-nowrap">
+                              Overdue
+                            </span>
+                          )}
                           <div
                             className={[
                               'text-xs px-2 py-1 rounded-full border',

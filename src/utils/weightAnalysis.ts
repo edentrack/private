@@ -424,7 +424,7 @@ export async function analyzeWeightCheck(
     saleAnalysis?.waitOption &&
     saleAnalysis.waitOption.netGain > 1000000
   ) {
-    finalRecommendation = `Wait 1 more week for maximum profit! Your birds are growing excellently (${dailyGain?.toFixed(0)} g/day). One more week = +${(saleAnalysis.waitOption.netGain / 1000000).toFixed(1)} million CFA profit!`;
+    finalRecommendation = `Wait 1 more week for maximum profit! Your birds are growing excellently (${dailyGain?.toFixed(0)} g/day). One more week = +${(saleAnalysis.waitOption.netGain / 1000000).toFixed(1)} million XAF profit!`;
   }
 
   const minAge = customCriteria?.minAge || 6;

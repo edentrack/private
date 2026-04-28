@@ -14,7 +14,10 @@ interface LogSaleModalProps {
 
 export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSaleModalProps) {
   const { user, profile, currentFarm } = useAuth();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [traysSold, setTraysSold] = useState('');
   const [unitPrice, setUnitPrice] = useState('');
   const [buyerName, setBuyerName] = useState('');
@@ -157,10 +160,11 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
       const totalAmount = totalEggs * priceNum;
       const netAmount = totalAmount - transportNum;
 
-      const { error: saleError } = await supabase
+      const { data: saleData, error: saleError } = await supabase
         .from('egg_sales')
         .insert({
           farm_id: currentFarm.id,
+          flock_id: flockId || null,
           sold_on: date,
           sale_date: date,
           trays: traysNum,
@@ -182,9 +186,11 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
           payment_method: paymentMethod,
           sold_by: profile?.id,
           notes: notes || null,
-        });
+        })
+        .select('id');
 
       if (saleError) throw saleError;
+      if (!saleData || saleData.length === 0) throw new Error('Sale was not saved. Please check your connection and try again.');
 
       const { data: inventory } = await supabase
         .from('egg_inventory')

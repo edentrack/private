@@ -232,10 +232,10 @@ export function WeightCheckResults({ flock, results, onNewCheck, onViewHistory }
                 <div className="bg-white rounded-2xl p-4">
                   <div className="font-semibold text-gray-900 mb-2">OPTION 1: Sell Now (Per Bird)</div>
                   <div className="text-sm text-gray-600 mb-1">
-                    {flock.current_count?.toLocaleString()} birds × 2,500 CFA
+                    {flock.current_count?.toLocaleString()} birds × 2,500 XAF
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {results.saleAnalysis.sellNowPerBird.toLocaleString()} CFA
+                    {results.saleAnalysis.sellNowPerBird.toLocaleString()} XAF
                   </div>
                 </div>
 
@@ -245,13 +245,13 @@ export function WeightCheckResults({ flock, results, onNewCheck, onViewHistory }
                     <div className="font-semibold text-gray-900">OPTION 2: Sell Now (Per Kg) - BETTER</div>
                   </div>
                   <div className="text-sm text-gray-600 mb-1">
-                    {results.totalFlockWeight.toLocaleString()} kg × 3,000 CFA/kg
+                    {results.totalFlockWeight.toLocaleString()} kg × 3,000 XAF/kg
                   </div>
                   <div className="text-2xl font-bold text-green-700">
-                    {results.saleAnalysis.sellNowPerKg.toLocaleString()} CFA
+                    {results.saleAnalysis.sellNowPerKg.toLocaleString()} XAF
                   </div>
                   <div className="text-sm font-semibold text-green-600 mt-2">
-                    Extra profit: +{(results.saleAnalysis.sellNowPerKg - results.saleAnalysis.sellNowPerBird).toLocaleString()} CFA!
+                    Extra profit: +{(results.saleAnalysis.sellNowPerKg - results.saleAnalysis.sellNowPerBird).toLocaleString()} XAF!
                   </div>
                 </div>
 
@@ -270,11 +270,11 @@ export function WeightCheckResults({ flock, results, onNewCheck, onViewHistory }
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Revenue:</span>
-                        <span className="font-bold">{results.saleAnalysis.waitOption.revenue.toLocaleString()} CFA</span>
+                        <span className="font-bold">{results.saleAnalysis.waitOption.revenue.toLocaleString()} XAF</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Feed cost:</span>
-                        <span className="font-bold text-red-600">-{results.saleAnalysis.waitOption.feedCost.toLocaleString()} CFA</span>
+                        <span className="font-bold text-red-600">-{results.saleAnalysis.waitOption.feedCost.toLocaleString()} XAF</span>
                       </div>
                       <div className="flex justify-between pt-2 border-t-2 border-blue-200">
                         <span className="font-semibold text-gray-900">Net extra gain:</span>

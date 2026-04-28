@@ -13,70 +13,87 @@ export interface RegionConfig {
 // Non-USD prices are rounded up to clean numbers; USD uses .99 format
 export const FIXED_PRICES: Record<string, Record<string, Record<string, number>>> = {
   USD: {
-    quarterly: { pro: 14.99, enterprise: 34.99, industry: 99.99 },
-    yearly:    { pro: 49.99, enterprise: 114.99, industry: 329.99 },
+    monthly:   { pro: 6.99,   enterprise: 14.99,  industry: 39.99 },
+    quarterly: { pro: 14.99,  enterprise: 34.99,  industry: 99.99 },
+    yearly:    { pro: 49.99,  enterprise: 114.99, industry: 329.99 },
   },
   XAF: {
+    monthly:   { pro: 4500,   enterprise: 10000,  industry: 26000 },
     quarterly: { pro: 9000,   enterprise: 21000,  industry: 60000 },
     yearly:    { pro: 30000,  enterprise: 69000,  industry: 199000 },
   },
   XOF: {
+    monthly:   { pro: 4500,   enterprise: 10000,  industry: 26000 },
     quarterly: { pro: 9000,   enterprise: 21000,  industry: 60000 },
     yearly:    { pro: 30000,  enterprise: 69000,  industry: 199000 },
   },
   NGN: {
+    monthly:   { pro: 11000,  enterprise: 24000,  industry: 65000 },
     quarterly: { pro: 24000,  enterprise: 56000,  industry: 160000 },
     yearly:    { pro: 80000,  enterprise: 185000, industry: 530000 },
   },
   GHS: {
+    monthly:   { pro: 105,    enterprise: 235,    industry: 649 },
     quarterly: { pro: 230,    enterprise: 540,    industry: 1550 },
     yearly:    { pro: 760,    enterprise: 1790,   industry: 5100 },
   },
   KES: {
+    monthly:   { pro: 900,    enterprise: 2000,   industry: 5500 },
     quarterly: { pro: 2000,   enterprise: 4600,   industry: 13000 },
     yearly:    { pro: 6500,   enterprise: 15000,  industry: 43000 },
   },
   ZAR: {
+    monthly:   { pro: 129,    enterprise: 279,    industry: 749 },
     quarterly: { pro: 280,    enterprise: 650,    industry: 1850 },
     yearly:    { pro: 920,    enterprise: 2150,   industry: 6100 },
   },
   UGX: {
+    monthly:   { pro: 26000,  enterprise: 57000,  industry: 160000 },
     quarterly: { pro: 55000,  enterprise: 130000, industry: 375000 },
     yearly:    { pro: 185000, enterprise: 430000, industry: 1250000 },
   },
   TZS: {
+    monthly:   { pro: 19000,  enterprise: 41000,  industry: 110000 },
     quarterly: { pro: 40000,  enterprise: 93000,  industry: 265000 },
     yearly:    { pro: 132000, enterprise: 307000, industry: 875000 },
   },
   RWF: {
+    monthly:   { pro: 9500,   enterprise: 21000,  industry: 58000 },
     quarterly: { pro: 20000,  enterprise: 47000,  industry: 135000 },
     yearly:    { pro: 67000,  enterprise: 155000, industry: 445000 },
   },
   EGP: {
+    monthly:   { pro: 330,    enterprise: 760,    industry: 2050 },
     quarterly: { pro: 720,    enterprise: 1680,   industry: 4800 },
     yearly:    { pro: 2400,   enterprise: 5520,   industry: 15840 },
   },
   MAD: {
+    monthly:   { pro: 70,     enterprise: 162,    industry: 440 },
     quarterly: { pro: 150,    enterprise: 350,    industry: 1000 },
     yearly:    { pro: 500,    enterprise: 1150,   industry: 3300 },
   },
   ZMW: {
+    monthly:   { pro: 185,    enterprise: 430,    industry: 1200 },
     quarterly: { pro: 405,    enterprise: 945,    industry: 2700 },
     yearly:    { pro: 1350,   enterprise: 3105,   industry: 8910 },
   },
   EUR: {
+    monthly:   { pro: 6.49,   enterprise: 13.99,  industry: 36.99 },
     quarterly: { pro: 13.99,  enterprise: 31.99,  industry: 91.99 },
     yearly:    { pro: 45.99,  enterprise: 104.99, industry: 299.99 },
   },
   GBP: {
+    monthly:   { pro: 5.99,   enterprise: 11.99,  industry: 34.99 },
     quarterly: { pro: 11.99,  enterprise: 27.99,  industry: 79.99 },
     yearly:    { pro: 39.99,  enterprise: 91.99,  industry: 259.99 },
   },
   CAD: {
+    monthly:   { pro: 9.49,   enterprise: 20.99,  industry: 54.99 },
     quarterly: { pro: 20.99,  enterprise: 47.99,  industry: 137.99 },
     yearly:    { pro: 68.99,  enterprise: 158.99, industry: 454.99 },
   },
   AUD: {
+    monthly:   { pro: 10.49,  enterprise: 23.99,  industry: 62.99 },
     quarterly: { pro: 22.99,  enterprise: 53.99,  industry: 153.99 },
     yearly:    { pro: 75.99,  enterprise: 177.99, industry: 508.99 },
   },
@@ -85,7 +102,7 @@ export const FIXED_PRICES: Record<string, Record<string, Record<string, number>>
 // Currency formatting
 const CURRENCY_FORMAT: Record<string, { prefix: string; suffix: string; decimals: number }> = {
   USD: { prefix: '$',     suffix: '',     decimals: 2 },
-  XAF: { prefix: '',     suffix: ' FCFA',decimals: 0 },
+  XAF: { prefix: '',     suffix: ' XAF', decimals: 0 },
   XOF: { prefix: '',     suffix: ' CFA', decimals: 0 },
   NGN: { prefix: '₦',    suffix: '',     decimals: 0 },
   GHS: { prefix: 'GH₵',  suffix: '',     decimals: 0 },
@@ -112,7 +129,7 @@ export function formatPrice(amount: number, currency: string): string {
   return `${fmt.prefix}${formatted}${fmt.suffix}`;
 }
 
-export function getPrice(plan: string, billing: 'quarterly' | 'yearly', currency: string): number {
+export function getPrice(plan: string, billing: 'monthly' | 'quarterly' | 'yearly', currency: string): number {
   const table = FIXED_PRICES[currency] || FIXED_PRICES.USD;
   return table[billing]?.[plan] ?? FIXED_PRICES.USD[billing][plan];
 }

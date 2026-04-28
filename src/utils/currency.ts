@@ -9,7 +9,7 @@ export const COUNTRY_CURRENCY_MAP: Record<string, CountryInfo> = {
   'Cameroon': {
     name: 'Cameroon',
     currency: 'XAF',
-    currencySymbol: 'FCFA',
+    currencySymbol: 'XAF',
     currencyName: 'Central African CFA Franc'
   },
   'Nigeria': {

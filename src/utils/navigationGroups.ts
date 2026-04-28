@@ -7,7 +7,7 @@ export interface NavigationItem {
   icon: LucideIcon;
 }
 
-export type NavigationGroupId = 'core' | 'production' | 'financial' | 'operations' | 'tools' | 'other';
+export type NavigationGroupId = 'analytics' | 'health' | 'money' | 'team' | 'other';
 
 export interface NavigationGroup {
   id: NavigationGroupId;
@@ -20,34 +20,29 @@ export function getNavigationGroups(
 ): NavigationGroup[] {
   const groups: NavigationGroup[] = [
     {
-      id: 'core',
-      label: 'CORE',
-      items: items.filter(item => ['dashboard', 'flocks', 'insights'].includes(item.id)),
+      id: 'analytics',
+      label: 'ANALYTICS',
+      items: items.filter(item => ['insights'].includes(item.id)),
     },
     {
-      id: 'production',
-      label: 'PRODUCTION',
-      items: items.filter(item => ['weight', 'vaccinations', 'inventory'].includes(item.id)),
+      id: 'health',
+      label: 'HEALTH',
+      items: items.filter(item => ['vaccinations', 'weight'].includes(item.id)),
     },
     {
-      id: 'financial',
-      label: 'FINANCIAL',
-      items: items.filter(item => ['expenses', 'sales', 'payroll'].includes(item.id)),
+      id: 'money',
+      label: 'MONEY',
+      items: items.filter(item => ['expenses', 'sales', 'inventory'].includes(item.id)),
     },
     {
-      id: 'operations',
-      label: 'OPERATIONS',
-      items: items.filter(item => ['shifts', 'team', 'tasks', 'task-history'].includes(item.id)),
-    },
-    {
-      id: 'tools',
-      label: 'TOOLS',
-      items: items.filter(item => ['ai-assistant', 'smart-upload', 'compare', 'marketplace'].includes(item.id)),
+      id: 'team',
+      label: 'TEAM & OPS',
+      items: items.filter(item => ['team', 'shifts'].includes(item.id)),
     },
     {
       id: 'other',
       label: 'OTHER',
-      items: items.filter(item => ['settings', 'roadmap'].includes(item.id)),
+      items: items.filter(item => ['settings'].includes(item.id)),
     },
   ];
 
@@ -65,12 +60,12 @@ export function getExpandedGroups(): Set<NavigationGroupId> {
       const parsed = JSON.parse(saved) as NavigationGroupId[];
       return new Set(parsed);
     } catch {
-      return new Set(['core', 'production', 'financial', 'operations', 'tools', 'other']);
+      return new Set(['analytics', 'health', 'money', 'team', 'other']);
     }
   }
-  
+
   // Default: all expanded
-  return new Set(['core', 'production', 'financial', 'operations', 'tools', 'other']);
+  return new Set(['analytics', 'health', 'money', 'team', 'other']);
 }
 
 // Save expanded state to localStorage

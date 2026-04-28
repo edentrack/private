@@ -173,9 +173,9 @@ export function InsightsPage() {
           .order('usage_date', { ascending: true })),
         safe('revenues', supabase
           .from('revenues')
-          .select('amount, source_type')
+          .select('amount, source_type, flock_id')
           .eq('farm_id', currentFarm.id)
-          .eq('flock_id', flockId)),
+          .or(`flock_id.eq.${flockId},flock_id.is.null`)),
         safe('bird_sales', supabase
           .from('bird_sales')
           .select('total_amount')
@@ -195,7 +195,7 @@ export function InsightsPage() {
         queries.push(
           safe('egg_sales', supabase
             .from('egg_sales')
-            .select('*')
+            .select('total_amount, total_eggs, sale_date, sold_on, flock_id')
             .eq('farm_id', currentFarm.id)
             .or(`flock_id.eq.${flockId},flock_id.is.null`))
         );
@@ -325,21 +325,29 @@ export function InsightsPage() {
       ? ((totalMortality / initialCount) * 100).toFixed(1)
       : '0.0';
 
-    // Align with dashboard lay-rate source/logic: eggs from egg_collections, daily rate.
-    const todayIso = new Date().toISOString().split('T')[0];
-    const eggsToday = isLayerFlock
-      ? eggCollections
-          .filter((c: any) => String(c.collected_on || c.collection_date || '').slice(0, 10) === todayIso)
-          .reduce((sum, c: any) => {
-            const trays = Number(c.trays || 0);
-            const broken = Number(c.broken || 0);
-            const total = Number(c.total_eggs ?? 0);
-            if (total > 0) return sum + total;
-            return sum + Math.max(0, trays * eggsPerTray - broken);
-          }, 0)
-      : 0;
+    // Production rate: 7-day rolling average so it stays non-zero even if today not logged yet.
+    const now7 = new Date();
+    const sevenDaysAgo = new Date(now7);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    now7.setHours(23, 59, 59, 999);
+    const recent7Collections = isLayerFlock
+      ? eggCollections.filter((c: any) => {
+          const d = parseLocalDate(String(c.collected_on || c.collection_date || '').slice(0, 10));
+          return d && d >= sevenDaysAgo && d <= now7;
+        })
+      : [];
+    const eggs7 = recent7Collections.reduce((sum, c: any) => {
+      const total = Number(c.total_eggs ?? 0);
+      if (total > 0) return sum + total;
+      return sum + Math.max(0, Number(c.trays || 0) * eggsPerTray - Number(c.broken || 0));
+    }, 0);
+    const days7 = Math.max(1, recent7Collections.length > 0
+      ? Math.round((now7.getTime() - sevenDaysAgo.getTime()) / (1000 * 60 * 60 * 24))
+      : ageDays);
+    const dailyAvgEggs7 = recent7Collections.length > 0 ? eggs7 / days7 : (ageDays > 0 ? totalEggs / ageDays : 0);
     const productionRateCurrent = isLayerFlock && birdsAlive > 0
-      ? ((eggsToday / birdsAlive) * 100).toFixed(1)
+      ? ((dailyAvgEggs7 / birdsAlive) * 100).toFixed(1)
       : '0.0';
 
     // Lifetime average kept as context.
@@ -742,7 +750,22 @@ export function InsightsPage() {
       };
     }
 
-    if ((decliningTrend && feedConv > 2.9) || netProfit < 0) {
+    const totalRevenue = Number(metrics.totalRevenue || 0);
+    const totalExpenses = Number(metrics.totalExpenses || 0);
+    const weeksPostRamp = Math.max(currentWeek - rampEndWeek, 1);
+
+    // Data confidence check: suppress negative signals if revenue looks incomplete.
+    // If expenses exist but revenue is <20% of expenses, data is almost certainly incomplete.
+    if (totalExpenses > 0 && totalRevenue < totalExpenses * 0.2 && weeksPostRamp > 3) {
+      return {
+        label: 'Insufficient data',
+        reason: `Revenue records appear incomplete (${totalRevenue.toLocaleString()} vs ${totalExpenses.toLocaleString()} in expenses). Log your egg sales to get an accurate signal.`,
+        tone: 'bg-gray-50 border-gray-200 text-gray-600',
+      };
+    }
+
+    const hasRevenueData = totalRevenue > 0;
+    if ((decliningTrend && feedConv > 2.9) || (hasRevenueData && netProfit < 0 && totalRevenue >= totalExpenses * 0.2)) {
       return {
         label: 'Replace soon',
         reason: 'Post-ramp production trend is dropping while efficiency/margin is weakening.',

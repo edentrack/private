@@ -105,7 +105,7 @@ export function FarmFinancialSummary({ compact = false, farm }: { compact?: bool
             {financials.totalExpenses.toLocaleString()}
           </div>
           <div className="text-xs text-gray-700 mt-1">
-            {profile?.currency_preference || 'CFA'}
+            {profile?.currency_preference || 'XAF'}
           </div>
         </div>
 
@@ -118,7 +118,7 @@ export function FarmFinancialSummary({ compact = false, farm }: { compact?: bool
             {financials.totalRevenue.toLocaleString()}
           </div>
           <div className="text-xs text-gray-700 mt-1">
-            {profile?.currency_preference || 'CFA'}
+            {profile?.currency_preference || 'XAF'}
           </div>
         </div>
       </div>
@@ -140,7 +140,7 @@ export function FarmFinancialSummary({ compact = false, farm }: { compact?: bool
           </div>
         </div>
         <div className="text-xs text-gray-700 mt-1">
-          {profile?.currency_preference || 'CFA'}
+          {profile?.currency_preference || 'XAF'}
         </div>
       </div>
 

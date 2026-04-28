@@ -39,7 +39,10 @@ export function WeightCheckInputForm({ flock, onCalculate, onViewHistory }: Weig
   const { t } = useTranslation();
   const recommendedSize = getRecommendedSampleSize(flock.current_count || 0);
   const [weights, setWeights] = useState<string[]>(Array(recommendedSize).fill(''));
-  const [weighDate, setWeighDate] = useState(new Date().toISOString().split('T')[0]);
+  const [weighDate, setWeighDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
 
   const enteredCount = weights.filter(w => w && parseFloat(w) > 0).length;
   const canCalculate = enteredCount >= 10;
