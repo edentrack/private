@@ -341,13 +341,11 @@ export function AIAssistantPage() {
       const saleFlock = logAction.flock_name
         ? await findFlock(logAction.flock_name)
         : ((await supabase.from('flocks').select('id').eq('farm_id', farmId).eq('status', 'active').limit(1)).data?.[0] || null);
-      const { data: saleData, error: saleInsertErr } = await supabase.from('egg_sales').insert({
-        // Legacy NOT NULL fields from original schema
+      const salePayload = {
         user_id: user?.id || null,
         flock_id: saleFlock?.id || null,
         date: saleDay,
         trays_sold: traysCount || Math.floor(totalSold / 30) || 0,
-        // Modern fields
         farm_id: farmId, sold_on: saleDay, sale_date: saleDay,
         trays: traysCount || Math.floor(totalSold / 30),
         unit_price: unitPrice,
@@ -359,7 +357,10 @@ export function AIAssistantPage() {
         large_price: logAction.large_price || 0, jumbo_price: logAction.jumbo_price || 0,
         payment_status: logAction.payment_status || 'paid', notes: logAction.notes || null,
         sold_by: user?.id || null,
-      }).select('id');
+      };
+      console.log('[Eden AI] egg_sales insert payload:', salePayload);
+      const { data: saleData, error: saleInsertErr } = await supabase.from('egg_sales').insert(salePayload).select('id');
+      console.log('[Eden AI] egg_sales insert result — data:', saleData, 'error:', saleInsertErr);
       if (saleInsertErr) throw new Error(`Egg sale save failed: ${saleInsertErr.message}`);
       if (!saleData?.length) throw new Error('Sale not saved — possible permission issue. Try logging out and back in.');
       const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
