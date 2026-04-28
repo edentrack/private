@@ -277,14 +277,15 @@ export function AIAssistantPage() {
     if (logAction.type === 'LOG_MORTALITY') {
       const flock = await findFlock(logAction.flock_name);
       if (!flock) throw new Error(`Flock "${logAction.flock_name}" not found`);
-      const { error: mortErr } = await supabase.from('mortality_logs').insert({
+      const { data: mortData, error: mortErr } = await supabase.from('mortality_logs').insert({
         farm_id: farmId, flock_id: flock.id,
         count: logAction.count, cause: logAction.cause || 'unknown',
         notes: logAction.notes || '',
         date: recordDate, event_date: recordDate,
         created_by: user?.id || null,
-      });
+      }).select('id');
       if (mortErr) throw new Error(`Mortality save failed: ${mortErr.message}`);
+      if (!mortData?.length) throw new Error('Mortality record not saved — possible permission issue. Check you are logged in.');
 
     } else if (logAction.type === 'LOG_EGGS') {
       const flock = await findFlock(logAction.flock_name);
@@ -297,7 +298,7 @@ export function AIAssistantPage() {
       const totalGood = small + medium + large + jumbo;
       const eggsPerTray = 30;
       const trays = Math.floor(totalGood / eggsPerTray);
-      const { error: collErr } = await supabase.from('egg_collections').insert({
+      const { data: collData, error: collErr } = await supabase.from('egg_collections').insert({
         // Legacy NOT NULL fields from original schema
         user_id: user?.id || null,
         date: recordDate,
@@ -309,8 +310,9 @@ export function AIAssistantPage() {
         damaged_eggs: damaged, broken: damaged,
         total_eggs: totalGood, trays,
         notes: logAction.notes || null, created_by: user?.id || null,
-      });
+      }).select('id');
       if (collErr) throw new Error(`Egg collection save failed: ${collErr.message}`);
+      if (!collData?.length) throw new Error('Collection not saved — possible permission issue. Check you are logged in.');
       const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
       if (inv) {
         await supabase.from('egg_inventory').update({ small_eggs: (inv.small_eggs || 0) + small, medium_eggs: (inv.medium_eggs || 0) + medium, large_eggs: (inv.large_eggs || 0) + large, jumbo_eggs: (inv.jumbo_eggs || 0) + jumbo, last_updated: new Date().toISOString() }).eq('farm_id', farmId);
@@ -338,7 +340,7 @@ export function AIAssistantPage() {
       const saleFlock = logAction.flock_name
         ? await findFlock(logAction.flock_name)
         : ((await supabase.from('flocks').select('id').eq('farm_id', farmId).eq('status', 'active').limit(1)).data?.[0] || null);
-      const { error: saleInsertErr } = await supabase.from('egg_sales').insert({
+      const { data: saleData, error: saleInsertErr } = await supabase.from('egg_sales').insert({
         // Legacy NOT NULL fields from original schema
         user_id: user?.id || null,
         flock_id: saleFlock?.id || null,
@@ -356,8 +358,9 @@ export function AIAssistantPage() {
         large_price: logAction.large_price || 0, jumbo_price: logAction.jumbo_price || 0,
         payment_status: logAction.payment_status || 'paid', notes: logAction.notes || null,
         sold_by: user?.id || null,
-      });
+      }).select('id');
       if (saleInsertErr) throw new Error(`Egg sale save failed: ${saleInsertErr.message}`);
+      if (!saleData?.length) throw new Error('Sale not saved — possible permission issue. Try logging out and back in.');
       const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
       if (inv) {
         await supabase.from('egg_inventory').update({
@@ -380,7 +383,7 @@ export function AIAssistantPage() {
       const totalAmount = logAction.total_amount || (birdsSold * pricePerBird);
       const saleMethod = pricePerBird > 0 ? 'per_bird' : 'lump_sum';
       const birdSaleDay = logAction.sale_date || logAction.log_date || today;
-      const { error: birdSaleErr } = await supabase.from('bird_sales').insert({
+      const { data: birdSaleData, error: birdSaleErr } = await supabase.from('bird_sales').insert({
         farm_id: farmId, flock_id: flock.id, sale_date: birdSaleDay,
         birds_sold: birdsSold, price_per_bird: pricePerBird || null, total_amount: totalAmount,
         sale_method: saleMethod, sale_type: 'sale',
@@ -389,22 +392,24 @@ export function AIAssistantPage() {
         amount_paid: logAction.payment_status === 'pending' ? 0 : totalAmount,
         amount_pending: logAction.payment_status === 'pending' ? totalAmount : 0,
         notes: logAction.notes || null, recorded_by: user?.id || null,
-      });
+      }).select('id');
       if (birdSaleErr) throw new Error(`Bird sale save failed: ${birdSaleErr.message}`);
+      if (!birdSaleData?.length) throw new Error('Bird sale not saved — possible permission issue.');
 
     } else if (logAction.type === 'LOG_PURCHASE') {
       const invCat = logAction.inventory_category!;
       const expenseCat = invCat === 'feed' ? 'feed' : invCat === 'Medication' ? 'medication' : invCat === 'Equipment' ? 'equipment' : 'other';
       const flock = logAction.flock_name ? await findFlock(logAction.flock_name) : null;
       const purchaseDate = logAction.purchase_date || logAction.log_date || today;
-      const { error: purchaseErr } = await supabase.from('expenses').insert({
+      const { data: purchaseData, error: purchaseErr } = await supabase.from('expenses').insert({
         user_id: user?.id || null,
         farm_id: farmId, category: expenseCat, amount: logAction.amount,
         description: logAction.description || `${logAction.quantity} ${logAction.unit} ${logAction.item_name}`,
         currency, date: purchaseDate, incurred_on: purchaseDate,
         flock_id: flock?.id || null, paid_from_profit: logAction.paid_from_profit ?? false,
-      });
+      }).select('id');
       if (purchaseErr) throw new Error(`Purchase save failed: ${purchaseErr.message}`);
+      if (!purchaseData?.length) throw new Error('Purchase not saved — possible permission issue.');
       if (invCat === 'feed') {
         let { data: ft } = await supabase.from('feed_types').select('id').eq('farm_id', farmId).ilike('name', logAction.item_name!).maybeSingle();
         if (!ft) {
@@ -429,25 +434,27 @@ export function AIAssistantPage() {
       }
 
     } else if (logAction.type === 'LOG_EXPENSE') {
-      const { error: expErr } = await supabase.from('expenses').insert({
+      const { data: expData, error: expErr } = await supabase.from('expenses').insert({
         user_id: user?.id || null,
         farm_id: farmId, category: logAction.category, amount: logAction.amount,
         description: logAction.description, currency, date: recordDate, incurred_on: recordDate,
-      });
+      }).select('id');
       if (expErr) throw new Error(`Expense save failed: ${expErr.message}`);
+      if (!expData?.length) throw new Error('Expense not saved — possible permission issue.');
 
     } else if (logAction.type === 'LOG_WEIGHT') {
       const flock = await findFlock(logAction.flock_name);
       if (!flock) throw new Error(`Flock "${logAction.flock_name}" not found`);
       // table: weight_logs, column: average_weight (renamed from weight_kg)
-      const { error: weightErr } = await supabase.from('weight_logs').insert({
+      const { data: weightData, error: weightErr } = await supabase.from('weight_logs').insert({
         farm_id: farmId, flock_id: flock.id,
         average_weight: logAction.avg_weight_kg,
         sample_size: logAction.sample_size || 10,
         date: recordDate,
         recorded_by: user?.id || null,
-      });
+      }).select('id');
       if (weightErr) throw new Error(`Weight save failed: ${weightErr.message}`);
+      if (!weightData?.length) throw new Error('Weight record not saved — possible permission issue.');
 
     } else if (logAction.type === 'LOG_FEED_USAGE') {
       const { data: stock } = await supabase.from('feed_stock').select('id,current_stock_bags').eq('farm_id', farmId).ilike('feed_type', `%${logAction.feed_type}%`).limit(1);
