@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Minus, TrendingUp, TrendingDown, Trash2 } from 'lucide-react';
+import { Plus, Minus, TrendingUp, TrendingDown, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -20,11 +20,14 @@ const MORTALITY_REASONS = [
   'Natural Causes',
 ];
 
-export function MortalityTracking({ flock }: MortalityTrackingProps) {
-  const { currentRole } = useAuth();
+export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) {
+  const { currentRole, currentFarm } = useAuth();
   const { farmPermissions } = usePermissions();
   const canLog = canPerformAction(currentRole, 'create', 'mortality', farmPermissions);
   const toast = useToast();
+  const [availableFlocks, setAvailableFlocks] = useState<Flock[]>([]);
+  const [selectedFlock, setSelectedFlock] = useState<Flock | null>(flockProp);
+  const flock = selectedFlock || flockProp;
   const [count, setCount] = useState(0);
   const [reason, setReason] = useState('Unknown');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -34,10 +37,26 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!currentFarm?.id) return;
+    supabase.from('flocks').select('*').eq('farm_id', currentFarm.id).eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setAvailableFlocks(data || []);
+        if (!selectedFlock && data && data.length > 0) {
+          setSelectedFlock(flockProp || data[0]);
+        }
+      });
+  }, [currentFarm?.id]);
+
+  useEffect(() => {
+    if (flockProp) setSelectedFlock(flockProp);
+  }, [flockProp?.id]);
+
+  useEffect(() => {
     if (flock) {
       loadMortalityLogs();
     }
-  }, [flock]);
+  }, [flock?.id]);
 
   const loadMortalityLogs = async () => {
     if (!flock) return;
@@ -151,19 +170,38 @@ export function MortalityTracking({ flock }: MortalityTrackingProps) {
   const weeklyData = getWeeklyData();
   const maxCount = Math.max(...weeklyData.map(d => d.count), 1);
 
-  if (!flock) {
+  if (!flock && availableFlocks.length === 0) {
     return (
       <div className="bg-white rounded-3xl p-12 text-center">
-        <p className="text-gray-600">Please select a flock to track mortality</p>
+        <p className="text-gray-600">No active flocks found. Create a flock first.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Mortality Tracking</h2>
-        <p className="text-gray-600">{flock.name}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Mortality Tracking</h2>
+          {flock && <p className="text-gray-600">{flock.name}</p>}
+        </div>
+        {availableFlocks.length > 1 && (
+          <div className="relative">
+            <select
+              value={flock?.id || ''}
+              onChange={e => {
+                const f = availableFlocks.find(f => f.id === e.target.value);
+                if (f) setSelectedFlock(f);
+              }}
+              className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+            >
+              {availableFlocks.map(f => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl p-6">
