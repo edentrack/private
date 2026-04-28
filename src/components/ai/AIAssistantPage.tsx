@@ -298,6 +298,11 @@ export function AIAssistantPage() {
       const eggsPerTray = 30;
       const trays = Math.floor(totalGood / eggsPerTray);
       const { error: collErr } = await supabase.from('egg_collections').insert({
+        // Legacy NOT NULL fields from original schema
+        user_id: user?.id || null,
+        date: recordDate,
+        trays_collected: trays,
+        // Modern fields
         farm_id: farmId, flock_id: flock.id,
         collection_date: recordDate, collected_on: recordDate,
         small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo,
@@ -329,7 +334,17 @@ export function AIAssistantPage() {
             (largeSold * (logAction.large_price || 0)) + (jumboSold * (logAction.jumbo_price || 0))
           : traysCount * unitPrice);
       const saleDay = logAction.sale_date || logAction.log_date || today;
+      // For legacy schema compat: find any active flock (original egg_sales had flock_id NOT NULL)
+      const saleFlock = logAction.flock_name
+        ? await findFlock(logAction.flock_name)
+        : ((await supabase.from('flocks').select('id').eq('farm_id', farmId).eq('status', 'active').limit(1)).data?.[0] || null);
       const { error: saleInsertErr } = await supabase.from('egg_sales').insert({
+        // Legacy NOT NULL fields from original schema
+        user_id: user?.id || null,
+        flock_id: saleFlock?.id || null,
+        date: saleDay,
+        trays_sold: traysCount || Math.floor(totalSold / 30) || 0,
+        // Modern fields
         farm_id: farmId, sold_on: saleDay, sale_date: saleDay,
         trays: traysCount || Math.floor(totalSold / 30),
         unit_price: unitPrice,
