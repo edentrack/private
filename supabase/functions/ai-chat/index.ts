@@ -755,13 +755,14 @@ Deno.serve(async (req: Request) => {
     // Log this message (fire-and-forget)
     supabaseClient.from("ai_message_counts").insert({ user_id: user.id, farm_id }).then(() => {});
 
-    // Fetch user's name to personalise the greeting
-    const { data: userProfile } = await supabaseClient
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .maybeSingle();
-    const userName = userProfile?.full_name?.split(" ")[0] || "";
+    // Fetch user's name and farm role server-side (cannot trust client-supplied role)
+    const [profileRes, memberRes] = await Promise.all([
+      supabaseClient.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+      supabaseClient.from("farm_members").select("role").eq("farm_id", farm_id).eq("user_id", user.id).eq("is_active", true).maybeSingle(),
+    ]);
+    const userName = profileRes.data?.full_name?.split(" ")[0] || "";
+    // If not in farm_members they are the owner (solo account)
+    const callerRole: string = memberRes.data?.role || "owner";
 
     let contextPrompt = "";
     let setupConfig: any = null;
@@ -786,7 +787,16 @@ Deno.serve(async (req: Request) => {
       ? `\n\n## FIRST MESSAGE RULE\nWhen the user sends a greeting (hi, hello, hey, good morning, etc.) and farm data is in context above, NEVER ask setup questions. Instead: greet ${userName ? userName : "the farmer"} by name, give a 2-sentence status of the farm right now (flocks, birds alive, any overdue tasks or low stock alerts), and ask ONE actionable question based on the live data.`
       : "";
 
-    const systemMessage = SYSTEM_PROMPT + tierNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+    // Role-based access note injected per-request so it reflects the live caller
+    const roleNote = `\n\n## CALLER ROLE: ${callerRole.toUpperCase()}\nThe person chatting with you right now has the role: **${callerRole}**.\n` + (
+      callerRole === "worker"
+        ? `Workers have LIMITED access. You MUST enforce the following:\n- Workers CAN: log eggs collected, log mortality, log feed usage, log weight checks, complete tasks, ask general poultry questions.\n- Workers CANNOT: view financial data (sales revenue, expenses, payroll, profit/loss), run payroll, view or request reports about money, add/edit/delete inventory items, invite team members, or change farm settings. If a worker asks for any of these, firmly but politely say: "Sorry, that information is only available to farm managers and owners. Please ask your manager if you need this." Then offer to help with something within their access.`
+        : callerRole === "manager"
+        ? `Managers have BROAD access. They can log all farm data, view all farm analytics including financials, manage inventory, manage tasks, and manage team workers. They CANNOT: run payroll (owner only), change billing/subscription, or access the super-admin panel.`
+        : `Owners have FULL access to all features and data.`
+    );
+
+    const systemMessage = SYSTEM_PROMPT + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     // Keep fewer turns on long conversations to stay within context limits

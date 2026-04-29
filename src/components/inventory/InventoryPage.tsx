@@ -650,7 +650,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
             </div>
             <h2 className="text-xl font-bold text-gray-900">{t('inventory.feed')} <span className="text-gray-500 font-normal">({feedStock.length})</span></h2>
           </div>
-          {currentRole && currentRole !== 'viewer' && (
+          {canEditInventory && (
             <button
               onClick={() => setShowAddFeedModal(true)}
               className="px-4 py-2 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2F4A34] transition-colors text-sm font-medium inline-flex items-center gap-2"
@@ -761,7 +761,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
             </div>
             <h2 className="text-xl font-bold text-gray-900">{t('inventory.medication')} <span className="text-gray-500 font-normal">({medicationItems.length})</span></h2>
           </div>
-          {currentRole && currentRole !== 'viewer' && (
+          {canEditInventory && (
             <button
               onClick={() => openOtherModal('Medication')}
               className="px-4 py-2 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2F4A34] transition-colors text-sm font-medium inline-flex items-center gap-2"
@@ -854,7 +854,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
               <span className="text-gray-500 font-normal">({equipmentItems.length})</span>
             </div>
           </div>
-          {currentRole && currentRole !== 'viewer' && (
+          {canEditInventory && (
             <button
               onClick={() => openOtherModal('Equipment')}
               className="px-4 py-2 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2F4A34] transition-colors text-sm font-medium inline-flex items-center gap-2"
@@ -932,7 +932,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
               <span className="text-gray-500 font-normal">({suppliesItems.length})</span>
             </div>
           </div>
-          {currentRole && currentRole !== 'viewer' && (
+          {canEditInventory && (
             <button
               onClick={() => openOtherModal('Supplies')}
               className="px-4 py-2 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2F4A34] transition-colors text-sm font-medium inline-flex items-center gap-2"
