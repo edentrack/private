@@ -300,10 +300,8 @@ export function AIAssistantPage() {
       const eggsPerTray = 30;
       const trays = Math.floor(totalGood / eggsPerTray);
       const { data: collData, error: collErr } = await supabase.from('egg_collections').insert({
-        user_id: user?.id || null,
-        trays_collected: trays,
         farm_id: farmId, flock_id: flock.id,
-        // omit legacy 'date' column — PostgREST schema cache issue after migration; use aliases instead
+        // omit 'date' and 'trays_collected' — legacy columns with defaults set by migration; PostgREST schema cache issue
         collection_date: recordDate, collected_on: recordDate,
         small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo,
         damaged_eggs: damaged, broken: damaged,
@@ -340,11 +338,11 @@ export function AIAssistantPage() {
         ? await findFlock(logAction.flock_name)
         : ((await supabase.from('flocks').select('id').eq('farm_id', farmId).eq('status', 'active').limit(1)).data?.[0] || null);
       const salePayload = {
+        farm_id: farmId,
+        // Legacy nullable columns — omit 'date' (SQL reserved word breaks schema cache) and 'trays_sold' (DEFAULT 0 set by migration)
         user_id: user?.id || null,
         flock_id: saleFlock?.id || null,
-        // 'date' is omitted — it's a reserved SQL word that breaks PostgREST schema cache; sale_date/sold_on are the modern aliases
-        trays_sold: traysCount || Math.floor(totalSold / 30) || 0,
-        farm_id: farmId, sold_on: saleDay, sale_date: saleDay,
+        sold_on: saleDay, sale_date: saleDay,
         trays: traysCount || Math.floor(totalSold / 30),
         unit_price: unitPrice,
         total_eggs: totalSold,
