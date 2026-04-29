@@ -356,9 +356,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null,
         sold_by: user?.id || null,
       };
-      console.log('[Eden AI] egg_sales insert payload:', salePayload);
       const { data: saleData, error: saleInsertErr } = await supabase.from('egg_sales').insert(salePayload).select('id');
-      console.log('[Eden AI] egg_sales insert result — data:', saleData, 'error:', saleInsertErr);
       if (saleInsertErr) throw new Error(`Egg sale save failed: ${saleInsertErr.message}`);
       if (!saleData?.length) throw new Error('Sale not saved — possible permission issue. Try logging out and back in.');
       const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
@@ -371,10 +369,6 @@ export function AIAssistantPage() {
           last_updated: new Date().toISOString(),
         }).eq('farm_id', farmId);
       }
-      if (totalAmount > 0) {
-        await supabase.from('revenues').insert({ farm_id: farmId, source_type: 'egg_sale', amount: totalAmount, currency, description: logAction.customer_name ? `Egg sale to ${logAction.customer_name} — ${totalSold} eggs` : `Egg sale — ${totalSold} eggs`, revenue_date: saleDay });
-      }
-
     } else if (logAction.type === 'LOG_BIRD_SALE') {
       const flock = await findFlock(logAction.flock_name);
       if (!flock) throw new Error(`Flock "${logAction.flock_name}" not found`);
@@ -557,11 +551,41 @@ export function AIAssistantPage() {
     const result = { saved: successCount, total: selectedActions.length, failed: errors.length };
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bulkLogResult: result, bulkLogProgress: undefined } : m));
 
+    // Determine where to verify based on the record type
+    const firstType = selectedActions[0]?.type;
+    const verifyLocation =
+      firstType === 'LOG_EGG_SALE' ? 'Sales → Egg Sales' :
+      firstType === 'LOG_BIRD_SALE' ? 'Sales → Bird Sales' :
+      firstType === 'LOG_EGGS' ? 'Egg Records' :
+      firstType === 'LOG_EXPENSE' || firstType === 'LOG_PURCHASE' ? 'Finance → Expenses' :
+      firstType === 'LOG_MORTALITY' ? 'Flock records' :
+      'the relevant section';
+
     if (successCount > 0) {
-      showToast(`Imported ${successCount} of ${selectedActions.length} record${selectedActions.length !== 1 ? 's' : ''}${errors.length ? ` (${errors.length} skipped/failed)` : ''}`, 'success');
+      showToast(`Saved ${successCount} of ${selectedActions.length} record${selectedActions.length !== 1 ? 's' : ''}${errors.length ? ` (${errors.length} skipped)` : ''}`, 'success');
+      const skipped = errors.filter(e => e.startsWith('Skipped:')).length;
+      const failed = errors.length - skipped;
+      const lines: string[] = [`✅ **${successCount} of ${selectedActions.length}** records saved.`];
+      if (skipped > 0) lines.push(`⚠️ **${skipped}** skipped — already in the system.`);
+      if (failed > 0) lines.push(`❌ **${failed}** failed to save — please retry those individually.`);
+      lines.push(`\nVerify your entries under **${verifyLocation}**.`);
+      const followUp: ChatMessage = {
+        id: Date.now().toString() + '_f',
+        role: 'assistant',
+        content: lines.join('\n'),
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, followUp]);
     } else {
       showToast(`Import failed: ${errors[0] || 'Unknown error'}`, 'error');
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bulkLogConfirmed: false, bulkLogProgress: undefined } : m));
+      const followUp: ChatMessage = {
+        id: Date.now().toString() + '_f',
+        role: 'assistant',
+        content: `❌ None of the ${selectedActions.length} records could be saved — ${errors[0] || 'unknown error'}.\n\nTry again or paste a smaller batch and I'll log them for you.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, followUp]);
     }
   };
 
@@ -867,15 +891,18 @@ export function AIAssistantPage() {
       }
 
       const bulkActions: LogAction[] = data.bulkLogActions || [];
+      const msgId = (Date.now() + 1).toString();
 
       const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: msgId,
         role: 'assistant',
         content: data.message || 'I apologize, but I could not generate a response.',
         actions: data.actions || [],
         logAction: data.logAction || null,
+        // Auto-confirm bulk logs — skip the checkbox panel, go straight to progress bar
         bulkLogActions: bulkActions.length > 0 ? bulkActions : undefined,
-        bulkLogSelected: bulkActions.length > 0 ? bulkActions.map(() => true) : undefined,
+        bulkLogConfirmed: bulkActions.length > 0 ? true : undefined,
+        bulkLogProgress: bulkActions.length > 0 ? { done: 0, total: bulkActions.length } : undefined,
         payRunAction: data.payRunAction || undefined,
         saveConfigAction: data.saveConfigAction || undefined,
         updateRecordAction: data.updateRecordAction || undefined,
@@ -887,6 +914,11 @@ export function AIAssistantPage() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Auto-execute bulk log immediately — no confirm button needed
+      if (bulkActions.length > 0 && currentFarm) {
+        setTimeout(() => confirmBulkLog(msgId, bulkActions, bulkActions.map(() => true)), 50);
+      }
     } catch (error: any) {
       console.error('Error sending message:', error);
       const errorMessage: ChatMessage = {
@@ -1133,99 +1165,32 @@ export function AIAssistantPage() {
                     </div>
                   )}
 
-                  {/* Bulk log confirm (CSV import) */}
+                  {/* Bulk log — auto-executes, shows progress then result */}
                   {message.bulkLogActions && message.bulkLogActions.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-200">
-                      {message.bulkLogConfirmed ? (
+                      {message.bulkLogProgress && !message.bulkLogResult ? (
                         <div>
-                          {message.bulkLogProgress && !message.bulkLogResult ? (
-                            <div>
-                              <p className="text-xs text-blue-600 flex items-center gap-1 font-semibold mb-1">
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                Saving… {message.bulkLogProgress.done} of {message.bulkLogProgress.total}
-                              </p>
-                              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                                  style={{ width: `${(message.bulkLogProgress.done / message.bulkLogProgress.total) * 100}%` }}
-                                />
-                              </div>
-                            </div>
-                          ) : message.bulkLogResult ? (
-                            <div>
-                              <p className="text-xs text-green-600 flex items-center gap-1 font-semibold">
-                                <CheckCircle className="w-3 h-3" />
-                                {message.bulkLogResult.saved} of {message.bulkLogResult.total} records saved
-                                {message.bulkLogResult.failed > 0 && ` (${message.bulkLogResult.failed} skipped/failed)`}
-                              </p>
-                              {message.bulkLogResult.saved < message.bulkLogResult.total && (
-                                <p className="text-xs text-amber-600 mt-1">⚠️ Some records were skipped. Re-paste the remaining rows for Eden to import the rest.</p>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-green-600 flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" /> Records imported successfully
-                            </p>
-                          )}
+                          <p className="text-xs text-blue-600 flex items-center gap-1 font-semibold mb-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Saving… {message.bulkLogProgress.done} of {message.bulkLogProgress.total}
+                          </p>
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                              style={{ width: `${(message.bulkLogProgress.done / message.bulkLogProgress.total) * 100}%` }}
+                            />
+                          </div>
                         </div>
+                      ) : message.bulkLogResult ? (
+                        <p className="text-xs text-green-600 flex items-center gap-1 font-semibold">
+                          <CheckCircle className="w-3 h-3" />
+                          {message.bulkLogResult.saved} of {message.bulkLogResult.total} records saved
+                          {message.bulkLogResult.failed > 0 && ` (${message.bulkLogResult.failed} skipped)`}
+                        </p>
                       ) : (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold text-gray-700">
-                              {message.bulkLogActions.length} records to import
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => toggleAllBulkRows(message.id, true)}
-                                className="text-xs text-blue-600 hover:underline"
-                              >
-                                All
-                              </button>
-                              <span className="text-xs text-gray-300">·</span>
-                              <button
-                                onClick={() => toggleAllBulkRows(message.id, false)}
-                                className="text-xs text-gray-500 hover:underline"
-                              >
-                                None
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="max-h-48 overflow-y-auto space-y-1 bg-gray-50 rounded-lg p-2">
-                            {message.bulkLogActions.map((action, idx) => (
-                              <label key={idx} className="flex items-start gap-2 cursor-pointer hover:bg-white rounded px-1 py-0.5">
-                                <input
-                                  type="checkbox"
-                                  checked={message.bulkLogSelected?.[idx] ?? true}
-                                  onChange={() => toggleBulkRow(message.id, idx)}
-                                  className="mt-0.5 flex-shrink-0"
-                                />
-                                <span className="text-xs text-gray-600 leading-relaxed">{summariseLogAction(action)}</span>
-                              </label>
-                            ))}
-                          </div>
-
-                          <div className="flex gap-2 pt-1">
-                            <button
-                              onClick={() => {
-                                const selected = message.bulkLogSelected || message.bulkLogActions!.map(() => true);
-                                const count = selected.filter(Boolean).length;
-                                if (count === 0) { showToast('Select at least one record', 'error'); return; }
-                                confirmBulkLog(message.id, message.bulkLogActions!, selected);
-                              }}
-                              className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center justify-center gap-1"
-                            >
-                              <CheckCircle className="w-3 h-3" />
-                              Import {(message.bulkLogSelected || message.bulkLogActions.map(() => true)).filter(Boolean).length} records
-                            </button>
-                            <button
-                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, bulkLogActions: undefined } : m))}
-                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium flex items-center gap-1"
-                            >
-                              <X className="w-3 h-3" /> Cancel
-                            </button>
-                          </div>
-                        </div>
+                        <p className="text-xs text-blue-600 flex items-center gap-1">
+                          <Loader2 className="w-3 h-3 animate-spin" /> Recording {message.bulkLogActions.length} entries…
+                        </p>
                       )}
                     </div>
                   )}

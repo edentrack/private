@@ -486,10 +486,9 @@ For mortality: count, cause, flock_name, log_date.
 For weights: avg_weight_kg, flock_name, log_date.
 For egg sales: total_amount, customer_name, payment_status, log_date.
 
-Always tell the user:
-- How many rows you found and what you mapped them to
-- Any rows skipped and why
-- Any required fields missing from the CSV
+IMPORTANT: Do NOT list all the records in prose before the [BULK_LOG] block — that wastes tokens and causes truncation. Instead say ONE short line like: "Found 17 sales — recording all now." then go straight to [BULK_LOG].
+After the [BULK_LOG], add ONE line: "I'll tell you when they're all saved and where to verify."
+If any row must be skipped (ambiguous, missing required field), list ONLY those skipped rows with the reason — not the ones that are fine.
 Ask ONE clarifying question if the CSV structure is truly ambiguous — otherwise generate the [BULK_LOG] directly.
 
 ## UPDATING & VOIDING RECORDS
@@ -512,10 +511,15 @@ Always require confirmation before UPDATE or VOID. State what will change before
 
 ## BULK IMPORT BATCHING
 IMPORTANT: For BULK_LOG, if the data has more than 20 records, split into batches of max 20.
-Tell user: "I found X entries total. I'll import them in batches of 20 to prevent data loss. Here's batch 1 (rows 1–20):"
+ALWAYS tell the user BEFORE the import panel appears: "I found X entries total. Importing records 1–Y now. Once confirmed, I'll handle the remaining Z automatically."
 Then generate [BULK_LOG] for the first 20 rows only.
-After the user confirms that batch, continue: "Batch 1 saved. Here is batch 2 (rows 21–40):" etc.
+After the user confirms that batch, continue: "Batch 1 done. Here are records 21–40:" etc.
 Never generate a [BULK_LOG] with more than 20 entries — partial JSON will cause silent data loss.
+
+TRANSPARENCY RULE (CRITICAL): You must NEVER silently process fewer records than the user gave you.
+- If you counted X entries in the user's list but your [BULK_LOG] contains fewer, you MUST say so: "I'm recording [N] of [X] entries now — the rest will follow after you confirm."
+- If any record was skipped (duplicate, missing data, ambiguous), name it explicitly: "I skipped [customer/date] because it already exists in the system."
+- Never let the user discover on their own that records are missing. Proactively report every gap.
 
 ## PAY RUNS (Grower & Farm Boss plans only)
 When farmer says "pay [name]", "run payroll", "pay my worker/manager":
@@ -712,7 +716,8 @@ Deno.serve(async (req: Request) => {
       free:       { dailyMsgs: 10,  monthlyMsgs: 9999,  photos: 0,   farmContext: true,  financialLogging: false, csvImport: false },
       grower:     { dailyMsgs: 999, monthlyMsgs: 200,   photos: 10,  farmContext: true,  financialLogging: true,  csvImport: true  },
       pro:        { dailyMsgs: 999, monthlyMsgs: 200,   photos: 10,  farmContext: true,  financialLogging: true,  csvImport: true  },
-      enterprise: { dailyMsgs: 999, monthlyMsgs: 1000,  photos: 30,  farmContext: true,  financialLogging: true,  csvImport: true  },
+      farmboss:   { dailyMsgs: 999, monthlyMsgs: 1000,  photos: 10,  farmContext: true,  financialLogging: true,  csvImport: true  },
+      enterprise: { dailyMsgs: 999, monthlyMsgs: 1000,  photos: 10,  farmContext: true,  financialLogging: true,  csvImport: true  },
       industry:   { dailyMsgs: 999, monthlyMsgs: 99999, photos: 999, farmContext: true,  financialLogging: true,  csvImport: true  },
     };
     const caps = TIERS[tier] || TIERS.free;
@@ -843,6 +848,9 @@ Deno.serve(async (req: Request) => {
           max_tokens: (() => {
             if (chosenModel === MODEL_HAIKU) return 512;
             const lastText = (messages[messages.length - 1]?.content || "").toLowerCase();
+            // Bulk sales/CSV pastes need room for the JSON array — always give max
+            const bulkKw = ["tray", "trays", "frs each", "xaf each", "fcfa each", "each to", "record the following", "log the following", "sales from", "paid in cash"];
+            if (bulkKw.some(kw => lastText.includes(kw))) return 8192;
             if (lastText.length > 2000) return 8192;
             if (lastText.length > 500) return 4096;
             const analysisKw = ["analyse","analyze","report","performance","fcr","profit","recommend","compare","benchmark","break-even","cash flow"];
@@ -1017,8 +1025,13 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Strip data logging from free tier (setup config is always allowed)
-    if (!caps.dataLogging) { logAction = null; bulkLogActions = []; payRunAction = null; updateRecordAction = null; voidRecordAction = null; logWorkerAction = null; updateWorkerAction = null; updateTeamMemberAction = null; }
+    // Strip financial logging for free tier; egg collection / mortality / feed / weight remain available
+    if (!caps.financialLogging) {
+      const FINANCIAL_TYPES = ['LOG_EGG_SALE', 'LOG_BIRD_SALE', 'LOG_EXPENSE', 'LOG_PURCHASE'];
+      if (logAction && FINANCIAL_TYPES.includes(logAction.type)) logAction = null;
+      bulkLogActions = [];
+      payRunAction = null;
+    }
 
     // Enforce farm-level AI permissions (owner configurable in Settings → Eden AI)
     const aiPerms = setupConfig?.ai_permissions || {};

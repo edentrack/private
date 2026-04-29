@@ -120,15 +120,6 @@ export function SalesManagement() {
         dateRange = getDateRange(timePeriod);
       }
 
-      let revenuesQuery = supabase
-        .from('revenues')
-        .select('amount')
-        .eq('farm_id', currentFarm.id);
-
-      if (dateRange.start) {
-        revenuesQuery = revenuesQuery.gte('revenue_date', dateRange.start).lte('revenue_date', dateRange.end);
-      }
-
       let birdSalesQuery = supabase
         .from('bird_sales')
         .select('birds_sold, total_amount, flock_id, flocks(type)')
@@ -147,7 +138,7 @@ export function SalesManagement() {
         eggSalesQuery = eggSalesQuery.gte('sale_date', dateRange.start).lte('sale_date', dateRange.end);
       }
 
-      const [customersRes, invoicesRes, revenuesRes, birdSalesRes, flocksRes, eggSalesRes] = await Promise.all([
+      const [customersRes, invoicesRes, birdSalesRes, flocksRes, eggSalesRes] = await Promise.all([
         supabase
           .from('customers')
           .select('*')
@@ -158,7 +149,6 @@ export function SalesManagement() {
           .select('*')
           .eq('farm_id', currentFarm.id)
           .order('created_at', { ascending: false }),
-        revenuesQuery,
         birdSalesQuery,
         supabase
           .from('flocks')
@@ -171,7 +161,6 @@ export function SalesManagement() {
 
       const customerData = customersRes.data || [];
       const invoiceData = invoicesRes.data || [];
-      const revenueData = revenuesRes.data || [];
       const birdSalesData = birdSalesRes.data || [];
       const flocksData = flocksRes.data || [];
       const eggSalesData = eggSalesRes.data || [];
@@ -197,7 +186,7 @@ export function SalesManagement() {
       const birdSaleRevenue = birdSalesData.reduce((sum: number, sale: any) => sum + (sale.total_amount || 0), 0);
       const eggSaleRevenue = eggSalesData.reduce((sum: number, sale: any) => sum + (sale.total_amount || 0), 0);
       const totalEggsSold = eggSalesData.reduce((sum: number, sale: any) => sum + (sale.total_eggs || 0), 0);
-      const totalRevenue = revenueData.reduce((sum: number, rev: any) => sum + (rev.amount || 0), 0);
+      const totalRevenue = eggSaleRevenue + birdSaleRevenue;
 
       // Count unique customers across all sources
       const uniqueCustomerNames = new Set<string>([

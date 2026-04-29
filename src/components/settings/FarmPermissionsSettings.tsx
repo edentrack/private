@@ -150,6 +150,63 @@ export function FarmPermissionsSettings() {
     setLocal(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const applyManagerPreset = (preset: 'full' | 'operations' | 'finance') => {
+    const base = {
+      managers_can_view_financials: false,
+      managers_can_create_expenses: false,
+      managers_can_create_sales: false,
+      managers_can_manage_inventory: false,
+      managers_can_manage_payroll: false,
+      managers_can_manage_team: false,
+      managers_can_edit_flock_costs: false,
+      managers_can_delete_records: false,
+      managers_can_edit_shift_templates: false,
+      managers_can_mark_vaccinations: false,
+      managers_can_edit_feed_water: false,
+      managers_can_edit_eggs: false,
+      managers_can_use_smart_import: false,
+      managers_can_view_analytics: false,
+      managers_can_use_eden_ai: false,
+    };
+    if (preset === 'full') {
+      setLocal(prev => ({ ...prev, ...base,
+        managers_can_view_financials: true, managers_can_create_expenses: true, managers_can_create_sales: true,
+        managers_can_manage_inventory: true, managers_can_manage_payroll: true, managers_can_manage_team: true,
+        managers_can_edit_flock_costs: true, managers_can_delete_records: false,
+        managers_can_edit_shift_templates: true, managers_can_mark_vaccinations: true,
+        managers_can_edit_feed_water: true, managers_can_edit_eggs: true,
+        managers_can_use_smart_import: true, managers_can_view_analytics: true, managers_can_use_eden_ai: true,
+      }));
+    } else if (preset === 'operations') {
+      setLocal(prev => ({ ...prev, ...base,
+        managers_can_manage_inventory: true, managers_can_edit_shift_templates: true,
+        managers_can_mark_vaccinations: true, managers_can_edit_feed_water: true,
+        managers_can_edit_eggs: true, managers_can_use_smart_import: true,
+        managers_can_view_analytics: true, managers_can_use_eden_ai: true,
+      }));
+    } else if (preset === 'finance') {
+      setLocal(prev => ({ ...prev, ...base,
+        managers_can_view_financials: true, managers_can_create_expenses: true,
+        managers_can_create_sales: true, managers_can_view_analytics: true,
+        managers_can_use_eden_ai: true,
+      }));
+    }
+  };
+
+  const applyWorkerPreset = (preset: 'basic' | 'full') => {
+    if (preset === 'basic') {
+      setLocal(prev => ({ ...prev,
+        workers_can_log_mortality: true, workers_can_log_eggs: true,
+        workers_can_log_weight: false, workers_can_use_eden_ai: false, workers_can_view_financials: false,
+      }));
+    } else {
+      setLocal(prev => ({ ...prev,
+        workers_can_log_mortality: true, workers_can_log_eggs: true,
+        workers_can_log_weight: true, workers_can_use_eden_ai: true, workers_can_view_financials: false,
+      }));
+    }
+  };
+
   const handleSave = async () => {
     if (!currentFarm?.id) return;
     setSaving(true);
@@ -222,14 +279,55 @@ export function FarmPermissionsSettings() {
 
       {/* Role description banner */}
       {activeTab === 'manager' && (
-        <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-800">
-          <strong>Manager</strong> — trusted team lead. Has most operational access by default. Use these toggles to restrict sensitive areas like financials and payroll.
-        </div>
+        <>
+          <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-800">
+            <strong>Manager</strong> — trusted team lead. Pick a preset or configure individually below.
+          </div>
+          <div className="mb-6">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quick presets</p>
+            <div className="grid grid-cols-3 gap-2">
+              <button onClick={() => applyManagerPreset('full')}
+                className="px-3 py-2 rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-800 text-xs font-semibold hover:bg-blue-100 transition-colors text-left">
+                <div className="font-bold">Full Manager</div>
+                <div className="text-blue-500 font-normal mt-0.5">Everything except delete</div>
+              </button>
+              <button onClick={() => applyManagerPreset('operations')}
+                className="px-3 py-2 rounded-xl border-2 border-green-200 bg-green-50 text-green-800 text-xs font-semibold hover:bg-green-100 transition-colors text-left">
+                <div className="font-bold">Operations</div>
+                <div className="text-green-600 font-normal mt-0.5">Farm work, no financials</div>
+              </button>
+              <button onClick={() => applyManagerPreset('finance')}
+                className="px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors text-left">
+                <div className="font-bold">Finance</div>
+                <div className="text-amber-600 font-normal mt-0.5">Sales & expenses only</div>
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">Applying a preset fills in all toggles below — you can still adjust individually after.</p>
+          </div>
+        </>
       )}
       {activeTab === 'worker' && (
-        <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-800">
-          <strong>Worker</strong> — hands-on farm staff. Sees tasks, their shifts, and flock info. Can't touch financials, team management, or settings unless you enable it below.
-        </div>
+        <>
+          <div className="mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-800">
+            <strong>Worker</strong> — hands-on farm staff. Can't touch financials or settings unless enabled below.
+          </div>
+          <div className="mb-6">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Quick presets</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => applyWorkerPreset('basic')}
+                className="px-3 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 text-xs font-semibold hover:bg-gray-100 transition-colors text-left">
+                <div className="font-bold">Basic</div>
+                <div className="text-gray-500 font-normal mt-0.5">Eggs & mortality only</div>
+              </button>
+              <button onClick={() => applyWorkerPreset('full')}
+                className="px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors text-left">
+                <div className="font-bold">Full Worker</div>
+                <div className="text-amber-600 font-normal mt-0.5">Eggs, mortality, weight & Eden AI</div>
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">Applying a preset fills in toggles below — adjust individually after if needed.</p>
+          </div>
+        </>
       )}
       {activeTab === 'viewer' && (
         <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-700">

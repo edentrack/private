@@ -55,7 +55,6 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
   const loadSales = async () => {
     if (!currentFarm?.id) return;
     setLoading(true);
-    console.log('[EggSalesList] loadSales for farm_id:', currentFarm.id);
     try {
       let data: any[] | null = null;
       let error: any = null;
@@ -67,8 +66,6 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
         .eq('farm_id', currentFarm.id)
         .order('sale_date', { ascending: false })
         .limit(200));
-      console.log('[EggSalesList] query1 rows:', data?.length, 'error:', error?.message);
-
       if (error) {
         // Legacy schema fallback (older installs use `date`)
         ({ data, error } = await supabase
@@ -90,7 +87,6 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
       }
 
       if (error) throw error;
-      console.log('[EggSalesList] final rows count:', data?.length, 'first row id:', data?.[0]?.id);
 
       const rows = ((data || []) as any[]).map((row) => {
         const saleDate = row.sale_date || row.sold_on || row.date || null;

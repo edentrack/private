@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Loader2, Sprout, Crown, ArrowRight } from 'lucide-react';
 
 interface CheckoutModalProps {
-  plan: 'grower' | 'farmboss';
+  plan: 'grower' | 'farmboss' | 'industry';
   billingPeriod?: 'monthly' | 'quarterly' | 'yearly';
   onClose: () => void;
 }
@@ -11,19 +11,25 @@ const PLAN_DETAILS = {
   grower: {
     name: 'Grower', planId: 'pro',
     icon: Sprout, color: '#3D5F42', btnClass: 'bg-[#3D5F42] hover:bg-[#2F4A34]',
-    description: 'Full analytics, Eden AI advisor, up to 5 flocks',
+    description: 'Full analytics, Eden AI, financial logging, up to 5 flocks',
   },
   farmboss: {
     name: 'Farm Boss', planId: 'enterprise',
     icon: Crown, color: '#F59E0B', btnClass: 'bg-amber-500 hover:bg-amber-600',
-    description: 'Unlimited flocks, payroll, benchmarking',
+    description: 'Unlimited flocks, unlimited team, 1,000 Eden AI messages/month',
+  },
+  industry: {
+    name: 'Industry', planId: 'industry',
+    icon: Crown, color: '#1F2937', btnClass: 'bg-gray-900 hover:bg-gray-800',
+    description: 'Multiple farms, unlimited AI, dedicated account manager',
   },
 };
 
+// Prices must match PricingSection.tsx exactly
 const CYCLE_PRICE: Record<string, Record<string, number>> = {
-  monthly:   { pro: 6.99,  enterprise: 14.99 },
-  quarterly: { pro: 14.99, enterprise: 34.99 },
-  yearly:    { pro: 49.99, enterprise: 114.99 },
+  monthly:   { pro: 12,  enterprise: 35,  industry: 89  },
+  quarterly: { pro: 30,  enterprise: 87,  industry: 222 },
+  yearly:    { pro: 108, enterprise: 300, industry: 800 },
 };
 const CYCLE_LABELS: Record<string, string> = { monthly: 'month', quarterly: '3 months', yearly: 'year' };
 
