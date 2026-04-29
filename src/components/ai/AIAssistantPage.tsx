@@ -337,21 +337,23 @@ export function AIAssistantPage() {
       const saleFlock = logAction.flock_name
         ? await findFlock(logAction.flock_name)
         : ((await supabase.from('flocks').select('id').eq('farm_id', farmId).eq('status', 'active').limit(1)).data?.[0] || null);
+      // Mirror LogSaleModal's insert exactly — same columns, same order, no legacy fields
       const salePayload = {
         farm_id: farmId,
-        // Legacy nullable columns — omit 'date' (SQL reserved word breaks schema cache) and 'trays_sold' (DEFAULT 0 set by migration)
-        user_id: user?.id || null,
         flock_id: saleFlock?.id || null,
-        sold_on: saleDay, sale_date: saleDay,
+        sold_on: saleDay,
+        sale_date: saleDay,
         trays: traysCount || Math.floor(totalSold / 30),
         unit_price: unitPrice,
-        total_eggs: totalSold,
-        total_amount: totalAmount,
-        customer_name: logAction.customer_name || null, customer_phone: logAction.customer_phone || null,
+        customer_name: logAction.customer_name || null,
+        customer_phone: logAction.customer_phone || null,
         small_eggs_sold: smallSold, medium_eggs_sold: mediumSold, large_eggs_sold: largeSold, jumbo_eggs_sold: jumboSold,
         small_price: logAction.small_price || 0, medium_price: logAction.medium_price || 0,
         large_price: logAction.large_price || 0, jumbo_price: logAction.jumbo_price || 0,
-        payment_status: logAction.payment_status || 'paid', notes: logAction.notes || null,
+        total_eggs: totalSold,
+        total_amount: totalAmount,
+        payment_status: logAction.payment_status || 'paid',
+        notes: logAction.notes || null,
         sold_by: user?.id || null,
       };
       console.log('[Eden AI] egg_sales insert payload:', salePayload);
