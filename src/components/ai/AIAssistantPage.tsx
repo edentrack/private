@@ -282,7 +282,7 @@ export function AIAssistantPage() {
         farm_id: farmId, flock_id: flock.id,
         count: logAction.count, cause: logAction.cause || 'unknown',
         notes: logAction.notes || '',
-        date: recordDate, event_date: recordDate,
+        event_date: recordDate,
         created_by: user?.id || null,
       }).select('id');
       if (mortErr) throw new Error(`Mortality save failed: ${mortErr.message}`);
@@ -405,7 +405,7 @@ export function AIAssistantPage() {
         user_id: user?.id || null,
         farm_id: farmId, category: expenseCat, amount: logAction.amount,
         description: logAction.description || `${logAction.quantity} ${logAction.unit} ${logAction.item_name}`,
-        currency, date: purchaseDate, incurred_on: purchaseDate,
+        currency, incurred_on: purchaseDate,
         flock_id: flock?.id || null, paid_from_profit: logAction.paid_from_profit ?? false,
       }).select('id');
       if (purchaseErr) throw new Error(`Purchase save failed: ${purchaseErr.message}`);
@@ -437,7 +437,7 @@ export function AIAssistantPage() {
       const { data: expData, error: expErr } = await supabase.from('expenses').insert({
         user_id: user?.id || null,
         farm_id: farmId, category: logAction.category, amount: logAction.amount,
-        description: logAction.description, currency, date: recordDate, incurred_on: recordDate,
+        description: logAction.description, currency, incurred_on: recordDate,
       }).select('id');
       if (expErr) throw new Error(`Expense save failed: ${expErr.message}`);
       if (!expData?.length) throw new Error('Expense not saved — possible permission issue.');

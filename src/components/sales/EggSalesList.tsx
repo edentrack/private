@@ -376,7 +376,7 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
                           <div className="text-xs sm:text-sm text-gray-500 flex items-center gap-3 flex-wrap mt-1">
                             <span className="inline-flex items-center gap-1">
                               <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                              {saleDate ? new Date(saleDate).toLocaleDateString() : 'N/A'}
+                              {saleDate ? new Date(saleDate + 'T12:00:00').toLocaleDateString() : 'N/A'}
                             </span>
                             <span className="inline-flex items-center gap-1">
                               <User className="w-3 h-3 sm:w-4 sm:h-4" />
