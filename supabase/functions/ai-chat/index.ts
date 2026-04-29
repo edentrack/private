@@ -704,12 +704,16 @@ Deno.serve(async (req: Request) => {
 
     const tier: string = profile?.subscription_tier || "free";
 
-    // Tier caps: { dailyMsgs, monthlyMsgs, photos, farmContext, dataLogging, voice }
-    const TIERS: Record<string, { dailyMsgs: number; monthlyMsgs: number; photos: number; farmContext: boolean; dataLogging: boolean }> = {
-      free:       { dailyMsgs: 5,   monthlyMsgs: 30,    photos: 0,   farmContext: true,  dataLogging: false },
-      pro:        { dailyMsgs: 999, monthlyMsgs: 50,    photos: 10,  farmContext: true,  dataLogging: true  },
-      enterprise: { dailyMsgs: 999, monthlyMsgs: 200,   photos: 30,  farmContext: true,  dataLogging: true  },
-      industry:   { dailyMsgs: 999, monthlyMsgs: 99999, photos: 999, farmContext: true,  dataLogging: true  },
+    // Tier caps
+    // financialLogging = can log sales, expenses, purchases, payroll via Eden AI
+    // csvImport       = can bulk-import CSV data via Eden AI
+    // photos          = max photos per message (0 = no photo analysis)
+    const TIERS: Record<string, { dailyMsgs: number; monthlyMsgs: number; photos: number; farmContext: boolean; financialLogging: boolean; csvImport: boolean }> = {
+      free:       { dailyMsgs: 10,  monthlyMsgs: 9999,  photos: 0,   farmContext: true,  financialLogging: false, csvImport: false },
+      grower:     { dailyMsgs: 999, monthlyMsgs: 200,   photos: 10,  farmContext: true,  financialLogging: true,  csvImport: true  },
+      pro:        { dailyMsgs: 999, monthlyMsgs: 200,   photos: 10,  farmContext: true,  financialLogging: true,  csvImport: true  },
+      enterprise: { dailyMsgs: 999, monthlyMsgs: 1000,  photos: 30,  farmContext: true,  financialLogging: true,  csvImport: true  },
+      industry:   { dailyMsgs: 999, monthlyMsgs: 99999, photos: 999, farmContext: true,  financialLogging: true,  csvImport: true  },
     };
     const caps = TIERS[tier] || TIERS.free;
 
@@ -744,8 +748,8 @@ Deno.serve(async (req: Request) => {
 
     if ((usedCount || 0) >= countLimit) {
       const upgradeMsg = tier === "free"
-        ? `You've used your ${countLimit} free messages for today. Upgrade to **Grower** for 50 messages/month with full farm data access, or **Farm Boss** for unlimited.`
-        : `You've used all ${countLimit} messages for this month on the Grower plan. Upgrade to **Farm Boss** for unlimited messages.`;
+        ? `You've used all **${countLimit} free messages** for today. Come back tomorrow, or upgrade to **Grower** for unlimited daily messages, photo disease diagnosis, financial tracking (sales, expenses, purchases), CSV bulk import, and payroll — everything you need to run your farm seriously.`
+        : `You've used all ${countLimit} messages for this month. Upgrade to **Farm Boss** for unlimited messages and advanced multi-farm analytics.`;
       return new Response(
         JSON.stringify({ error: upgradeMsg, upgrade: true, code: "MSG_LIMIT" }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -777,10 +781,10 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Inject tier info into system prompt so Eden knows what to offer/restrict
-    const tierNote = caps.farmContext
-      ? ""
-      : `\n\n## IMPORTANT: This user is on the FREE plan. You can answer general poultry questions but you do NOT have access to their farm data. When they ask about their specific farm (expenses, mortality, stock, etc.), tell them warmly that farm data access is available on the Grower plan ($15/3 months) and encourage them to upgrade. Never make up farm data.`;
+    // Inject tier rules so Eden enforces the plan boundary in conversation
+    const tierNote = caps.financialLogging
+      ? "" // paid tier — no restrictions needed
+      : `\n\n## FREE PLAN LIMITS (enforce silently — no lectures)\nThis user is on the FREE plan (10 messages/day). They have full access to their farm data and can:\n- Ask anything about their farm (production, mortality, stock, health)\n- Log eggs collected, mortality, feed usage, weight checks via Eden AI\n- Get disease advice and farm recommendations\n\nThey CANNOT do the following via Eden AI (these require Grower plan):\n- Log egg sales, bird sales, expenses, or purchases → if they ask, say: "Recording [X] requires the **Grower plan**. Upgrade at edentrack.app to unlock financial tracking, unlimited messages, photo diagnosis, and CSV import."\n- Run payroll or pay workers → same upgrade message\n- Bulk CSV import → say "CSV bulk import is a Grower feature. Upgrade at edentrack.app."\n- Photo/image disease diagnosis → already blocked at the API level\n\nNever be preachy or repeat the upgrade pitch more than once per topic. If they ask about a paid feature, explain it warmly once and move on.`;
 
     // First-message greeting instruction injected when context is available
     const greetingNote = contextPrompt && !contextPrompt.includes("No flocks recorded")
