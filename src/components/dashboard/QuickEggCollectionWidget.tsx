@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { ConfirmEggCollectionModal } from '../eggs/ConfirmEggCollectionModal';
+import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
 
 interface Flock {
   id: string;
@@ -20,6 +21,7 @@ interface QuickEggCollectionWidgetProps {
 export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidgetProps) {
   const { t } = useTranslation();
   const { currentFarm, profile } = useAuth();
+  const farmToday = getFarmTodayISO(getFarmTimeZone(currentFarm));
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [eggsPerTray, setEggsPerTray] = useState(30);
@@ -67,6 +69,7 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
   useEffect(() => {
     loadFlocks();
     loadFarmSettings();
+    setCollectionDate(getFarmTodayISO(getFarmTimeZone(currentFarm)));
   }, [currentFarm?.id]);
 
   useEffect(() => {
@@ -571,10 +574,10 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
             type="date"
             value={collectionDate}
             onChange={(e) => setCollectionDate(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
+            max={farmToday}
             className="w-full px-3 py-2 bg-white text-gray-900 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
           />
-          {collectionDate < new Date().toISOString().split('T')[0] && (
+          {collectionDate < farmToday && (
             <p className="text-[10px] text-gray-500 mt-0.5">Backdating to record historical data</p>
           )}
         </div>
@@ -650,7 +653,7 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
               setTraysBySize({ small: '', medium: '', large: '', jumbo: '' });
               setLooseBySize({ small: '', medium: '', large: '', jumbo: '' });
               setDamagedEggs('');
-              setCollectionDate(new Date().toISOString().split('T')[0]);
+              setCollectionDate(getFarmTodayISO(getFarmTimeZone(currentFarm)));
             }}
             className="flex-1 px-3 py-2 bg-white text-gray-900 border border-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
           >
