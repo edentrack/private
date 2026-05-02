@@ -511,13 +511,22 @@ export function AIAssistantPage() {
     } else if (logAction.type === 'CREATE_TASK') {
       if (!logAction.title) throw new Error('Task title is required');
       const taskDate = logAction.due_date || recordDate;
+      // window_start / window_end are NOT NULL in the schema — default to 09:00 local with 60-min window
+      const windowStart = new Date(`${taskDate}T09:00:00`);
+      const windowStartISO = isNaN(windowStart.getTime()) ? new Date().toISOString() : windowStart.toISOString();
+      const windowEndISO = new Date(windowStart.getTime() + 60 * 60 * 1000).toISOString();
       const { data: taskData, error: taskErr } = await supabase.from('tasks').insert({
         farm_id: farmId,
         title_override: logAction.title,
+        notes: logAction.notes || null,
         scheduled_for: taskDate,
         due_date: taskDate,
+        scheduled_time: '09:00',
+        window_start: windowStartISO,
+        window_end: windowEndISO,
         status: 'pending',
         requires_input: false,
+        is_archived: false,
       }).select('id');
       if (taskErr) throw new Error(`Task creation failed: ${taskErr.message}`);
       if (!taskData?.length) throw new Error('Task not saved — possible permission issue.');
