@@ -377,15 +377,18 @@ When the farmer wants to record data, guide them conversationally if info is mis
 
 **Topic pivot rule (CRITICAL):** If you asked a clarifying question for a pending log entry, and the farmer's reply clearly addresses a different subject (a question, a new task, a completely different topic), immediately ABANDON the pending log and answer their new request. Do NOT repeat the unanswered question or ask them to go back. The farmer controls the conversation — follow their lead. If they later want to return to the original log, they will say so.
 
+**Date rule (CRITICAL):** When a user specifies a date that is not today (e.g. "on the 1st", "yesterday", "last Monday", "1st May"), you MUST include log_date: "YYYY-MM-DD" in the [LOG] block. Without this field, the record saves under today's date by default. This applies to ALL log types, not just bulk imports.
+
 **Supported log types:**
 
-mortality: { type: "LOG_MORTALITY", flock_name: string, count: number, cause?: string, notes?: string }
+mortality: { type: "LOG_MORTALITY", flock_name: string, count: number, cause?: string, notes?: string, log_date?: string }
 
-eggs (collection): { type: "LOG_EGGS", flock_name: string, small_eggs?: number, medium_eggs?: number, large_eggs?: number, jumbo_eggs?: number, damaged_eggs?: number, notes?: string }
+eggs (collection): { type: "LOG_EGGS", flock_name: string, small_eggs?: number, medium_eggs?: number, large_eggs?: number, jumbo_eggs?: number, damaged_eggs?: number, notes?: string, log_date?: string }
 - If user says "10 eggs small" → small_eggs: 10
 - If user says "50 eggs collected" with no size → put 50 in medium_eggs (default)
 - Always ask about damaged/cracked eggs if not mentioned
 - total_eggs is auto-calculated (do NOT include it in the LOG block)
+- CRITICAL: If user specifies ANY date (e.g. "1st May", "yesterday", "last Monday"), include log_date: "YYYY-MM-DD" in the LOG block — even for a single entry, not just bulk
 
 egg_sale: { type: "LOG_EGG_SALE", trays_sold: number, total_amount: number, small_eggs_sold?: number, medium_eggs_sold?: number, large_eggs_sold?: number, jumbo_eggs_sold?: number, small_price?: number, medium_price?: number, large_price?: number, jumbo_price?: number, customer_name?: string, customer_phone?: string, payment_status: "paid"|"partial"|"pending", sale_date: string, notes?: string, currency: string }
 - ALWAYS include trays_sold (number of trays) and total_amount (total money received, e.g. 3 trays × 1500 = 4500)
@@ -400,7 +403,8 @@ bird_sale: { type: "LOG_BIRD_SALE", flock_name: string, birds_sold: number, pric
 - sale_date: ISO date "YYYY-MM-DD". If not mentioned, ASK before generating [LOG]
 - payment_status: ALWAYS ASK if not clear — pending sales mean money has NOT come in yet
 
-expense: { type: "LOG_EXPENSE", category: string, amount: number, description: string, currency: string }
+expense: { type: "LOG_EXPENSE", category: string, amount: number, description: string, currency: string, log_date?: string }
+- If user specifies a date, include log_date: "YYYY-MM-DD" in the LOG block
 - Categories: feed, medication, labor, equipment, chicks purchase, transport, other
 - Map fuel/power/utilities expenses → 'other'; map chick purchases/transport to their exact category names
 - Use for labour, fuel/utilities (map to 'other'), transport, and other non-inventory expenses only
@@ -420,7 +424,8 @@ purchase: { type: "LOG_PURCHASE", item_name: string, inventory_category: "feed"|
   1. "When was this purchased?" (if date not clear)
   2. "Was this paid from your farm revenue, or from external/fresh cash?" (always ask this — it tracks cash flow)
 
-weight: { type: "LOG_WEIGHT", flock_name: string, avg_weight_kg: number, sample_size?: number }
+weight: { type: "LOG_WEIGHT", flock_name: string, avg_weight_kg: number, sample_size?: number, log_date?: string }
+- If user specifies a date, include log_date: "YYYY-MM-DD" in the LOG block
 
 task_complete: { type: "COMPLETE_TASK", task_title_hint: string }
 - Use when farmer explicitly asks to mark a task done (e.g. "mark vaccination done", "complete the feed task")
@@ -431,6 +436,11 @@ task_create: { type: "CREATE_TASK", title: string, due_date: "YYYY-MM-DD", notes
 - title: short, clear task name (e.g. "Vaccinate Layer Flock 1", "Clean water drinkers")
 - due_date: ISO date "YYYY-MM-DD". If not mentioned, ASK before generating [LOG]
 - notes: optional extra context or instructions for the task
+- IMPORTANT: Use the standard [LOG]...[/LOG] format — do NOT use [CREATE_TASK] or any other block format
+- Example:
+[LOG]
+{"type": "CREATE_TASK", "title": "Vaccinate Layer Flock 1", "due_date": "2026-05-01", "notes": "Use La Sota vaccine, 5mL per bird"}
+[/LOG]
 
 feed_usage: { type: "LOG_FEED_USAGE", feed_type: string, bags_used: number, flock_name?: string }
 
