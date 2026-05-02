@@ -1191,6 +1191,8 @@ export function AIAssistantPage() {
                       .replace(/\[BULK_LOG\][\s\S]*/g, '')
                       .replace(/\[LOG\][\s\S]*?\[\/LOG\]/g, '')
                       .replace(/\[ACTIONS\][\s\S]*?\[\/ACTIONS\]/g, '')
+                      .replace(/\[CREATE_TASK\][\s\S]*?\[\/CREATE_TASK\]/g, '')
+                      .replace(/\[CREATE_TASK\][\s\S]*/g, '')
                       .trim();
                     return clean ? (
                       <div className={`prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:font-semibold prose-hr:my-2 ${message.role === 'user' ? 'prose-invert' : ''}`}>

@@ -211,6 +211,13 @@ export function SmartDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          {!weather && (
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-3">
+              <Cloud className="w-10 h-10 text-gray-300" />
+              <p className="text-sm font-medium text-gray-600">Weather unavailable</p>
+              <p className="text-xs text-gray-400">Allow location access in your browser to see weather insights and production impact forecasts.</p>
+            </div>
+          )}
           {weather && (
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
               <div className="flex items-start justify-between mb-4">
@@ -350,7 +357,10 @@ export function SmartDashboard() {
                 </div>
               </div>
 
-              <button className="w-full bg-white/10 hover:bg-white/20 rounded-xl p-3 backdrop-blur-sm flex items-center justify-between transition-colors">
+              <button
+                onClick={() => { window.location.hash = '#/analytics'; }}
+                className="w-full bg-white/10 hover:bg-white/20 rounded-xl p-3 backdrop-blur-sm flex items-center justify-between transition-colors"
+              >
                 <div className="text-left">
                   <p className="text-sm font-medium">View Full Analysis</p>
                   <p className="text-xs text-purple-100">7-day forecasts & trends</p>

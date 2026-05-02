@@ -397,7 +397,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    let lastProcessedHash = window.location.hash;
+    let lastProcessedHash = '';
     
     const handleHashChange = () => {
       const hash = window.location.hash;
