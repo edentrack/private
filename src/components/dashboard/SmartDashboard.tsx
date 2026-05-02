@@ -358,7 +358,7 @@ export function SmartDashboard() {
               </div>
 
               <button
-                onClick={() => { window.location.hash = '#/analytics'; }}
+                onClick={() => { window.location.hash = '#/analytics'; window.dispatchEvent(new HashChangeEvent('hashchange')); }}
                 className="w-full bg-white/10 hover:bg-white/20 rounded-xl p-3 backdrop-blur-sm flex items-center justify-between transition-colors"
               >
                 <div className="text-left">
