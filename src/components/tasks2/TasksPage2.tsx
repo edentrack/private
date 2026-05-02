@@ -4,7 +4,6 @@ import { DateTime } from 'luxon';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { TaskTemplate, TaskTypeCategory, TaskScope } from '../../types/database';
-import { EggIntervalTaskTracker } from '../tasks/egg/EggIntervalTaskTracker';
 import { UnifiedTaskSettings } from '../tasks/UnifiedTaskSettings';
 import { CompleteTaskModal } from '../tasks/CompleteTaskModal';
 import type { Task } from '../../types/database';
@@ -16,7 +15,7 @@ import {
 } from '../../utils/unifiedTaskSystem';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 
-type TabId = 'today' | 'schedule' | 'eggs';
+type TabId = 'today' | 'schedule';
 
 function addDays(dateISO: string, deltaDays: number) {
   // date-only increment (avoids timezone shifting)
@@ -292,12 +291,6 @@ export function TasksPage2() {
           <Settings className="w-4 h-4" />
           Task Settings
         </button>
-        <button
-          onClick={() => setTab('eggs')}
-          className={`nav-pill flex items-center gap-2 ${tab === 'eggs' ? 'nav-pill-active' : 'nav-pill-inactive'}`}
-        >
-          Eggs
-        </button>
       </div>
 
       {loading ? (
@@ -430,13 +423,6 @@ export function TasksPage2() {
             </div>
           </div>
 
-          <div>
-            <EggIntervalTaskTracker
-              selectedDate={dateISO}
-              onSelectedDateChange={setDateISO}
-              hideDatePicker
-            />
-          </div>
         </div>
       ) : tab === 'schedule' ? (
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
@@ -457,17 +443,11 @@ export function TasksPage2() {
                 Open Task Settings
               </button>
             ) : (
-              <div className="text-xs text-gray-500">Workers can only enter egg data.</div>
+              <div className="text-xs text-gray-500">Ask your farm owner to configure tasks.</div>
             )}
           </div>
         </div>
-      ) : (
-        <EggIntervalTaskTracker
-          selectedDate={dateISO}
-          onSelectedDateChange={setDateISO}
-          hideDatePicker
-        />
-      )}
+      ) : null}
 
       {showTaskSettingsModal && canManage && (
         <UnifiedTaskSettings onClose={() => setShowTaskSettingsModal(false)} />

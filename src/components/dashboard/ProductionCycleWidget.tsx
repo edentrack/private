@@ -62,6 +62,19 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
     }
   }, [flock, farmSettings]);
 
+  // Re-calculate phase when user returns to the app (handles tab left open across days/weeks)
+  useEffect(() => {
+    if (!flock) return;
+    const onVisible = () => { if (document.visibilityState === 'visible') calculateCycle(); };
+    const onFocus = () => calculateCycle();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [flock, farmSettings]);
+
   useEffect(() => {
     if (!flock || flock.type?.toLowerCase() !== 'broiler') return;
 

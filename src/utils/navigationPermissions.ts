@@ -28,7 +28,8 @@ export type ModuleName =
   | 'billing'
   | 'smart-upload'
   | 'marketplace'
-  | 'roadmap';
+  | 'roadmap'
+  | 'egg-records';
 
 export interface ModuleVisibility {
   visible: boolean;
@@ -95,6 +96,7 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'smart-dashboard':
     case 'flocks':
     case 'tasks':
+    case 'egg-records':
     case 'shifts':
     case 'vaccinations':
     case 'vet-log':
@@ -165,6 +167,9 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'weight':
       return { visible: p.workers_can_log_weight };
 
+    case 'egg-records':
+      return { visible: p.workers_can_log_eggs };
+
     case 'inventory':
       return { visible: p.workers_can_log_eggs }; // inventory visible so eggs can be synced
 
@@ -199,6 +204,7 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'ai-assistant':
     case 'flocks':
     case 'tasks':
+    case 'egg-records':
     case 'shifts':
     case 'vaccinations':
     case 'vet-log':

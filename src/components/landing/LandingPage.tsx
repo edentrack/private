@@ -1033,10 +1033,10 @@ export default function LandingPage() {
                     ))}
                   </ul>
 
-                  {checkoutError?.plan === (plan.id === 'grower' ? 'pro' : 'enterprise') && (
+                  {checkoutError?.plan === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : 'industry') && (
                     <p className="text-red-400 text-xs mb-2 text-center">{checkoutError.msg}</p>
                   )}
-                  {flwEmailFor === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : null) && (
+                  {flwEmailFor === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : plan.id === 'industry' ? 'industry' : null) && (
                     <form onSubmit={doFlutterwaveCheckout} className="mb-2 space-y-2">
                       <input
                         type="email" required autoFocus value={flwEmail} onChange={e => setFlwEmail(e.target.value)}
@@ -1051,11 +1051,11 @@ export default function LandingPage() {
                   )}
                   <button
                     type="button"
-                    disabled={!!checkoutLoading || flwEmailFor === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : null)}
+                    disabled={!!checkoutLoading || flwEmailFor === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : plan.id === 'industry' ? 'industry' : null)}
                     onClick={() => {
                       if (plan.id === 'grower') { startCheckout('pro'); return; }
                       if (plan.id === 'farmboss') { startCheckout('enterprise'); return; }
-                      if (plan.id === 'industry') { window.location.href = 'mailto:hello@edentrack.app?subject=Industry Plan'; return; }
+                      if (plan.id === 'industry') { startCheckout('industry'); return; }
                       handleGetStarted();
                     }}
                     className={`w-full py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 ${
@@ -1068,7 +1068,7 @@ export default function LandingPage() {
                         : 'border border-white/20 text-white hover:bg-white/10'
                     }`}
                   >
-                    {checkoutLoading === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : '') ? (
+                    {checkoutLoading === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : plan.id === 'industry' ? 'industry' : '') ? (
                       <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Preparing…</>
                     ) : plan.ctaLabel}
                   </button>
@@ -1077,7 +1077,7 @@ export default function LandingPage() {
             })}
           </div>
 
-          <p className="text-center text-xs text-gray-600 mt-8">All paid plans include a 14-day free trial. Payments via Flutterwave and Stripe. Card, mobile money and bank transfer accepted.</p>
+          <p className="text-center text-xs text-gray-600 mt-8">Payments via Flutterwave and Stripe. Card, mobile money and bank transfer accepted. Cancel anytime.</p>
         </div>
       </section>
 

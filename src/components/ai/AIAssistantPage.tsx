@@ -20,7 +20,7 @@ interface PendingFile {
 }
 
 interface LogAction {
-  type: 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE' | 'COMPLETE_TASK' | 'LOG_WEIGHT' | 'LOG_FEED_USAGE' | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE';
+  type: 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE' | 'COMPLETE_TASK' | 'CREATE_TASK' | 'LOG_WEIGHT' | 'LOG_FEED_USAGE' | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE';
   log_date?: string;  // universal ISO date override for bulk imports
   // Common
   flock_name?: string;
@@ -53,8 +53,10 @@ interface LogAction {
   // Feed
   feed_type?: string;
   bags_used?: number;
-  // Task
+  // Task completion / creation
   task_title_hint?: string;
+  title?: string;
+  due_date?: string;
   // Egg sale
   small_eggs_sold?: number;
   medium_eggs_sold?: number;
@@ -247,9 +249,10 @@ export function AIAssistantPage() {
     try {
       if (logAction.type === 'LOG_EGG_SALE') {
         const saleDay = logAction.sale_date || logAction.log_date || today;
-        if (logAction.customer_name) {
-          const { data } = await supabase.from('egg_sales').select('id, total_eggs').eq('farm_id', farmId).eq('sale_date', saleDay).ilike('customer_name', `%${logAction.customer_name}%`).limit(1);
-          if (data?.length) return `Egg sale to "${logAction.customer_name}" on ${saleDay} already exists (${data[0].total_eggs} eggs)`;
+        // Only check for duplicate when both customer AND amount are known — avoids false positives on multi-flock farms
+        if (logAction.customer_name && logAction.total_amount) {
+          const { data } = await supabase.from('egg_sales').select('id, total_eggs, total_amount').eq('farm_id', farmId).eq('sale_date', saleDay).eq('total_amount', logAction.total_amount).ilike('customer_name', `%${logAction.customer_name}%`).limit(1);
+          if (data?.length) return `Egg sale to "${logAction.customer_name}" for ${logAction.total_amount} on ${saleDay} already exists`;
         }
       } else if (logAction.type === 'LOG_EXPENSE') {
         const expDay = logAction.log_date || today;
@@ -287,6 +290,16 @@ export function AIAssistantPage() {
       }).select('id');
       if (mortErr) throw new Error(`Mortality save failed: ${mortErr.message}`);
       if (!mortData?.length) throw new Error('Mortality record not saved — possible permission issue. Check you are logged in.');
+      // Auto-complete any pending mortality tasks scheduled for this date
+      try {
+        const { data: mortTasks } = await supabase.from('tasks')
+          .select('id').eq('farm_id', farmId).eq('status', 'pending')
+          .gte('scheduled_for', recordDate).lte('scheduled_for', recordDate)
+          .ilike('title_override', '%mort%');
+        if (mortTasks?.length) {
+          await supabase.from('tasks').update({ status: 'completed' }).in('id', mortTasks.map((t: any) => t.id));
+        }
+      } catch {}
 
     } else if (logAction.type === 'LOG_EGGS') {
       const flock = await findFlock(logAction.flock_name);
@@ -316,6 +329,16 @@ export function AIAssistantPage() {
       } else {
         await supabase.from('egg_inventory').insert({ farm_id: farmId, small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo, last_updated: new Date().toISOString() });
       }
+      // Auto-complete any pending egg-collection tasks scheduled for this date
+      try {
+        const { data: eggTasks } = await supabase.from('tasks')
+          .select('id').eq('farm_id', farmId).eq('status', 'pending')
+          .gte('scheduled_for', recordDate).lte('scheduled_for', recordDate)
+          .ilike('title_override', '%egg%');
+        if (eggTasks?.length) {
+          await supabase.from('tasks').update({ status: 'completed' }).in('id', eggTasks.map((t: any) => t.id));
+        }
+      } catch {}
 
     } else if (logAction.type === 'LOG_EGG_SALE') {
       const smallSold = logAction.small_eggs_sold || 0;
@@ -428,9 +451,18 @@ export function AIAssistantPage() {
       }
 
     } else if (logAction.type === 'LOG_EXPENSE') {
+      // Normalise category to valid DB enum values — guard against AI returning 'utilities', 'chick_purchase', etc.
+      const VALID_EXPENSE_CATEGORIES = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
+      const rawCat = (logAction.category || '').toLowerCase().trim();
+      const categoryMap: Record<string, string> = {
+        utilities: 'other', utility: 'other', fuel: 'other', power: 'other', electricity: 'other',
+        chick_purchase: 'chicks purchase', chicks_purchase: 'chicks purchase', 'chick purchase': 'chicks purchase',
+        labour: 'labor', wages: 'labor', salary: 'labor',
+      };
+      const normalisedCategory = categoryMap[rawCat] ?? (VALID_EXPENSE_CATEGORIES.includes(rawCat) ? rawCat : 'other');
       const { data: expData, error: expErr } = await supabase.from('expenses').insert({
         user_id: user?.id || null,
-        farm_id: farmId, category: logAction.category, amount: logAction.amount,
+        farm_id: farmId, category: normalisedCategory, amount: logAction.amount,
         description: logAction.description, currency, incurred_on: recordDate,
       }).select('id');
       if (expErr) throw new Error(`Expense save failed: ${expErr.message}`);
@@ -449,12 +481,47 @@ export function AIAssistantPage() {
       }).select('id');
       if (weightErr) throw new Error(`Weight save failed: ${weightErr.message}`);
       if (!weightData?.length) throw new Error('Weight record not saved — possible permission issue.');
+      // Auto-complete any pending weight tasks scheduled for this date
+      try {
+        const { data: weightTasks } = await supabase.from('tasks')
+          .select('id').eq('farm_id', farmId).eq('status', 'pending')
+          .gte('scheduled_for', recordDate).lte('scheduled_for', recordDate)
+          .ilike('title_override', '%weight%');
+        if (weightTasks?.length) {
+          await supabase.from('tasks').update({ status: 'completed' }).in('id', weightTasks.map((t: any) => t.id));
+        }
+      } catch {}
 
     } else if (logAction.type === 'LOG_FEED_USAGE') {
       const { data: stock } = await supabase.from('feed_stock').select('id,current_stock_bags').eq('farm_id', farmId).ilike('feed_type', `%${logAction.feed_type}%`).limit(1);
       if (stock?.[0]) {
         await supabase.from('feed_stock').update({ current_stock_bags: Math.max(0, (stock[0].current_stock_bags || 0) - (logAction.bags_used || 0)) }).eq('id', stock[0].id);
       }
+
+    } else if (logAction.type === 'COMPLETE_TASK') {
+      const hint = logAction.task_title_hint || '';
+      const { data: matchedTasks } = await supabase.from('tasks')
+        .select('id').eq('farm_id', farmId).eq('status', 'pending')
+        .ilike('title_override', `%${hint}%`).limit(10);
+      if (matchedTasks?.length) {
+        await supabase.from('tasks').update({ status: 'completed' }).in('id', matchedTasks.map((t: any) => t.id));
+      }
+
+    } else if (logAction.type === 'CREATE_TASK') {
+      if (!logAction.title) throw new Error('Task title is required');
+      const taskDate = logAction.due_date || recordDate;
+      const { data: taskData, error: taskErr } = await supabase.from('tasks').insert({
+        farm_id: farmId,
+        title_override: logAction.title,
+        scheduled_for: taskDate,
+        due_date: taskDate,
+        status: 'pending',
+        requires_input: false,
+        created_by: user?.id || null,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (taskErr) throw new Error(`Task creation failed: ${taskErr.message}`);
+      if (!taskData?.length) throw new Error('Task not saved — possible permission issue.');
     }
   };
 
@@ -497,6 +564,10 @@ export function AIAssistantPage() {
         showToast(`Weight logged for "${logAction.flock_name}"`, 'success');
       } else if (logAction.type === 'LOG_FEED_USAGE') {
         showToast(`Recorded ${logAction.bags_used} bag(s) of ${logAction.feed_type} used`, 'success');
+      } else if (logAction.type === 'CREATE_TASK') {
+        showToast(`Task added: "${logAction.title}"`, 'success');
+      } else if (logAction.type === 'COMPLETE_TASK') {
+        showToast(`Task marked as complete`, 'success');
       }
     } catch (err: any) {
       console.error('[Eden AI] Save failed:', err);
@@ -511,17 +582,6 @@ export function AIAssistantPage() {
 
     const selectedActions = actions.filter((_, i) => selected[i]);
     if (selectedActions.length === 0) return;
-
-    // Pre-check for duplicates
-    const dupeMessages: string[] = [];
-    for (const action of selectedActions) {
-      const dupe = await checkForDuplicate(action, currentFarm.id);
-      if (dupe) dupeMessages.push(dupe);
-    }
-    if (dupeMessages.length > 0) {
-      const ok = window.confirm(`⚠️ ${dupeMessages.length} possible duplicate(s) detected:\n\n${dupeMessages.slice(0, 5).join('\n')}${dupeMessages.length > 5 ? `\n...and ${dupeMessages.length - 5} more` : ''}\n\nImport anyway (duplicates will be skipped)?`);
-      if (!ok) return;
-    }
 
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bulkLogConfirmed: true, bulkLogProgress: { done: 0, total: selectedActions.length } } : m));
 
@@ -559,14 +619,19 @@ export function AIAssistantPage() {
       firstType === 'LOG_EGGS' ? 'Egg Records' :
       firstType === 'LOG_EXPENSE' || firstType === 'LOG_PURCHASE' ? 'Finance → Expenses' :
       firstType === 'LOG_MORTALITY' ? 'Flock records' :
+      firstType === 'CREATE_TASK' ? 'Tasks' :
       'the relevant section';
 
     if (successCount > 0) {
       showToast(`Saved ${successCount} of ${selectedActions.length} record${selectedActions.length !== 1 ? 's' : ''}${errors.length ? ` (${errors.length} skipped)` : ''}`, 'success');
-      const skipped = errors.filter(e => e.startsWith('Skipped:')).length;
+      const skippedErrors = errors.filter(e => e.startsWith('Skipped:'));
+      const skipped = skippedErrors.length;
       const failed = errors.length - skipped;
       const lines: string[] = [`✅ **${successCount} of ${selectedActions.length}** records saved.`];
-      if (skipped > 0) lines.push(`⚠️ **${skipped}** skipped — already in the system.`);
+      if (skipped > 0) {
+        lines.push(`⚠️ **${skipped}** skipped — already in the system:`);
+        skippedErrors.forEach(e => lines.push(`  • ${e.replace(/^Skipped: /, '')}`));
+      }
       if (failed > 0) lines.push(`❌ **${failed}** failed to save — please retry those individually.`);
       lines.push(`\nVerify your entries under **${verifyLocation}**.`);
       const followUp: ChatMessage = {

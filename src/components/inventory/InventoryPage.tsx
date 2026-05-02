@@ -193,6 +193,8 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
     currentRole === 'owner' ||
     (currentRole === 'manager' && !!farmPermissions?.managers_can_manage_inventory);
 
+  const canEditInventory = canManageInventory;
+
   const canEditEggs =
     currentRole === 'owner' ||
     (currentRole === 'manager' && !!farmPermissions?.managers_can_edit_eggs);

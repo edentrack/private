@@ -987,7 +987,7 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
         </div>
         {dailyTasks.length > 0 && (
           <span className="text-xs text-gray-500 font-medium">
-            {completedTasks.length}/{dailyTasks.length}
+            {Math.min(completedTasks.length, dailyTasks.length)}/{dailyTasks.length}
           </span>
         )}
       </div>

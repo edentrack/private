@@ -61,15 +61,12 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
   const loadMortalityLogs = async () => {
     if (!flock) return;
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
     const { data } = await supabase
       .from('mortality_logs')
       .select('*')
       .eq('flock_id', flock.id)
-      .gte('event_date', thirtyDaysAgo.toISOString().split('T')[0])
-      .order('event_date', { ascending: false });
+      .order('event_date', { ascending: false })
+      .limit(100);
 
     setLogs(data || []);
   };

@@ -48,6 +48,7 @@ const PayrollPage            = lazy1(() => import('./components/payroll/PayrollP
 const TasksPage2             = lazy1(() => import('./components/tasks2/TasksPage2'), 'TasksPage2');
 const TaskHistoryPage        = lazy1(() => import('./components/tasks/TaskHistoryPage'), 'TaskHistoryPage');
 const InsightsPage           = lazy1(() => import('./components/insights/InsightsPage'), 'InsightsPage');
+const EggCollectionsPage     = lazy1(() => import('./components/eggs/EggCollectionsPage'), 'EggCollectionsPage');
 const AIAssistantPage        = lazy1(() => import('./components/ai/AIAssistantPage'), 'AIAssistantPage');
 const SmartUploadPage        = lazy1(() => import('./components/import/SmartUploadPage'), 'SmartUploadPage');
 const OnboardingWizard       = lazy1(() => import('./components/onboarding/OnboardingWizard'), 'OnboardingWizard');
@@ -553,6 +554,10 @@ function AppContent() {
         setCurrentView('tasks');
         return;
       }
+      if (hash.includes('#/egg-records')) {
+        setCurrentView('egg-records');
+        return;
+      }
       if (hash.includes('#/inventory')) {
         setCurrentView('inventory');
         return;
@@ -938,6 +943,12 @@ function AppContent() {
         return (
           <RequireRole moduleId="tasks" onUnauthorized={handleUnauthorized}>
             <TasksPage2 />
+          </RequireRole>
+        );
+      case 'egg-records':
+        return (
+          <RequireRole moduleId="egg-records" onUnauthorized={handleUnauthorized}>
+            <EggCollectionsPage />
           </RequireRole>
         );
       case 'mortality':

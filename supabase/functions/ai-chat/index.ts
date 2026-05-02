@@ -58,6 +58,14 @@ function selectModel(messages: ChatMessage[]): string {
   const needsSonnet = complexKeywords.some(kw => text.includes(kw));
   if (needsSonnet) return MODEL_SONNET;
 
+  // Bulk/multi-entry messages must NEVER go to Haiku — Haiku's 512-token cap truncates the JSON array
+  // Detect: "log these N ...", numbered lists like "1) ...", or multi-entry keywords
+  const isBulkEntry = /\b(log|record|add|save)\s+(these\s+)?\d+\b/i.test(text)  // "log these 15 expenses"
+    || /\b\d+\)\s/.test(text)                                                       // numbered list: "1) item"
+    || (text.match(/\bxaf\b/g) || []).length >= 3                                   // 3+ XAF amounts = bulk
+    || (text.match(/,\s*\d+[).]?\s/g) || []).length >= 3;                          // 3+ comma-separated entries
+  if (isBulkEntry) return MODEL_SONNET;
+
   // Short simple messages → Haiku (greetings, quick logs, single-field answers)
   const simplePatterns = [
     /^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|sure|good|great)[.!?]?$/i,
@@ -93,6 +101,10 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
+  // Fetch farm start date first so historical queries cover the full farm lifetime
+  const { data: farmMeta } = await supabase.from("farms").select("created_at").eq("id", farmId).maybeSingle();
+  const farmStart = farmMeta?.created_at?.split("T")[0] || "2020-01-01";
+
   // Use allSettled so a single slow/failing DB query never crashes the whole context fetch
   const settled = await Promise.allSettled([
     supabase.from("farms").select("name, currency, currency_code, location").eq("id", farmId).maybeSingle(),
@@ -100,14 +112,14 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     supabase.from("tasks").select("id, status, scheduled_for, title_override, priority").eq("farm_id", farmId).eq("is_archived", false).gte("scheduled_for", `${thirtyDaysAgo}T00:00:00`),
     supabase.from("feed_stock").select("id, feed_type, current_stock_bags, bags_in_stock, unit, kg_per_unit").eq("farm_id", farmId),
     supabase.from("other_inventory").select("id, item_name, quantity, unit, category").eq("farm_id", farmId),
-    supabase.from("expenses").select("amount, category, description, incurred_on, currency").eq("farm_id", farmId).gte("incurred_on", thirtyDaysAgo).order("incurred_on", { ascending: false }),
-    supabase.from("egg_sales").select("total_amount, sale_date, customer_name, payment_status, total_eggs").eq("farm_id", farmId).gte("sale_date", thirtyDaysAgo).order("sale_date", { ascending: false }),
-    supabase.from("bird_sales").select("total_amount, sale_date, customer_name, payment_status, birds_sold").eq("farm_id", farmId).gte("sale_date", thirtyDaysAgo).order("sale_date", { ascending: false }),
-    supabase.from("mortality_logs").select("count, cause, event_date, flock_id, notes").eq("farm_id", farmId).gte("event_date", thirtyDaysAgo).order("event_date", { ascending: false }),
-    supabase.from("weight_logs").select("average_weight, date, flock_id, sample_size").eq("farm_id", farmId).gte("date", thirtyDaysAgo).order("date", { ascending: false }),
-    supabase.from("vaccinations").select("vaccine_name, administered_date, flock_id, notes").eq("farm_id", farmId).gte("administered_date", thirtyDaysAgo).order("administered_date", { ascending: false }),
-    supabase.from("egg_collections").select("total_eggs, collection_date, flock_id, damaged_eggs").eq("farm_id", farmId).gte("collection_date", sevenDaysAgo).order("collection_date", { ascending: false }),
-    supabase.from("payroll_items").select("worker_name, net_pay, base_pay, bonus_amount, currency, status, created_at").eq("farm_id", farmId).gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }),
+    supabase.from("expenses").select("amount, category, description, incurred_on, currency").eq("farm_id", farmId).gte("incurred_on", farmStart).order("incurred_on", { ascending: false }),
+    supabase.from("egg_sales").select("total_amount, sale_date, customer_name, payment_status, total_eggs").eq("farm_id", farmId).gte("sale_date", farmStart).order("sale_date", { ascending: false }),
+    supabase.from("bird_sales").select("total_amount, sale_date, customer_name, payment_status, birds_sold").eq("farm_id", farmId).gte("sale_date", farmStart).order("sale_date", { ascending: false }),
+    supabase.from("mortality_logs").select("count, cause, event_date, flock_id, notes").eq("farm_id", farmId).gte("event_date", farmStart).order("event_date", { ascending: false }),
+    supabase.from("weight_logs").select("average_weight, date, flock_id, sample_size").eq("farm_id", farmId).gte("date", farmStart).order("date", { ascending: false }),
+    supabase.from("vaccinations").select("vaccine_name, administered_date, flock_id, notes").eq("farm_id", farmId).gte("administered_date", farmStart).order("administered_date", { ascending: false }),
+    supabase.from("egg_collections").select("total_eggs, collection_date, flock_id, damaged_eggs").eq("farm_id", farmId).gte("collection_date", thirtyDaysAgo).order("collection_date", { ascending: false }),
+    supabase.from("payroll_items").select("worker_name, net_pay, base_pay, bonus_amount, currency, status, created_at").eq("farm_id", farmId).gte("created_at", farmStart).order("created_at", { ascending: false }),
     supabase.from("farm_workers").select("id, name, role, pay_type, monthly_salary, hourly_rate, currency, is_active").eq("farm_id", farmId).eq("is_active", true),
     supabase.from("worker_pay_rates").select("user_id, pay_type, hourly_rate, monthly_salary, currency").eq("farm_id", farmId),
     supabase.from("farm_setup_config").select("egg_prices, payout_account, default_pay_day, ai_permissions").eq("farm_id", farmId).maybeSingle(),
@@ -195,7 +207,7 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
         ? `laying rate ~${((latestEggs.reduce((s: number, e: any) => s + (e.total_eggs || 0), 0) / latestEggs.length / f.current_count) * 100).toFixed(0)}%`
         : "";
       const dayAge = f.start_date ? `age ${Math.floor((Date.now() - new Date(f.start_date).getTime()) / 86400000)} days` : "";
-      context += `- **${f.name}** [${f.status}]: ${f.type || "unknown"}, ${f.current_count ?? "?"}/${f.initial_count || "?"} birds, ${dayAge}, mortality 30d: ${fMortality} birds (${mortalityRate}%), weight: ${latestWeight}${layingRate ? ", " + layingRate : ""}\n`;
+      context += `- **${f.name}** [${f.status}]: ${f.type || "unknown"}, ${f.current_count ?? "?"}/${f.initial_count || "?"} birds, ${dayAge}, mortality all-time: ${fMortality} birds (${mortalityRate}%), weight: ${latestWeight}${layingRate ? ", " + layingRate : ""}\n`;
     });
   }
 
@@ -218,35 +230,35 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     context += `- ${i.item_name}: ${i.quantity} ${i.unit || "units"}${i.category ? ` [${i.category}]` : ""}\n`;
   });
 
-  context += `\n### Financials (30 days)\n`;
-  context += `- Total expenses: ${currency} ${totalExpenses30d.toFixed(0)} | Last 7d: ${currency} ${totalExpenses7d.toFixed(0)}\n`;
-  context += `- Total sales: ${currency} ${totalSales30d.toFixed(0)} | Last 7d: ${currency} ${totalSales7d.toFixed(0)}\n`;
-  context += `- Net profit 30d: ${currency} ${(totalSales30d - totalExpenses30d).toFixed(0)}\n`;
+  context += `\n### Financials (all time since ${farmStart})\n`;
+  context += `- Total expenses: ${currency} ${totalExpenses30d.toFixed(0)} | Last 30d: ${currency} ${expenses.filter((e: any) => e.incurred_on >= thirtyDaysAgo).reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0).toFixed(0)}\n`;
+  context += `- Total sales: ${currency} ${totalSales30d.toFixed(0)} | Last 30d: ${currency} ${sales.filter((s: any) => s.sale_date >= thirtyDaysAgo).reduce((s: number, e: any) => s + (parseFloat(e.total_amount) || 0), 0).toFixed(0)}\n`;
+  context += `- Net profit all time: ${currency} ${(totalSales30d - totalExpenses30d).toFixed(0)}\n`;
   if (Object.keys(expenseByCategory).length > 0) {
     context += `- Expense breakdown: ${Object.entries(expenseByCategory).map(([k, v]) => `${k}: ${currency} ${(v as number).toFixed(0)}`).join(", ")}\n`;
   }
 
-  // Individual records — used for UPDATE/VOID lookups and duplicate detection
+  // Individual records — used for UPDATE/VOID lookups and duplicate detection (capped to avoid context bloat)
   if (eggSales.length > 0) {
-    context += `\n### Egg Sales (individual records, last 30 days)\n`;
-    eggSales.forEach((s: any) => {
+    context += `\n### Egg Sales (last ${Math.min(eggSales.length, 50)} of ${eggSales.length} records)\n`;
+    eggSales.slice(0, 50).forEach((s: any) => {
       context += `- [${s.sale_date}] ${s.customer_name || "Unknown"}: ${s.total_eggs || 0} eggs — ${currency} ${s.total_amount || 0} [${s.payment_status || "paid"}]\n`;
     });
   }
   if (birdSales.length > 0) {
-    context += `\n### Bird Sales (individual records, last 30 days)\n`;
-    birdSales.forEach((s: any) => {
+    context += `\n### Bird Sales (last ${Math.min(birdSales.length, 50)} of ${birdSales.length} records)\n`;
+    birdSales.slice(0, 50).forEach((s: any) => {
       context += `- [${s.sale_date}] ${s.customer_name || "Unknown"}: ${s.birds_sold || 0} birds — ${currency} ${s.total_amount || 0} [${s.payment_status || "paid"}]\n`;
     });
   }
   if (expenses.length > 0) {
-    context += `\n### Expenses (individual records, last 30 days)\n`;
-    expenses.slice(0, 30).forEach((e: any) => {
+    context += `\n### Expenses (last ${Math.min(expenses.length, 50)} of ${expenses.length} records)\n`;
+    expenses.slice(0, 50).forEach((e: any) => {
       context += `- [${e.incurred_on}] ${e.category}: ${e.description} — ${currency} ${e.amount}\n`;
     });
   }
 
-  context += `\n### Mortality (30 days)\n`;
+  context += `\n### Mortality (all time)\n`;
   context += `- Total deaths: ${totalMortality30d} birds | Last 7d: ${totalMortality7d} birds\n`;
   if (mortality.length > 0) {
     const recent = mortality.slice(0, 5);
@@ -384,8 +396,9 @@ bird_sale: { type: "LOG_BIRD_SALE", flock_name: string, birds_sold: number, pric
 - payment_status: ALWAYS ASK if not clear — pending sales mean money has NOT come in yet
 
 expense: { type: "LOG_EXPENSE", category: string, amount: number, description: string, currency: string }
-- Categories: feed, medication, labor, equipment, utilities, chick_purchase, other
-- Use for labour, utilities, transport, and other non-inventory expenses only
+- Categories: feed, medication, labor, equipment, chicks purchase, transport, other
+- Map fuel/power/utilities expenses → 'other'; map chick purchases/transport to their exact category names
+- Use for labour, fuel/utilities (map to 'other'), transport, and other non-inventory expenses only
 
 purchase: { type: "LOG_PURCHASE", item_name: string, inventory_category: "feed"|"Medication"|"Equipment"|"Supplies", quantity: number, unit: string, amount: number, description: string, currency: string, purchase_date: string, paid_from_profit: boolean, flock_name?: string }
 - Use when farmer mentions BUYING or PURCHASING physical items that go into inventory
@@ -405,6 +418,14 @@ purchase: { type: "LOG_PURCHASE", item_name: string, inventory_category: "feed"|
 weight: { type: "LOG_WEIGHT", flock_name: string, avg_weight_kg: number, sample_size?: number }
 
 task_complete: { type: "COMPLETE_TASK", task_title_hint: string }
+- Use when farmer explicitly asks to mark a task done (e.g. "mark vaccination done", "complete the feed task")
+- task_title_hint: a keyword from the task title to match (e.g. "vaccination", "egg", "feed")
+
+task_create: { type: "CREATE_TASK", title: string, due_date: "YYYY-MM-DD", notes?: string }
+- Use when farmer asks to add a task, reminder, or schedule something (e.g. "remind me to vaccinate on Monday", "add a task for cleaning on Friday")
+- title: short, clear task name (e.g. "Vaccinate Layer Flock 1", "Clean water drinkers")
+- due_date: ISO date "YYYY-MM-DD". If not mentioned, ASK before generating [LOG]
+- notes: optional extra context or instructions for the task
 
 feed_usage: { type: "LOG_FEED_USAGE", feed_type: string, bags_used: number, flock_name?: string }
 
@@ -518,8 +539,13 @@ Never generate a [BULK_LOG] with more than 20 entries — partial JSON will caus
 
 TRANSPARENCY RULE (CRITICAL): You must NEVER silently process fewer records than the user gave you.
 - If you counted X entries in the user's list but your [BULK_LOG] contains fewer, you MUST say so: "I'm recording [N] of [X] entries now — the rest will follow after you confirm."
-- If any record was skipped (duplicate, missing data, ambiguous), name it explicitly: "I skipped [customer/date] because it already exists in the system."
+- If any row is skipped (missing required field, truly ambiguous), name it explicitly AFTER the [BULK_LOG] block.
 - Never let the user discover on their own that records are missing. Proactively report every gap.
+
+NO DUPLICATE FILTERING (CRITICAL): You must NEVER remove an entry from [BULK_LOG] because it looks similar to an existing record.
+- Always include 100% of the entries the user gave you in [BULK_LOG] — even if an identical record appears in the farm context.
+- The app's database will detect real duplicates at save time and tell the user exactly which ones were skipped.
+- Your job is to PARSE, not to JUDGE what is duplicate. A record on Apr 30 and a record on May 2 with the same amount are NOT duplicates — they are two separate transactions.
 
 ## PAY RUNS (Grower & Farm Boss plans only)
 When farmer says "pay [name]", "run payroll", "pay my worker/manager":
@@ -848,10 +874,21 @@ Deno.serve(async (req: Request) => {
           max_tokens: (() => {
             if (chosenModel === MODEL_HAIKU) return 512;
             const lastText = (messages[messages.length - 1]?.content || "").toLowerCase();
-            // Bulk sales/CSV pastes need room for the JSON array — always give max
-            const bulkKw = ["tray", "trays", "frs each", "xaf each", "fcfa each", "each to", "record the following", "log the following", "sales from", "paid in cash"];
+            // Bulk logs (sales OR expenses) need max tokens for JSON array output
+            const bulkKw = [
+              // Sales bulk keywords
+              "tray", "trays", "frs each", "xaf each", "fcfa each", "each to",
+              "record the following", "log the following", "sales from", "paid in cash",
+              // Expense bulk keywords
+              "log these", "these expenses", "these costs", "these purchases",
+              "feed purchase", "medication purchase", "labor cost", "transport cost",
+              // Numbered list patterns
+              "1)", "2)", "3)",
+            ];
             if (bulkKw.some(kw => lastText.includes(kw))) return 8192;
-            if (lastText.length > 2000) return 8192;
+            // Long messages or many XAF mentions = bulk
+            const xafCount = (lastText.match(/\bxaf\b/g) || []).length;
+            if (xafCount >= 3 || lastText.length > 2000) return 8192;
             if (lastText.length > 500) return 4096;
             const analysisKw = ["analyse","analyze","report","performance","fcr","profit","recommend","compare","benchmark","break-even","cash flow"];
             if (analysisKw.some(kw => lastText.includes(kw))) return 2048;

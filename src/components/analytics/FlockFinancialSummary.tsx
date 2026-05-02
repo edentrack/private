@@ -38,25 +38,19 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
 
     setLoading(true);
     try {
-      const { data: expenses } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('flock_id', flock.id);
+      const [expensesRes, eggSalesRes, birdSalesRes] = await Promise.all([
+        supabase.from('expenses').select('amount').eq('flock_id', flock.id),
+        supabase.from('egg_sales').select('total_amount').eq('flock_id', flock.id),
+        supabase.from('bird_sales').select('total_amount').eq('flock_id', flock.id),
+      ]);
 
-      const { data: revenues } = await supabase
-        .from('revenues')
-        .select('amount')
-        .eq('flock_id', flock.id);
-
-      const totalExpenses = expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
-      const totalRevenue = revenues?.reduce((sum, rev) => sum + rev.amount, 0) || 0;
+      const totalExpenses = expensesRes.data?.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0) || 0;
+      const eggRevenue = eggSalesRes.data?.reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0) || 0;
+      const birdRevenue = birdSalesRes.data?.reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0) || 0;
+      const totalRevenue = eggRevenue + birdRevenue;
       const profit = totalRevenue - totalExpenses;
 
-      setFinancials({
-        totalExpenses,
-        totalRevenue,
-        profit
-      });
+      setFinancials({ totalExpenses, totalRevenue, profit });
     } catch (error) {
       console.error('Error loading financials:', error);
     } finally {

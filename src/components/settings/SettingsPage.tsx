@@ -258,7 +258,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={(e) => { e.stopPropagation(); setActiveTab(tab.id); }}
             className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all ${
               activeTab === tab.id
                 ? 'bg-gray-900 text-white shadow-sm'

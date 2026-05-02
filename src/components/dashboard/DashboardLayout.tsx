@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff } from 'lucide-react';
 import { FarmHealthRing } from './FarmHealthRing';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -89,6 +89,8 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'flocks', label: t('nav.flocks'), icon: ChickenIcon },
       { id: 'insights', label: t('nav.insights'), icon: TrendingUp },
       { id: 'tasks', label: t('nav.tasks') || 'Tasks', icon: ListChecks },
+      { id: 'egg-records', label: 'Egg Records', icon: Egg },
+      { id: 'mortality', label: 'Mortality', icon: HeartOff },
       // { id: 'compare', label: t('nav.compare'), icon: GitCompare }, // Wave 1: HIDDEN — niche owner use case, access via Analytics later
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
@@ -107,7 +109,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // Items hidden in Simple Mode (advanced features)
     const simpleModeHidden = new Set(['vet-log', 'shifts']);
     // Items only relevant when eggs are tracked (layer/mixed farms)
-    const eggOnlyItems = new Set(['sales']); // egg sales shown for all; only hide if pure broiler
+    const eggOnlyItems = new Set(['sales', 'egg-records']); // only show for layer/mixed farms
 
     const filteredItems = allItems.filter(item => {
       const visibility = canViewModule(currentRole, item.id, farmPermissions);
