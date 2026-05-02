@@ -24,59 +24,59 @@ function corsHeaders(req: Request): Record<string, string> {
 }
 
 // Minimum amounts per plan/billing_period/currency to guard against manipulation.
-// Keys: `${plan}:${billing_period}:${currency}` — falls back to quarterly if period missing.
-const MIN_AMOUNTS: Record<string, Record<string, Record<string, number>>> = {
+// Must match FIXED_PRICES in src/utils/regionalPayment.ts exactly.
+const MIN_AMOUNTS: Record<string, Record<string, number>> = {
   monthly: {
-    'pro:USD': 6.99, 'enterprise:USD': 14.99,
-    'pro:NGN': 11000, 'enterprise:NGN': 24000,
-    'pro:GHS': 105, 'enterprise:GHS': 235,
-    'pro:KES': 900, 'enterprise:KES': 2000,
-    'pro:ZAR': 129, 'enterprise:ZAR': 279,
-    'pro:UGX': 26000, 'enterprise:UGX': 57000,
-    'pro:TZS': 19000, 'enterprise:TZS': 41000,
-    'pro:RWF': 9500, 'enterprise:RWF': 21000,
-    'pro:XAF': 4500, 'enterprise:XAF': 10000,
-    'pro:XOF': 4500, 'enterprise:XOF': 10000,
-    'pro:EGP': 330, 'enterprise:EGP': 760,
-    'pro:MAD': 70, 'enterprise:MAD': 162,
-    'pro:ZMW': 185, 'enterprise:ZMW': 430,
-    'pro:EUR': 6.49, 'enterprise:EUR': 13.99,
-    'pro:GBP': 5.99, 'enterprise:GBP': 11.99,
-  } as Record<string, number>,
+    'pro:USD': 12,    'enterprise:USD': 35,    'industry:USD': 89,
+    'pro:NGN': 19000, 'enterprise:NGN': 56000,  'industry:NGN': 145000,
+    'pro:GHS': 180,   'enterprise:GHS': 549,    'industry:GHS': 1445,
+    'pro:KES': 1550,  'enterprise:KES': 4700,   'industry:KES': 12200,
+    'pro:ZAR': 220,   'enterprise:ZAR': 650,    'industry:ZAR': 1670,
+    'pro:UGX': 44500, 'enterprise:UGX': 133000, 'industry:UGX': 356000,
+    'pro:TZS': 32500, 'enterprise:TZS': 95700,  'industry:TZS': 244900,
+    'pro:RWF': 16300, 'enterprise:RWF': 49000,  'industry:RWF': 129000,
+    'pro:XAF': 7500,  'enterprise:XAF': 21000,  'industry:XAF': 53000,
+    'pro:XOF': 7500,  'enterprise:XOF': 21000,  'industry:XOF': 53000,
+    'pro:EGP': 565,   'enterprise:EGP': 1775,   'industry:EGP': 4560,
+    'pro:MAD': 120,   'enterprise:MAD': 378,    'industry:MAD': 979,
+    'pro:ZMW': 318,   'enterprise:ZMW': 1004,   'industry:ZMW': 2670,
+    'pro:EUR': 10.99, 'enterprise:EUR': 32.99,  'industry:EUR': 81.99,
+    'pro:GBP': 9.99,  'enterprise:GBP': 27.99,  'industry:GBP': 69.99,
+  },
   quarterly: {
-    'pro:USD': 14.99, 'enterprise:USD': 34.99,
-    'pro:NGN': 24000, 'enterprise:NGN': 56000,
-    'pro:GHS': 230, 'enterprise:GHS': 540,
-    'pro:KES': 2000, 'enterprise:KES': 4600,
-    'pro:ZAR': 280, 'enterprise:ZAR': 650,
-    'pro:UGX': 55000, 'enterprise:UGX': 130000,
-    'pro:TZS': 40000, 'enterprise:TZS': 93000,
-    'pro:RWF': 20000, 'enterprise:RWF': 47000,
-    'pro:XAF': 9000, 'enterprise:XAF': 21000,
-    'pro:XOF': 9000, 'enterprise:XOF': 21000,
-    'pro:EGP': 720, 'enterprise:EGP': 1680,
-    'pro:MAD': 150, 'enterprise:MAD': 350,
-    'pro:ZMW': 405, 'enterprise:ZMW': 945,
-    'pro:EUR': 13.99, 'enterprise:EUR': 31.99,
-    'pro:GBP': 11.99, 'enterprise:GBP': 27.99,
-  } as Record<string, number>,
+    'pro:USD': 30,    'enterprise:USD': 87,    'industry:USD': 222,
+    'pro:NGN': 48000, 'enterprise:NGN': 139000, 'industry:NGN': 355000,
+    'pro:GHS': 460,   'enterprise:GHS': 1342,   'industry:GHS': 3440,
+    'pro:KES': 4000,  'enterprise:KES': 11400,  'industry:KES': 28900,
+    'pro:ZAR': 560,   'enterprise:ZAR': 1616,   'industry:ZAR': 4100,
+    'pro:UGX': 110000,'enterprise:UGX': 323000, 'industry:UGX': 832000,
+    'pro:TZS': 80000, 'enterprise:TZS': 231000, 'industry:TZS': 588000,
+    'pro:RWF': 40000, 'enterprise:RWF': 117000, 'industry:RWF': 300000,
+    'pro:XAF': 18000, 'enterprise:XAF': 52000,  'industry:XAF': 132000,
+    'pro:XOF': 18000, 'enterprise:XOF': 52000,  'industry:XOF': 132000,
+    'pro:EGP': 1440,  'enterprise:EGP': 4180,   'industry:EGP': 10660,
+    'pro:MAD': 300,   'enterprise:MAD': 870,    'industry:MAD': 2220,
+    'pro:ZMW': 810,   'enterprise:ZMW': 2349,   'industry:ZMW': 5994,
+    'pro:EUR': 27.99, 'enterprise:EUR': 79.99,  'industry:EUR': 204.99,
+    'pro:GBP': 24.99, 'enterprise:GBP': 69.99,  'industry:GBP': 174.99,
+  },
   yearly: {
-    'pro:USD': 49.99, 'enterprise:USD': 114.99,
-    'pro:NGN': 80000, 'enterprise:NGN': 185000,
-    'pro:GHS': 760, 'enterprise:GHS': 1790,
-    'pro:KES': 6500, 'enterprise:KES': 15000,
-    'pro:ZAR': 920, 'enterprise:ZAR': 2150,
-    'pro:UGX': 185000, 'enterprise:UGX': 430000,
-    'pro:TZS': 132000, 'enterprise:TZS': 307000,
-    'pro:RWF': 67000, 'enterprise:RWF': 155000,
-    'pro:XAF': 30000, 'enterprise:XAF': 69000,
-    'pro:XOF': 30000, 'enterprise:XOF': 69000,
-    'pro:EGP': 2400, 'enterprise:EGP': 5520,
-    'pro:MAD': 500, 'enterprise:MAD': 1150,
-    'pro:ZMW': 1350, 'enterprise:ZMW': 3105,
-    'pro:EUR': 45.99, 'enterprise:EUR': 104.99,
-    'pro:GBP': 39.99, 'enterprise:GBP': 91.99,
-  } as Record<string, number>,
+    'pro:USD': 108,    'enterprise:USD': 300,    'industry:USD': 800,
+    'pro:NGN': 173000, 'enterprise:NGN': 483000, 'industry:NGN': 1285000,
+    'pro:GHS': 1642,   'enterprise:GHS': 4670,   'industry:GHS': 12360,
+    'pro:KES': 14000,  'enterprise:KES': 39000,  'industry:KES': 104000,
+    'pro:ZAR': 1990,   'enterprise:ZAR': 5610,   'industry:ZAR': 14790,
+    'pro:UGX': 400000, 'enterprise:UGX': 1122000,'industry:UGX': 3030000,
+    'pro:TZS': 285000, 'enterprise:TZS': 801000, 'industry:TZS': 2121000,
+    'pro:RWF': 145000, 'enterprise:RWF': 404000, 'industry:RWF': 1079000,
+    'pro:XAF': 65000,  'enterprise:XAF': 180000, 'industry:XAF': 480000,
+    'pro:XOF': 65000,  'enterprise:XOF': 180000, 'industry:XOF': 480000,
+    'pro:EGP': 5180,   'enterprise:EGP': 14400,  'industry:EGP': 38400,
+    'pro:MAD': 1080,   'enterprise:MAD': 3000,   'industry:MAD': 8000,
+    'pro:ZMW': 2916,   'enterprise:ZMW': 8100,   'industry:ZMW': 21598,
+    'pro:EUR': 99.99,  'enterprise:EUR': 274.99, 'industry:EUR': 739.99,
+    'pro:GBP': 89.99,  'enterprise:GBP': 239.99, 'industry:GBP': 639.99,
+  },
 };
 
 const BILLING_MONTHS: Record<string, number> = { monthly: 1, quarterly: 3, yearly: 12 };
@@ -148,7 +148,7 @@ async function handleCreate(req: Request, user: any, supabase: any, ch: Record<s
   const periodMins = MIN_AMOUNTS[billing_period] ?? MIN_AMOUNTS.quarterly;
   const minKey = `${plan}:${currency}`;
   const minUsdKey = `${plan}:USD`;
-  const minimum = (periodMins as Record<string, number>)[minKey] ?? (periodMins as Record<string, number>)[minUsdKey] ?? 14.99;
+  const minimum = (periodMins as Record<string, number>)[minKey] ?? (periodMins as Record<string, number>)[minUsdKey] ?? 30;
   const amount = typeof clientAmount === 'number' && clientAmount >= minimum
     ? clientAmount
     : minimum;
