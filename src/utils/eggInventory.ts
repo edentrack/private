@@ -45,12 +45,20 @@ export async function calculateEggInventory(
   const totalEggsCollected = collections.reduce((sum, c) => {
     const total = Number(c.total_eggs ?? 0);
     if (total > 0) return sum + total;
+    // Prefer per-size sum (matches what was written to egg_inventory)
+    const sizeSum = Number(c.small_eggs || 0) + Number(c.medium_eggs || 0) +
+                    Number(c.large_eggs || 0) + Number(c.jumbo_eggs || 0);
+    if (sizeSum > 0) return sum + sizeSum;
     return sum + Math.max(0, Number(c.trays || 0) * eggsPerTray - Number(c.broken || 0));
   }, 0);
 
   const totalEggsSold = sales.reduce((sum, s) => {
     const total = Number(s.total_eggs ?? 0);
     if (total > 0) return sum + total;
+    // Prefer per-size sum for old sale records
+    const sizeSum = Number(s.small_eggs_sold || 0) + Number(s.medium_eggs_sold || 0) +
+                    Number(s.large_eggs_sold || 0) + Number(s.jumbo_eggs_sold || 0);
+    if (sizeSum > 0) return sum + sizeSum;
     return sum + Number(s.trays || 0) * eggsPerTray;
   }, 0);
 

@@ -122,7 +122,7 @@ export function SalesManagement() {
 
       let birdSalesQuery = supabase
         .from('bird_sales')
-        .select('birds_sold, total_amount, flock_id, flocks(type)')
+        .select('birds_sold, total_amount, flock_id, payment_status, flocks(type)')
         .eq('farm_id', currentFarm.id);
 
       if (dateRange.start) {
@@ -131,7 +131,7 @@ export function SalesManagement() {
 
       let eggSalesQuery = supabase
         .from('egg_sales')
-        .select('total_eggs, total_amount, customer_name')
+        .select('total_eggs, total_amount, customer_name, payment_status')
         .eq('farm_id', currentFarm.id);
 
       if (dateRange.start) {
@@ -200,11 +200,16 @@ export function SalesManagement() {
 
       const totalUniqueCustomers = formalNames.size + informalCustomers.length;
 
+      // Count paid/pending from actual sales records (egg_sales + bird_sales)
+      const allSales = [...eggSalesData, ...birdSalesData];
+      const paidSalesCount = allSales.filter((s: any) => (s.payment_status || 'paid') === 'paid').length;
+      const pendingSalesCount = allSales.filter((s: any) => s.payment_status && s.payment_status !== 'paid').length;
+
       setStats({
         totalCustomers: totalUniqueCustomers,
         totalRevenue,
-        pendingInvoices: invoiceData.filter((inv) => inv.status !== 'paid' && inv.status !== 'cancelled').length,
-        paidInvoices: invoiceData.filter((inv) => inv.status === 'paid').length,
+        pendingInvoices: pendingSalesCount,
+        paidInvoices: paidSalesCount,
         broilerBirdsSold,
         layerBirdsSold,
         totalEggsSold,
@@ -407,7 +412,7 @@ export function SalesManagement() {
             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
               <FileText className="w-5 h-5 text-amber-600" />
             </div>
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('sales.pending_invoices')}</div>
+            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pending Sales</div>
           </div>
           <div className="text-3xl font-bold text-gray-900">{stats.pendingInvoices}</div>
         </div>
@@ -416,7 +421,7 @@ export function SalesManagement() {
             <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t('sales.paid_invoices')}</div>
+            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Paid Sales</div>
           </div>
           <div className="text-3xl font-bold text-gray-900">{stats.paidInvoices}</div>
         </div>

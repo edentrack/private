@@ -1003,13 +1003,22 @@ Deno.serve(async (req: Request) => {
     if (bulkLogMatch) {
       try {
         let raw = bulkLogMatch[1].trim();
+        let wasTruncated = false;
         // If JSON was truncated, try to close an open array
         if (!raw.endsWith(']') && !raw.endsWith('}')) {
           const lastBrace = raw.lastIndexOf('}');
-          if (lastBrace > -1) raw = raw.slice(0, lastBrace + 1) + ']';
+          if (lastBrace > -1) {
+            raw = raw.slice(0, lastBrace + 1) + ']';
+            wasTruncated = true;
+          }
         }
         bulkLogActions = JSON.parse(raw);
         responseContent = responseContent.replace(/\[BULK_LOG\][\s\S]*/, "").trim();
+        // Warn user if truncation cut some records
+        if (wasTruncated && bulkLogActions.length > 0) {
+          responseContent = (responseContent ? responseContent + "\n\n" : "") +
+            `⚠️ I could only parse **${bulkLogActions.length}** record${bulkLogActions.length !== 1 ? 's' : ''} before the response was cut off. If you sent more, please paste the remaining records in a follow-up message and I'll log them for you.`;
+        }
       } catch (e) {
         // Strip the broken BULK_LOG from display even if we can't parse it
         responseContent = responseContent.replace(/\[BULK_LOG\][\s\S]*/, "").trim();

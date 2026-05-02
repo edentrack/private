@@ -63,7 +63,7 @@ export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps
           .limit(1),
         supabase
           .from('egg_sales')
-          .select('trays_sold, unit_price')
+          .select('total_amount, trays, trays_sold, unit_price')
           .eq('flock_id', flock.id),
         supabase
           .from('mortality_logs')
@@ -80,10 +80,13 @@ export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps
         .reduce((sum, exp) => sum + exp.amount, 0);
 
       const currentWeight = weightRes.data?.[0]?.average_weight || 0;
-      const totalRevenue = (eggSalesRes.data || []).reduce(
-        (sum, sale) => sum + sale.trays_sold * sale.unit_price,
-        0
-      );
+      const totalRevenue = (eggSalesRes.data || []).reduce((sum, sale) => {
+        // Prefer total_amount (stored by RecordEggSale / LogSaleModal)
+        if (Number(sale.total_amount) > 0) return sum + Number(sale.total_amount);
+        // Fall back to trays * unit_price for old records
+        const trays = Number(sale.trays_sold || sale.trays || 0);
+        return sum + trays * Number(sale.unit_price || 0);
+      }, 0);
 
       const totalMortality = (mortalityRes.data || []).reduce((sum, log) => sum + (log.count || 0), 0);
       const survivalRate = flock.initial_count > 0
@@ -100,11 +103,20 @@ export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps
       const daysRemaining = Math.max(0, expectedMaturityAge - flockAge);
 
       const projectedFinalWeight = currentWeight + (averageDailyGain * daysRemaining) / 1000;
-      const pricePerKg = flock.type === 'Broiler' ? 5 : 8;
-      const expectedRevenue = flock.current_count * projectedFinalWeight * pricePerKg + totalRevenue;
+
+      // ROI is based on actual revenue vs actual expenses to avoid currency/projection errors
+      const currentProfit = totalRevenue - totalExpenses;
+      const roi = totalExpenses > 0 ? (currentProfit / totalExpenses) * 100 : 0;
+
+      // For projected revenue, use actual revenue + extrapolated remaining days
+      // Only meaningful for broilers; layers show actual ROI
+      const dailyRevenue = flockAge > 0 ? totalRevenue / flockAge : 0;
+      const projectedFutureRevenue = flock.type === 'Broiler'
+        ? flock.current_count * projectedFinalWeight * (totalRevenue > 0 && totalExpenses > 0 ? totalRevenue / totalExpenses * 1000 : 1000)
+        : dailyRevenue * daysRemaining;
+      const expectedRevenue = totalRevenue + projectedFutureRevenue;
 
       const projectedProfit = expectedRevenue - totalExpenses;
-      const roi = totalExpenses > 0 ? (projectedProfit / totalExpenses) * 100 : 0;
       const breakEvenPoint = expectedRevenue > 0
         ? (totalExpenses / expectedRevenue) * 100
         : 0;

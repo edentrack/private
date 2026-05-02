@@ -28,7 +28,11 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
   const { user, profile, currentFarm } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const [currentFlock, setCurrentFlock] = useState<Flock | null>(flock || null);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const todayLocal = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const [date, setDate] = useState(todayLocal());
   const [count, setCount] = useState('');
   const [reason, setReason] = useState('Disease');
   const [notes, setNotes] = useState('');
@@ -59,7 +63,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
   useEffect(() => {
     if (currentFlock) {
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(todayLocal());
       setCount('');
       setReason('Disease');
       setNotes('');
@@ -211,7 +215,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              max={todayLocal()}
               required
               className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm"
             />

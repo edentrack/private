@@ -3,7 +3,7 @@ import { Check, Crown, Sprout, Leaf, Building2, Globe, ChevronDown, Loader2, Ale
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import {
-  detectRegion, ALL_COUNTRIES, RegionConfig,
+  detectRegion, ALL_COUNTRIES, RegionConfig, COUNTRY_CONFIGS, FIXED_PRICES,
   getPrice, getPriceCurrency, formatPrice,
 } from '../../utils/regionalPayment';
 
@@ -60,7 +60,7 @@ interface SubscribePageProps {
 }
 
 export function SubscribePage({ onBack }: SubscribePageProps) {
-  const { profile, refreshSession } = useAuth();
+  const { profile, currentFarm, refreshSession } = useAuth();
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
   const [region, setRegion] = useState<RegionConfig | null>(null);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
@@ -77,7 +77,18 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
     ? new Date(profile.subscription_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
 
-  useEffect(() => { setRegion(detectRegion()); }, []);
+  useEffect(() => {
+    const detected = detectRegion();
+    // If timezone detection fell back to USD/international, try farm's currency_code
+    if (detected.currency === 'USD' && currentFarm?.currency_code && currentFarm.currency_code !== 'USD') {
+      const farmCurrency = currentFarm.currency_code;
+      if (FIXED_PRICES[farmCurrency]) {
+        const match = Object.values(COUNTRY_CONFIGS).find(c => c.currency === farmCurrency);
+        if (match) { setRegion(match); return; }
+      }
+    }
+    setRegion(detected);
+  }, [currentFarm?.currency_code]);
 
   // Handle payment gateway returns (Stripe + Flutterwave)
   useEffect(() => {

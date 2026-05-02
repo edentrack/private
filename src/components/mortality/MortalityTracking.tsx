@@ -30,7 +30,11 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
   const flock = selectedFlock || flockProp;
   const [count, setCount] = useState(0);
   const [reason, setReason] = useState('Unknown');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const todayLocal = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const [date, setDate] = useState(todayLocal());
   const [notes, setNotes] = useState('');
   const [logs, setLogs] = useState<MortalityLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,7 +98,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
         .eq('id', flock.id);
 
       setCount(0);
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(todayLocal());
       setNotes('');
       loadMortalityLogs();
       toast.success('Mortality logged successfully');

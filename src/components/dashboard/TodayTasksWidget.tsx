@@ -967,7 +967,7 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
 
   const showEmpty = dailyTasks.length === 0 && intervalTimesToShow.length === 0;
   const eggModalExistingTask = eggTaskByHHMM[eggModalTimeHHMM] || null;
-  const defaultEggSync = Boolean((eggTemplate as any)?.updates_inventory);
+  const defaultEggSync = canSyncToInventoryEgg;
   const eggModalInitialSync = Boolean(
     eggModalExistingTask?.data_payload?.sync_to_inventory ?? defaultEggSync
   );

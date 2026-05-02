@@ -175,7 +175,8 @@ export function EggProductionReports({ flockId }: EggProductionReportsProps) {
     rows.push(['Large Eggs', '', summary.largeEggs]);
     rows.push(['Jumbo Eggs', '', summary.jumboEggs]);
     rows.push(['Damaged Eggs', '', summary.damagedEggs]);
-    rows.push(['Average per Day', '', '', '', '', '', '', Math.round(summary.totalEggs / collections.length)]);
+    const distinctDays = new Set(collections.map(c => c.collection_date)).size;
+    rows.push(['Average per Day', '', '', '', '', '', '', distinctDays > 0 ? Math.round(summary.totalEggs / distinctDays) : 0]);
 
     const csvContent = [headers, ...rows]
       .map((row) => row.map((cell) => `"${cell}"`).join(','))
@@ -191,7 +192,8 @@ export function EggProductionReports({ flockId }: EggProductionReportsProps) {
   function shareReport() {
     const summary = calculateSummary();
     const farmName = currentFarm?.name || 'Farm';
-    const avgPerDay = collections.length > 0 ? Math.round(summary.totalEggs / collections.length) : 0;
+    const distinctDays = new Set(collections.map(c => c.collection_date)).size;
+    const avgPerDay = distinctDays > 0 ? Math.round(summary.totalEggs / distinctDays) : 0;
 
     const message = `*${farmName} - Egg Production Report*\n\n` +
       `Period: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n` +
@@ -209,7 +211,8 @@ export function EggProductionReports({ flockId }: EggProductionReportsProps) {
   }
 
   const summary = calculateSummary();
-  const avgPerDay = collections.length > 0 ? Math.round(summary.totalEggs / collections.length) : 0;
+  const distinctDays = new Set(collections.map(c => c.collection_date)).size;
+  const avgPerDay = distinctDays > 0 ? Math.round(summary.totalEggs / distinctDays) : 0;
 
   if (loading && collections.length === 0) {
     return (

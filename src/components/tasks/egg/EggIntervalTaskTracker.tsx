@@ -168,9 +168,9 @@ export function EggIntervalTaskTracker({
   }, [currentRole, farmPermissions?.managers_can_edit_eggs]);
 
   const defaultSyncToInventory = useMemo(() => {
-    // Used when there's no existing task row yet for an interval.
-    return Boolean((eggTemplate as any)?.updates_inventory);
-  }, [eggTemplate]);
+    // Default ON so egg collections flow into inventory automatically.
+    return canSyncToInventory;
+  }, [canSyncToInventory]);
 
   const intervalTimes = useMemo(() => normalizeTimes(eggTemplate?.scheduled_times), [eggTemplate?.scheduled_times]);
   const farmTz = useMemo(() => getFarmTimeZone(currentFarm), [currentFarm]);
@@ -966,9 +966,7 @@ export function EggIntervalTaskTracker({
     const payload = row.task?.data_payload || {};
     const sync = row.task
       ? Boolean(payload?.sync_to_inventory)
-      : isSelectedDateToday
-      ? defaultSyncToInventory
-      : false; // safety: for past dates, default to task-only unless user turns sync ON
+      : defaultSyncToInventory;
 
     setModalIntervalTime(timeHHMM);
     setModalInitialSync(sync);

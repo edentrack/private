@@ -81,68 +81,68 @@ export const LAYER_GROWTH_TARGETS: Record<number, WeeklyTarget> = {
     cumulativeFeedIntakeKg: 2.47,
     waterConsumptionMlPerBird: 110
   },
-  10: { 
-    weight: 1.1, 
+  10: {
+    weight: 1.1,
     description: 'Pre-layer',
-    feedIntakeGPerBird: 54,
+    feedIntakeGPerBird: 63,
     cumulativeFeedIntakeKg: 2.92,
     waterConsumptionMlPerBird: 120
   },
-  11: { 
-    weight: 1.2, 
-    description: 'Pre-layer',
-    feedIntakeGPerBird: 60,
-    cumulativeFeedIntakeKg: 3.40,
-    waterConsumptionMlPerBird: 125
-  },
-  12: { 
-    weight: 1.25, 
-    description: 'Late grower phase',
-    feedIntakeGPerBird: 64,
-    cumulativeFeedIntakeKg: 3.89,
-    waterConsumptionMlPerBird: 128
-  },
-  13: { 
-    weight: 1.28, 
+  11: {
+    weight: 1.2,
     description: 'Pre-layer',
     feedIntakeGPerBird: 69,
-    cumulativeFeedIntakeKg: 4.39,
-    waterConsumptionMlPerBird: 130
+    cumulativeFeedIntakeKg: 3.42,
+    waterConsumptionMlPerBird: 127
   },
-  14: { 
-    weight: 1.3, 
-    description: 'Pre-layer',
-    feedIntakeGPerBird: 72,
-    cumulativeFeedIntakeKg: 4.90,
-    waterConsumptionMlPerBird: 132
-  },
-  15: { 
-    weight: 1.3, 
-    description: 'Pre-layer phase',
-    feedIntakeGPerBird: 74,
-    cumulativeFeedIntakeKg: 5.40,
+  12: {
+    weight: 1.25,
+    description: 'Late grower phase',
+    feedIntakeGPerBird: 75,
+    cumulativeFeedIntakeKg: 3.97,
     waterConsumptionMlPerBird: 133
   },
-  16: { 
-    weight: 1.4, 
-    description: 'Pre-layer phase',
-    feedIntakeGPerBird: 77,
-    cumulativeFeedIntakeKg: 5.96,
+  13: {
+    weight: 1.28,
+    description: 'Pre-layer',
+    feedIntakeGPerBird: 81,
+    cumulativeFeedIntakeKg: 4.56,
     waterConsumptionMlPerBird: 140
   },
-  17: { 
-    weight: 1.5, 
-    description: 'POL - Point of Lay',
-    feedIntakeGPerBird: 80,
-    cumulativeFeedIntakeKg: 6.55,
-    waterConsumptionMlPerBird: 150
+  14: {
+    weight: 1.3,
+    description: 'Pre-layer',
+    feedIntakeGPerBird: 86,
+    cumulativeFeedIntakeKg: 5.18,
+    waterConsumptionMlPerBird: 147
   },
-  18: { 
-    weight: 1.55, 
-    description: 'Point of lay - start laying',
-    feedIntakeGPerBird: 85,
-    cumulativeFeedIntakeKg: 7.18,
+  15: {
+    weight: 1.3,
+    description: 'Pre-layer phase',
+    feedIntakeGPerBird: 91,
+    cumulativeFeedIntakeKg: 5.83,
+    waterConsumptionMlPerBird: 153
+  },
+  16: {
+    weight: 1.4,
+    description: 'Pre-layer phase',
+    feedIntakeGPerBird: 96,
+    cumulativeFeedIntakeKg: 6.51,
     waterConsumptionMlPerBird: 160
+  },
+  17: {
+    weight: 1.5,
+    description: 'POL - Point of Lay',
+    feedIntakeGPerBird: 101,
+    cumulativeFeedIntakeKg: 7.22,
+    waterConsumptionMlPerBird: 168
+  },
+  18: {
+    weight: 1.55,
+    description: 'Point of lay - start laying',
+    feedIntakeGPerBird: 107,
+    cumulativeFeedIntakeKg: 7.97,
+    waterConsumptionMlPerBird: 175
   },
   19: { 
     weight: 1.6, 

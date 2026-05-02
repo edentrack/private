@@ -170,7 +170,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
       task_type: 'checklist',
       requires_input: false,
       input_fields: null,
-      updates_inventory: false,
+      updates_inventory: true,
       inventory_type: null,
       inventory_item_id: null,
       inventory_effect: 'none',

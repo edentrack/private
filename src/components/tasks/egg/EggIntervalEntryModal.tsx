@@ -52,10 +52,8 @@ export function EggIntervalEntryModal({
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
   const isPastDateAtOpen = collectionDate !== todayISO;
   const initialSyncSafe = useMemo(() => {
-    // Safety default: for brand-new past-date entries, default OFF.
-    if (!existingTask && isPastDateAtOpen) return false;
     return initialSyncToInventory;
-  }, [existingTask, initialSyncToInventory, isPastDateAtOpen]);
+  }, [initialSyncToInventory]);
 
   const [collectionDateState, setCollectionDateState] = useState<string>(collectionDate);
   const [syncToInventory, setSyncToInventory] = useState<boolean>(initialSyncSafe && canSyncToInventory);
