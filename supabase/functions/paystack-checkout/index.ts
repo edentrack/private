@@ -23,10 +23,11 @@ function json(data: unknown, status = 200, corsHeaders: Record<string, string>) 
   });
 }
 
-// Plan → USD price map (cents representation for Paystack amounts)
+// Plan → USD price map — must match FIXED_PRICES in src/utils/regionalPayment.ts
 const PLAN_PRICES_USD: Record<string, Record<string, number>> = {
-  quarterly: { pro: 14.99, enterprise: 34.99, industry: 99.99 },
-  yearly:    { pro: 49.99, enterprise: 114.99, industry: 329.99 },
+  monthly:   { pro: 12,  enterprise: 35,  industry: 89  },
+  quarterly: { pro: 30,  enterprise: 87,  industry: 222 },
+  yearly:    { pro: 108, enterprise: 300, industry: 800 },
 };
 
 // Convert USD to local currency amount in minor units (kobo, pesewas, etc.)

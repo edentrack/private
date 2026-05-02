@@ -8,27 +8,28 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const APP_URL = Deno.env.get("APP_URL") || "https://edentrack.app";
 
-// Stripe prices (USD cents)
+// Stripe prices (USD cents) — must match FIXED_PRICES in src/utils/regionalPayment.ts
 const STRIPE_PRICES: Record<string, Record<string, number>> = {
-  monthly:   { pro: 699,  enterprise: 1499 },
-  quarterly: { pro: 1499, enterprise: 3499 },
-  yearly:    { pro: 4999, enterprise: 11499 },
+  monthly:   { pro: 1200,  enterprise: 3500,  industry: 8900  },
+  quarterly: { pro: 3000,  enterprise: 8700,  industry: 22200 },
+  yearly:    { pro: 10800, enterprise: 30000, industry: 80000 },
 };
 
-// Flutterwave prices (local currency units) — mirrors FIXED_PRICES in regionalPayment.ts
+// Flutterwave prices (local currency units) — must match FIXED_PRICES in src/utils/regionalPayment.ts
 const FLW_PRICES: Record<string, Record<string, Record<string, number>>> = {
-  NGN: { monthly: { pro: 11000, enterprise: 24000 }, quarterly: { pro: 24000, enterprise: 56000 }, yearly: { pro: 80000, enterprise: 185000 } },
-  GHS: { monthly: { pro: 105,   enterprise: 235   }, quarterly: { pro: 230,   enterprise: 540   }, yearly: { pro: 760,   enterprise: 1790  } },
-  KES: { monthly: { pro: 900,   enterprise: 2000  }, quarterly: { pro: 2000,  enterprise: 4600  }, yearly: { pro: 6500,  enterprise: 15000 } },
-  ZAR: { monthly: { pro: 129,   enterprise: 279   }, quarterly: { pro: 280,   enterprise: 650   }, yearly: { pro: 920,   enterprise: 2150  } },
-  UGX: { monthly: { pro: 26000, enterprise: 57000 }, quarterly: { pro: 55000, enterprise: 130000 }, yearly: { pro: 185000, enterprise: 430000 } },
-  TZS: { monthly: { pro: 19000, enterprise: 41000 }, quarterly: { pro: 40000, enterprise: 93000  }, yearly: { pro: 132000, enterprise: 307000 } },
-  RWF: { monthly: { pro: 9500,  enterprise: 21000 }, quarterly: { pro: 20000, enterprise: 47000  }, yearly: { pro: 67000,  enterprise: 155000 } },
-  XAF: { monthly: { pro: 4500,  enterprise: 10000 }, quarterly: { pro: 9000,  enterprise: 21000  }, yearly: { pro: 30000,  enterprise: 69000  } },
-  XOF: { monthly: { pro: 4500,  enterprise: 10000 }, quarterly: { pro: 9000,  enterprise: 21000  }, yearly: { pro: 30000,  enterprise: 69000  } },
-  EGP: { monthly: { pro: 330,   enterprise: 760   }, quarterly: { pro: 720,   enterprise: 1680  }, yearly: { pro: 2400,  enterprise: 5520  } },
-  MAD: { monthly: { pro: 70,    enterprise: 162   }, quarterly: { pro: 150,   enterprise: 350   }, yearly: { pro: 500,   enterprise: 1150  } },
-  USD: { monthly: { pro: 699,   enterprise: 1499  }, quarterly: { pro: 1499,  enterprise: 3499  }, yearly: { pro: 4999,  enterprise: 11499 } },
+  NGN: { monthly: { pro: 19000, enterprise: 56000, industry: 145000 }, quarterly: { pro: 48000, enterprise: 139000, industry: 355000 }, yearly: { pro: 173000, enterprise: 483000, industry: 1285000 } },
+  GHS: { monthly: { pro: 180,   enterprise: 549,   industry: 1445   }, quarterly: { pro: 460,   enterprise: 1342,   industry: 3440   }, yearly: { pro: 1642,  enterprise: 4670,   industry: 12360  } },
+  KES: { monthly: { pro: 1550,  enterprise: 4700,  industry: 12200  }, quarterly: { pro: 4000,  enterprise: 11400,  industry: 28900  }, yearly: { pro: 14000, enterprise: 39000,  industry: 104000 } },
+  ZAR: { monthly: { pro: 220,   enterprise: 650,   industry: 1670   }, quarterly: { pro: 560,   enterprise: 1616,   industry: 4100   }, yearly: { pro: 1990,  enterprise: 5610,   industry: 14790  } },
+  UGX: { monthly: { pro: 44500, enterprise: 133000,industry: 356000 }, quarterly: { pro: 110000,enterprise: 323000, industry: 832000 }, yearly: { pro: 400000,enterprise: 1122000,industry: 3030000} },
+  TZS: { monthly: { pro: 32500, enterprise: 95700, industry: 244900 }, quarterly: { pro: 80000, enterprise: 231000, industry: 588000 }, yearly: { pro: 285000,enterprise: 801000, industry: 2121000} },
+  RWF: { monthly: { pro: 16300, enterprise: 49000, industry: 129000 }, quarterly: { pro: 40000, enterprise: 117000, industry: 300000 }, yearly: { pro: 145000,enterprise: 404000, industry: 1079000} },
+  XAF: { monthly: { pro: 7500,  enterprise: 21000, industry: 53000  }, quarterly: { pro: 18000, enterprise: 52000,  industry: 132000 }, yearly: { pro: 65000, enterprise: 180000, industry: 480000 } },
+  XOF: { monthly: { pro: 7500,  enterprise: 21000, industry: 53000  }, quarterly: { pro: 18000, enterprise: 52000,  industry: 132000 }, yearly: { pro: 65000, enterprise: 180000, industry: 480000 } },
+  EGP: { monthly: { pro: 565,   enterprise: 1775,  industry: 4560   }, quarterly: { pro: 1440,  enterprise: 4180,   industry: 10660  }, yearly: { pro: 5180,  enterprise: 14400,  industry: 38400  } },
+  MAD: { monthly: { pro: 120,   enterprise: 378,   industry: 979    }, quarterly: { pro: 300,   enterprise: 870,    industry: 2220   }, yearly: { pro: 1080,  enterprise: 3000,   industry: 8000   } },
+  ZMW: { monthly: { pro: 318,   enterprise: 1004,  industry: 2670   }, quarterly: { pro: 810,   enterprise: 2349,   industry: 5994   }, yearly: { pro: 2916,  enterprise: 8100,   industry: 21598  } },
+  USD: { monthly: { pro: 12,    enterprise: 35,    industry: 89     }, quarterly: { pro: 30,    enterprise: 87,     industry: 222    }, yearly: { pro: 108,   enterprise: 300,    industry: 800    } },
 };
 
 const PLAN_NAMES: Record<string, string> = { pro: "Grower", enterprise: "Farm Boss" };

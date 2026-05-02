@@ -208,19 +208,27 @@ function dateOnly(base: Date, offsetDays: number): string {
   return d.toISOString().split("T")[0];
 }
 
+// Must match FIXED_PRICES in src/utils/regionalPayment.ts
 const PRICES: Record<string, Record<string, Record<string, number>>> = {
-  USD: { quarterly: { pro: 14.99, enterprise: 34.99, industry: 99.99 }, yearly: { pro: 49.99, enterprise: 114.99, industry: 329.99 } },
-  NGN: { quarterly: { pro: 24000, enterprise: 56000, industry: 160000 }, yearly: { pro: 80000, enterprise: 185000, industry: 530000 } },
-  GHS: { quarterly: { pro: 230, enterprise: 540, industry: 1550 }, yearly: { pro: 760, enterprise: 1790, industry: 5100 } },
-  KES: { quarterly: { pro: 2000, enterprise: 4600, industry: 13000 }, yearly: { pro: 6500, enterprise: 15000, industry: 43000 } },
-  ZAR: { quarterly: { pro: 280, enterprise: 650, industry: 1850 }, yearly: { pro: 920, enterprise: 2150, industry: 6100 } },
-  EGP: { quarterly: { pro: 720, enterprise: 1680, industry: 4800 }, yearly: { pro: 2400, enterprise: 5520, industry: 15840 } },
-  MAD: { quarterly: { pro: 150, enterprise: 350, industry: 1000 }, yearly: { pro: 500, enterprise: 1150, industry: 3300 } },
-  ZMW: { quarterly: { pro: 405, enterprise: 945, industry: 2700 }, yearly: { pro: 1350, enterprise: 3105, industry: 8910 } },
+  USD: { monthly: { pro: 12,  enterprise: 35,  industry: 89  }, quarterly: { pro: 30,  enterprise: 87,  industry: 222 }, yearly: { pro: 108,    enterprise: 300,    industry: 800    } },
+  NGN: { monthly: { pro: 19000, enterprise: 56000, industry: 145000 }, quarterly: { pro: 48000, enterprise: 139000, industry: 355000 }, yearly: { pro: 173000, enterprise: 483000, industry: 1285000 } },
+  GHS: { monthly: { pro: 180,   enterprise: 549,   industry: 1445  }, quarterly: { pro: 460,   enterprise: 1342,  industry: 3440   }, yearly: { pro: 1642,  enterprise: 4670,   industry: 12360  } },
+  KES: { monthly: { pro: 1550,  enterprise: 4700,  industry: 12200 }, quarterly: { pro: 4000,  enterprise: 11400, industry: 28900  }, yearly: { pro: 14000, enterprise: 39000,  industry: 104000 } },
+  ZAR: { monthly: { pro: 220,   enterprise: 650,   industry: 1670  }, quarterly: { pro: 560,   enterprise: 1616,  industry: 4100   }, yearly: { pro: 1990,  enterprise: 5610,   industry: 14790  } },
+  UGX: { monthly: { pro: 44500, enterprise: 133000,industry: 356000}, quarterly: { pro: 110000,enterprise: 323000,industry: 832000 }, yearly: { pro: 400000,enterprise: 1122000,industry: 3030000} },
+  TZS: { monthly: { pro: 32500, enterprise: 95700, industry: 244900}, quarterly: { pro: 80000, enterprise: 231000,industry: 588000 }, yearly: { pro: 285000,enterprise: 801000, industry: 2121000} },
+  RWF: { monthly: { pro: 16300, enterprise: 49000, industry: 129000}, quarterly: { pro: 40000, enterprise: 117000,industry: 300000 }, yearly: { pro: 145000,enterprise: 404000, industry: 1079000} },
+  XAF: { monthly: { pro: 7500,  enterprise: 21000, industry: 53000 }, quarterly: { pro: 18000, enterprise: 52000, industry: 132000 }, yearly: { pro: 65000, enterprise: 180000, industry: 480000  } },
+  XOF: { monthly: { pro: 7500,  enterprise: 21000, industry: 53000 }, quarterly: { pro: 18000, enterprise: 52000, industry: 132000 }, yearly: { pro: 65000, enterprise: 180000, industry: 480000  } },
+  EGP: { monthly: { pro: 565,   enterprise: 1775,  industry: 4560  }, quarterly: { pro: 1440,  enterprise: 4180,  industry: 10660  }, yearly: { pro: 5180,  enterprise: 14400,  industry: 38400   } },
+  MAD: { monthly: { pro: 120,   enterprise: 378,   industry: 979   }, quarterly: { pro: 300,   enterprise: 870,   industry: 2220   }, yearly: { pro: 1080,  enterprise: 3000,   industry: 8000    } },
+  ZMW: { monthly: { pro: 318,   enterprise: 1004,  industry: 2670  }, quarterly: { pro: 810,   enterprise: 2349,  industry: 5994   }, yearly: { pro: 2916,  enterprise: 8100,   industry: 21598   } },
+  EUR: { monthly: { pro: 10.99, enterprise: 32.99, industry: 81.99 }, quarterly: { pro: 27.99, enterprise: 79.99, industry: 204.99 }, yearly: { pro: 99.99, enterprise: 274.99, industry: 739.99  } },
+  GBP: { monthly: { pro: 9.99,  enterprise: 27.99, industry: 69.99 }, quarterly: { pro: 24.99, enterprise: 69.99, industry: 174.99 }, yearly: { pro: 89.99, enterprise: 239.99, industry: 639.99  } },
 };
 
 function lookupPrice(plan: string, period: string, currency: string): number {
-  return PRICES[currency]?.[period]?.[plan] ?? PRICES.USD[period]?.[plan] ?? 14.99;
+  return PRICES[currency]?.[period]?.[plan] ?? PRICES.USD[period]?.[plan] ?? 30;
 }
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
