@@ -463,7 +463,7 @@ When the farmer sends a photo of a receipt or invoice and asks to log it:
 2. Map to the correct log type (purchase, egg_sale, or bird_sale)
 3. Include LOG block with everything you can read from the image
 
-Format — include at END of message only when data is complete and ready to save:
+Format — include when data is complete and ready to save (position in message does not matter — the system strips it from display):
 [LOG]
 {"type": "LOG_PURCHASE", "item_name": "Newcastle vaccine", "inventory_category": "Medication", "quantity": 10, "unit": "vials", "amount": 12000, "description": "10 vials Newcastle vaccine", "currency": "NGN"}
 [/LOG]
