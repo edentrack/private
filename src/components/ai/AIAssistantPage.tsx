@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { EdenAvatarAnimated } from './EdenAvatarAnimated';
+import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
 
 interface ImageAttachment {
   data: string;       // base64 (no prefix)
@@ -269,7 +270,7 @@ export function AIAssistantPage() {
 
   // Core DB write logic, reused by both single confirmLog and bulk confirmBulkLog
   const executeLogAction = async (logAction: LogAction, farmId: string, currency: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getFarmTodayISO(getFarmTimeZone(currentFarm));
     const recordDate = logAction.log_date || today;
 
     const findFlock = async (name?: string) => {
