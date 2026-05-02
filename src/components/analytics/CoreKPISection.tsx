@@ -165,21 +165,15 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
 
       const prevDeaths = (prevMortality || []).reduce((sum, m) => sum + (m.count || 0), 0);
 
-      const { data: revenue } = await supabase
-        .from('revenues')
-        .select('amount')
-        .eq('farm_id', currentFarm.id)
-        .gte('revenue_date', start)
-        .lte('revenue_date', end);
+      const [{ data: eggSales }, { data: birdSales }, { data: expenses }] = await Promise.all([
+        supabase.from('egg_sales').select('total_amount').eq('farm_id', currentFarm.id).gte('sale_date', start).lte('sale_date', end),
+        supabase.from('bird_sales').select('total_amount').eq('farm_id', currentFarm.id).gte('sale_date', start).lte('sale_date', end),
+        supabase.from('expenses').select('amount').eq('farm_id', currentFarm.id).gte('incurred_on', start).lte('incurred_on', end),
+      ]);
 
-      const { data: expenses } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('farm_id', currentFarm.id)
-        .gte('incurred_on', start)
-        .lte('incurred_on', end);
-
-      const totalRevenue = (revenue || []).reduce((sum, r) => sum + (r.amount || 0), 0);
+      const totalRevenue =
+        (eggSales?.reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0) +
+        (birdSales?.reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0);
       const totalExpenses = (expenses || []).reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const days = period === 'today' ? 1 : period === 'week' ? 7 : 30;

@@ -32,24 +32,22 @@ export function FarmFinancialSummary({ compact = false, farm }: { compact?: bool
 
     setLoading(true);
     try {
-      const { data: expenses } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('farm_id', targetFarm.id);
+      const [
+        { data: expenses },
+        { data: eggSales },
+        { data: birdSales },
+        { data: flocks },
+      ] = await Promise.all([
+        supabase.from('expenses').select('amount').eq('farm_id', targetFarm.id),
+        supabase.from('egg_sales').select('total_amount').eq('farm_id', targetFarm.id),
+        supabase.from('bird_sales').select('total_amount').eq('farm_id', targetFarm.id),
+        supabase.from('flocks').select('id').eq('farm_id', targetFarm.id).eq('status', 'active'),
+      ]);
 
-      const { data: revenues } = await supabase
-        .from('revenues')
-        .select('amount')
-        .eq('farm_id', targetFarm.id);
-
-      const { data: flocks } = await supabase
-        .from('flocks')
-        .select('id')
-        .eq('farm_id', targetFarm.id)
-        .eq('status', 'active');
-
-      const totalExpenses = expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
-      const totalRevenue = revenues?.reduce((sum, rev) => sum + rev.amount, 0) || 0;
+      const totalExpenses = expenses?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
+      const totalRevenue =
+        (eggSales?.reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0) +
+        (birdSales?.reduce((sum, s) => sum + (s.total_amount || 0), 0) || 0);
       const totalProfit = totalRevenue - totalExpenses;
 
       setFinancials({

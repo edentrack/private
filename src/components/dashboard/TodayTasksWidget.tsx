@@ -179,7 +179,7 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
         await normalizeAndDedupTasksForDate(supabase, currentFarm.id, date);
         const tasksData = await getTasksForDate(supabase, currentFarm.id, date, true, flockTypes, farmTz);
         setTasks(
-          (tasksData as ExtendedTask[]).filter((task: any) => task.templateIsActive && task.templateIsEnabled)
+          (tasksData as ExtendedTask[]).filter((task: any) => task.template_id ? (task.templateIsActive && task.templateIsEnabled) : true)
         );
 
         const [farmRow, eggTemplatesRes] = await Promise.all([
