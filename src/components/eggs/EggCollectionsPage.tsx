@@ -8,7 +8,7 @@ import { EggInventory } from './EggInventory';
 import { EggProductionReports } from './EggProductionReports';
 import { Flock } from '../../types/database';
 
-export default function EggCollectionsPage() {
+export function EggCollectionsPage() {
   const { currentFarm } = useAuth();
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
   const [flocks, setFlocks] = useState<Flock[]>([]);

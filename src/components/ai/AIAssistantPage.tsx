@@ -517,8 +517,6 @@ export function AIAssistantPage() {
         due_date: taskDate,
         status: 'pending',
         requires_input: false,
-        created_by: user?.id || null,
-        notes: logAction.notes || null,
       }).select('id');
       if (taskErr) throw new Error(`Task creation failed: ${taskErr.message}`);
       if (!taskData?.length) throw new Error('Task not saved — possible permission issue.');
