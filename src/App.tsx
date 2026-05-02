@@ -630,6 +630,10 @@ function AppContent() {
         setCurrentView('notifications');
         return;
       }
+      if (hash.includes('#/ai-assistant')) {
+        setCurrentView('ai-assistant');
+        return;
+      }
       if (hash.includes('#/dashboard')) {
         setCurrentView('dashboard');
         return;
