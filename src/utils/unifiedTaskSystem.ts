@@ -147,7 +147,12 @@ export async function normalizeAndDedupTasksForDate(
   for (const r of data as any[]) {
     const dueKey = String(r.due_date || r.scheduled_for || date).slice(0, 10);
     const hhmm = String(r.scheduled_time || '').slice(0, 5);
-    const key = `${r.template_id || 'no_template'}|${dueKey}|${hhmm}`;
+    // Standalone tasks (no template) each get a unique key so they are NEVER
+    // deduplicated against each other — only template-bound tasks with the same
+    // template + date + time are collapsed.
+    const key = r.template_id
+      ? `${r.template_id}|${dueKey}|${hhmm}`
+      : `standalone|${r.id}`;
     const arr = groups.get(key) || [];
     arr.push(r);
     groups.set(key, arr);

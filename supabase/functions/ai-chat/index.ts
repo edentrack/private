@@ -97,13 +97,18 @@ interface ChatRequest {
 }
 
 async function getFarmContext(supabase: any, farmId: string): Promise<{ context: string; setupConfig: any }> {
-  const today = new Date().toISOString().split("T")[0];
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-
-  // Fetch farm start date first so historical queries cover the full farm lifetime
-  const { data: farmMeta } = await supabase.from("farms").select("created_at").eq("id", farmId).maybeSingle();
+  // Fetch farm meta first so timezone-aware dates are available for all subsequent queries.
+  // Without this, Deno runs in UTC — farms in UTC+1 (e.g. WAT) see "tomorrow" as today
+  // after 11 PM local time, causing the LLM to generate wrong due_dates for CREATE_TASK.
+  const { data: farmMeta } = await supabase.from("farms").select("created_at, timezone").eq("id", farmId).maybeSingle();
   const farmStart = farmMeta?.created_at?.split("T")[0] || "2020-01-01";
+  const farmTz = farmMeta?.timezone || "UTC";
+
+  // en-CA locale reliably returns YYYY-MM-DD, matching our DATE column format
+  const toDateStr = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: farmTz }).format(d);
+  const today = toDateStr(new Date());
+  const thirtyDaysAgo = toDateStr(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const sevenDaysAgo = toDateStr(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
 
   // Use allSettled so a single slow/failing DB query never crashes the whole context fetch
   const settled = await Promise.allSettled([
