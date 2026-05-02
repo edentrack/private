@@ -66,6 +66,11 @@ function selectModel(messages: ChatMessage[]): string {
     || (text.match(/,\s*\d+[).]?\s/g) || []).length >= 3;                          // 3+ comma-separated entries
   if (isBulkEntry) return MODEL_SONNET;
 
+  // Task creation ALWAYS needs Sonnet — Haiku ignores [LOG] block format instructions
+  // and its 512-token cap truncates the JSON. Catch before simplePatterns intercepts "add..."
+  const isTaskCreate = /\b(task|remind|reminder|schedule|add.*task|create.*task|set.*reminder|task.*for|remind.*me)\b/i.test(text);
+  if (isTaskCreate) return MODEL_SONNET;
+
   // Short simple messages → Haiku (greetings, quick logs, single-field answers)
   const simplePatterns = [
     /^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|sure|good|great)[.!?]?$/i,
