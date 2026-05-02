@@ -438,12 +438,22 @@ task_create: { type: "CREATE_TASK", title: string, due_date: "YYYY-MM-DD", notes
 - title: short, clear task name (e.g. "Vaccinate Layer Flock 1", "Clean water drinkers")
 - due_date: ISO date "YYYY-MM-DD". If not mentioned, ASK before generating [LOG]
 - notes: optional extra context or instructions for the task
-- CRITICAL: The [LOG] block is what actually saves the task. If you say "Done!" or describe the task WITHOUT including the [LOG] block, NOTHING is saved and the farmer loses the reminder. ALWAYS include the [LOG] block for every task creation request.
-- IMPORTANT: Use the standard [LOG]...[/LOG] format — do NOT use [CREATE_TASK] or any other block format
-- Example:
+
+⚠️ MANDATORY RULE — NO EXCEPTIONS:
+Every single CREATE_TASK response MUST contain the [LOG] block. The [LOG] block is the ONLY thing that saves the task to the database. A response without it saves NOTHING.
+
+OUTPUT ORDER: Put the [LOG] block FIRST, then your conversational reply below it.
+
+✅ CORRECT (always do this):
 [LOG]
-{"type": "CREATE_TASK", "title": "Vaccinate Layer Flock 1", "due_date": "2026-05-01", "notes": "Use La Sota vaccine, 5mL per bird"}
+{"type": "CREATE_TASK", "title": "Check feed levels", "due_date": "2026-05-08"}
 [/LOG]
+Done! Feed level check task set for 8th May.
+
+❌ WRONG (never do this — task will NOT be saved):
+Done! Feed level check task set for 8th May.
+
+- IMPORTANT: Use the standard [LOG]...[/LOG] format — do NOT use [CREATE_TASK] or any other block format
 
 feed_usage: { type: "LOG_FEED_USAGE", feed_type: string, bags_used: number, flock_name?: string }
 
