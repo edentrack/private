@@ -512,9 +512,10 @@ export function AIAssistantPage() {
       if (!logAction.title) throw new Error('Task title is required');
       const taskDate = logAction.due_date || recordDate;
       // window_start / window_end are NOT NULL in the schema — default to 09:00 local with 60-min window
-      const windowStart = new Date(`${taskDate}T09:00:00`);
-      const windowStartISO = isNaN(windowStart.getTime()) ? new Date().toISOString() : windowStart.toISOString();
-      const windowEndISO = new Date(windowStart.getTime() + 60 * 60 * 1000).toISOString();
+      const rawWindowStart = new Date(`${taskDate}T09:00:00`);
+      const windowBase = isNaN(rawWindowStart.getTime()) ? new Date() : rawWindowStart;
+      const windowStartISO = windowBase.toISOString();
+      const windowEndISO = new Date(windowBase.getTime() + 60 * 60 * 1000).toISOString();
       const { data: taskData, error: taskErr } = await supabase.from('tasks').insert({
         farm_id: farmId,
         title_override: logAction.title,
