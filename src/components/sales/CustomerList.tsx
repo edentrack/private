@@ -27,6 +27,9 @@ export function CustomerList({ customers }: CustomerListProps) {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{customer.name}</h3>
+              {customer.id?.startsWith('sale_contact_') && (
+                <span className="inline-block mt-0.5 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">From sales history</span>
+              )}
               <div className="mt-2 space-y-1">
                 {customer.email && (
                   <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">

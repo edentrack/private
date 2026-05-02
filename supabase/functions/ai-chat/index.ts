@@ -917,12 +917,16 @@ Deno.serve(async (req: Request) => {
               "feed purchase", "medication purchase", "labor cost", "transport cost",
               // Numbered list patterns
               "1)", "2)", "3)",
+              // Generic bulk patterns — "here are my X expenses/sales/records"
+              "here are", "the following", "entries", "records", "list of",
+              "from last", "from this", "january", "february", "march", "april",
+              "may", "june", "july", "august", "september", "october", "november", "december",
             ];
             if (bulkKw.some(kw => lastText.includes(kw))) return 8192;
-            // Long messages or many XAF mentions = bulk
-            const xafCount = (lastText.match(/\bxaf\b/g) || []).length;
-            if (xafCount >= 3 || lastText.length > 2000) return 8192;
-            if (lastText.length > 500) return 4096;
+            // Long messages or many XAF/FCFA mentions = bulk
+            const xafCount = (lastText.match(/\b(xaf|fcfa|frs)\b/g) || []).length;
+            if (xafCount >= 3 || lastText.length > 1000) return 8192;
+            if (lastText.length > 400) return 4096;
             const analysisKw = ["analyse","analyze","report","performance","fcr","profit","recommend","compare","benchmark","break-even","cash flow"];
             if (analysisKw.some(kw => lastText.includes(kw))) return 2048;
             return 1024;

@@ -15,6 +15,7 @@ import { ComprehensiveFarmReport } from './ComprehensiveFarmReport';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { CycleCountdownCard } from '../dashboard/CycleCountdownCard';
 import { shareViaWhatsApp, formatInsightsForWhatsApp } from '../../utils/whatsappShare';
+import { useToast } from '../../contexts/ToastContext';
 
 interface AnalyticsDashboardProps {
   flock: Flock | null;
@@ -33,6 +34,7 @@ interface KPIData {
 export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
   const { t } = useTranslation();
   const { profile, currentFarm, currentRole } = useAuth();
+  const { showToast } = useToast();
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(flock?.id || null);
   const [currentFlock, setCurrentFlock] = useState<Flock | null>(flock);
   const [farm, setFarm] = useState<Farm | null>(null);
@@ -133,7 +135,28 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
   };
 
   const exportData = (format: 'PDF' | 'CSV') => {
-    // TODO: Implement PDF/CSV export
+    if (format === 'CSV') {
+      const rows = [
+        ['Metric', 'Value'],
+        ['Farm', currentFarm?.name || ''],
+        ['Flock', currentFlock?.name || 'N/A'],
+        ['Export Date', new Date().toLocaleDateString()],
+        ['FFCD', kpis.ffcd.toFixed(2)],
+        ['Mortality Rate (%)', kpis.mortality.toFixed(2)],
+        ['Survival Rate (%)', kpis.production.toFixed(2)],
+        ['Cost per Bird', kpis.costPerBird.toFixed(0)],
+        ['Total Cycle Cost', kpis.totalCycleCost.toFixed(0)],
+      ];
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `analytics-${currentFlock?.name || 'farm'}-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      showToast('CSV exported successfully', 'success');
+    } else {
+      showToast('PDF export coming soon — use CSV for now', 'info');
+    }
   };
 
   const handleWhatsAppShare = () => {

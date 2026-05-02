@@ -299,7 +299,9 @@ export function NotificationCenter() {
     return <CheckCircle className="w-4 h-4 text-green-500" />;
   };
 
-  const totalBadge = unreadCount + alerts.length;
+  // Badge reflects only unread DB notifications so it matches what the Notifications page shows.
+  // Live alerts are visible in the panel dropdown but do not inflate the badge count.
+  const totalBadge = unreadCount;
 
   return (
     <div className="relative">

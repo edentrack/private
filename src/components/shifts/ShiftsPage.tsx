@@ -28,7 +28,7 @@ export function ShiftsPage() {
   const [members, setMembers] = useState<FarmMemberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isOwnerOrManager, setIsOwnerOrManager] = useState(false);
+  const isOwnerOrManager = currentRole === 'owner' || currentRole === 'manager';
 
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
   const [startDateTime, setStartDateTime] = useState('');
@@ -63,7 +63,6 @@ export function ShiftsPage() {
   useEffect(() => {
     if (currentFarm?.id) {
       loadData();
-      checkPermissions();
     }
   }, [currentFarm?.id]);
 
@@ -72,16 +71,6 @@ export function ShiftsPage() {
       loadShifts();
     }
   }, [currentFarm?.id, statusFilter, workerFilter, startDateFilter, endDateFilter, viewMode, currentWeekStart]);
-
-  const checkPermissions = async () => {
-    if (!currentRole) return;
-
-    try {
-      setIsOwnerOrManager(currentRole === 'owner' || currentRole === 'manager');
-    } catch (err: any) {
-      console.error('Error checking permissions:', err);
-    }
-  };
 
   const loadData = async () => {
     await Promise.all([loadMembers(), loadShifts()]);

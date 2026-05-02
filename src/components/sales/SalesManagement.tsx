@@ -165,7 +165,6 @@ export function SalesManagement() {
       const flocksData = flocksRes.data || [];
       const eggSalesData = eggSalesRes.data || [];
 
-      setCustomers(customerData);
       setInvoices(invoiceData);
       setFlocks(flocksData);
 
@@ -188,15 +187,21 @@ export function SalesManagement() {
       const totalEggsSold = eggSalesData.reduce((sum: number, sale: any) => sum + (sale.total_eggs || 0), 0);
       const totalRevenue = eggSaleRevenue + birdSaleRevenue;
 
-      // Count unique customers across all sources
-      const uniqueCustomerNames = new Set<string>([
-        ...customerData.map((c: any) => (c.name || '').toLowerCase().trim()).filter(Boolean),
-        ...(eggSalesRes.data || []).map((s: any) => (s.customer_name || '').toLowerCase().trim()).filter(Boolean),
-        ...(birdSalesRes.data || []).map((s: any) => (s.customer_name || '').toLowerCase().trim()).filter(Boolean),
+      // Merge formal customers with unique buyer names from sales history
+      const formalNames = new Set(customerData.map((c: any) => (c.name || '').toLowerCase().trim()).filter(Boolean));
+      const saleContactNames = new Set<string>([
+        ...(eggSalesRes.data || []).map((s: any) => (s.customer_name || '').trim()).filter(Boolean),
+        ...(birdSalesRes.data || []).map((s: any) => (s.customer_name || '').trim()).filter(Boolean),
       ]);
+      const informalCustomers: Customer[] = [...saleContactNames]
+        .filter(name => !formalNames.has(name.toLowerCase()))
+        .map(name => ({ id: `sale_contact_${name}`, name, farm_id: currentFarm!.id, created_at: '' } as any));
+      setCustomers([...customerData, ...informalCustomers]);
+
+      const totalUniqueCustomers = formalNames.size + informalCustomers.length;
 
       setStats({
-        totalCustomers: uniqueCustomerNames.size,
+        totalCustomers: totalUniqueCustomers,
         totalRevenue,
         pendingInvoices: invoiceData.filter((inv) => inv.status !== 'paid' && inv.status !== 'cancelled').length,
         paidInvoices: invoiceData.filter((inv) => inv.status === 'paid').length,

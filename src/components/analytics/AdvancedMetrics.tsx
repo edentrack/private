@@ -39,7 +39,10 @@ export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps
   }, [flock]);
 
   const calculateMetrics = async () => {
-    if (!flock || !profile?.farm_id) return;
+    if (!flock) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {

@@ -39,16 +39,19 @@ export async function calculateEggInventory(
     salesQuery,
   ]);
 
-  const collections = (collectionsResult.data || []) as EggCollection[];
-  const sales = (salesResult.data || []) as EggSale[];
+  const collections = (collectionsResult.data || []) as any[];
+  const sales = (salesResult.data || []) as any[];
 
   const totalEggsCollected = collections.reduce((sum, c) => {
-    const eggsFromTrays = c.trays * eggsPerTray;
-    return sum + eggsFromTrays - c.broken;
+    const total = Number(c.total_eggs ?? 0);
+    if (total > 0) return sum + total;
+    return sum + Math.max(0, Number(c.trays || 0) * eggsPerTray - Number(c.broken || 0));
   }, 0);
 
   const totalEggsSold = sales.reduce((sum, s) => {
-    return sum + s.trays * eggsPerTray;
+    const total = Number(s.total_eggs ?? 0);
+    if (total > 0) return sum + total;
+    return sum + Number(s.trays || 0) * eggsPerTray;
   }, 0);
 
   const eggsInStock = totalEggsCollected - totalEggsSold;
