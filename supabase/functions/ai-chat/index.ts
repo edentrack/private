@@ -389,6 +389,7 @@ eggs (collection): { type: "LOG_EGGS", flock_name: string, small_eggs?: number, 
 - Always ask about damaged/cracked eggs if not mentioned
 - total_eggs is auto-calculated (do NOT include it in the LOG block)
 - CRITICAL: If user specifies ANY date (e.g. "1st May", "yesterday", "last Monday"), include log_date: "YYYY-MM-DD" in the LOG block — even for a single entry, not just bulk
+- CRITICAL: If the farmer provides MULTIPLE rounds/collections in one message (e.g. "morning: 500, evening: 200"), use [BULK_LOG] with one entry per collection — do NOT generate multiple [LOG] blocks
 
 egg_sale: { type: "LOG_EGG_SALE", trays_sold: number, total_amount: number, small_eggs_sold?: number, medium_eggs_sold?: number, large_eggs_sold?: number, jumbo_eggs_sold?: number, small_price?: number, medium_price?: number, large_price?: number, jumbo_price?: number, customer_name?: string, customer_phone?: string, payment_status: "paid"|"partial"|"pending", sale_date: string, notes?: string, currency: string }
 - ALWAYS include trays_sold (number of trays) and total_amount (total money received, e.g. 3 trays × 1500 = 4500)
@@ -995,14 +996,19 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const logMatch = responseContent.match(/\[LOG\]\s*([\s\S]*?)\s*\[\/LOG\]/);
-    if (logMatch) {
+    const allLogMatches = [...responseContent.matchAll(/\[LOG\]\s*([\s\S]*?)\s*\[\/LOG\]/g)];
+    if (allLogMatches.length === 1) {
       try {
-        logAction = JSON.parse(logMatch[1]);
-        responseContent = responseContent.replace(/\[LOG\][\s\S]*?\[\/LOG\]/, "").trim();
-      } catch (e) {
-        console.error("Error parsing log action:", e);
-      }
+        logAction = JSON.parse(allLogMatches[0][1]);
+      } catch (e) { console.error("Error parsing log action:", e); }
+    } else if (allLogMatches.length > 1 && bulkLogActions.length === 0) {
+      // Multiple [LOG] blocks — treat as bulk so all entries are saved, not just the first
+      try {
+        bulkLogActions = allLogMatches.map(m => JSON.parse(m[1]));
+      } catch (e) { console.error("Error parsing multiple log actions:", e); }
+    }
+    if (allLogMatches.length > 0) {
+      responseContent = responseContent.replace(/\[LOG\][\s\S]*?\[\/LOG\]/g, "").trim();
     }
 
     const payRunMatch = responseContent.match(/\[PAY_RUN\]\s*([\s\S]*?)\s*\[\/PAY_RUN\]/);
