@@ -6,12 +6,16 @@ export type FarmType = 'broiler' | 'layer' | 'mixed' | 'unknown';
 
 export interface FarmTypeInfo {
   farmType: FarmType;
+  /** True when the whole farm is an aquaculture (fish) farm */
+  isAquaculture: boolean;
   /** Show egg-related UI (collection, egg sales, laying rate KPI) */
   showEggs: boolean;
   /** Show FCR metric */
   showFCR: boolean;
   /** Show weight tracking as primary metric */
   showWeight: boolean;
+  /** Show harvest records (fish) */
+  showHarvest: boolean;
   /** Loading — don't render flock-specific UI yet */
   loading: boolean;
   /** Raw counts */
@@ -21,9 +25,11 @@ export interface FarmTypeInfo {
 
 const DEFAULT: FarmTypeInfo = {
   farmType: 'unknown',
+  isAquaculture: false,
   showEggs: true,
   showFCR: true,
   showWeight: true,
+  showHarvest: false,
   loading: true,
   broilerCount: 0,
   layerCount: 0,
@@ -41,6 +47,24 @@ export function useFarmType(): FarmTypeInfo {
   useEffect(() => {
     if (!currentFarm?.id) {
       setInfo({ ...DEFAULT, loading: false, farmType: 'unknown' });
+      return;
+    }
+
+    // Aquaculture farms are identified by farm_type on the farm record — no flock query needed
+    if ((currentFarm as any).farm_type === 'aquaculture') {
+      const result: FarmTypeInfo = {
+        farmType: 'unknown',
+        isAquaculture: true,
+        showEggs: false,
+        showFCR: false,
+        showWeight: true,
+        showHarvest: true,
+        loading: false,
+        broilerCount: 0,
+        layerCount: 0,
+      };
+      _cache = { farmId: currentFarm.id, info: result };
+      setInfo(result);
       return;
     }
 
@@ -68,9 +92,11 @@ export function useFarmType(): FarmTypeInfo {
 
         const result: FarmTypeInfo = {
           farmType,
+          isAquaculture: false,
           showEggs: layers > 0 || farmType === 'unknown',
           showFCR: broilers > 0 || farmType === 'unknown',
-          showWeight: true, // both types benefit from weight tracking
+          showWeight: true,
+          showHarvest: false,
           loading: false,
           broilerCount: broilers,
           layerCount: layers,
@@ -79,7 +105,7 @@ export function useFarmType(): FarmTypeInfo {
         _cache = { farmId: currentFarm.id, info: result };
         setInfo(result);
       });
-  }, [currentFarm?.id]);
+  }, [currentFarm?.id, (currentFarm as any)?.farm_type]);
 
   return info;
 }

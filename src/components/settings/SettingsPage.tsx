@@ -18,8 +18,9 @@ import { DailyReportSettings } from './DailyReportSettings';
 import { ReferralSection } from './ReferralSection';
 import { FarmJoinCodeSection } from './FarmJoinCodeSection';
 import { AIPermissionsSection } from './AIPermissionsSection';
+import { MyFarmsSection } from './MyFarmsSection';
 
-type TabId = 'farm' | 'team' | 'eden' | 'preferences';
+type TabId = 'farm' | 'team' | 'eden' | 'preferences' | 'my-farms';
 
 interface SettingsPageProps {
   onNavigate: (view: string) => void;
@@ -236,9 +237,10 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'farm', label: 'Farm' },
+    { id: 'my-farms', label: 'My Farms' },
     { id: 'team', label: 'Team' },
     { id: 'eden', label: 'Eden AI' },
-    { id: 'preferences', label: 'Preferences' },
+    { id: 'preferences', label: 'Prefs' },
   ];
 
   return (
@@ -648,6 +650,15 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
               Team settings are only available to farm owners.
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── MY FARMS TAB ─────────────────────────────────────────────────────── */}
+      {activeTab === 'my-farms' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <MyFarmsSection />
+          </div>
         </div>
       )}
 

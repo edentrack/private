@@ -1,5 +1,21 @@
 import { FarmPlan } from '../types/database';
 
+// Farm (account-level) limits per subscription tier
+export const MAX_FARMS_PER_TIER: Record<string, number> = {
+  free:       1,
+  pro:        2,
+  enterprise: 3,
+  industry:   999,
+};
+
+export function getMaxFarms(tier: string | undefined | null): number {
+  return MAX_FARMS_PER_TIER[tier ?? 'free'] ?? 1;
+}
+
+export function atFarmLimit(tier: string | undefined | null, ownedFarmCount: number): boolean {
+  return ownedFarmCount >= getMaxFarms(tier);
+}
+
 // Active flock limits per subscription tier
 export const MAX_FLOCKS_PER_TIER: Record<string, number> = {
   free:       2,

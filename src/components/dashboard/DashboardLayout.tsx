@@ -1,5 +1,7 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves } from 'lucide-react';
+import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
+import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,14 +41,15 @@ function getTierStyle(tier: string | undefined | null): TierStyle {
 
 export function DashboardLayout({ children, currentView, onNavigate }: DashboardLayoutProps) {
   const { t } = useTranslation();
-  const { profile, signOut, user, currentRole, currentFarm } = useAuth();
+  const { profile, signOut, user, currentRole, currentFarm, switchFarm } = useAuth();
   const { farmPermissions } = usePermissions();
   const { simpleMode } = useSimpleMode();
-  const { showEggs, showFCR, loading: farmTypeLoading } = useFarmType();
+  const { showEggs, showFCR, showHarvest, isAquaculture, loading: farmTypeLoading } = useFarmType();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [desktopMoreMenuOpen, setDesktopMoreMenuOpen] = useState(false);
   const [mobileMoreMenuOpen, setMobileMoreMenuOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [createFarmOpen, setCreateFarmOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<NavigationGroupId>>(() => getExpandedGroups());
   const [isOffline, setIsOffline] = useState(false);
   const [deadLetterCount, setDeadLetterCount] = useState(0);
@@ -84,24 +87,24 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   }, []);
 
   const getNavItems = () => {
+    const flocksLabel = isAquaculture ? 'Ponds' : (t('nav.flocks') || 'Flocks');
+    const flocksIcon = isAquaculture ? Fish : ChickenIcon;
+
     const allItems: Array<{ id: ModuleName; label: string; icon: any; badge?: number }> = [
       { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-      { id: 'flocks', label: t('nav.flocks'), icon: ChickenIcon },
+      { id: 'flocks', label: flocksLabel, icon: flocksIcon },
       { id: 'insights', label: t('nav.insights'), icon: TrendingUp },
       { id: 'tasks', label: t('nav.tasks') || 'Tasks', icon: ListChecks },
       { id: 'egg-records', label: 'Egg Records', icon: Egg },
-      { id: 'mortality', label: 'Mortality', icon: HeartOff },
-      // { id: 'compare', label: t('nav.compare'), icon: GitCompare }, // Wave 1: HIDDEN — niche owner use case, access via Analytics later
+      { id: 'mortality', label: isAquaculture ? 'Fish Losses' : 'Mortality', icon: HeartOff },
+      { id: 'harvest', label: 'Harvest', icon: Waves },
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
       { id: 'sales', label: t('nav.sales'), icon: ShoppingCart },
-      { id: 'weight', label: t('nav.weight'), icon: Scale },
+      { id: 'weight', label: isAquaculture ? 'Weight & FCR' : t('nav.weight'), icon: Scale },
       { id: 'shifts', label: t('nav.shifts'), icon: Calendar },
       { id: 'team', label: t('nav.team'), icon: Users },
-      // { id: 'task-history', label: t('nav.task_history'), icon: History }, // Wave 1: HIDDEN — integrate as tab inside Tasks page later
-      // { id: 'payroll', label: t('nav.payroll'), icon: Wallet }, // Wave 1: HIDDEN — owner-only, will move to Settings sub-tab
-      // { id: 'audit', label: t('nav.audit'), icon: FileText }, // Wave 1: HIDDEN — owner-only compliance, will move to Settings sub-tab
       { id: 'ai-assistant', label: t('nav.ai_assistant') || 'Eden AI', icon: Zap },
       { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },
     ];
@@ -109,14 +112,21 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // Items hidden in Simple Mode (advanced features)
     const simpleModeHidden = new Set(['vet-log', 'shifts']);
     // Items only relevant when eggs are tracked (layer/mixed farms)
-    const eggOnlyItems = new Set(['sales', 'egg-records']); // only show for layer/mixed farms
+    const eggOnlyItems = new Set(['sales', 'egg-records']);
+    // Items only for aquaculture farms
+    const aquacultureOnlyItems = new Set(['harvest']);
+    // Items hidden for aquaculture farms
+    const poultryOnlyItems = new Set(['vaccinations']);
 
     const filteredItems = allItems.filter(item => {
       const visibility = canViewModule(currentRole, item.id, farmPermissions);
       if (!visibility.visible) return false;
       if (simpleMode && simpleModeHidden.has(item.id)) return false;
-      // Hide egg-only nav items for pure broiler farms (once loaded)
-      if (!farmTypeLoading && !showEggs && eggOnlyItems.has(item.id)) return false;
+      if (!farmTypeLoading) {
+        if (!showEggs && eggOnlyItems.has(item.id)) return false;
+        if (!isAquaculture && aquacultureOnlyItems.has(item.id)) return false;
+        if (isAquaculture && poultryOnlyItems.has(item.id)) return false;
+      }
       return true;
     });
 
@@ -208,9 +218,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                 <h1 className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">
                   EDENTRACK
                 </h1>
-                <p className="text-[8px] sm:text-[9px] text-gray-600 leading-tight truncate max-w-[90px] sm:max-w-[120px] md:max-w-[150px]">
-                  {currentFarm?.name || 'My Farm'}
-                </p>
+                <FarmSwitcherDropdown onAddFarm={() => setCreateFarmOpen(true)} />
               </div>
             </div>
 
@@ -565,6 +573,16 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
           isOpen={helpModalOpen}
           onClose={() => setHelpModalOpen(false)}
           currentPage={`/${currentView}`}
+        />
+      )}
+
+      {createFarmOpen && (
+        <CreateFarmModal
+          onClose={() => setCreateFarmOpen(false)}
+          onCreated={async (farmId) => {
+            setCreateFarmOpen(false);
+            await switchFarm(farmId);
+          }}
         />
       )}
 

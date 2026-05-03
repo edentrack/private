@@ -11,7 +11,7 @@ import { ArchiveFlockModal } from './ArchiveFlockModal';
 import { ChickenIcon } from '../icons/ChickenIcon';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { useTranslation } from 'react-i18next';
-import { invalidateFarmTypeCache } from '../../hooks/useFarmType';
+import { invalidateFarmTypeCache, useFarmType } from '../../hooks/useFarmType';
 import { FlockListSkeleton } from '../common/Skeleton';
 import { atFlockLimit, getMaxFlocks } from '../../utils/planGating';
 
@@ -21,8 +21,11 @@ interface FlockManagementProps {
 }
 
 export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementProps) {
-  const { user, currentRole, profile } = useAuth();
+  const { user, currentRole, profile, currentFarm } = useAuth();
   const { t } = useTranslation();
+  const { isAquaculture } = useFarmType();
+  const groupTerm = isAquaculture ? 'Pond' : 'Flock';
+  const groupTermPlural = isAquaculture ? 'Ponds' : 'Flocks';
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [mortalityByFlock, setMortalityByFlock] = useState<Record<string, number>>({});
@@ -193,10 +196,10 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
       <div data-tour="flock-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
-            {t('flocks.title')}
+            {isAquaculture ? groupTermPlural : t('flocks.title')}
           </h2>
           <p className="text-gray-500 mt-1 text-sm sm:text-base">
-            {showArchived ? t('flocks.archived') : t('flocks.active')}
+            {showArchived ? `Archived ${groupTermPlural}` : `Active ${groupTermPlural}`}
           </p>
         </div>
         <div className="flex gap-2 sm:gap-3 w-full sm:w-auto justify-start sm:justify-end">
@@ -226,7 +229,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                   onClick={() => onNavigate('subscribe')}
                   className="btn-primary inline-flex items-center justify-center flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600"
                 >
-                  Upgrade — {flocks.length}/{max} flocks used
+                  Upgrade — {flocks.length}/{max} {groupTermPlural.toLowerCase()} used
                 </button>
               );
             }
@@ -236,7 +239,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                 className="btn-primary inline-flex items-center justify-center flex-1 sm:flex-none"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                {t('flocks.create_flock')}
+                {isAquaculture ? `Add ${groupTerm}` : t('flocks.create_flock')}
               </button>
             );
           })()}

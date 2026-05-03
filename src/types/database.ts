@@ -1,4 +1,5 @@
-export type FlockType = 'Layer' | 'Broiler';
+export type FlockType = 'Layer' | 'Broiler' | 'Catfish' | 'Tilapia' | 'Clarias' | 'Other Fish';
+export type FarmKind = 'poultry' | 'aquaculture';
 export type FlockStatus = 'active' | 'archived';
 export type ExpenseCategory = 'feed' | 'medication' | 'equipment' | 'labor' | 'chicks purchase' | 'transport' | 'other';
 export type Currency = 'XAF' | 'USD' | 'NGN' | 'GHS' | 'KES' | 'ZAR' | 'CFA' | 'RWF' | 'UGX' | 'TZS' | 'ETB' | 'XOF' | 'CAD' | 'GBP' | 'EUR' | 'INR' | 'BRL' | 'CNY' | 'AUD';
@@ -25,8 +26,50 @@ export interface Farm {
   profit_pool_opening_balance?: number | null;
   cost_per_egg_override: number | null;
   plan: FarmPlan;
+  farm_type: FarmKind;
+  location?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface StockingEvent {
+  id: string;
+  farm_id: string;
+  flock_id: string;
+  stocked_at: string;
+  species: string;
+  fingerling_count: number;
+  source?: string | null;
+  cost_per_fingerling?: number | null;
+  total_cost?: number | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface WaterQualityLog {
+  id: string;
+  farm_id: string;
+  flock_id: string;
+  logged_at: string;
+  temperature_c?: number | null;
+  dissolved_oxygen?: number | null;
+  ph?: number | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface HarvestRecord {
+  id: string;
+  farm_id: string;
+  flock_id: string;
+  harvested_at: string;
+  total_weight_kg: number;
+  price_per_kg?: number | null;
+  total_amount?: number | null;
+  buyer_name?: string | null;
+  payment_status: 'pending' | 'paid';
+  notes?: string | null;
+  created_at: string;
 }
 
 export interface FarmPermissions {

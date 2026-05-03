@@ -17,6 +17,7 @@ import { TodayTasksWidget } from './TodayTasksWidget';
 import { UnifiedTaskSettings } from '../tasks/UnifiedTaskSettings';
 import { InventoryUsageWidget } from './InventoryUsageWidget';
 import { QuickEggCollectionWidget } from './QuickEggCollectionWidget';
+import { AquaculturePondWidget } from './AquaculturePondWidget';
 import { WeatherWidget } from './WeatherWidget';
 import { hasFeatureAccess } from '../../utils/planGating';
 import { canViewAnalytics } from '../../utils/permissions';
@@ -36,7 +37,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
   const { t } = useTranslation();
   const { user, profile, currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();
-  const { showEggs, showFCR, farmType } = useFarmType();
+  const { showEggs, showFCR, farmType, isAquaculture } = useFarmType();
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
@@ -520,11 +521,11 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-fade-in-up stagger-1">
         <div className="flex items-center gap-3">
-          <div className="stat-label">{t('dashboard.total_birds')}</div>
+          <div className="stat-label">{isAquaculture ? 'Total Fish' : t('dashboard.total_birds')}</div>
           <div className="text-xl sm:text-4xl font-bold text-gray-900">{stats.totalBirds.toLocaleString()}</div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="stat-label">{t('dashboard.active_flocks')}</div>
+          <div className="stat-label">{isAquaculture ? 'Active Ponds' : t('dashboard.active_flocks')}</div>
           <div className="text-xl sm:text-4xl font-bold text-gray-900">{stats.totalFlocks}</div>
         </div>
         <div className="flex items-center gap-3">
@@ -648,7 +649,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
               )}
             </div>
           </div>
-          {showEggs && selectedFlock?.type?.toLowerCase() !== 'broiler' && (
+          {!isAquaculture && showEggs && selectedFlock?.type?.toLowerCase() !== 'broiler' && (
             <div className="animate-fade-in-up stagger-4">
               <div>
                 <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">Egg Quick Entry</div>
@@ -656,10 +657,15 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
               </div>
             </div>
           )}
+          {isAquaculture && selectedFlock && (
+            <div className="animate-fade-in-up stagger-4">
+              <AquaculturePondWidget pond={selectedFlock} onNavigate={onNavigate} />
+            </div>
+          )}
         </div>
 
         <div className="lg:col-span-2 space-y-3 md:space-y-4">
-          {selectedFlock && (
+          {!isAquaculture && selectedFlock && (
             <div className="animate-fade-in-up stagger-4">
               <ProductionCycleWidget flock={selectedFlock} onNavigate={onNavigate} />
             </div>

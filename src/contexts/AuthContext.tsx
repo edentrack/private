@@ -2,8 +2,9 @@ import { useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import posthog from 'posthog-js';
 import { supabase } from '../lib/supabaseClient';
-import type { Profile, FarmMember, MemberRole } from '../types/database';
+import type { Profile, FarmMember, MemberRole, FarmKind } from '../types/database';
 import { AuthContext } from './authContextRef';
+import type { OwnedFarm } from './authContextRef';
 
 export type { AuthContextType } from './authContextRef';
 
@@ -11,10 +12,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [currentFarm, setCurrentFarm] = useState<{ id: string; name: string; currency?: string; currency_code?: string; broiler_price_per_bird?: number; broiler_price_per_kg?: number } | null>(null);
+  const [currentFarm, setCurrentFarm] = useState<{ id: string; name: string; currency?: string; currency_code?: string; broiler_price_per_bird?: number; broiler_price_per_kg?: number; farm_type?: FarmKind; location?: string | null } | null>(null);
   const [currentMember, setCurrentMember] = useState<FarmMember | null>(null);
   const [currentRole, setCurrentRole] = useState<MemberRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [allFarms, setAllFarms] = useState<OwnedFarm[]>([]);
   const currentFarmIdRef = useRef<string | null>(null);
 
   // Only update currentFarm when the farm ID actually changes — prevents token-refresh flickers
@@ -288,7 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const farmPromise = supabase
             .from('farms')
-            .select('id, name, currency, currency_code')
+            .select('id, name, currency, currency_code, farm_type, location')
             .eq('id', effectiveFarmId)
             .maybeSingle();
           
@@ -332,7 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const memberPromise = supabase
             .from('farm_members')
-            .select('*, farms!inner(id, name, currency, currency_code)')
+            .select('*, farms!inner(id, name, currency, currency_code, farm_type, location)')
             .eq('user_id', effectiveUserId)
             .eq('is_active', true)
             .order('joined_at', { ascending: false })
@@ -346,9 +348,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (result?.data && !result.error && Array.isArray(result.data) && result.data.length > 0) {
             const rows = result.data as any[];
-            // Always prefer worker/manager/viewer membership (your farm) over owner (their own farm)
-            const sorted = [...rows].sort((a: any, b: any) => (a.role === 'owner' ? 1 : 0) - (b.role === 'owner' ? 1 : 0));
-            memberData = sorted[0];
+            // If user has explicitly switched to a farm, honour that preference
+            const preferredFarmId = localStorage.getItem('active_farm_id');
+            if (preferredFarmId) {
+              const preferred = rows.find((r: any) => r.farm_id === preferredFarmId);
+              if (preferred) { memberData = preferred; }
+            }
+            // Fallback: prefer worker/manager/viewer over owner
+            if (!memberData) {
+              const sorted = [...rows].sort((a: any, b: any) => (a.role === 'owner' ? 1 : 0) - (b.role === 'owner' ? 1 : 0));
+              memberData = sorted[0];
+            }
+            // Populate allFarms from owned memberships
+            const ownedRows = rows.filter((r: any) => r.role === 'owner');
+            if (ownedRows.length > 0) {
+              setAllFarms(ownedRows.map((r: any) => ({
+                id: r.farms.id,
+                name: r.farms.name,
+                farm_type: (r.farms.farm_type ?? 'poultry') as FarmKind,
+                location: r.farms.location ?? null,
+                currency_code: r.farms.currency_code,
+              })));
+            }
           }
         } catch (e) {
           console.warn('Error loading member data:', e);
@@ -361,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           const retryPromise = supabase
             .from('farm_members')
-            .select('*, farms!inner(id, name, currency, currency_code)')
+            .select('*, farms!inner(id, name, currency, currency_code, farm_type, location)')
             .eq('user_id', userId)
             .eq('is_active', true)
             .order('joined_at', { ascending: false })
@@ -399,7 +420,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const row = memberRows[0];
             const { data: farmRow } = await supabase
               .from('farms')
-              .select('id, name, currency, currency_code')
+              .select('id, name, currency, currency_code, farm_type, location')
               .eq('id', row.farm_id)
               .maybeSingle();
             if (farmRow) {
@@ -502,7 +523,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 is_active: true,
                 joined_at: new Date().toISOString(),
               })
-              .select('*, farms!inner(id, name, currency, currency_code)')
+              .select('*, farms!inner(id, name, currency, currency_code, farm_type, location)')
               .maybeSingle();
 
             if (newMember) {
@@ -510,7 +531,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 id: newFarm.id,
                 name: newFarm.name,
                 currency: newFarm.currency,
-                currency_code: newFarm.currency_code
+                currency_code: newFarm.currency_code,
+                farm_type: (newFarm.farm_type as FarmKind) ?? 'poultry',
+                location: newFarm.location ?? null,
               });
               setCurrentMember(newMember);
               setCurrentRole('owner' as MemberRole);
@@ -523,7 +546,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: farmData.id,
           name: farmData.name,
           currency: farmData.currency,
-          currency_code: farmData.currency_code
+          currency_code: farmData.currency_code,
+          farm_type: (farmData.farm_type as FarmKind) ?? 'poultry',
+          location: farmData.location ?? null,
         });
         setCurrentMember(memberData);
         setCurrentRole(memberData.role as MemberRole);
@@ -596,6 +621,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const switchFarm = async (farmId: string) => {
+    localStorage.setItem('active_farm_id', farmId);
+    if (user) await loadUserData(user.id);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -605,6 +635,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentMember,
       currentRole,
       loading,
+      allFarms,
+      switchFarm,
       signIn,
       signUp,
       signOut,

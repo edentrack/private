@@ -16,7 +16,11 @@ interface CreateFlockModalProps {
 export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) {
   const { t } = useTranslation();
   const { user, currentFarm, profile } = useAuth();
-  const [species] = useState<AnimalSpecies | null>('poultry'); // Auto-select poultry
+
+  const farmKind = (currentFarm as any)?.farm_type ?? 'poultry';
+  const isAquaculture = farmKind === 'aquaculture';
+  const [species] = useState<AnimalSpecies>(isAquaculture ? 'aquaculture' : 'poultry');
+
   const [name, setName] = useState('');
   const [type, setType] = useState<FlockType | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -25,11 +29,12 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
   const [currentCount, setCurrentCount] = useState('');
   const [purchasePricePerBird, setPurchasePricePerBird] = useState('');
   const [purchaseTransportCost, setPurchaseTransportCost] = useState('');
+  const [pondSizeSqm, setPondSizeSqm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const availableTypes = species ? getTypesForSpecies(species) : [];
-  const terminology = species ? getSpeciesTerminology(species) : null;
+  const availableTypes = getTypesForSpecies(species);
+  const terminology = getSpeciesTerminology(species);
 
   const initialMortality = (parseInt(initialCount) || 0) - (parseInt(currentCount || initialCount) || 0);
 
@@ -85,22 +90,28 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
       const purchasePriceNum = parseFloat(purchasePricePerBird) || 0;
       const transportCostNum = parseFloat(purchaseTransportCost) || 0;
 
+      const insertPayload: Record<string, unknown> = {
+        user_id: user.id,
+        farm_id: currentFarm.id,
+        name,
+        type,
+        species,
+        start_date: startDate,
+        arrival_date: arrivalDate,
+        initial_count: initialCountNum,
+        current_count: currentCountNum,
+        purchase_price_per_bird: purchasePriceNum,
+        purchase_transport_cost: transportCostNum,
+        status: 'active',
+      };
+      if (isAquaculture && pondSizeSqm) {
+        insertPayload.pond_size_sqm = parseFloat(pondSizeSqm);
+        insertPayload.stocking_density = initialCountNum / parseFloat(pondSizeSqm);
+      }
+
       const { data: flockData, error: insertError } = await supabase
         .from('flocks')
-        .insert({
-          user_id: user.id,
-          farm_id: currentFarm.id,
-          name,
-          type,
-          species: species || 'poultry',
-          start_date: startDate,
-          arrival_date: arrivalDate,
-          initial_count: initialCountNum,
-          current_count: currentCountNum,
-          purchase_price_per_bird: purchasePriceNum,
-          purchase_transport_cost: transportCostNum,
-          status: 'active',
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -165,7 +176,9 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
         }}
       >
         <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-gray-200/60">
-          <h2 className="text-lg font-bold text-gray-900">{t('flocks.create_new')} flock</h2>
+          <h2 className="text-lg font-bold text-gray-900">
+            {isAquaculture ? 'Create new pond' : `${t('flocks.create_new')} flock`}
+          </h2>
           <button
             onClick={onClose}
             className="p-1.5 hover:bg-[#e8e0d4] rounded-lg transition-colors"
@@ -239,7 +252,9 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
           )}
 
           <div>
-            <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-1">{t('flocks.flock_name')}</label>
+            <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-1">
+              {isAquaculture ? 'Pond name' : t('flocks.flock_name')}
+            </label>
             <input
               id="name"
               type="text"
@@ -247,9 +262,28 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               onChange={(e) => setName(e.target.value)}
               required
               className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
-              placeholder={t('flocks.flock_name_placeholder')}
+              placeholder={isAquaculture ? 'e.g. Pond 1 — Catfish' : t('flocks.flock_name_placeholder')}
             />
           </div>
+
+          {isAquaculture && (
+            <div>
+              <label htmlFor="pondSize" className="block text-xs font-medium text-gray-700 mb-1">
+                Pond size (m²) <span className="text-gray-400 font-normal">— optional</span>
+              </label>
+              <input
+                id="pondSize"
+                type="number"
+                step="0.1"
+                min="0"
+                value={pondSizeSqm}
+                onChange={(e) => setPondSizeSqm(e.target.value)}
+                className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
+                placeholder="200"
+              />
+              <p className="text-[10px] text-gray-500 mt-0.5">Used to calculate stocking density (fish/m²)</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -278,10 +312,12 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
 
           <div>
             <label htmlFor="initialCount" className="block text-xs font-medium text-gray-700 mb-1">
-              {t('flocks.initial_count')}
-              <span className="ml-1 text-gray-400 font-normal">
-                (max {getMaxBirdsPerFlock((profile?.subscription_tier as any) || 'basic').toLocaleString()} on your plan)
-              </span>
+              {isAquaculture ? 'Fingerlings stocked' : t('flocks.initial_count')}
+              {!isAquaculture && (
+                <span className="ml-1 text-gray-400 font-normal">
+                  (max {getMaxBirdsPerFlock((profile?.subscription_tier as any) || 'basic').toLocaleString()} on your plan)
+                </span>
+              )}
             </label>
             <input
               id="initialCount"
@@ -291,9 +327,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               required
               min="1"
               className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
-              placeholder="1000"
+              placeholder={isAquaculture ? '1000' : '1000'}
             />
-            <p className="text-[10px] text-gray-600 mt-0.5">{t('flocks.total_birds_you_started_with')}</p>
+            <p className="text-[10px] text-gray-600 mt-0.5">
+              {isAquaculture ? 'Total fingerlings you stocked in this pond' : t('flocks.total_birds_you_started_with')}
+            </p>
           </div>
 
           <div>
@@ -318,7 +356,9 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             <h3 className="font-semibold text-gray-900 text-xs">{t('flocks.purchase_costs_optional')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label htmlFor="purchasePricePerBird" className="block text-xs font-medium text-gray-700 mb-1">{t('flocks.price_per_bird')}</label>
+                <label htmlFor="purchasePricePerBird" className="block text-xs font-medium text-gray-700 mb-1">
+                  {isAquaculture ? 'Price per fingerling' : t('flocks.price_per_bird')}
+                </label>
                 <input
                   id="purchasePricePerBird"
                   type="number"

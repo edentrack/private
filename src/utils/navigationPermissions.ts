@@ -29,7 +29,10 @@ export type ModuleName =
   | 'smart-upload'
   | 'marketplace'
   | 'roadmap'
-  | 'egg-records';
+  | 'egg-records'
+  | 'harvest'
+  | 'water-quality'
+  | 'stocking';
 
 export interface ModuleVisibility {
   visible: boolean;
@@ -107,6 +110,9 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'task-history':
     case 'audit':
     case 'settings':
+    case 'harvest':
+    case 'water-quality':
+    case 'stocking':
       return { visible: true };
 
     case 'smart-upload':
@@ -156,6 +162,9 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'vet-log':
     case 'marketplace':
     case 'roadmap':
+    case 'harvest':
+    case 'water-quality':
+    case 'stocking':
       return { visible: true };
 
     case 'ai-assistant':
@@ -220,6 +229,9 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'marketplace':
     case 'roadmap':
     case 'task-history':
+    case 'harvest':
+    case 'water-quality':
+    case 'stocking':
       return { visible: true };
 
     case 'smart-upload':
