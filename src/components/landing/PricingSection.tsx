@@ -127,7 +127,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
             </div>
             <ul className="space-y-2 flex-1 mb-5">
               {[
-                '1 active flock',
+                '2 active flocks',
                 'Mortality & weight tracking',
                 'Expense recording',
                 'Task management',

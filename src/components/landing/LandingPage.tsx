@@ -6,7 +6,7 @@ import {
   ArrowRight, Leaf, Building2, Shield, Stethoscope, Wifi, MessageCircle,
   ClipboardList, Egg,
 } from 'lucide-react';
-import { FIXED_PRICES, detectRegion, type RegionConfig } from '../../utils/regionalPayment';
+import { FIXED_PRICES, detectRegion, getPriceCurrency, formatPrice, type RegionConfig } from '../../utils/regionalPayment';
 import { supabase } from '../../lib/supabaseClient';
 
 const Y = '#ffdd00';
@@ -24,7 +24,7 @@ const PLANS = [
     highlighted: false,
     ctaLabel: 'Get started free',
     features: [
-      '1 active flock',
+      '2 active flocks',
       'Daily task management',
       'Mortality and weight tracking',
       'Expense recording',
@@ -396,11 +396,12 @@ const PLAN_KEY: Record<string, string | null> = {
   starter: null, grower: 'pro', farmboss: 'enterprise', industry: 'industry',
 };
 
-function landingPrice(planId: string, cycle: BillingCycle): string {
+function landingPrice(planId: string, cycle: BillingCycle, currency: string): string {
   const key = PLAN_KEY[planId];
   if (!key) return 'Free';
-  const p = FIXED_PRICES.USD[cycle]?.[key];
-  return p !== undefined ? `$${p}` : 'Free';
+  const prices = FIXED_PRICES[currency] ?? FIXED_PRICES.USD;
+  const p = prices[cycle]?.[key];
+  return p !== undefined ? formatPrice(p, currency) : 'Free';
 }
 
 function landingSub(cycle: BillingCycle): string {
@@ -409,13 +410,14 @@ function landingSub(cycle: BillingCycle): string {
   return 'per year';
 }
 
-function perMonthLine(planId: string, cycle: BillingCycle): string | null {
+function perMonthLine(planId: string, cycle: BillingCycle, currency: string): string | null {
   const key = PLAN_KEY[planId];
   if (!key || cycle === 'monthly') return null;
-  const p = FIXED_PRICES.USD[cycle]?.[key];
+  const prices = FIXED_PRICES[currency] ?? FIXED_PRICES.USD;
+  const p = prices[cycle]?.[key];
   if (!p) return null;
   const months = cycle === 'quarterly' ? 3 : 12;
-  return `≈ $${(p / months).toFixed(2)}/mo`;
+  return `≈ ${formatPrice(p / months, currency)}/mo`;
 }
 
 function savingsPct(planId: string, cycle: BillingCycle): number | null {
@@ -435,6 +437,7 @@ export default function LandingPage() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('quarterly');
   const [region, setRegion] = useState<RegionConfig | null>(null);
+  const priceCurrency = region ? getPriceCurrency(region) : 'USD';
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<{ plan: string; msg: string } | null>(null);
   const [flwEmailFor, setFlwEmailFor] = useState<string | null>(null); // planKey waiting for email
@@ -972,7 +975,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
             {PLANS.map(plan => {
               const save = savingsPct(plan.id, billingCycle);
-              const perMo = perMonthLine(plan.id, billingCycle);
+              const perMo = perMonthLine(plan.id, billingCycle, priceCurrency);
               return (
                 <div
                   key={plan.id}
@@ -997,7 +1000,7 @@ export default function LandingPage() {
                   <div className="mb-5">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className={`text-3xl font-extrabold ${plan.highlighted ? 'text-gray-900' : 'text-white'}`}>
-                        {landingPrice(plan.id, billingCycle)}
+                        {landingPrice(plan.id, billingCycle, priceCurrency)}
                       </span>
                       {plan.id !== 'starter' && (
                         <span className={`text-sm ${plan.highlighted ? 'text-gray-600' : 'text-gray-500'}`}>

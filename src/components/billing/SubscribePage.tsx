@@ -26,7 +26,7 @@ const PLANS: Plan[] = [
     icon: <Leaf className="w-6 h-6" />,
     borderColor: 'border-agri-brown-200',
     ringColor: '',
-    features: ['1 active flock', 'Daily task management', 'Mortality & weight tracking', 'Expense recording', 'Basic inventory', 'WhatsApp report sharing'],
+    features: ['2 active flocks', 'Daily task management', 'Mortality & weight tracking', 'Expense recording', 'Basic inventory', 'WhatsApp report sharing'],
     limits: 'For farmers just getting started',
   },
   {
