@@ -359,17 +359,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const sorted = [...rows].sort((a: any, b: any) => (a.role === 'owner' ? 1 : 0) - (b.role === 'owner' ? 1 : 0));
               memberData = sorted[0];
             }
-            // Populate allFarms from owned memberships
-            const ownedRows = rows.filter((r: any) => r.role === 'owner');
-            if (ownedRows.length > 0) {
-              setAllFarms(ownedRows.map((r: any) => ({
-                id: r.farms.id,
-                name: r.farms.name,
-                farm_type: (r.farms.farm_type ?? 'poultry') as FarmKind,
-                location: r.farms.location ?? null,
-                currency_code: r.farms.currency_code,
-              })));
-            }
+            // allFarms loaded separately below via direct farms query (avoids dupe membership rows)
           }
         } catch (e) {
           console.warn('Error loading member data:', e);
@@ -552,6 +542,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         setCurrentMember(memberData);
         setCurrentRole(memberData.role as MemberRole);
+      }
+
+      // Load all farms owned by this user (deduplicated, direct query)
+      try {
+        const { data: ownedFarms } = await supabase
+          .from('farms')
+          .select('id, name, farm_type, location, currency_code')
+          .eq('owner_id', effectiveUserId)
+          .order('created_at', { ascending: true });
+        if (ownedFarms && ownedFarms.length > 0) {
+          setAllFarms(ownedFarms.map(f => ({
+            id: f.id,
+            name: f.name,
+            farm_type: ((f as any).farm_type ?? 'poultry') as FarmKind,
+            location: (f as any).location ?? null,
+            currency_code: f.currency_code,
+          })));
+        }
+      } catch (e) {
+        console.warn('Error loading owned farms:', e);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
