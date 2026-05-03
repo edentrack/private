@@ -23,6 +23,13 @@ export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
   const maxFarms = getMaxFarms(profile?.subscription_tier);
   const canAddMore = allFarms.length < maxFarms;
 
+  // Only display up to plan limit, always including the active farm first
+  const visibleFarms = (() => {
+    const active = allFarms.filter(f => f.id === currentFarm?.id);
+    const others = allFarms.filter(f => f.id !== currentFarm?.id);
+    return [...active, ...others].slice(0, maxFarms);
+  })();
+
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -71,7 +78,7 @@ export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
 
       {open && (
         <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-scale-in">
-          {allFarms.map((farm) => {
+          {visibleFarms.map((farm) => {
             const isActive = farm.id === currentFarm?.id;
             const isLoading = switching === farm.id;
             return (
