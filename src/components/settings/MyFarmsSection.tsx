@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Fish, Wheat, MapPin, Check, Pencil, X, Save } from 'lucide-react';
+import { Plus, Fish, Wheat, MapPin, Check, Pencil, X, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -16,6 +16,8 @@ export function MyFarmsSection() {
   const [editName, setEditName] = useState('');
   const [editLocation, setEditLocation] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const tier = profile?.subscription_tier ?? 'free';
   const maxFarms = getMaxFarms(tier);
@@ -37,6 +39,16 @@ export function MyFarmsSection() {
     if (error) { showToast('Failed to update farm', 'error'); return; }
     showToast('Farm updated', 'success');
     setEditingId(null);
+    await refreshSession();
+  };
+
+  const deleteFarm = async (farmId: string) => {
+    setDeletingId(farmId);
+    const { error } = await supabase.from('farms').delete().eq('id', farmId);
+    setDeletingId(null);
+    setConfirmDeleteId(null);
+    if (error) { showToast('Failed to delete farm', 'error'); return; }
+    showToast('Farm removed', 'success');
     await refreshSession();
   };
 
@@ -62,15 +74,14 @@ export function MyFarmsSection() {
           <h3 className="text-sm font-semibold text-gray-900">My Farms</h3>
           <p className="text-xs text-gray-500 mt-0.5">{allFarms.length} of {maxFarms} farms on your plan</p>
         </div>
-        {allFarms.length < maxFarms && (
+        {allFarms.length < maxFarms ? (
           <button
             onClick={() => setCreateOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white text-xs font-medium rounded-lg hover:bg-emerald-600 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" /> Add farm
           </button>
-        )}
-        {allFarms.length >= maxFarms && (
+        ) : (
           <button
             onClick={() => { window.location.hash = '#/subscribe'; }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white text-xs font-medium rounded-lg hover:bg-amber-600 transition-colors"
@@ -84,6 +95,8 @@ export function MyFarmsSection() {
         {allFarms.map((farm) => {
           const isActive = farm.id === currentFarm?.id;
           const isEditing = editingId === farm.id;
+          const isConfirmingDelete = confirmDeleteId === farm.id;
+          const isDeleting = deletingId === farm.id;
 
           return (
             <div
@@ -107,18 +120,29 @@ export function MyFarmsSection() {
                     placeholder="Location (optional)"
                   />
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50"
-                    >
+                    <button onClick={() => setEditingId(null)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
                       <X className="w-3 h-3" /> Cancel
                     </button>
-                    <button
-                      onClick={() => saveEdit(farm.id)}
-                      disabled={saving}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white text-xs rounded-lg hover:bg-emerald-600 disabled:opacity-60"
-                    >
+                    <button onClick={() => saveEdit(farm.id)} disabled={saving} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white text-xs rounded-lg hover:bg-emerald-600 disabled:opacity-60">
                       <Save className="w-3 h-3" /> Save
+                    </button>
+                  </div>
+                </div>
+              ) : isConfirmingDelete ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Delete "{farm.name}"?</p>
+                      <p className="text-xs text-gray-500 mt-0.5">This permanently deletes all flocks, records and data in this farm. Cannot be undone.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDeleteId(null)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
+                      Cancel
+                    </button>
+                    <button onClick={() => deleteFarm(farm.id)} disabled={isDeleting} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 disabled:opacity-60">
+                      {isDeleting ? 'Deleting...' : 'Yes, delete'}
                     </button>
                   </div>
                 </div>
@@ -151,19 +175,18 @@ export function MyFarmsSection() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button
-                      onClick={() => startEdit(farm)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
+                    <button onClick={() => startEdit(farm)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     {!isActive && (
-                      <button
-                        onClick={() => switchFarm(farm.id)}
-                        className="px-2.5 py-1 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        Switch
-                      </button>
+                      <>
+                        <button onClick={() => setConfirmDeleteId(farm.id)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => switchFarm(farm.id)} className="px-2.5 py-1 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                          Switch
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
