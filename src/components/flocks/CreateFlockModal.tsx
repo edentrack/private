@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { FlockType } from '../../types/database';
 import { upsertChickExpenses } from '../../utils/flockExpenses';
 import { AnimalSpecies, getTypesForSpecies, getSpeciesTerminology } from '../../utils/speciesModules';
-import { getMaxBirdsPerFlock, exceedsBirdLimit } from '../../utils/planGating';
+import { getMaxBirdsPerFlock, exceedsBirdLimit, getMaxFlocks } from '../../utils/planGating';
 
 interface CreateFlockModalProps {
   onClose: () => void;
@@ -55,6 +55,21 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
     try {
       const initialCountNum = parseInt(initialCount);
       const currentCountNum = parseInt(currentCount || initialCount);
+
+      // Enforce active flock count limit
+      const tier = profile?.subscription_tier ?? 'free';
+      const maxFlocks = getMaxFlocks(tier);
+      const { count: activeFlockCount } = await supabase
+        .from('flocks')
+        .select('id', { count: 'exact', head: true })
+        .eq('farm_id', currentFarm!.id)
+        .eq('status', 'active');
+      if ((activeFlockCount ?? 0) >= maxFlocks) {
+        const tierName = tier === 'free' ? 'Starter' : tier === 'pro' ? 'Grower' : 'Farm Boss';
+        setError(`Your ${tierName} plan allows up to ${maxFlocks} active flock${maxFlocks !== 1 ? 's' : ''}. Archive an existing flock or upgrade your plan.`);
+        setLoading(false);
+        return;
+      }
 
       // Enforce bird count limit based on plan
       const plan = (profile?.subscription_tier as any) || 'basic';

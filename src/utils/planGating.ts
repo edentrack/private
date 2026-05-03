@@ -1,5 +1,21 @@
 import { FarmPlan } from '../types/database';
 
+// Active flock limits per subscription tier
+export const MAX_FLOCKS_PER_TIER: Record<string, number> = {
+  free:       2,
+  pro:        5,
+  enterprise: 999,
+  industry:   999,
+};
+
+export function getMaxFlocks(tier: string | undefined | null): number {
+  return MAX_FLOCKS_PER_TIER[tier ?? 'free'] ?? 2;
+}
+
+export function atFlockLimit(tier: string | undefined | null, activeFlockCount: number): boolean {
+  return activeFlockCount >= getMaxFlocks(tier);
+}
+
 // Bird count limits per flock per plan
 export const MAX_BIRDS_PER_FLOCK: Record<FarmPlan, number> = {
   basic: 500,

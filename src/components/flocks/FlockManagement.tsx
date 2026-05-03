@@ -13,6 +13,7 @@ import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { useTranslation } from 'react-i18next';
 import { invalidateFarmTypeCache } from '../../hooks/useFarmType';
 import { FlockListSkeleton } from '../common/Skeleton';
+import { atFlockLimit, getMaxFlocks } from '../../utils/planGating';
 
 interface FlockManagementProps {
   onSelectFlock: (flock: Flock) => void;
@@ -20,7 +21,7 @@ interface FlockManagementProps {
 }
 
 export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementProps) {
-  const { user, currentRole } = useAuth();
+  const { user, currentRole, profile } = useAuth();
   const { t } = useTranslation();
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
@@ -215,15 +216,30 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
               </>
             )}
           </button>
-          {!showArchived && currentRole && currentRole !== 'viewer' && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="btn-primary inline-flex items-center justify-center flex-1 sm:flex-none"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              {t('flocks.create_flock')}
-            </button>
-          )}
+          {!showArchived && currentRole && currentRole !== 'viewer' && (() => {
+            const tier = profile?.subscription_tier;
+            const limited = atFlockLimit(tier, flocks.length);
+            const max = getMaxFlocks(tier);
+            if (limited) {
+              return (
+                <button
+                  onClick={() => onNavigate('subscribe')}
+                  className="btn-primary inline-flex items-center justify-center flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600"
+                >
+                  Upgrade — {flocks.length}/{max} flocks used
+                </button>
+              );
+            }
+            return (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="btn-primary inline-flex items-center justify-center flex-1 sm:flex-none"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                {t('flocks.create_flock')}
+              </button>
+            );
+          })()}
         </div>
       </div>
 
