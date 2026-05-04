@@ -54,7 +54,22 @@ export interface WaterQualityLog {
   temperature_c?: number | null;
   dissolved_oxygen?: number | null;
   ph?: number | null;
+  ammonia_mgl?: number | null;
+  nitrite_mgl?: number | null;
   notes?: string | null;
+  created_at: string;
+}
+
+export interface SamplingEvent {
+  id: string;
+  farm_id: string;
+  flock_id: string;
+  sampled_at: string;
+  sample_size: number;
+  individual_weights_g: number[];
+  abw_g?: number | null;
+  notes?: string | null;
+  created_by?: string | null;
   created_at: string;
 }
 

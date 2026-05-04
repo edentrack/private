@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Droplets, X, Thermometer, Wind, FlaskConical } from 'lucide-react';
+import { Plus, Droplets, X, Thermometer, Wind, FlaskConical, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -36,6 +36,8 @@ export function WaterQualityPage() {
   const [formTemp, setFormTemp] = useState('');
   const [formDO, setFormDO] = useState('');
   const [formPH, setFormPH] = useState('');
+  const [formAmmonia, setFormAmmonia] = useState('');
+  const [formNitrite, setFormNitrite] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
   useEffect(() => {
@@ -77,6 +79,8 @@ export function WaterQualityPage() {
     setFormTemp('');
     setFormDO('');
     setFormPH('');
+    setFormAmmonia('');
+    setFormNitrite('');
     setFormNotes('');
     if (flocks.length > 0) setFormFlockId(flocks[0].id);
   };
@@ -90,7 +94,7 @@ export function WaterQualityPage() {
       toast.error('Please select a date');
       return;
     }
-    if (!formTemp && !formDO && !formPH) {
+    if (!formTemp && !formDO && !formPH && !formAmmonia && !formNitrite) {
       toast.error('Please enter at least one measurement');
       return;
     }
@@ -103,6 +107,8 @@ export function WaterQualityPage() {
       temperature_c: formTemp ? parseFloat(formTemp) : null,
       dissolved_oxygen: formDO ? parseFloat(formDO) : null,
       ph: formPH ? parseFloat(formPH) : null,
+      ammonia_mgl: formAmmonia ? parseFloat(formAmmonia) : null,
+      nitrite_mgl: formNitrite ? parseFloat(formNitrite) : null,
       notes: formNotes || null,
     });
     setSubmitting(false);
@@ -220,6 +226,38 @@ export function WaterQualityPage() {
               <p className="text-xs text-gray-400 mt-0.5">Ideal: 6.5 – 8.5</p>
             </div>
             <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                <AlertTriangle className="inline w-3 h-3 mr-1" />Ammonia NH₃ (mg/L)
+              </label>
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                max="5"
+                placeholder="e.g. 0.02"
+                value={formAmmonia}
+                onChange={e => setFormAmmonia(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
+              />
+              <p className="text-xs text-gray-400 mt-0.5">Safe: &lt;0.02 mg/L · Critical: &gt;0.1</p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                <AlertTriangle className="inline w-3 h-3 mr-1" />Nitrite NO₂ (mg/L)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="10"
+                placeholder="e.g. 0.05"
+                value={formNitrite}
+                onChange={e => setFormNitrite(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
+              />
+              <p className="text-xs text-gray-400 mt-0.5">Safe: &lt;0.1 mg/L · Critical: &gt;0.5</p>
+            </div>
+            <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
               <input
                 type="text"
@@ -294,6 +332,24 @@ export function WaterQualityPage() {
                           <FlaskConical className="w-3 h-3" />pH {log.ph}
                         </span>
                       )}
+                      {log.ammonia_mgl !== null && log.ammonia_mgl !== undefined && (
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                          log.ammonia_mgl > 0.1 ? 'bg-red-100 text-red-700' :
+                          log.ammonia_mgl > 0.02 ? 'bg-amber-100 text-amber-700' :
+                          'bg-emerald-50 text-emerald-700'
+                        }`}>
+                          <AlertTriangle className="w-3 h-3" />NH₃ {log.ammonia_mgl}
+                        </span>
+                      )}
+                      {log.nitrite_mgl !== null && log.nitrite_mgl !== undefined && (
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                          log.nitrite_mgl > 0.5 ? 'bg-red-100 text-red-700' :
+                          log.nitrite_mgl > 0.1 ? 'bg-amber-100 text-amber-700' :
+                          'bg-emerald-50 text-emerald-700'
+                        }`}>
+                          <AlertTriangle className="w-3 h-3" />NO₂ {log.nitrite_mgl}
+                        </span>
+                      )}
                     </div>
                     {log.notes && (
                       <p className="text-xs text-gray-500 mt-1 truncate">{log.notes}</p>
@@ -317,6 +373,12 @@ export function WaterQualityPage() {
           </span>
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> DO &lt;3 mg/L — Critical
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> NH₃ &lt;0.02 — Safe
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> NH₃ &gt;0.1 — Critical
           </span>
         </div>
       )}

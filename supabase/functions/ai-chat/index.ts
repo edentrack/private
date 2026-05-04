@@ -36,6 +36,51 @@ const MODEL_SONNET  = "claude-sonnet-4-6";           // standard analysis, healt
 
 const MAX_REQUESTS_PER_MINUTE = 15;
 
+const FISH_KNOWLEDGE = `
+## Aquaculture Species (West Africa)
+**Catfish (Clarias gariepinus)**: air-breather, tolerates low DO, market weight 600g–1.5kg, grow-out 4–6 months, FCR target ≤1.5. ABW targets: wk4=20g, wk8=80g, wk12=200g, wk16=400g, wk20=700g, wk24=900g–1.2kg.
+**Tilapia (O. niloticus)**: gill-breather, more DO-sensitive, market weight 400g–800g, grow-out 5–7 months, FCR 1.5–2.0. Use mono-sex (male) fingerlings to prevent overpopulation.
+**Clarias hybrid (Heteroclarias)**: fastest grower, 1kg in ~4 months, FCR 1.0–1.4.
+
+## Water Quality Thresholds
+| Parameter | Optimal | Warning | Critical |
+|-----------|---------|---------|---------|
+| Temperature °C | 26–30 | 24–25 / 31–33 | <22 / >34 |
+| DO mg/L | ≥5 | 3–4.9 | <3 |
+| pH | 6.5–8.5 | 6.0–6.4 / 8.6–9.0 | <6 / >9 |
+| Ammonia NH₃ mg/L | <0.02 | 0.02–0.1 | >0.1 |
+| Nitrite NO₂ mg/L | <0.1 | 0.1–0.5 | >0.5 |
+
+**Actions**: Low DO → emergency aeration, reduce feeding. High ammonia → 30–50% water change, halve feed, check pH. High nitrite → water change, add salt 5–10g/L. Low pH → agricultural lime 50–100kg/ha.
+
+## Feeding
+- Starter (<5g): 45–50% protein, ~10% BW/day, every 2–3hrs
+- Grower (5–50g): 40–45% protein, 5–7% BW/day, 3–4× daily
+- Finisher (>50g): 35–40% protein, 3–5% BW/day, 2–3× daily
+- Overfeeding signs: uneaten feed after 30min, ammonia spike next day
+- Underfeeding signs: aggressive surface rushing, ABW below target, cannibalism
+
+## Sampling & Growth
+- Sample every 2 weeks: weigh 30–50 fish per pond
+- Daily feed = (ABW_g × fish_count / 1000) × feeding_rate%
+- Adjust feeding rate down as fish approach harvest weight
+
+## Common Diseases
+- **MAS (Aeromonas)**: red ulcers, hemorrhaging → oxytetracycline/doxycycline in feed 5–10 days
+- **Columnaris**: white patches on skin/fins → KMnO₄ bath 10mg/L 30min
+- **Parasites (Trichodina/Ich)**: white spots, flashing → formalin 25ppm 1hr or salt 10g/L 10–20min
+- **O₂ depletion**: dawn mass mortality → emergency aeration, reduce biomass
+
+## Harvest
+- Harvest at ABW 600g–1kg (catfish); partial harvest = "grading" (remove largest first)
+- Stop feeding 24hrs before. Harvest at dawn/dusk.
+- Post-harvest: disinfect with 500g lime/m²
+
+## Economics (West Africa)
+- Catfish farm-gate: 1,500–2,500 XAF/kg (Cameroon); ₦1,200–2,000/kg (Nigeria)
+- Feed cost = 60–70% of production cost; target >30% profit margin
+`;
+
 function selectModel(messages: ChatMessage[]): string {
   const last = messages[messages.length - 1];
   if (!last) return MODEL_SONNET;
@@ -54,6 +99,10 @@ function selectModel(messages: ChatMessage[]): string {
     "benchmark", "laying rate", "break-even", "cash flow", "recommend",
     "advise", "should i", "is it", "poop", "droppings", "blood",
     "Newcastle", "Gumboro", "coccidiosis", "IBD", "Marek", "influenza",
+    // Aquaculture-specific escalations
+    "ammonia", "nitrite", "nitrate", "dissolved oxygen", "water quality",
+    "abw", "sampling", "fingerling", "harvest", "catfish", "tilapia",
+    "aeration", "stocking density", "pond", "parasite", "ulcer",
   ];
   const needsSonnet = complexKeywords.some(kw => text.includes(kw));
   if (needsSonnet) return MODEL_SONNET;
@@ -101,13 +150,15 @@ interface ChatRequest {
   include_context?: boolean;
 }
 
-async function getFarmContext(supabase: any, farmId: string): Promise<{ context: string; setupConfig: any }> {
+async function getFarmContext(supabase: any, farmId: string): Promise<{ context: string; setupConfig: any; farmType: string }> {
   // Fetch farm meta first so timezone-aware dates are available for all subsequent queries.
   // Without this, Deno runs in UTC — farms in UTC+1 (e.g. WAT) see "tomorrow" as today
   // after 11 PM local time, causing the LLM to generate wrong due_dates for CREATE_TASK.
-  const { data: farmMeta } = await supabase.from("farms").select("created_at, timezone").eq("id", farmId).maybeSingle();
+  const { data: farmMeta } = await supabase.from("farms").select("created_at, timezone, farm_type").eq("id", farmId).maybeSingle();
   const farmStart = farmMeta?.created_at?.split("T")[0] || "2020-01-01";
   const farmTz = farmMeta?.timezone || "UTC";
+  const farmType: string = farmMeta?.farm_type || "poultry";
+  const isAquaFarm = farmType === "aquaculture";
 
   // en-CA locale reliably returns YYYY-MM-DD, matching our DATE column format
   const toDateStr = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: farmTz }).format(d);
@@ -117,7 +168,7 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
 
   // Use allSettled so a single slow/failing DB query never crashes the whole context fetch
   const settled = await Promise.allSettled([
-    supabase.from("farms").select("name, currency, currency_code, location").eq("id", farmId).maybeSingle(),
+    supabase.from("farms").select("name, currency, currency_code, location, farm_type").eq("id", farmId).maybeSingle(),
     supabase.from("flocks").select("id, name, type, current_count, initial_count, status, start_date").eq("farm_id", farmId),
     supabase.from("tasks").select("id, status, scheduled_for, title_override, priority").eq("farm_id", farmId).eq("is_archived", false).gte("scheduled_for", `${thirtyDaysAgo}T00:00:00`),
     supabase.from("feed_stock").select("id, feed_type, current_stock_bags, bags_in_stock, unit, kg_per_unit").eq("farm_id", farmId),
@@ -134,13 +185,17 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     supabase.from("worker_pay_rates").select("user_id, pay_type, hourly_rate, monthly_salary, currency").eq("farm_id", farmId),
     supabase.from("farm_setup_config").select("egg_prices, payout_account, default_pay_day, ai_permissions").eq("farm_id", farmId).maybeSingle(),
     supabase.rpc("get_farm_members_with_emails", { p_farm_id: farmId }),
+    supabase.from("water_quality_logs").select("logged_at, flock_id, temperature_c, dissolved_oxygen, ph, ammonia_mgl, nitrite_mgl, notes").eq("farm_id", farmId).gte("logged_at", thirtyDaysAgo).order("logged_at", { ascending: false }),
+    supabase.from("harvest_records").select("harvested_at, flock_id, total_weight_kg, price_per_kg, total_amount, buyer_name, payment_status").eq("farm_id", farmId).gte("harvested_at", farmStart).order("harvested_at", { ascending: false }),
+    supabase.from("sampling_events").select("sampled_at, flock_id, sample_size, abw_g, notes").eq("farm_id", farmId).gte("sampled_at", thirtyDaysAgo).order("sampled_at", { ascending: false }),
   ]);
   const ok = (i: number) => settled[i].status === "fulfilled" ? (settled[i] as PromiseFulfilledResult<any>).value : { data: null };
   const [
     farmRes, flocksRes, tasksRes, feedRes, otherInvRes,
     expensesRes, eggSalesRes, birdSalesRes, mortalityRes, weightRes,
     vaccinationsRes, eggRes, payrollRes, workersRes, payRatesRes, setupConfigRes, teamMembersRes,
-  ] = Array.from({ length: 17 }, (_, i) => ok(i));
+    waterQualityRes, harvestRes, samplingRes,
+  ] = Array.from({ length: 20 }, (_, i) => ok(i));
 
   const farm = farmRes.data;
   const currency = farm?.currency_code || farm?.currency || "XAF";
@@ -161,6 +216,9 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   const payRates = payRatesRes.data || [];
   const setupConfig = setupConfigRes.data;
   const teamMembers = teamMembersRes.data || [];
+  const waterQualityLogs = waterQualityRes.data || [];
+  const harvestRecords = harvestRes.data || [];
+  const samplingEvents = samplingRes.data || [];
 
   // farm_workers already has pay info built in
   const workersWithPay = farmWorkers;
@@ -201,23 +259,32 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   });
 
   let context = `## Farm Context: ${farm?.name || "Unknown Farm"} (${today})\n`;
-  context += `Currency: ${currency} | Location: ${farm?.location || "not set"}\n\n`;
+  context += `Farm type: ${farmType} | Currency: ${currency} | Location: ${farm?.location || "not set"}\n\n`;
 
-  context += `### Flocks\n`;
+  const pondOrFlock = isAquaFarm ? "Ponds" : "Flocks";
+  context += `### ${pondOrFlock}\n`;
   if (flocks.length === 0) {
-    context += "No flocks recorded.\n";
+    context += `No ${pondOrFlock.toLowerCase()} recorded.\n`;
   } else {
     flocks.forEach((f: any) => {
       const fMortality = mortalityByFlock[f.id] || 0;
       const mortalityRate = f.initial_count ? ((fMortality / f.initial_count) * 100).toFixed(1) : "?";
-      const latest = weights.filter((w: any) => w.flock_id === f.id)[0];
-      const latestWeight = latest ? `${latest.average_weight}kg avg (${latest.date})` : "no weight records";
-      const latestEggs = eggs.filter((e: any) => e.flock_id === f.id).slice(0, 3);
-      const layingRate = latestEggs.length && f.current_count
-        ? `laying rate ~${((latestEggs.reduce((s: number, e: any) => s + (e.total_eggs || 0), 0) / latestEggs.length / f.current_count) * 100).toFixed(0)}%`
-        : "";
       const dayAge = f.start_date ? `age ${Math.floor((Date.now() - new Date(f.start_date).getTime()) / 86400000)} days` : "";
-      context += `- **${f.name}** [${f.status}]: ${f.type || "unknown"}, ${f.current_count ?? "?"}/${f.initial_count || "?"} birds, ${dayAge}, mortality all-time: ${fMortality} birds (${mortalityRate}%), weight: ${latestWeight}${layingRate ? ", " + layingRate : ""}\n`;
+      if (isAquaFarm) {
+        const latestSample = samplingEvents.filter((s: any) => s.flock_id === f.id)[0];
+        const abwNote = latestSample ? `ABW ${latestSample.abw_g}g (${latestSample.sampled_at})` : "no sampling yet";
+        const latestHarvest = harvestRecords.filter((h: any) => h.flock_id === f.id)[0];
+        const harvestNote = latestHarvest ? `last harvest: ${latestHarvest.total_weight_kg}kg @ ${latestHarvest.harvested_at}` : "no harvests yet";
+        context += `- **${f.name}** [${f.status}]: ${f.type || "unknown"}, ${f.current_count ?? "?"}/${f.initial_count || "?"} fish stocked, ${dayAge}, losses: ${fMortality} (${mortalityRate}%), ${abwNote}, ${harvestNote}\n`;
+      } else {
+        const latest = weights.filter((w: any) => w.flock_id === f.id)[0];
+        const latestWeight = latest ? `${latest.average_weight}kg avg (${latest.date})` : "no weight records";
+        const latestEggs = eggs.filter((e: any) => e.flock_id === f.id).slice(0, 3);
+        const layingRate = latestEggs.length && f.current_count
+          ? `laying rate ~${((latestEggs.reduce((s: number, e: any) => s + (e.total_eggs || 0), 0) / latestEggs.length / f.current_count) * 100).toFixed(0)}%`
+          : "";
+        context += `- **${f.name}** [${f.status}]: ${f.type || "unknown"}, ${f.current_count ?? "?"}/${f.initial_count || "?"} birds, ${dayAge}, mortality all-time: ${fMortality} birds (${mortalityRate}%), weight: ${latestWeight}${layingRate ? ", " + layingRate : ""}\n`;
+      }
     });
   }
 
@@ -278,6 +345,37 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     });
   }
 
+  if (isAquaFarm && waterQualityLogs.length > 0) {
+    context += `\n### Water Quality (last 30 days)\n`;
+    waterQualityLogs.slice(0, 10).forEach((w: any) => {
+      const pondName = flocks.find((f: any) => f.id === w.flock_id)?.name || "unknown pond";
+      const params = [
+        w.temperature_c != null ? `${w.temperature_c}°C` : null,
+        w.dissolved_oxygen != null ? `DO ${w.dissolved_oxygen} mg/L` : null,
+        w.ph != null ? `pH ${w.ph}` : null,
+        w.ammonia_mgl != null ? `NH₃ ${w.ammonia_mgl} mg/L` : null,
+        w.nitrite_mgl != null ? `NO₂ ${w.nitrite_mgl} mg/L` : null,
+      ].filter(Boolean).join(", ");
+      context += `- ${w.logged_at} [${pondName}]: ${params}${w.notes ? " — " + w.notes : ""}\n`;
+    });
+  }
+
+  if (isAquaFarm && harvestRecords.length > 0) {
+    context += `\n### Harvest Records\n`;
+    harvestRecords.slice(0, 10).forEach((h: any) => {
+      const pondName = flocks.find((f: any) => f.id === h.flock_id)?.name || "unknown pond";
+      context += `- ${h.harvested_at} [${pondName}]: ${h.total_weight_kg}kg @ ${currency} ${h.price_per_kg}/kg = ${currency} ${h.total_amount} [${h.payment_status}]${h.buyer_name ? " — " + h.buyer_name : ""}\n`;
+    });
+  }
+
+  if (isAquaFarm && samplingEvents.length > 0) {
+    context += `\n### Weight Sampling (last 30 days)\n`;
+    samplingEvents.slice(0, 10).forEach((s: any) => {
+      const pondName = flocks.find((f: any) => f.id === s.flock_id)?.name || "unknown pond";
+      context += `- ${s.sampled_at} [${pondName}]: sample size ${s.sample_size}, ABW ${s.abw_g}g${s.notes ? " — " + s.notes : ""}\n`;
+    });
+  }
+
   if (vaccinations.length > 0) {
     context += `\n### Recent Vaccinations\n`;
     vaccinations.slice(0, 5).forEach((v: any) => {
@@ -331,7 +429,7 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   context += `- Egg prices set: ${setupScore.has_egg_prices ? "✓" : "✗ missing"}${setupScore.has_egg_prices ? ` (${JSON.stringify(setupConfig?.egg_prices)})` : ""}\n`;
   context += `- Recent activity: ${setupScore.has_recent_activity ? "✓" : "✗ no data yet"}\n`;
 
-  return { context, setupConfig };
+  return { context, setupConfig, farmType };
 }
 
 const SYSTEM_PROMPT = `You are Eden, the expert farm advisor built into Edentrack for poultry farmers in Africa (Cameroon, Nigeria, Ghana, Kenya). You are a combination of: a senior poultry veterinarian, a farm business analyst, and a hands-on farm manager with 20+ years experience.
@@ -842,12 +940,14 @@ Deno.serve(async (req: Request) => {
 
     let contextPrompt = "";
     let setupConfig: any = null;
+    let farmType = "poultry";
     if (include_context !== false && caps.farmContext) {
       try {
         const farmCtx = await getFarmContext(supabaseClient, farm_id);
         contextPrompt = farmCtx.context;
         setupConfig = farmCtx.setupConfig;
-        console.log(`[ai-chat] farm_id=${farm_id} user=${user.id} contextLen=${contextPrompt.length} hasFlocks=${!contextPrompt.includes("No flocks recorded")}`);
+        farmType = farmCtx.farmType;
+        console.log(`[ai-chat] farm_id=${farm_id} user=${user.id} farmType=${farmType} contextLen=${contextPrompt.length}`);
       } catch (e) {
         console.error("Error fetching farm context:", e);
       }
@@ -872,7 +972,10 @@ Deno.serve(async (req: Request) => {
         : `Owners have FULL access to all features and data.`
     );
 
-    const systemMessage = SYSTEM_PROMPT + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+    const aquaIdentityNote = farmType === "aquaculture"
+      ? `\n\n## THIS IS A FISH FARM (AQUACULTURE)\nYou are now advising a fish farmer. Replace all poultry language with aquaculture equivalents: pond/fish/fingerlings/stocking. For any mortality question, check water quality first — 80% of fish deaths are water-quality related.\n${FISH_KNOWLEDGE}`
+      : "";
+    const systemMessage = SYSTEM_PROMPT + aquaIdentityNote + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     // Keep fewer turns on long conversations to stay within context limits
