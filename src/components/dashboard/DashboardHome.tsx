@@ -27,7 +27,7 @@ import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 import { cleanHistoricalDuplicateTasks } from '../../utils/unifiedTaskSystem';
-import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES } from '../../utils/speciesModules';
+import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES, AQUACULTURE_DEFAULT_PHASES } from '../../utils/speciesModules';
 
 interface DashboardHomeProps {
   onNavigate: (view: string) => void;
@@ -373,8 +373,9 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
   const getFlockTargetWeeks = (flock: Flock | null): number => {
     if (!flock) return 72;
+    if (isAquaculture) return 24;
     const isBroiler = flock.type?.toLowerCase() === 'broiler';
-    return isBroiler 
+    return isBroiler
       ? (farmSettings?.broilerDuration ?? 8)
       : (farmSettings?.layerDuration ?? 72);
   };
@@ -618,13 +619,15 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
             const isBroiler = selectedFlock.type?.toLowerCase() === 'broiler';
 
             // Use farm settings phases if available, otherwise use defaults from species module
-            const phases = isBroiler
-              ? (farmSettings.broilerPhases && farmSettings.broilerPhases.length > 0
-                  ? farmSettings.broilerPhases
-                  : BROILER_DEFAULT_PHASES)
-              : (farmSettings.layerPhases && farmSettings.layerPhases.length > 0
-                  ? farmSettings.layerPhases
-                  : LAYER_DEFAULT_PHASES);
+            const phases = isAquaculture
+              ? AQUACULTURE_DEFAULT_PHASES
+              : isBroiler
+                ? (farmSettings.broilerPhases && farmSettings.broilerPhases.length > 0
+                    ? farmSettings.broilerPhases
+                    : BROILER_DEFAULT_PHASES)
+                : (farmSettings.layerPhases && farmSettings.layerPhases.length > 0
+                    ? farmSettings.layerPhases
+                    : LAYER_DEFAULT_PHASES);
             const currentPhase = phases.find(p => currentWeek >= p.startWeek && currentWeek <= p.endWeek);
             
             return (
