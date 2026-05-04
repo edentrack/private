@@ -105,9 +105,11 @@ export function ExpenseTracking() {
   };
 
   const loadFlocks = async () => {
+    if (!currentFarm?.id) return;
     const { data } = await supabase
       .from('flocks')
       .select('*')
+      .eq('farm_id', currentFarm.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 

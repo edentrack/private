@@ -66,9 +66,9 @@ function selectModel(messages: ChatMessage[]): string {
     || (text.match(/,\s*\d+[).]?\s/g) || []).length >= 3;                          // 3+ comma-separated entries
   if (isBulkEntry) return MODEL_SONNET;
 
-  // Task creation ALWAYS needs Sonnet — Haiku ignores [LOG] block format instructions
+  // Task/vaccination scheduling ALWAYS needs Sonnet — Haiku ignores [LOG] block format instructions
   // and its 512-token cap truncates the JSON. Catch before simplePatterns intercepts "add..."
-  const isTaskCreate = /\b(task|remind|reminder|schedule|add.*task|create.*task|set.*reminder|task.*for|remind.*me)\b/i.test(text);
+  const isTaskCreate = /\b(task|remind|reminder|schedule|add.*task|create.*task|set.*reminder|task.*for|remind.*me|vaccin)\b/i.test(text);
   if (isTaskCreate) return MODEL_SONNET;
 
   // Short simple messages → Haiku (greetings, quick logs, single-field answers)
@@ -439,10 +439,18 @@ task_complete: { type: "COMPLETE_TASK", task_title_hint: string }
 - task_title_hint: a keyword from the task title to match (e.g. "vaccination", "egg", "feed")
 
 task_create: { type: "CREATE_TASK", title: string, due_date: "YYYY-MM-DD", notes?: string }
-- Use when farmer asks to add a task, reminder, or schedule something (e.g. "remind me to vaccinate on Monday", "add a task for cleaning on Friday")
-- title: short, clear task name (e.g. "Vaccinate Layer Flock 1", "Clean water drinkers")
+- Use when farmer asks to add a task, reminder, or schedule something (e.g. "add a task for cleaning on Friday", "remind me to weigh birds on Monday")
+- title: short, clear task name (e.g. "Clean water drinkers", "Check feed levels")
 - due_date: ISO date "YYYY-MM-DD". If not mentioned, ASK before generating [LOG]
 - notes: optional extra context or instructions for the task
+- DO NOT use CREATE_TASK for vaccination scheduling — use SCHEDULE_VACCINATION instead
+
+vaccine_schedule: { type: "SCHEDULE_VACCINATION", flock_name: string, vaccine_name: string, scheduled_date: "YYYY-MM-DD", notes?: string }
+- Use when farmer asks to vaccinate a flock on a specific date (e.g. "vaccinate Layer Flock 1 on 5th May", "schedule Newcastle vaccine for Batch 2 on Friday")
+- flock_name: name of the flock to vaccinate
+- vaccine_name: name of the vaccine (e.g. "Newcastle La Sota", "Gumboro", "Fowl Pox")
+- scheduled_date: ISO date "YYYY-MM-DD". If not mentioned, ASK before generating [LOG]
+- This creates both a vaccination record AND a reminder task automatically
 
 ⚠️ MANDATORY RULE — NO EXCEPTIONS:
 Every single CREATE_TASK response MUST contain the [LOG] block. The [LOG] block is the ONLY thing that saves the task to the database. A response without it saves NOTHING.
@@ -1111,6 +1119,46 @@ Deno.serve(async (req: Request) => {
       } catch (e) {
         responseContent = responseContent.replace(/\[UPDATE_TEAM_MEMBER\][\s\S]*?\[\/UPDATE_TEAM_MEMBER\]/, "").trim();
       }
+    }
+
+    // SCHEDULE_VACCINATION — executed server-side so flock lookup uses the service role key.
+    // Returns null logAction to client so the unknown type doesn't hit the frontend handler.
+    if (logAction?.type === "SCHEDULE_VACCINATION") {
+      try {
+        const schedDate: string = logAction.scheduled_date || new Date().toISOString().split("T")[0];
+        const flockRes = await supabaseClient
+          .from("flocks").select("id").eq("farm_id", farm_id)
+          .ilike("name", `%${logAction.flock_name || ""}%`).limit(1).maybeSingle();
+        const flockId = flockRes.data?.id || null;
+
+        await supabaseClient.from("vaccinations").insert({
+          farm_id, flock_id: flockId,
+          vaccine_name: logAction.vaccine_name || "Vaccination",
+          scheduled_date: schedDate,
+          notes: logAction.notes || null,
+          completed: false,
+        });
+
+        // isNaN guard — same fix as CREATE_TASK in AIAssistantPage.tsx
+        const rawWindowStart = new Date(`${schedDate}T09:00:00`);
+        const windowBase = isNaN(rawWindowStart.getTime()) ? new Date() : rawWindowStart;
+        await supabaseClient.from("tasks").insert({
+          farm_id, flock_id: flockId,
+          title_override: `Vaccinate ${logAction.flock_name || "flock"} — ${logAction.vaccine_name || "vaccine"}`,
+          notes: logAction.notes || null,
+          due_date: schedDate,
+          scheduled_for: schedDate,
+          scheduled_time: "09:00",
+          window_start: windowBase.toISOString(),
+          window_end: new Date(windowBase.getTime() + 60 * 60 * 1000).toISOString(),
+          status: "pending",
+          requires_input: false,
+          is_archived: false,
+        });
+      } catch (vaccErr: any) {
+        console.error("SCHEDULE_VACCINATION error:", vaccErr?.message);
+      }
+      logAction = null; // consumed server-side — don't pass unknown type to client
     }
 
     // Strip financial logging for free tier; egg collection / mortality / feed / weight remain available

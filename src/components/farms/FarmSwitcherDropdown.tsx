@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, Plus, Fish, Wheat } from 'lucide-react';
+import { ChevronDown, Plus, Fish, Wheat, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMaxFarms } from '../../utils/planGating';
-import type { OwnedFarm } from '../../contexts/authContextRef';
 import type { FarmKind } from '../../types/database';
 
 interface FarmSwitcherDropdownProps {
@@ -15,20 +14,12 @@ function FarmTypeIcon({ type, className }: { type: FarmKind | undefined; classNa
 }
 
 export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
-  const { currentFarm, allFarms, switchFarm, profile } = useAuth();
+  const { currentFarm, allFarms, profile } = useAuth();
   const [open, setOpen] = useState(false);
-  const [switching, setSwitching] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const maxFarms = getMaxFarms(profile?.subscription_tier);
   const canAddMore = allFarms.length < maxFarms;
-
-  // Only display up to plan limit, always including the active farm first
-  const visibleFarms = (() => {
-    const active = allFarms.filter(f => f.id === currentFarm?.id);
-    const others = allFarms.filter(f => f.id !== currentFarm?.id);
-    return [...active, ...others].slice(0, maxFarms);
-  })();
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -37,14 +28,6 @@ export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  const handleSwitch = async (farm: OwnedFarm) => {
-    if (farm.id === currentFarm?.id) { setOpen(false); return; }
-    setSwitching(farm.id);
-    await switchFarm(farm.id);
-    setSwitching(null);
-    setOpen(false);
-  };
 
   const farmTypeBadge = (type: FarmKind | undefined) => {
     if (type === 'aquaculture') {
@@ -78,57 +61,64 @@ export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
 
       {open && (
         <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-scale-in">
-          {visibleFarms.map((farm) => {
-            const isActive = farm.id === currentFarm?.id;
-            const isLoading = switching === farm.id;
-            return (
-              <button
-                key={farm.id}
-                onClick={() => handleSwitch(farm)}
-                disabled={isLoading}
-                className={`w-full px-3 py-2.5 flex items-center gap-3 hover:bg-gray-50 transition-colors text-left ${isLoading ? 'opacity-60' : ''}`}
-              >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  farm.farm_type === 'aquaculture' ? 'bg-blue-50' : 'bg-amber-50'
-                }`}>
-                  <FarmTypeIcon type={farm.farm_type} className={`w-4 h-4 ${farm.farm_type === 'aquaculture' ? 'text-blue-500' : 'text-amber-600'}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${isActive ? 'text-gray-900' : 'text-gray-700'}`}>
-                    {farm.name}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    {farmTypeBadge(farm.farm_type)}
-                    {farm.location && (
-                      <span className="text-[9px] text-gray-400 truncate">{farm.location}</span>
-                    )}
-                  </div>
-                </div>
-                {isActive && <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />}
-                {isLoading && (
-                  <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          {/* Active farm display */}
+          <div className="px-3 py-2.5 flex items-center gap-3">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              currentFarm?.farm_type === 'aquaculture' ? 'bg-blue-50' : 'bg-amber-50'
+            }`}>
+              <FarmTypeIcon
+                type={currentFarm?.farm_type as FarmKind | undefined}
+                className={`w-4 h-4 ${currentFarm?.farm_type === 'aquaculture' ? 'text-blue-500' : 'text-amber-600'}`}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{currentFarm?.name || 'My Farm'}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {farmTypeBadge(currentFarm?.farm_type as FarmKind | undefined)}
+                {currentFarm?.location && (
+                  <span className="text-[9px] text-gray-400 truncate">{currentFarm.location}</span>
                 )}
-              </button>
-            );
-          })}
+              </div>
+            </div>
+          </div>
 
           <div className="border-t border-gray-100 my-1" />
 
+          {/* Add a new farm — always open the modal; modal handles the limit-reached state */}
           <button
             onClick={() => { setOpen(false); onAddFarm(); }}
-            disabled={!canAddMore}
-            className={`w-full px-3 py-2.5 flex items-center gap-3 transition-colors text-left ${canAddMore ? 'hover:bg-gray-50' : 'opacity-40 cursor-not-allowed'}`}
+            className={`w-full px-3 py-2.5 flex items-center gap-3 transition-colors text-left ${
+              canAddMore ? 'hover:bg-gray-50' : 'hover:bg-amber-50'
+            }`}
           >
-            <div className="w-8 h-8 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center flex-shrink-0">
-              <Plus className="w-4 h-4 text-gray-400" />
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              canAddMore
+                ? 'border-2 border-dashed border-gray-200'
+                : 'bg-amber-50'
+            }`}>
+              <Plus className={`w-4 h-4 ${canAddMore ? 'text-gray-400' : 'text-amber-500'}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-gray-600">Add a new farm</span>
+              <span className={`text-sm font-medium ${canAddMore ? 'text-gray-600' : 'text-amber-600'}`}>
+                {canAddMore ? 'Add a new farm' : 'Add a new farm'}
+              </span>
+              <p className="text-[9px] text-gray-400 mt-0.5">{allFarms.length} of {maxFarms} farms used</p>
             </div>
-            <span className="text-[10px] font-semibold text-gray-400 flex-shrink-0 tabular-nums">
-              {allFarms.length}/{maxFarms}
-            </span>
           </button>
+
+          {/* Manage farms link */}
+          {allFarms.length > 1 && (
+            <>
+              <div className="border-t border-gray-100 my-1" />
+              <button
+                onClick={() => { setOpen(false); window.location.hash = '#/settings?tab=my-farms'; }}
+                className="w-full px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left"
+              >
+                <Settings className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-xs text-gray-500">Manage farms</span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves, Droplets } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -98,6 +98,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'egg-records', label: 'Egg Records', icon: Egg },
       { id: 'mortality', label: isAquaculture ? 'Fish Losses' : 'Mortality', icon: HeartOff },
       { id: 'harvest', label: 'Harvest', icon: Waves },
+      { id: 'water-quality', label: 'Water Quality', icon: Droplets },
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
@@ -114,7 +115,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // Items only relevant when eggs are tracked (layer/mixed farms)
     const eggOnlyItems = new Set(['sales', 'egg-records']);
     // Items only for aquaculture farms
-    const aquacultureOnlyItems = new Set(['harvest']);
+    const aquacultureOnlyItems = new Set(['harvest', 'water-quality']);
     // Items hidden for aquaculture farms
     const poultryOnlyItems = new Set(['vaccinations']);
 

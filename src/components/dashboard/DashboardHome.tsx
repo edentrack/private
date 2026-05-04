@@ -388,45 +388,80 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
   if (flocks.length === 0) {
     const isWorker = currentRole?.toLowerCase() === 'worker' || currentRole?.toLowerCase() === 'viewer';
+
+    const emptyConfig = isAquaculture
+      ? {
+          strip: 'linear-gradient(90deg, #3b82f6 0%, #0ea5e9 100%)',
+          iconBg: 'rgba(59,130,246,0.10)',
+          iconBorder: 'rgba(59,130,246,0.25)',
+          emoji: '🐟',
+          workerHeading: 'No ponds yet',
+          ownerHeading: 'Add your first pond',
+          workerBody: "Your manager hasn't added any ponds yet. Check back soon.",
+          ownerBody: 'A pond is how Edentrack tracks your fish — stocking, water quality, feed, and harvest all tie back to it.',
+          steps: [
+            { n: '1', text: 'Create a pond (species, count, stocking date)' },
+            { n: '2', text: 'Log water quality — temperature, DO, pH' },
+            { n: '3', text: 'Record harvests and watch your revenue grow' },
+          ],
+          btnBg: '#3b82f6',
+          btnShadow: '0 4px 16px rgba(59,130,246,0.30)',
+          btnText: 'white',
+          btnLabel: 'Create My First Pond',
+          hint: 'You can manage multiple ponds — catfish, tilapia, or mixed.',
+        }
+      : {
+          strip: 'linear-gradient(90deg, #ffdd00 0%, #f59e0b 100%)',
+          iconBg: 'rgba(255,221,0,0.12)',
+          iconBorder: 'rgba(255,221,0,0.25)',
+          emoji: '🐣',
+          workerHeading: 'No flocks yet',
+          ownerHeading: 'Add your first flock',
+          workerBody: "Your manager hasn't added any flocks yet. Check back soon.",
+          ownerBody: 'A flock is how Edentrack tracks everything — mortality, weight, feed, expenses, and sales all tie back to it.',
+          steps: [
+            { n: '1', text: 'Create a flock (breed, count, start date)' },
+            { n: '2', text: 'Log daily tasks — feed, water, mortality' },
+            { n: '3', text: 'Watch your KPIs & AI insights populate' },
+          ],
+          btnBg: '#ffdd00',
+          btnShadow: '0 4px 16px rgba(255,221,0,0.3)',
+          btnText: 'text-gray-900',
+          btnLabel: 'Create My First Flock',
+          hint: 'You can manage multiple flocks — broilers, layers, or both.',
+        };
+
     return (
       <div className="flex items-center justify-center min-h-[70vh] px-4">
         <div className="w-full max-w-sm">
-          {/* Card */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Top strip */}
-            <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #ffdd00 0%, #f59e0b 100%)' }} />
+            <div className="h-2 w-full" style={{ background: emptyConfig.strip }} />
 
             <div className="p-8 text-center">
-              {/* Icon */}
               <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center text-3xl"
-                style={{ background: 'rgba(255,221,0,0.12)', border: '2px solid rgba(255,221,0,0.25)' }}>
-                🐣
+                style={{ background: emptyConfig.iconBg, border: `2px solid ${emptyConfig.iconBorder}` }}>
+                {emptyConfig.emoji}
               </div>
 
               <h3 className="text-xl font-extrabold text-gray-900 mb-2">
-                {isWorker ? 'No flocks yet' : 'Add your first flock'}
+                {isWorker ? emptyConfig.workerHeading : emptyConfig.ownerHeading}
               </h3>
 
               {isWorker ? (
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  Your manager hasn't added any flocks yet. Check back soon.
+                  {emptyConfig.workerBody}
                 </p>
               ) : (
                 <>
                   <p className="text-gray-400 text-sm leading-relaxed mb-8">
-                    A flock is how Edentrack tracks everything — mortality, weight, feed, expenses, and sales all tie back to it.
+                    {emptyConfig.ownerBody}
                   </p>
 
-                  {/* Steps */}
                   <div className="text-left space-y-3 mb-8">
-                    {[
-                      { n: '1', text: 'Create a flock (breed, count, start date)' },
-                      { n: '2', text: 'Log daily tasks — feed, water, mortality' },
-                      { n: '3', text: 'Watch your KPIs & AI insights populate' },
-                    ].map(({ n, text }) => (
+                    {emptyConfig.steps.map(({ n, text }) => (
                       <div key={n} className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-gray-900 shrink-0 mt-0.5"
-                          style={{ background: '#ffdd00' }}>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
+                          style={{ background: emptyConfig.btnBg, color: emptyConfig.btnText === 'white' ? '#fff' : '#111' }}>
                           {n}
                         </div>
                         <p className="text-sm text-gray-600">{text}</p>
@@ -436,21 +471,20 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
                   <button
                     onClick={() => onNavigate('flocks')}
-                    className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm text-gray-900 hover:brightness-105 transition-all"
-                    style={{ background: '#ffdd00', boxShadow: '0 4px 16px rgba(255,221,0,0.3)' }}
+                    className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-bold text-sm hover:brightness-105 transition-all"
+                    style={{ background: emptyConfig.btnBg, color: emptyConfig.btnText === 'white' ? '#fff' : '#111827', boxShadow: emptyConfig.btnShadow }}
                   >
                     <Plus className="w-4 h-4" />
-                    Create My First Flock
+                    {emptyConfig.btnLabel}
                   </button>
                 </>
               )}
             </div>
           </div>
 
-          {/* Hint */}
           {!isWorker && (
             <p className="text-center text-xs text-gray-400 mt-4">
-              You can manage multiple flocks — broilers, layers, or both.
+              {emptyConfig.hint}
             </p>
           )}
         </div>
@@ -544,7 +578,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6 py-4 animate-fade-in-up stagger-2">
-        <div className="flex-1">
+        {!isAquaculture && <div className="flex-1">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-500">{t('dashboard.progress')}</span>
             <span className="text-sm font-medium text-gray-700">
@@ -615,7 +649,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
               </p>
             );
           })() : null}
-        </div>
+        </div>}
         <div className="w-full lg:w-auto">
           <FlockSwitcher
             selectedFlockId={selectedFlockId}

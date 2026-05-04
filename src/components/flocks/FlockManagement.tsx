@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, ArrowRight, Archive, Pencil, AlertTriangle, History, RotateCcw, Trash2, X } from 'lucide-react';
+import { Plus, ArrowRight, Archive, Pencil, AlertTriangle, History, RotateCcw, Trash2, X, Fish } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -42,16 +42,17 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
   const hideFinancials = shouldHideFinancialData(currentRole);
 
   useEffect(() => {
-    if (user) {
+    if (user && currentFarm?.id) {
       loadFlocks();
     }
-  }, [user, showArchived]);
+  }, [user, showArchived, currentFarm?.id]);
 
   const loadFlocks = async () => {
     try {
       const query = supabase
         .from('flocks')
         .select('*')
+        .eq('farm_id', currentFarm?.id)
         .order('created_at', { ascending: false });
 
       if (showArchived) {
@@ -89,8 +90,12 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
       'Dual-Purpose': '🍳',
       'Turkey': '🦃',
       'Duck': '🦆',
+      'Catfish': '🐟',
+      'Tilapia': '🐠',
+      'Clarias': '🐡',
+      'Other Fish': '🐟',
     };
-    return map[type] || '🐓';
+    return map[type] || (isAquaculture ? '🐟' : '🐓');
   };
 
   const getFlockAge = (arrivalDate: string) => {
@@ -159,7 +164,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
       if (error) throw error;
 
-      toast.success('Flock restored successfully');
+      toast.success(isAquaculture ? 'Pond restored successfully' : 'Flock restored successfully');
       setConfirmingUnarchive(null);
       invalidateFarmTypeCache();
       loadFlocks();
@@ -178,7 +183,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
       if (error) throw error;
 
-      toast.success('Flock permanently deleted');
+      toast.success(isAquaculture ? 'Pond permanently deleted' : 'Flock permanently deleted');
       setConfirmingDelete(null);
       loadFlocks();
     } catch (err) {
@@ -248,14 +253,23 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
       {flocks.length === 0 ? (
         <div className="section-card text-center py-12 animate-fade-in-up">
-          <div className="w-20 h-20 bg-neon-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ChickenIcon className="w-10 h-10 text-neon-600" />
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${isAquaculture ? 'bg-blue-50' : 'bg-neon-100'}`}>
+            {isAquaculture
+              ? <Fish className="w-10 h-10 text-blue-500" />
+              : <ChickenIcon className="w-10 h-10 text-neon-600" />
+            }
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">{t('flocks.no_flocks_yet')}</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            {isAquaculture
+              ? (currentRole === 'viewer' ? 'No ponds yet' : 'Add your first pond')
+              : t('flocks.no_flocks_yet')}
+          </h3>
           <p className="text-gray-500 mb-6 max-w-sm mx-auto text-sm leading-relaxed">
             {currentRole === 'viewer'
-              ? t('flocks.no_flocks_worker_message')
-              : t('flocks.no_flocks_owner_message')}
+              ? (isAquaculture ? "Your manager hasn't added any ponds yet. Check back soon." : t('flocks.no_flocks_worker_message'))
+              : (isAquaculture
+                  ? 'A pond is how Edentrack tracks your fish — stocking, water quality, feed, and harvest all tie back to it.'
+                  : t('flocks.no_flocks_owner_message'))}
           </p>
           {currentRole && currentRole !== 'viewer' && (
             <button
@@ -263,7 +277,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
               className="btn-primary inline-flex items-center"
             >
               <Plus className="w-5 h-5 mr-2" />
-              {t('flocks.create_flock')}
+              {isAquaculture ? 'Create Pond' : t('flocks.create_flock')}
             </button>
           )}
         </div>
@@ -283,16 +297,23 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{getFlockTypeEmoji(flock.type)} {flock.name}</h3>
                   <div className="flex items-center gap-2">
-                    <div className="badge-yellow inline-flex items-center gap-1.5">
-                      {flock.type === 'Layer' ? (
-                        <img src="/layer.jpg" alt="Layer" className="w-4 h-4 object-contain mix-blend-multiply" style={{ backgroundColor: 'transparent' }} />
-                      ) : flock.type === 'Broiler' ? (
-                        <img src="/broiler.png" alt="Broiler" className="w-4 h-4 object-contain mix-blend-multiply" style={{ backgroundColor: 'transparent' }} />
-                      ) : (
-                        <ChickenIcon className="w-4 h-4" />
-                      )}
-                      {flock.type}
-                    </div>
+                    {isAquaculture ? (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                        <Fish className="w-3.5 h-3.5" />
+                        {flock.type}
+                      </div>
+                    ) : (
+                      <div className="badge-yellow inline-flex items-center gap-1.5">
+                        {flock.type === 'Layer' ? (
+                          <img src="/layer.jpg" alt="Layer" className="w-4 h-4 object-contain mix-blend-multiply" style={{ backgroundColor: 'transparent' }} />
+                        ) : flock.type === 'Broiler' ? (
+                          <img src="/broiler.png" alt="Broiler" className="w-4 h-4 object-contain mix-blend-multiply" style={{ backgroundColor: 'transparent' }} />
+                        ) : (
+                          <ChickenIcon className="w-4 h-4" />
+                        )}
+                        {flock.type}
+                      </div>
+                    )}
                     {showArchived && (
                       <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                         flock.status === 'sold' ? 'bg-emerald-100 text-emerald-700' :
@@ -325,8 +346,8 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
               </div>
 
               <div className="space-y-4">
-                <div className="p-4 bg-gradient-to-br from-neon-50 to-neon-100/50 rounded-2xl">
-                  <div className="stat-label">{t('flocks.age')}</div>
+                <div className={`p-4 rounded-2xl bg-gradient-to-br ${isAquaculture ? 'from-blue-50 to-blue-100/50' : 'from-neon-50 to-neon-100/50'}`}>
+                  <div className="stat-label">{isAquaculture ? 'Age in Pond' : t('flocks.age')}</div>
                   <div className="text-3xl font-bold text-gray-900">
                     {formatFlockAge(flock.arrival_date)}
                   </div>
@@ -334,11 +355,11 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="stat-label">{t('flocks.initial_count')}</div>
+                    <div className="stat-label">{isAquaculture ? 'Initial Fish' : t('flocks.initial_count')}</div>
                     <div className="text-xl font-bold text-gray-900">{flock.initial_count.toLocaleString()}</div>
                   </div>
                   <div>
-                    <div className="stat-label">{t('flocks.current_count')}</div>
+                    <div className="stat-label">{isAquaculture ? 'Current Fish' : t('flocks.current_count')}</div>
                     <div className="text-xl font-bold text-gray-900">{flock.current_count.toLocaleString()}</div>
                   </div>
                 </div>
@@ -402,7 +423,9 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         </button>
                       </div>
                       <div className="text-xs text-blue-700">
-                        This will bring the flock back to your active flocks.
+                        {isAquaculture
+                          ? 'This will bring the pond back to your active ponds.'
+                          : 'This will bring the flock back to your active flocks.'}
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -514,7 +537,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         className="text-xs text-red-600 hover:text-red-700 font-medium inline-flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
                       >
                         <AlertTriangle className="w-3.5 h-3.5" />
-                        {t('mortality.record')}
+                        {isAquaculture ? 'Record Loss' : t('mortality.record')}
                       </button>
                       <button
                         onClick={(e) => {
@@ -524,7 +547,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         className="text-xs text-amber-600 hover:text-amber-700 font-medium inline-flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-amber-50 transition-colors"
                       >
                         <Archive className="w-3.5 h-3.5" />
-                        {t('flocks.archive_flock')}
+                        {isAquaculture ? 'Archive Pond' : t('flocks.archive_flock')}
                       </button>
                     </>
                   )}

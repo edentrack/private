@@ -38,7 +38,13 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const isWorker = currentRole === 'worker';
   const { simpleMode, toggleSimpleMode } = useSimpleMode();
 
-  const [activeTab, setActiveTab] = useState<TabId>('farm');
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const hashParts = window.location.hash.split('?');
+    const params = new URLSearchParams(hashParts[1] || '');
+    const tab = params.get('tab') as TabId | null;
+    const valid: TabId[] = ['farm', 'team', 'eden', 'preferences', 'my-farms'];
+    return tab && valid.includes(tab) ? tab : 'farm';
+  });
 
   const [farm, setFarm] = useState<Farm | null>(null);
   const [farmName, setFarmName] = useState('');

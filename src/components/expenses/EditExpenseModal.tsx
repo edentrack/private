@@ -18,7 +18,7 @@ const capitalizeCategory = (cat: string): string => {
 };
 
 export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpenseModalProps) {
-  const { user, profile } = useAuth();
+  const { user, profile, currentFarm } = useAuth();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
   const [amount, setAmount] = useState(expense.amount.toString());
@@ -47,9 +47,11 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
   }, [isOpen, expense]);
 
   const loadFlocks = async () => {
+    if (!currentFarm?.id) return;
     const { data } = await supabase
       .from('flocks')
       .select('*')
+      .eq('farm_id', currentFarm.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 

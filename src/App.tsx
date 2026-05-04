@@ -70,6 +70,8 @@ const SupportTickets         = lazy1(() => import('./components/superadmin/Suppo
 const ActivityLogs           = lazy1(() => import('./components/superadmin/ActivityLogs'), 'ActivityLogs');
 const BillingSubscriptions   = lazy1(() => import('./components/superadmin/BillingSubscriptions'), 'BillingSubscriptions');
 const PlatformSettings       = lazy1(() => import('./components/superadmin/PlatformSettings'), 'PlatformSettings');
+const WaterQualityPage       = lazy1(() => import('./components/aquaculture/WaterQualityPage'), 'WaterQualityPage');
+const HarvestPage            = lazy1(() => import('./components/aquaculture/HarvestPage'), 'HarvestPage');
 
 function CrispChat() {
   const { profile, user } = useAuth();
@@ -1011,6 +1013,10 @@ function AppContent() {
             <VaccinationSchedule flock={selectedFlock} />
           </RequireRole>
         );
+      case 'water-quality':
+        return <WaterQualityPage />;
+      case 'harvest':
+        return <HarvestPage />;
       case 'vet-log':
         return (
           <RequireRole moduleId="vet-log" onUnauthorized={handleUnauthorized}>

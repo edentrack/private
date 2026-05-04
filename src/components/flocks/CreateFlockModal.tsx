@@ -81,8 +81,8 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
       const maxBirds = getMaxBirdsPerFlock(plan);
       if (exceedsBirdLimit(plan, initialCountNum)) {
         setError(
-          `Your ${plan === 'basic' ? 'Starter' : plan === 'pro' ? 'Grower' : 'Farm Boss'} plan allows up to ${maxBirds.toLocaleString()} birds per flock. ` +
-          `Upgrade your plan to add larger flocks.`
+          `Your ${plan === 'basic' ? 'Starter' : plan === 'pro' ? 'Grower' : 'Farm Boss'} plan allows up to ${maxBirds.toLocaleString()} ${isAquaculture ? 'fish per pond' : 'birds per flock'}. ` +
+          `Upgrade your plan to add ${isAquaculture ? 'larger ponds' : 'larger flocks'}.`
         );
         setLoading(false);
         return;
@@ -349,7 +349,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             {initialCount && currentCount && initialMortality > 0 && (
               <p className="text-xs text-amber-600 mt-1 bg-amber-50 px-2 py-1 rounded">{t('flocks.pre_app_mortality_notice', { count: initialMortality, animals: terminology?.animals?.toLowerCase() || 'birds' })}</p>
             )}
-            {!currentCount && <p className="text-[10px] text-gray-600 mt-0.5">{t('flocks.leave_empty_if_no_deaths')}</p>}
+            {!currentCount && (
+              <p className="text-[10px] text-gray-600 mt-0.5">
+                {isAquaculture ? 'Leave empty if no fish died before using this app' : t('flocks.leave_empty_if_no_deaths')}
+              </p>
+            )}
           </div>
 
           <div className="p-3 bg-[#faf7f2] border border-gray-200 rounded-lg space-y-3">
@@ -394,7 +398,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               {t('flocks.cancel')}
             </button>
             <button type="submit" disabled={loading || !species || !type} className="flex-1 px-4 py-2.5 text-sm border-2 border-gray-900 text-gray-900 rounded-lg font-medium hover:bg-[#faf7f2] bg-white disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? t('flocks.creating') : t('flocks.create_flock')}
+              {loading ? (isAquaculture ? 'Creating…' : t('flocks.creating')) : (isAquaculture ? 'Create Pond' : t('flocks.create_flock'))}
             </button>
           </div>
         </form>
