@@ -1,32 +1,11 @@
 /*
-  # Aquaculture Task Templates — Branch seeder by farm_type
+  # Fix aquaculture task templates — type_category 'monthly' is not a valid enum value
 
-  1. Replaces create_system_task_templates so it reads farm_type from the farms
-     table and seeds the appropriate template set:
-       - 'aquaculture' → pond monitoring + water quality + weight sampling
-       - everything else → existing poultry set (unchanged)
+  The previous migration (20260504000001) used 'monthly' as type_category for
+  the two periodic templates (Pond clean, Health inspection). The valid enum
+  values are: daily, one_time, recording.
 
-  2. The trigger on_farm_created_create_templates is unchanged — it still fires
-     on INSERT and calls create_system_task_templates(NEW.id). The function now
-     reads farm_type internally so no trigger signature changes are needed.
-
-  3. Additive only — no column drops, no table renames.
-
-  --- Cleanup SQL (run once after deploy to remove chicken templates from
-  --- existing aquaculture farms; adjust if you have renamed templates):
-  --
-  -- DELETE FROM task_templates
-  -- WHERE farm_id IN (SELECT id FROM farms WHERE farm_type = 'aquaculture')
-  --   AND is_system_template = true
-  --   AND title IN (
-  --     'Clean Coop','Check Water Lines','Inspect Feeders','Biosecurity Check',
-  --     'Record Mortality','Daily Feed Usage','Weekly Broiler Weight Check',
-  --     'Litter Condition Check','Harvest Readiness Check','Daily Egg Collection',
-  --     'Weekly Layer Body Weight','Feed Intake Monitoring','Uniformity Check'
-  --   );
-  --
-  -- (Tasks generated from those templates will already be orphaned once the
-  -- templates are deleted; clean them up if you also track generated tasks.)
+  This migration replaces the function again with the corrected value ('one_time').
 */
 
 CREATE OR REPLACE FUNCTION create_system_task_templates(p_farm_id uuid)
@@ -35,7 +14,6 @@ DECLARE
   v_template_exists boolean;
   v_farm_type text;
 BEGIN
-  -- Skip if templates already seeded for this farm
   SELECT EXISTS(
     SELECT 1 FROM task_templates
     WHERE farm_id = p_farm_id AND is_system_template = true
@@ -46,7 +24,6 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Derive species from farm_type
   SELECT COALESCE(farm_type, 'poultry') INTO v_farm_type
   FROM farms WHERE id = p_farm_id;
 
@@ -87,7 +64,7 @@ BEGIN
      '{"fields": []}'::jsonb),
 
     (p_farm_id, 'Health inspection', 'Observe fish behaviour, check for parasites or lesions', 'Health', false,
-     'monthly', true, true, 'checklist', false, 'general', 'monthly', true, null, 80, 'shield',
+     'monthly', true, true, 'checklist', false, 'general', 'one_time', true, null, 80, 'shield',
      '{"fields": []}'::jsonb);
 
   -- ── Poultry templates (unchanged from original migration) ─────────────────
