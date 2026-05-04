@@ -103,6 +103,7 @@ export function WeightTracking({ flock: flockProp }: WeightTrackingProps) {
       const { data: previousCheck } = await supabase
         .from('weight_logs')
         .select('average_weight, date')
+        .eq('farm_id', currentFarm?.id)
         .eq('flock_id', flock.id)
         .order('date', { ascending: false })
         .limit(1)

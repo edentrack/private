@@ -212,6 +212,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                     if (t === 'Broiler') return '/broiler.png';
                     if (t === 'Tilapia') return '/tilapia.jpg';
                     if (t === 'Catfish') return '/catfish.png';
+                    if (t === 'Clarias') return '/catfish.png';
                     if (t === 'Other Fish') return '/other-fish.avif';
                     if (t === 'Meat Rabbits' || t === 'Breeder Rabbits') return '/rabbit.avif';
                     return '/broiler.png';

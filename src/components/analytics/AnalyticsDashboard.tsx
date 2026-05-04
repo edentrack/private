@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock, Farm } from '../../types/database';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { FlockFinancialSummary } from './FlockFinancialSummary';
 import { FlockPnLCard } from '../dashboard/FlockPnLCard';
@@ -34,6 +35,7 @@ interface KPIData {
 export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
   const { t } = useTranslation();
   const { profile, currentFarm, currentRole } = useAuth();
+  const species = useFarmSpecies();
   const { showToast } = useToast();
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(flock?.id || null);
   const [currentFlock, setCurrentFlock] = useState<Flock | null>(flock);
@@ -84,12 +86,13 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
   }, [currentFlock]);
 
   const loadFlockData = async () => {
-    if (!selectedFlockId) return;
+    if (!selectedFlockId || !currentFarm?.id) return;
 
     const { data } = await supabase
       .from('flocks')
       .select('*')
       .eq('id', selectedFlockId)
+      .eq('farm_id', currentFarm.id)
       .single();
 
     if (data) {
@@ -102,8 +105,8 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
 
     try {
       const [{ data: expenses }, { data: mortalityLogs }] = await Promise.all([
-        supabase.from('expenses').select('amount, category').eq('flock_id', currentFlock.id),
-        supabase.from('mortality_logs').select('count').eq('flock_id', currentFlock.id),
+        supabase.from('expenses').select('amount, category').eq('farm_id', currentFarm!.id).eq('flock_id', currentFlock.id),
+        supabase.from('mortality_logs').select('count').eq('farm_id', currentFarm!.id).eq('flock_id', currentFlock.id),
       ]);
 
       const totalExpenses = expenses?.reduce((sum, exp) => sum + exp.amount, 0) || 0;
@@ -304,24 +307,26 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
 
         {!hideFinancials && (
           <>
-            <div className="bg-white rounded-2xl p-6">
-              <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
-                Cost/Egg
+            {species.features.eggs && (
+              <div className="bg-white rounded-2xl p-6">
+                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
+                  Cost/Egg
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {kpis.costPerEgg > 0 ? kpis.costPerEgg : '—'} {kpis.costPerEgg > 0 && <span className="text-base">{profile?.currency_preference}</span>}
+                </div>
+                <div className="text-xs text-gray-600">Per egg cost</div>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">
-                {kpis.costPerEgg} <span className="text-base">{profile?.currency_preference}</span>
-              </div>
-              <div className="text-xs text-gray-600">Per egg cost</div>
-            </div>
+            )}
 
             <div className="bg-white rounded-2xl p-6">
               <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
-                Cost/Bird
+                Cost/{species.animalTerm}
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">
-                {kpis.costPerBird.toFixed(0)} <span className="text-base">{profile?.currency_preference}</span>
+                {kpis.costPerBird > 0 ? kpis.costPerBird.toFixed(0) : '—'} {kpis.costPerBird > 0 && <span className="text-base">{profile?.currency_preference}</span>}
               </div>
-              <div className="text-xs text-gray-600">Per bird cost</div>
+              <div className="text-xs text-gray-600">Per {species.animalTerm.toLowerCase()} cost</div>
             </div>
           </>
         )}
@@ -338,7 +343,7 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
 
         <div className="bg-white rounded-2xl p-6">
           <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
-            Mortality
+            {species.lossNounPlural}
           </div>
           <div className="text-3xl font-bold text-gray-900 mb-1">
             {kpis.mortality.toFixed(1)}%
@@ -348,15 +353,17 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
 
         {!hideFinancials && (
           <>
-            <div className="bg-white rounded-2xl p-6">
-              <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
-                Profit/Tray
+            {species.features.eggs && (
+              <div className="bg-white rounded-2xl p-6">
+                <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">
+                  Profit/Tray
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                  {kpis.profitPerTray > 0 ? kpis.profitPerTray : '—'} {kpis.profitPerTray > 0 && <span className="text-base">{profile?.currency_preference}</span>}
+                </div>
+                <div className="text-xs text-gray-600">Est. profit</div>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">
-                {kpis.profitPerTray} <span className="text-base">{profile?.currency_preference}</span>
-              </div>
-              <div className="text-xs text-gray-600">Est. profit</div>
-            </div>
+            )}
 
             <div className="bg-white rounded-2xl p-6 md:col-span-2">
               <div className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-2">

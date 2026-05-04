@@ -5,6 +5,7 @@ import { Flock } from '../../types/database';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../../contexts/ToastContext';
 import { calculateCurrentWeek, getTargetWeight } from '../../utils/growthTargets';
+import { getSpeciesByType, getSpeciesModule } from '../../utils/speciesModules';
 
 interface WeightLog {
   id: string;
@@ -28,6 +29,7 @@ interface WeightHistoryViewProps {
 
 export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
   const { t } = useTranslation();
+  const species = getSpeciesModule(getSpeciesByType((flock.type as any) ?? 'Broiler'));
   const toast = useToast();
   const [logs, setLogs] = useState<WeightLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -282,7 +284,7 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
                 <p className="font-bold text-lg">{analysis.growthStatus}</p>
               </div>
               <p className="text-sm text-gray-700">
-                Your birds are at {analysis.percentOfTarget.toFixed(1)}% of target weight for Week {analysis.currentWeek}.
+                Your {species.animalTermPlural.toLowerCase()} are at {analysis.percentOfTarget.toFixed(1)}% of target weight for Week {analysis.currentWeek}.
               </p>
             </div>
           </div>
@@ -310,7 +312,7 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
             <h3 className="font-bold text-lg text-gray-900 mb-4">Flock Estimates</h3>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-600 mb-1">Total Birds</div>
+                <div className="text-sm text-gray-600 mb-1">Total {species.animalTermPlural}</div>
                 <div className="text-2xl font-bold text-gray-900">{flock.current_count?.toLocaleString()}</div>
               </div>
               <div>

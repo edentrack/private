@@ -72,6 +72,7 @@ const BillingSubscriptions   = lazy1(() => import('./components/superadmin/Billi
 const PlatformSettings       = lazy1(() => import('./components/superadmin/PlatformSettings'), 'PlatformSettings');
 const WaterQualityPage       = lazy1(() => import('./components/aquaculture/WaterQualityPage'), 'WaterQualityPage');
 const HarvestPage            = lazy1(() => import('./components/aquaculture/HarvestPage'), 'HarvestPage');
+const SamplingEventsPage     = lazy1(() => import('./components/aquaculture/SamplingEventsPage'), 'SamplingEventsPage');
 
 function CrispChat() {
   const { profile, user } = useAuth();
@@ -371,6 +372,9 @@ function AppContent() {
       'vaccinations': '#/vaccinations',
       'vet-log': '#/vet-log',
       'mortality': '#/mortality',
+      'water-quality': '#/water-quality',
+      'harvest': '#/harvest',
+      'sampling': '#/sampling',
       'weight': '#/weight',
       'analytics': '#/analytics',
       'insights': '#/insights',
@@ -578,6 +582,18 @@ function AppContent() {
       }
       if (hash.includes('#/mortality')) {
         setCurrentView('mortality');
+        return;
+      }
+      if (hash.includes('#/water-quality')) {
+        setCurrentView('water-quality');
+        return;
+      }
+      if (hash.includes('#/harvest')) {
+        setCurrentView('harvest');
+        return;
+      }
+      if (hash.includes('#/sampling')) {
+        setCurrentView('sampling');
         return;
       }
       if (hash.includes('#/weight')) {
@@ -1017,6 +1033,8 @@ function AppContent() {
         return <WaterQualityPage />;
       case 'harvest':
         return <HarvestPage />;
+      case 'sampling':
+        return <SamplingEventsPage />;
       case 'vet-log':
         return (
           <RequireRole moduleId="vet-log" onUnauthorized={handleUnauthorized}>

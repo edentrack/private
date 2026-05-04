@@ -32,7 +32,8 @@ export type ModuleName =
   | 'egg-records'
   | 'harvest'
   | 'water-quality'
-  | 'stocking';
+  | 'stocking'
+  | 'sampling';
 
 export interface ModuleVisibility {
   visible: boolean;
@@ -113,6 +114,7 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'harvest':
     case 'water-quality':
     case 'stocking':
+    case 'sampling':
       return { visible: true };
 
     case 'smart-upload':
@@ -165,6 +167,7 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'harvest':
     case 'water-quality':
     case 'stocking':
+    case 'sampling':
       return { visible: true };
 
     case 'ai-assistant':
@@ -232,6 +235,7 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'harvest':
     case 'water-quality':
     case 'stocking':
+    case 'sampling':
       return { visible: true };
 
     case 'smart-upload':

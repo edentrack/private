@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Loader2, Lightbulb, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +112,7 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-const SUGGESTIONS = [
+const POULTRY_SUGGESTIONS = [
   "Analyze my farm's performance this week",
   "My birds are sneezing and have runny eyes — what's wrong?",
   "Mortality spiked this week — what should I check?",
@@ -120,6 +121,17 @@ const SUGGESTIONS = [
   "My FCR seems high — what could be causing it?",
   "How can I reduce my feed costs?",
   "What's my profit margin?",
+];
+
+const AQUACULTURE_SUGGESTIONS = [
+  "My pond DO dropped below 3 mg/L overnight — what should I do?",
+  "When should I harvest my catfish?",
+  "My ammonia is climbing — how do I bring it down?",
+  "What is my current FCR for this pond?",
+  "How much should I feed at week 12?",
+  "Why are my fish dying at the bottom of the pond?",
+  "Help me plan a partial water change",
+  "What's my estimated biomass right now?",
 ];
 
 
@@ -155,6 +167,8 @@ export function AIAssistantPage() {
   const { currentFarm, user } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const farmSpecies = useFarmSpecies();
+  const suggestions = farmSpecies.id === 'aquaculture' ? AQUACULTURE_SUGGESTIONS : POULTRY_SUGGESTIONS;
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadTodayMessages());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -175,6 +189,15 @@ export function AIAssistantPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Scroll to bottom when mobile keyboard opens so input stays visible
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
 
   // Auto-send prefill message from setup score card or other navigation triggers
   useEffect(() => {
@@ -1084,14 +1107,18 @@ export function AIAssistantPage() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-[600px] bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
       <div data-tour="ai-header" className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
         <div className="flex items-center gap-3">
           <EdenAvatarAnimated size="md" />
           <div className="flex-1">
             <h1 className="text-xl font-bold text-agri-brown-700">Eden</h1>
-            <p className="text-sm text-gray-500">Farm performance · Flock health · Diagnostics · Data import</p>
+            <p className="text-sm text-gray-500">
+              {farmSpecies.id === 'aquaculture'
+                ? 'Pond health · Water quality · FCR · Diagnostics · Data import'
+                : 'Farm performance · Flock health · Diagnostics · Data import'}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {usageInfo && (
@@ -1126,13 +1153,15 @@ export function AIAssistantPage() {
             </div>
             <h2 className="text-xl font-bold text-agri-brown-700 mb-1">Hey, I'm Eden!</h2>
             <p className="text-gray-600 mb-6 max-w-md text-sm">
-              Your farm advisor. Ask about flock health, performance, expenses — or attach a CSV file and I'll import your historical data.
+              {farmSpecies.id === 'aquaculture'
+                ? 'Your pond advisor. Ask about water quality, fish health, FCR, feeding — or attach a CSV file to import historical data.'
+                : "Your farm advisor. Ask about flock health, performance, expenses — or attach a CSV file and I'll import your historical data."}
             </p>
 
             <div className="w-full max-w-2xl">
               <p className="text-sm font-medium text-gray-700 mb-3">Try asking:</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {SUGGESTIONS.map((suggestion, idx) => (
+                {suggestions.map((suggestion, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSuggestionClick(suggestion)}
@@ -1550,7 +1579,7 @@ export function AIAssistantPage() {
       </div>
 
       {/* Input */}
-      <div className="flex-shrink-0 bg-white border-t border-gray-200 p-4">
+      <div className="flex-shrink-0 bg-white border-t border-gray-200 p-4" style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
         <div className="max-w-4xl mx-auto space-y-2">
           {/* Image preview strip */}
           {pendingImages.length > 0 && (
@@ -1640,9 +1669,14 @@ export function AIAssistantPage() {
             <input
               ref={inputRef}
               type="text"
+              inputMode="text"
+              enterKeyHint="send"
+              autoComplete="off"
+              autoCorrect="on"
+              spellCheck
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder={
                 listening ? 'Listening...'
                 : pendingFile ? `Ask Eden to import ${pendingFile.name}…`

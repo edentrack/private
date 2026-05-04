@@ -14,7 +14,8 @@ interface EditFlockModalProps {
 
 export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProps) {
   const { t } = useTranslation();
-  const { user, profile } = useAuth();
+  const { user, profile, currentFarm } = useAuth();
+  const isAquaculture = (currentFarm as any)?.farm_type === 'aquaculture';
   const [arrivalDate, setArrivalDate] = useState(flock.arrival_date);
   const [initialCount, setInitialCount] = useState(flock.initial_count);
   const [purchasePricePerBird, setPurchasePricePerBird] = useState(flock.purchase_price_per_bird?.toString() || '');
@@ -54,8 +55,8 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
       await upsertChickExpenses({
         flock: updatedFlock,
         userId: user!.id,
-        farmId: profile!.farm_id,
-        currencyCode: profile!.currency_preference,
+        farmId: currentFarm!.id,
+        currencyCode: (currentFarm as any)?.currency_code || profile!.currency_preference,
       });
 
       onUpdated();
@@ -70,7 +71,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl max-w-md w-full p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Edit Flock</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{isAquaculture ? 'Edit Pond' : 'Edit Flock'}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -94,7 +95,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
             <div className="space-y-4">
               <div>
                 <label htmlFor="arrivalDate" className="block text-sm font-medium text-gray-700 mb-2">
-                  Arrival Date
+                  {isAquaculture ? 'Stocking Date' : 'Arrival Date'}
                 </label>
                 <input
                   id="arrivalDate"
@@ -108,7 +109,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
 
               <div>
                 <label htmlFor="initialCount" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('flocks.initial_count')}
+                  {isAquaculture ? 'Fingerlings Stocked' : t('flocks.initial_count')}
                 </label>
                 <input
                   id="initialCount"
@@ -123,7 +124,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
 
               <div>
                 <label htmlFor="purchasePricePerBird" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('flocks.price_per_bird')}
+                  {isAquaculture ? 'Price per fingerling' : t('flocks.price_per_bird')}
                 </label>
                 <input
                   id="purchasePricePerBird"

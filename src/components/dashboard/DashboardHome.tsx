@@ -27,6 +27,7 @@ import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 import { cleanHistoricalDuplicateTasks } from '../../utils/unifiedTaskSystem';
+import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES } from '../../utils/speciesModules';
 
 interface DashboardHomeProps {
   onNavigate: (view: string) => void;
@@ -615,27 +616,15 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
             
             // Determine current phase for short description
             const isBroiler = selectedFlock.type?.toLowerCase() === 'broiler';
-            const DEFAULT_BROILER_PHASES = [
-              { name: 'Brooding', startWeek: 1, endWeek: 2 },
-              { name: 'Growth', startWeek: 3, endWeek: 4 },
-              { name: 'Finishing', startWeek: 5, endWeek: 8 },
-            ];
-            const DEFAULT_LAYER_PHASES = [
-              { name: 'Chick', startWeek: 1, endWeek: 5 },
-              { name: 'Grower', startWeek: 6, endWeek: 12 },
-              { name: 'Pullet', startWeek: 13, endWeek: 17 },
-              { name: 'Pre-lay', startWeek: 18, endWeek: 20 },
-              { name: 'Laying', startWeek: 21, endWeek: 72 },
-            ];
-            
-            // Use farm settings phases if available, otherwise use defaults
+
+            // Use farm settings phases if available, otherwise use defaults from species module
             const phases = isBroiler
               ? (farmSettings.broilerPhases && farmSettings.broilerPhases.length > 0
                   ? farmSettings.broilerPhases
-                  : DEFAULT_BROILER_PHASES)
+                  : BROILER_DEFAULT_PHASES)
               : (farmSettings.layerPhases && farmSettings.layerPhases.length > 0
                   ? farmSettings.layerPhases
-                  : DEFAULT_LAYER_PHASES);
+                  : LAYER_DEFAULT_PHASES);
             const currentPhase = phases.find(p => currentWeek >= p.startWeek && currentWeek <= p.endWeek);
             
             return (

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface LogMortalityModalProps {
   flock?: Flock | null;
@@ -14,18 +15,11 @@ interface LogMortalityModalProps {
   createTaskRecord?: boolean;
 }
 
-const MORTALITY_REASONS = [
-  'Disease',
-  'Heat Stress',
-  'Cold Stress',
-  'Predator Attack',
-  'Accident',
-  'Unknown',
-  'Other'
-];
-
 export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess, createTaskRecord = false }: LogMortalityModalProps) {
   const { user, profile, currentFarm } = useAuth();
+  const species = useFarmSpecies();
+  const animalTerm = species.animalTermPlural.toLowerCase();
+  const groupTerm = species.groupTerm.toLowerCase();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const [currentFlock, setCurrentFlock] = useState<Flock | null>(flock || null);
   const todayLocal = () => {
@@ -34,7 +28,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
   };
   const [date, setDate] = useState(todayLocal());
   const [count, setCount] = useState('');
-  const [reason, setReason] = useState('Disease');
+  const [reason, setReason] = useState(species.lossReasons[0] ?? 'Disease');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,12 +73,12 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
     const mortalityCount = parseInt(count);
 
     if (mortalityCount <= 0) {
-      setError('Number of dead birds must be greater than 0');
+      setError(`Number of dead ${animalTerm} must be greater than 0`);
       return;
     }
 
     if (mortalityCount > currentFlock.current_count) {
-      setError(`Cannot exceed current flock count of ${currentFlock.current_count} birds`);
+      setError(`Cannot exceed current ${groupTerm} count of ${currentFlock.current_count} ${animalTerm}`);
       return;
     }
 
@@ -177,7 +171,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
             <div className="p-2 bg-red-50 rounded-xl">
               <AlertTriangle className="w-6 h-6 text-red-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Log Mortality</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{isAquaculture ? 'Record Fish Loss' : 'Log Mortality'}</h2>
           </div>
           <button
             onClick={onClose}
@@ -196,12 +190,12 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Flock
+              {isAquaculture ? 'Pond' : 'Flock'}
             </label>
             <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-900 font-medium">
               {currentFlock.name}
               <span className="text-sm text-gray-500 ml-2">
-                (Current: {currentFlock.current_count} birds)
+                (Current: {currentFlock.current_count} {animalTerm})
               </span>
             </div>
           </div>
@@ -223,7 +217,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
           <div>
             <label htmlFor="count" className="block text-sm font-medium text-gray-700 mb-2">
-              Number of Dead Birds
+              {isAquaculture ? 'Number of Fish Lost' : 'Number of Dead Birds'}
             </label>
             <input
               id="count"
@@ -249,7 +243,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
               required
               className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm"
             >
-              {MORTALITY_REASONS.map(r => (
+              {species.lossReasons.map(r => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
@@ -282,7 +276,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
               disabled={loading}
               className="flex-1 bg-red-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging...' : 'Log Mortality'}
+              {loading ? 'Saving...' : (isAquaculture ? 'Record Loss' : 'Log Mortality')}
             </button>
           </div>
         </form>

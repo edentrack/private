@@ -68,6 +68,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
         const { data: mortalityData } = await supabase
           .from('mortality_logs')
           .select('flock_id, count')
+          .eq('farm_id', currentFarm?.id)
           .in('flock_id', data.map(f => f.id));
 
         const mortalityMap: Record<string, number> = {};
@@ -290,7 +291,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => {
                 onSelectFlock(flock);
-                onNavigate('flock-details');
+                onNavigate('mortality');
               }}
             >
               <div className="flex items-start justify-between mb-4">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calendar, Plus, Scale, AlertCircle, History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Flock } from '../../types/database';
+import { getSpeciesByType, getSpeciesModule } from '../../utils/speciesModules';
 
 interface WeightCheckInputFormProps {
   flock: Flock;
@@ -37,6 +38,7 @@ function getFlockAge(arrivalDate: string) {
 
 export function WeightCheckInputForm({ flock, onCalculate, onViewHistory }: WeightCheckInputFormProps) {
   const { t } = useTranslation();
+  const species = getSpeciesModule(getSpeciesByType((flock.type as any) ?? 'Broiler'));
   const recommendedSize = getRecommendedSampleSize(flock.current_count || 0);
   const [weights, setWeights] = useState<string[]>(Array(recommendedSize).fill(''));
   const [weighDate, setWeighDate] = useState(() => {
@@ -79,7 +81,7 @@ export function WeightCheckInputForm({ flock, onCalculate, onViewHistory }: Weig
           <div className="flex flex-wrap gap-2 text-[11px] text-gray-600">
             <div className="flex items-center gap-1">
               <Scale className="w-3 h-3" />
-              <span>{flock.current_count?.toLocaleString()} {t('weight.birds_alive')}</span>
+              <span>{flock.current_count?.toLocaleString()} {species.animalTermPlural.toLowerCase()} alive</span>
             </div>
             <div>
               {t('weight.week')} {getFlockAge(flock.arrival_date).weeks}
@@ -144,7 +146,7 @@ export function WeightCheckInputForm({ flock, onCalculate, onViewHistory }: Weig
               {t('weight.recommended_sample_size', { count: recommendedSize })}
             </p>
             <p className="text-[10px] text-gray-600 mt-0.5">
-              {t('weight.based_on_flock_size', { count: flock.current_count ?? 0 })}
+              Based on {species.groupTerm.toLowerCase()} size of {(flock.current_count ?? 0).toLocaleString()} {species.animalTermPlural.toLowerCase()}
             </p>
           </div>
         </div>
@@ -184,7 +186,7 @@ export function WeightCheckInputForm({ flock, onCalculate, onViewHistory }: Weig
         <div className="flex items-center justify-between mb-2">
           <div className="text-center flex-1">
             <p className="text-sm text-gray-900">
-              {t('weight.entered')}: <span className="font-bold text-lg text-gray-900">{enteredCount}</span> / {recommendedSize} {t('dashboard.birds')}
+              {t('weight.entered')}: <span className="font-bold text-lg text-gray-900">{enteredCount}</span> / {recommendedSize} {species.animalTermPlural.toLowerCase()}
             </p>
             {enteredCount < 10 && (
               <p className="text-[10px] text-amber-600 flex items-center gap-1 justify-center mt-0.5">

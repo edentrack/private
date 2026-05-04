@@ -5,6 +5,7 @@ import { WeightAnalysisResult } from '../../utils/weightAnalysis';
 import { CalculationBreakdown } from './CalculationBreakdown';
 import { ShareWeightReport } from './ShareWeightReport';
 import { supabase } from '../../lib/supabaseClient';
+import { getSpeciesByType, getSpeciesModule } from '../../utils/speciesModules';
 
 interface WeightCheckResultsProps {
   flock: Flock;
@@ -16,6 +17,7 @@ interface WeightCheckResultsProps {
 export function WeightCheckResults({ flock, results, onNewCheck, onViewHistory }: WeightCheckResultsProps) {
   const isBroiler = flock.type === 'Broiler';
   const isLayer = flock.type === 'Layer';
+  const species = getSpeciesModule(getSpeciesByType((flock.type as any) ?? 'Broiler'));
   const [farmName, setFarmName] = useState('');
 
   useEffect(() => {
@@ -85,14 +87,14 @@ export function WeightCheckResults({ flock, results, onNewCheck, onViewHistory }
         }`}>
           <p className="font-bold text-lg mb-2">{results.growthStatus}</p>
           <p className="text-sm text-gray-700">
-            Your birds are at {results.percentOfTarget.toFixed(1)}% of target weight for Week {results.currentWeek}.
+            Your {species.animalTermPlural.toLowerCase()} are at {results.percentOfTarget.toFixed(1)}% of target weight for Week {results.currentWeek}.
           </p>
           <p className="text-xs text-gray-600 mt-2">{results.targetDescription}</p>
         </div>
 
         <div className="grid md:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl p-4">
-            <div className="text-sm text-gray-500 mb-1">Birds Sampled</div>
+            <div className="text-sm text-gray-500 mb-1">{species.animalTermPlural} Sampled</div>
             <div className="text-3xl font-bold text-gray-900">{results.count}</div>
           </div>
           <div className="bg-white rounded-2xl p-4">
@@ -126,7 +128,7 @@ export function WeightCheckResults({ flock, results, onNewCheck, onViewHistory }
         </h3>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <div className="text-sm text-gray-500 mb-1">Total Birds</div>
+            <div className="text-sm text-gray-500 mb-1">Total {species.animalTermPlural}</div>
             <div className="text-2xl font-bold text-gray-900">{flock.current_count?.toLocaleString()}</div>
           </div>
           <div>
@@ -153,7 +155,7 @@ export function WeightCheckResults({ flock, results, onNewCheck, onViewHistory }
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Weight Gain:</span>
               <span className="font-bold text-gray-900">
-                {results.previousWeight ? `${(results.average - results.previousWeight).toFixed(2)} kg per bird` : 'N/A'}
+                {results.previousWeight ? `${(results.average - results.previousWeight).toFixed(2)} kg per ${species.animalTerm.toLowerCase()}` : 'N/A'}
               </span>
             </div>
             <div className="flex justify-between items-center">

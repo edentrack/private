@@ -6,30 +6,23 @@ import { useToast } from '../../contexts/ToastContext';
 import { Flock, MortalityLog } from '../../types/database';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { canPerformAction } from '../../utils/navigationPermissions';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface MortalityTrackingProps {
   flock: Flock | null;
 }
-
-const MORTALITY_REASONS = [
-  'Unknown',
-  'Predation',
-  'Disease',
-  'Heat Stress',
-  'Injury',
-  'Natural Causes',
-];
 
 export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) {
   const { currentRole, currentFarm } = useAuth();
   const { farmPermissions } = usePermissions();
   const canLog = canPerformAction(currentRole, 'create', 'mortality', farmPermissions);
   const toast = useToast();
+  const species = useFarmSpecies();
   const [availableFlocks, setAvailableFlocks] = useState<Flock[]>([]);
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(flockProp);
   const flock = selectedFlock || flockProp;
   const [count, setCount] = useState(0);
-  const [reason, setReason] = useState('Unknown');
+  const [reason, setReason] = useState(species.lossReasons[species.lossReasons.indexOf('Unknown')] ?? species.lossReasons[0]);
   const todayLocal = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -39,6 +32,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
   const [logs, setLogs] = useState<MortalityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const lossReasons = species.lossReasons;
 
   useEffect(() => {
     if (!currentFarm?.id) return;
@@ -101,10 +95,10 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
       setDate(todayLocal());
       setNotes('');
       loadMortalityLogs();
-      toast.success('Mortality logged successfully');
+      toast.success(`${species.lossNoun} logged successfully`);
     } catch (error) {
       console.error('Error logging mortality:', error);
-      toast.error('Failed to log mortality');
+      toast.error(`Failed to log ${species.lossNoun.toLowerCase()}`);
     } finally {
       setLoading(false);
     }
@@ -113,7 +107,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
   const handleDelete = async (log: MortalityLog) => {
     if (!flock) return;
 
-    if (!confirm(`Delete mortality record of ${log.count} birds on ${new Date(log.event_date).toLocaleDateString()}?`)) {
+    if (!confirm(`Delete ${species.lossNoun.toLowerCase()} record of ${log.count} ${species.animalTermPlural.toLowerCase()} on ${new Date(log.event_date).toLocaleDateString()}?`)) {
       return;
     }
 
@@ -133,10 +127,10 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
         .eq('id', flock.id);
 
       loadMortalityLogs();
-      toast.success('Mortality record deleted');
+      toast.success(`${species.lossNoun} record deleted`);
     } catch (error) {
       console.error('Error deleting mortality log:', error);
-      toast.error('Failed to delete mortality record');
+      toast.error(`Failed to delete ${species.lossNoun.toLowerCase()} record`);
     } finally {
       setDeletingId(null);
     }
@@ -174,7 +168,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
   if (!flock && availableFlocks.length === 0) {
     return (
       <div className="bg-white rounded-3xl p-12 text-center">
-        <p className="text-gray-600">No active flocks found. Create a flock first.</p>
+        <p className="text-gray-600">No active {species.groupTermPlural.toLowerCase()} found. Create a {species.groupTerm.toLowerCase()} first.</p>
       </div>
     );
   }
@@ -183,7 +177,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Mortality Tracking</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{species.lossNoun} Tracking</h2>
           {flock && <p className="text-gray-600">{flock.name}</p>}
         </div>
         {availableFlocks.length > 1 && (
@@ -206,7 +200,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
       </div>
 
       <div className="bg-white rounded-3xl p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Today's Mortality</h3>
+        <h3 className="text-lg font-bold text-gray-900 mb-4">Today's {species.lossNounPlural}</h3>
 
         <div className="flex items-center justify-center space-x-6 mb-6">
           {canLog && (
@@ -242,7 +236,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
               onChange={(e) => setReason(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all"
             >
-              {MORTALITY_REASONS.map((r) => (
+              {lossReasons.map((r) => (
                 <option key={r} value={r}>
                   {r}
                 </option>
@@ -281,14 +275,14 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
               disabled={loading || count === 0}
               className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-medium hover:bg-[#2F4A34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : 'Save Mortality'}
+              {loading ? 'Saving...' : `Save ${species.lossNoun}`}
             </button>
           )}
         </div>
       </div>
 
       <div className="bg-white rounded-3xl p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Mortality Trend</h3>
+        <h3 className="text-lg font-bold text-gray-900 mb-4">{species.lossNounPlural} Trend</h3>
 
         <div className="h-64 flex items-end justify-between space-x-2">
           {weeklyData.map((data, index) => (
@@ -345,11 +339,11 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
       ) : (
         <div className="bg-white rounded-3xl p-12 text-center">
           <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No mortality recorded</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No {species.lossNounPlural.toLowerCase()} recorded</h3>
           <p className="text-gray-600 max-w-sm mx-auto text-sm">
             {currentRole === 'viewer'
-              ? 'Ask your manager to record mortality events. Historical data will appear here.'
-              : 'Record mortality events as they occur to track bird health and track losses.'}
+              ? `Ask your manager to record ${species.lossNoun.toLowerCase()} events. Historical data will appear here.`
+              : `Record ${species.lossNoun.toLowerCase()} events as they occur to track ${species.animalTermPlural.toLowerCase()} health and losses.`}
           </p>
         </div>
       )}

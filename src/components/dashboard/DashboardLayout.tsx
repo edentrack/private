@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves, Droplets } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves, Droplets, Beaker } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -99,6 +99,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'mortality', label: isAquaculture ? 'Fish Losses' : 'Mortality', icon: HeartOff },
       { id: 'harvest', label: 'Harvest', icon: Waves },
       { id: 'water-quality', label: 'Water Quality', icon: Droplets },
+      { id: 'sampling', label: 'Weight Sampling', icon: Beaker },
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
@@ -115,7 +116,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // Items only relevant when eggs are tracked (layer/mixed farms)
     const eggOnlyItems = new Set(['sales', 'egg-records']);
     // Items only for aquaculture farms
-    const aquacultureOnlyItems = new Set(['harvest', 'water-quality']);
+    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling']);
     // Items hidden for aquaculture farms
     const poultryOnlyItems = new Set(['vaccinations']);
 
@@ -207,8 +208,13 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     return () => window.removeEventListener('online', checkDeadLetter);
   }, []);
 
+  const isAIView = currentView === 'ai-assistant';
+
   return (
-    <div className="min-h-screen bg-[#F5F0E8]" style={{ background: 'linear-gradient(135deg, #f5f0e8 0%, #ebe4d8 50%, #f0e9dd 100%)' }}>
+    <div
+      className={isAIView ? 'flex flex-col overflow-hidden bg-[#F5F0E8]' : 'min-h-screen bg-[#F5F0E8]'}
+      style={{ background: 'linear-gradient(135deg, #f5f0e8 0%, #ebe4d8 50%, #f0e9dd 100%)', ...(isAIView ? { height: '100dvh' } : {}) }}
+    >
       <OfflineIndicator />
       <nav className="sticky top-0 z-40 glass-light border-b border-white/20" style={isOffline ? { marginTop: '40px' } : undefined}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
@@ -563,10 +569,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-20 sm:pb-24">
-        <div className="animate-fade-in">
-          {children}
-        </div>
+      <main className={isAIView
+        ? 'flex-1 min-h-0 overflow-hidden flex flex-col'
+        : 'max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-20 sm:pb-24'
+      }>
+        {isAIView ? children : <div className="animate-fade-in">{children}</div>}
       </main>
 
       {helpModalOpen && (

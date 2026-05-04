@@ -12,6 +12,9 @@ interface ArchiveFlockModalProps {
 
 export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockModalProps) {
   const { user, currentFarm } = useAuth();
+  const isAquaculture = (currentFarm as any)?.farm_type === 'aquaculture';
+  const groupTerm = isAquaculture ? 'Pond' : 'Flock';
+  const animalTerm = isAquaculture ? 'fish' : 'birds';
   const [action, setAction] = useState<'sold' | 'deceased' | 'archived'>('archived');
   const [salePrice, setSalePrice] = useState('');
   const [buyerInfo, setBuyerInfo] = useState('');
@@ -67,7 +70,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
       onArchived();
     } catch (err) {
       console.error('Error archiving flock:', err);
-      setError(err instanceof Error ? err.message : 'Failed to archive flock. Please try again.');
+      setError(err instanceof Error ? err.message : `Failed to archive ${groupTerm.toLowerCase()}. Please try again.`);
       setLoading(false);
     }
   };
@@ -81,7 +84,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
               <Archive className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Archive Flock</h2>
+              <h2 className="text-xl font-bold text-gray-900">Archive {groupTerm}</h2>
               <p className="text-sm text-gray-500">{flock.name}</p>
             </div>
           </div>
@@ -98,9 +101,9 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
             <div className="flex gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-900">Archive Flock</p>
+                <p className="text-sm font-medium text-amber-900">Archive {groupTerm}</p>
                 <p className="text-sm text-amber-700 mt-1">
-                  This will remove the flock from your active list. You can choose to keep or delete all records.
+                  This will remove the {groupTerm.toLowerCase()} from your active list. You can choose to keep or delete all records.
                 </p>
               </div>
             </div>
@@ -108,7 +111,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              What happened to the flock?
+              What happened to the {groupTerm.toLowerCase()}?
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
@@ -193,7 +196,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any additional details about archiving this flock..."
+              placeholder={`Add any additional details about archiving this ${groupTerm.toLowerCase()}...`}
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
             />
@@ -210,8 +213,8 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
               <div>
                 <div className="font-medium text-gray-900">Keep Historical Records</div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Maintain all data for this flock (expenses, tasks, mortality, etc.) for future reference.
-                  If unchecked, all flock data will be permanently deleted.
+                  Maintain all data for this {groupTerm.toLowerCase()} (expenses, tasks, {isAquaculture ? 'water quality, harvest' : 'mortality'}, etc.) for future reference.
+                  If unchecked, all {groupTerm.toLowerCase()} data will be permanently deleted.
                 </div>
               </div>
             </label>
@@ -219,11 +222,11 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
 
           <div className="bg-blue-50 rounded-xl p-4">
             <div className="text-sm text-blue-800">
-              <strong>Final Count:</strong> {flock.current_count} birds
+              <strong>Final Count:</strong> {flock.current_count} {animalTerm}
             </div>
             {action === 'sold' && salePrice && (
               <div className="text-sm text-blue-800 mt-2">
-                <strong>Price per bird:</strong> {(parseFloat(salePrice) / flock.current_count).toFixed(2)}
+                <strong>Price per {isAquaculture ? 'kg / fish' : 'bird'}:</strong> {(parseFloat(salePrice) / flock.current_count).toFixed(2)}
               </div>
             )}
           </div>
@@ -247,7 +250,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
               disabled={loading}
               className="flex-1 bg-orange-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Archiving...' : keepRecords ? 'Archive Flock' : 'Delete Flock'}
+              {loading ? 'Archiving...' : keepRecords ? `Archive ${groupTerm}` : `Delete ${groupTerm}`}
             </button>
           </div>
         </form>

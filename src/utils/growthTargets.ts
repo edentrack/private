@@ -279,8 +279,9 @@ export function getGrowthTargets(type: string): Record<number, WeeklyTarget> {
   if (typeLower === 'layer') return LAYER_GROWTH_TARGETS;
   if (typeLower === 'meat rabbits' || typeLower.includes('rabbit')) return RABBIT_GROWTH_TARGETS;
   if (typeLower === 'tilapia') return TILAPIA_GROWTH_TARGETS;
-  if (typeLower === 'catfish') return CATFISH_GROWTH_TARGETS;
-  return BROILER_GROWTH_TARGETS; // Default fallback
+  if (typeLower === 'catfish' || typeLower === 'clarias') return CATFISH_GROWTH_TARGETS;
+  if (typeLower === 'other fish') return CATFISH_GROWTH_TARGETS; // sane fish default
+  return BROILER_GROWTH_TARGETS; // Default fallback (poultry)
 }
 
 export function getTargetWeight(

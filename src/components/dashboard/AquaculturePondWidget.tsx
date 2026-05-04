@@ -14,10 +14,18 @@ interface PondStats {
   totalHarvested: number;
   latestStocking: { stocked_at: string; fingerling_count: number; species: string } | null;
   daysStocked: number;
+  latestSample: { sampled_at: string; abw_g: number | null } | null;
+  /** Specific Growth Rate %/day computed against the second-latest sample, if available. */
+  sgr: number | null;
 }
 
 function daysAgo(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000);
+}
+
+function specificGrowthRate(prev: number, now: number, days: number): number | null {
+  if (!prev || !now || prev <= 0 || now <= 0 || days <= 0) return null;
+  return ((Math.log(now) - Math.log(prev)) / days) * 100;
 }
 
 export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidgetProps) {
@@ -27,6 +35,8 @@ export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidge
     totalHarvested: 0,
     latestStocking: null,
     daysStocked: 0,
+    latestSample: null,
+    sgr: null,
   });
   const [loading, setLoading] = useState(true);
 
@@ -34,10 +44,11 @@ export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidge
     if (!currentFarm?.id || !pond?.id) return;
     const load = async () => {
       setLoading(true);
-      const [wqResult, harvestResult, stockResult] = await Promise.all([
+      const [wqResult, harvestResult, stockResult, sampleResult] = await Promise.all([
         supabase
           .from('water_quality_logs')
           .select('logged_at, temperature_c, dissolved_oxygen')
+          .eq('farm_id', currentFarm!.id)
           .eq('flock_id', pond.id)
           .order('logged_at', { ascending: false })
           .limit(1)
@@ -45,24 +56,47 @@ export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidge
         supabase
           .from('harvest_records')
           .select('total_weight_kg')
+          .eq('farm_id', currentFarm!.id)
           .eq('flock_id', pond.id),
         supabase
           .from('stocking_events')
           .select('stocked_at, fingerling_count, species')
+          .eq('farm_id', currentFarm!.id)
           .eq('flock_id', pond.id)
           .order('stocked_at', { ascending: false })
           .limit(1)
           .maybeSingle(),
+        supabase
+          .from('sampling_events')
+          .select('sampled_at, abw_g')
+          .eq('farm_id', currentFarm!.id)
+          .eq('flock_id', pond.id)
+          .order('sampled_at', { ascending: false })
+          .limit(2),
       ]);
 
       const totalHarvested = (harvestResult.data || []).reduce((sum, r) => sum + (r.total_weight_kg || 0), 0);
       const daysStocked = pond.arrival_date ? daysAgo(pond.arrival_date) : 0;
+
+      // Latest two samples → SGR
+      const samples = (sampleResult.data || []) as Array<{ sampled_at: string; abw_g: number | null }>;
+      const latestSample = samples[0] ?? null;
+      const previousSample = samples[1] ?? null;
+      let sgr: number | null = null;
+      if (latestSample && previousSample && latestSample.abw_g && previousSample.abw_g) {
+        const days = Math.max(1, Math.round(
+          (new Date(latestSample.sampled_at).getTime() - new Date(previousSample.sampled_at).getTime()) / 86_400_000,
+        ));
+        sgr = specificGrowthRate(previousSample.abw_g, latestSample.abw_g, days);
+      }
 
       setStats({
         lastWaterQuality: wqResult.data ?? null,
         totalHarvested,
         latestStocking: stockResult.data ?? null,
         daysStocked,
+        latestSample,
+        sgr,
       });
       setLoading(false);
     };
@@ -161,6 +195,32 @@ export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidge
         </div>
       </div>
 
+      {/* Latest sample row (ABW + biomass + SGR) */}
+      {stats.latestSample?.abw_g != null && (
+        <div className="bg-indigo-50 rounded-xl p-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <div className="flex items-center gap-1.5">
+            <Scale className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="text-[10px] font-medium text-indigo-700 uppercase tracking-wide">Latest sample</span>
+          </div>
+          <span className="text-sm font-bold text-indigo-900">ABW {stats.latestSample.abw_g.toFixed(1)} g</span>
+          {pond.current_count > 0 && (
+            <span className="text-xs text-indigo-700">
+              · biomass {((stats.latestSample.abw_g * pond.current_count) / 1000).toFixed(1)} kg
+            </span>
+          )}
+          {stats.sgr != null && (
+            <span className={`text-xs font-medium ${
+              stats.sgr >= 2 ? 'text-emerald-700' : stats.sgr >= 1 ? 'text-amber-700' : 'text-red-700'
+            }`}>
+              · SGR {stats.sgr.toFixed(2)}%/day
+            </span>
+          )}
+          <span className="text-[10px] text-indigo-500 ml-auto">
+            {daysAgo(stats.latestSample.sampled_at)}d ago
+          </span>
+        </div>
+      )}
+
       {/* Pond info row */}
       {(pondSizeLabel || stockingDensity) && (
         <div className="flex items-center gap-3 pt-1 border-t border-gray-100">
@@ -180,6 +240,12 @@ export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidge
           className="flex-1 py-2 text-xs font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
         >
           Log Harvest
+        </button>
+        <button
+          onClick={() => onNavigate('sampling')}
+          className="flex-1 py-2 text-xs font-medium border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+        >
+          Log Sample
         </button>
         <button
           onClick={() => onNavigate('water-quality')}

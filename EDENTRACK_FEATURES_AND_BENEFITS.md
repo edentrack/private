@@ -225,6 +225,8 @@
 - Pay stubs
 - Link labor to expenses
 
+**Note:** Payroll is not currently accessible from the main navigation. Access it directly via the URL `/#/payroll` until it is added to the Team & Ops menu.
+
 **Farmer benefit:** Clear shift schedules and wages, better labour cost tracking, and fair pay records.
 
 ---
@@ -235,23 +237,37 @@
 
 **Features:**
 - **Farm profile** – Name, country, currency
-- **Currency** – XAF, CFA, USD, NGN, GHS, KES, ZAR
+- **Currency** – XAF, USD, NGN, GHS, KES, ZAR
 - **Egg settings** – Eggs per tray (e.g. 30)
 - **Feed settings** – Feed unit (bags, kg, etc.) and weight per bag (e.g. 50 kg)
 - **Growth targets** – Customise broiler/layer targets
 - **Production cycle** – Broiler and layer phases and duration
 - **Manager permissions** – What managers can do
 - **Language** – English, French
+- **Simple Mode** – Hides advanced features for farmers who only need essentials; useful for onboarding new users
+- **Eden AI Permissions** – Fine-grained control over what Eden AI is allowed to do, organised by risk level:
+  - *Low risk (auto-allowed)*: add workers, create tasks, view reports
+  - *Confirm required*: run payroll, edit records, send invoices
+  - *High risk (off by default)*: delete records, void transactions
 
-**Farmer benefit:** Settings match local units and practices.
+**Farmer benefit:** Settings match local units and practices; owners control exactly how much autonomy Eden AI has.
 
 ---
 
-### 14. Marketplace
+### 14. Supplier Marketplace
 
-**What it does:** Connects farmers with buyers, suppliers, or services (if enabled).
+**What it does:** A directory where farmers can find and contact verified suppliers for feed, day-old chicks, equipment, and farm inputs.
 
-**Farmer benefit:** Easier access to markets and inputs.
+**Features:**
+- Browse registered suppliers by category (feed, chicks, equipment, services)
+- View supplier profiles and contact information
+- Register your business as a supplier
+
+**Current status:** Active — supplier listings are being populated. Farmers can browse and contact suppliers directly.
+
+**Note:** This is a **supplier directory** (find vendors), not a produce listing platform (sell your eggs/birds). Selling your produce is handled through the Sales module.
+
+**Farmer benefit:** Find trusted local suppliers faster without relying on word-of-mouth.
 
 ---
 
@@ -295,7 +311,33 @@
 
 ---
 
-### 20. Notifications & Offline Support
+### 20. Referral Program
+
+**What it does:** Rewards farmers for inviting others to join EDENTRACK.
+
+**Features:**
+- Unique referral code per farm (customisable)
+- Both referrer and new user receive 1 free month when the invite is accepted
+- Track referral status in Settings
+
+**Farmer benefit:** Reduce subscription cost by inviting other farmers.
+
+---
+
+### 21. Reports & Sharing (by plan)
+
+**What it does:** Generates and shares farm performance reports.
+
+**Features by subscription tier:**
+- **Starter** – WhatsApp report sharing (share a farm summary snapshot via WhatsApp)
+- **Grower and above** – Automated weekly email reports delivered to your inbox
+- **Farm Boss** – Loan-readiness PDF report (formatted for bank/lender submission) and benchmarking against similar farms
+
+**Farmer benefit:** Share financial records easily with banks, cooperatives, or partners; get passive performance updates without logging in.
+
+---
+
+### 22. Notifications & Offline Support
 
 **What it does:**
 - Push notifications for tasks, vaccinations, low stock
@@ -308,19 +350,20 @@
 
 ## Multi-Species Support
 
-EDENTRACK supports:
-- **Poultry** – Broilers and layers (primary focus)
-- **Rabbits** – Meat rabbits
-- **Fish** – Tilapia, catfish
+**Currently live:**
+- **Poultry** – Broilers and layers (only options in the Create Flock screen)
 
-Each species has suitable growth targets and workflows.
+**Roadmap (not yet available):**
+- Rabbits, fish, ducks, turkeys, quail – under development
+
+Do not advertise species beyond broiler and layer as available features.
 
 ---
 
 ## Technical Highlights
 
 - **Mobile-first** – Optimised for phones and tablets
-- **Multi-language** – English, French, and more
+- **Multi-language** – English and French
 - **Role-based access** – Owner, Manager, Worker, Viewer
 - **Secure** – Encrypted data, secure authentication
 - **Real-time** – Live updates when data changes
@@ -369,5 +412,21 @@ EDENTRACK is a practical farm management platform that helps farmers run their o
 
 ---
 
-*Document version: January 2025*  
+## Plan-Gated Features (Not Missing — Just Tiered)
+
+Some features appear unavailable but are actually unlocked at higher subscription tiers:
+
+| Feature | Available from |
+|---------|---------------|
+| Multi-farm dashboard (up to 10 farms) | Industry plan ($99.99/quarter) |
+| Loan-readiness PDF report | Farm Boss |
+| Benchmarking vs similar farms | Farm Boss |
+| Automated weekly email reports | Grower and above |
+| WhatsApp report sharing | Starter (all plans) |
+
+Do **not** list multi-farm support as something EDENTRACK "can't do" — it is available on the Industry plan.
+
+---
+
+*Document version: April 2026 — live-tested and corrected*  
 *For questions or partnership inquiries, contact the EDENTRACK team.*

@@ -88,7 +88,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
             title: flock.name,
             subtitle: `${flock.type} - ${flock.status}`,
             action: () => {
-              onNavigate('flock-details', flock);
+              onNavigate('mortality', flock);
               setShowResults(false);
               setQuery('');
             },

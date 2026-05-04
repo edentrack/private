@@ -37,10 +37,33 @@ const DEFAULT: FarmTypeInfo = {
 
 let _cache: { farmId: string; info: FarmTypeInfo } | null = null;
 
+// Aquaculture info shape — used both in the synchronous initializer
+// and the async useEffect path. Keep them in sync.
+function makeAquacultureInfo(loading: boolean): FarmTypeInfo {
+  return {
+    farmType: 'unknown',
+    isAquaculture: true,
+    showEggs: false,
+    showFCR: false,
+    showWeight: true,
+    showHarvest: true,
+    loading,
+    broilerCount: 0,
+    layerCount: 0,
+  };
+}
+
 export function useFarmType(): FarmTypeInfo {
   const { currentFarm } = useAuth();
   const [info, setInfo] = useState<FarmTypeInfo>(() => {
+    // Cache hit for the same farm — return previous resolved info
     if (_cache && currentFarm && _cache.farmId === currentFarm.id) return _cache.info;
+    // Synchronously derive aquaculture from farm_type so the very first render
+    // after a farm switch already knows what species we're on. Without this,
+    // components that don't gate on `loading` momentarily render as poultry.
+    if ((currentFarm as any)?.farm_type === 'aquaculture') {
+      return makeAquacultureInfo(false);
+    }
     return DEFAULT;
   });
 
@@ -52,17 +75,7 @@ export function useFarmType(): FarmTypeInfo {
 
     // Aquaculture farms are identified by farm_type on the farm record — no flock query needed
     if ((currentFarm as any).farm_type === 'aquaculture') {
-      const result: FarmTypeInfo = {
-        farmType: 'unknown',
-        isAquaculture: true,
-        showEggs: false,
-        showFCR: false,
-        showWeight: true,
-        showHarvest: true,
-        loading: false,
-        broilerCount: 0,
-        layerCount: 0,
-      };
+      const result = makeAquacultureInfo(false);
       _cache = { farmId: currentFarm.id, info: result };
       setInfo(result);
       return;
