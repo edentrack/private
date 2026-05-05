@@ -257,3 +257,102 @@ Do NOT harvest when:
 - Within 24h of feeding (fish are gut-full, weight is misleading and storage degrades).
 - During heavy rain (stress, transport difficulty).
 
+## SGR (Specific Growth Rate) Cheat Sheet
+
+SGR = (ln(W2) − ln(W1)) / days × 100  →  result in %/day.
+
+Healthy ranges:
+- Tilapia juvenile: 2.0–4.0 %/day
+- Tilapia grow-out: 1.5–2.5 %/day
+- Catfish juvenile: 2.5–4.5 %/day
+- Catfish grow-out: 1.2–2.0 %/day
+- Clarias: 1.5–3.0 %/day
+
+If SGR drops below 1 %/day:
+1. Check feeding rate against biomass (feed should be 3–5% of biomass for grow-out)
+2. Test water quality immediately (low DO is the #1 hidden cause of slow growth)
+3. Check feed protein vs life stage — fingerlings on grower feed = poor growth
+4. Pond crowding — recompute density and consider partial harvest
+5. Disease check: mucous loss, bloody fins, lethargy
+
+Negative SGR = fish lost weight. Almost always a serious problem (disease,
+parasitic infestation, severe water quality crash, or major underfeeding).
+
+## Partial Harvest Strategy
+
+Real farms rarely harvest a whole pond at once. Partial harvest is the norm:
+
+- **Top-cropping**: net only the largest fish (200g+ above average), sell, leave rest to grow another 4–6 weeks. Reduces density without losing the cycle.
+- **Why it works**: in mixed-size ponds, the dominant 20% eat 50%+ of feed; removing them lets the remainder catch up faster.
+- **Equipment**: use a graded seine or hand net with mesh size that lets undersized fish escape.
+- **Stress cost**: each net pass = 2–3 days of reduced feeding behaviour. Schedule no more than every 4 weeks.
+- **Bookkeeping**: log each partial harvest event with count + biomass so FCR and survival rate stay accurate. The app's HarvestPage supports multiple events per pond.
+
+## Off-Flavor Mitigation (Earthy or Muddy Taste)
+
+Tilapia and catfish in earthen ponds can develop off-flavor from cyanobacteria
+(geosmin, MIB compounds in algae). The fish absorb these through skin and gills
+and the taste lingers in the flesh.
+
+Symptoms / detection:
+- Buyers complain of "muddy" or "earthy" flavour after cooking.
+- Test before harvest: kill 2 fish, fillet, microwave 30s, smell hot fillet.
+
+Pre-harvest cleansing:
+- Hold fish in clean (well-water or filtered) water for 5–10 days. They will
+  excrete the geosmin via gills.
+- Stop feeding 24–48h before slaughter.
+- During cleansing, water exchange every 1–2 days.
+
+Prevention:
+- Avoid letting algae bloom (control fertiliser, shade where possible).
+- Increase water exchange in stagnant ponds during summer.
+
+## Transport Stress
+
+Live fish lose ~5–15% in transport even short distances; mortality of 5–20%
+is normal at the buyer side without proper handling.
+
+Best practices:
+- Withhold feed 24–36h before transport.
+- Use insulated containers, ice packs to keep water 18–22°C.
+- Oxygen bag for trips >2h, or aerator on trucks.
+- Don't crowd: 1 kg fish per 3–5 L water for short trips, more water for long.
+- Avoid mid-day departures in hot months.
+
+## Disease Quick-Reference (commonest in West/Central Africa)
+
+| Symptom | Likely cause | First action |
+|---|---|---|
+| Fish gasping at surface | Low DO, ammonia spike, gill parasites | Aerate, water exchange, test water |
+| White cottony patches | Saprolegnia (water mould) | Salt bath 1–2%, methylene blue |
+| Red haemorrhages on body | Aeromonas / pseudomonas | Antibiotic in feed, water exchange |
+| Pop-eye / swollen belly | Mycobacteriosis or bacterial septicaemia | Cull affected, full pond reset, disinfect |
+| Skin turns dark, off-feed | Stress (sudden temp/pH change), disease | Stop feeding, test water, isolate |
+| Brown gills | Nitrite poisoning | Add 1 g/L salt, water exchange |
+| Erratic spinning | Whirling disease (rare in catfish, possible in tilapia) | Cull pond if confirmed; consult vet |
+| Tail rot | Columnaris bacteria | Methylene blue, salt, improve water |
+
+For all disease cases:
+1. Stop feeding the affected pond for 24–48h.
+2. Increase water exchange.
+3. Send a sample to a fish-health lab if uncertain (most agricultural extension services have access).
+4. NEVER reuse equipment between ponds without disinfecting.
+
+## Feed Cost Optimisation
+
+Feed is 60–70% of operating cost. Three levers:
+1. **Match protein to life stage** — overfeeding 45% protein in grow-out wastes money. Drop to 32–35% from week 12.
+2. **Feed by biomass not gut** — calculate daily ration as 3–5% of estimated biomass; don't keep feeding while fish surface-feed.
+3. **Pellet size** — too small = waste, too big = uneaten. Match to fish size (rule of thumb: pellet ≈ 2–4% of fish length).
+
+## Decision Tree: "My fish look stressed today, what do I check first?"
+
+1. **Fish gasping at surface, especially morning** → low DO. Aerate immediately, partial water exchange.
+2. **Fish off-feed, no obvious symptoms** → test water (DO, pH, ammonia, nitrite). Check temp.
+3. **Visible spots/ulcers** → suspect bacterial / fungal. Salt bath, isolate sick.
+4. **Mass mortality (>5% in a day)** → emergency: water exchange, stop feed, sample dead fish for diagnosis.
+5. **Lethargy + dark colour, no other signs** → likely water quality. Same as #2.
+6. **Sudden behaviour change after feed** → check feed batch (mould? wrong protein?). Stop using current bag, switch to backup.
+
+
