@@ -123,7 +123,8 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
       if (updateError) throw updateError;
 
       const { error: activityError } = await supabase.from('activity_logs').insert({
-        user_id: currentFlock.user_id,
+        user_id: user.id,
+        farm_id: currentFarm.id,
         action: `Logged ${mortalityCount} mortality event${mortalityCount > 1 ? 's' : ''}`,
         entity_type: 'mortality',
         entity_id: currentFlock.id,

@@ -119,7 +119,8 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
       if (error) throw error;
 
       await supabase.from('activity_logs').insert({
-        user_id: currentFarm.id,
+        user_id: profile.id,
+        farm_id: currentFarm.id,
         action: `Completed daily task: ${template.title}`,
         entity_type: 'task',
         entity_id: template.id,

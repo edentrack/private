@@ -230,6 +230,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
 
       await supabase.from('activity_logs').insert({
         user_id: user.id,
+        farm_id: currentFarm.id,
         action: buyerName
           ? `Logged egg sale to ${buyerName}: ${traysNum} trays`
           : `Logged egg sale: ${traysNum} trays`,

@@ -127,6 +127,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
       const selectedFlockData = flocks.find(f => f.id === selectedFlock);
       await supabase.from('activity_logs').insert({
         user_id: user!.id,
+        farm_id: currentFarm!.id,
         action: `Updated ${normalizedCategory} expense to ${amountNum} ${expense.currency}`,
         entity_type: 'expense',
         entity_id: expense.id,

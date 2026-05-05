@@ -181,6 +181,7 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
 
       await supabase.from('activity_logs').insert({
         user_id: user.id,
+        farm_id: currentFarm.id,
         action: `Logged egg collection`,
         entity_type: 'egg_collection',
         entity_id: flockId,

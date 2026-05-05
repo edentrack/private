@@ -241,6 +241,7 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
     const { data: weightLogs } = await supabase
       .from('weight_logs')
       .select('average_weight, date')
+      .eq('farm_id', currentFarm!.id)
       .eq('flock_id', flock.id)
       .gte('date', weekStartDate.toISOString().split('T')[0])
       .lte('date', weekEndDate.toISOString().split('T')[0])
