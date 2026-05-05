@@ -392,11 +392,11 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="stat-label">{isAquaculture ? 'Initial Fish' : t('flocks.initial_count')}</div>
+                    <div className="stat-label">{`Initial ${farmSpecies.animalTerm} Count`}</div>
                     <div className="text-xl font-bold text-gray-900">{flock.initial_count.toLocaleString()}</div>
                   </div>
                   <div>
-                    <div className="stat-label">{isAquaculture ? 'Current Fish' : t('flocks.current_count')}</div>
+                    <div className="stat-label">{`Current ${farmSpecies.animalTerm} Count`}</div>
                     <div className="text-xl font-bold text-gray-900">{flock.current_count.toLocaleString()}</div>
                   </div>
                 </div>

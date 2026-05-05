@@ -27,7 +27,7 @@ export function getNavigationGroups(
     {
       id: 'health',
       label: 'HEALTH',
-      items: items.filter(item => ['vaccinations', 'mortality', 'weight', 'harvest', 'water-quality', 'sampling', 'stocking'].includes(item.id)),
+      items: items.filter(item => ['vaccinations', 'mortality', 'weight', 'harvest', 'water-quality', 'sampling', 'stocking', 'rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry'].includes(item.id)),
     },
     {
       id: 'money',

@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -103,6 +103,10 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'water-quality', label: 'Water Quality', icon: Droplets },
       { id: 'sampling', label: 'Weight Sampling', icon: Beaker },
       { id: 'stocking', label: 'Stocking', icon: Truck },
+      { id: 'rabbit-harvest', label: 'Rabbit Harvest', icon: Scale },
+      { id: 'breeding-events', label: 'Breeding', icon: Heart },
+      { id: 'litters', label: 'Litters', icon: Baby },
+      { id: 'rabbit-registry', label: 'Registry', icon: ClipboardList },
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
@@ -120,10 +124,13 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     const eggOnlyItems = new Set(['sales', 'egg-records']);
     // Items only for aquaculture farms
     const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking']);
+    // Items only for rabbit farms
+    const rabbitsOnlyItems = new Set(['rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry']);
     // Items hidden for aquaculture farms — 'weight' is replaced by 'sampling' (Weight Sampling)
     // which is the species-correct surface for fish (ABW, biomass, SGR), so the legacy
     // Weight & FCR page (broiler/layer charts) is not exposed.
     const poultryOnlyItems = new Set(['vaccinations', 'weight']);
+    const isRabbits = farmSpecies.id === 'rabbits';
 
     const filteredItems = allItems.filter(item => {
       const visibility = canViewModule(currentRole, item.id, farmPermissions);
@@ -132,7 +139,9 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       if (!farmTypeLoading) {
         if (!showEggs && eggOnlyItems.has(item.id)) return false;
         if (!isAquaculture && aquacultureOnlyItems.has(item.id)) return false;
+        if (!isRabbits && rabbitsOnlyItems.has(item.id)) return false;
         if (isAquaculture && poultryOnlyItems.has(item.id)) return false;
+        if (isRabbits && poultryOnlyItems.has(item.id)) return false;
       }
       return true;
     });

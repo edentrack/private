@@ -74,6 +74,10 @@ const WaterQualityPage       = lazy1(() => import('./components/aquaculture/Wate
 const HarvestPage            = lazy1(() => import('./components/aquaculture/HarvestPage'), 'HarvestPage');
 const SamplingEventsPage     = lazy1(() => import('./components/aquaculture/SamplingEventsPage'), 'SamplingEventsPage');
 const StockingEventsPage     = lazy1(() => import('./components/aquaculture/StockingEventsPage'), 'StockingEventsPage');
+const RabbitHarvestPage      = lazy1(() => import('./components/rabbits/RabbitHarvestPage'), 'RabbitHarvestPage');
+const BreedingEventsPage     = lazy1(() => import('./components/rabbits/BreedingEventsPage'), 'BreedingEventsPage');
+const LittersPage            = lazy1(() => import('./components/rabbits/LittersPage'), 'LittersPage');
+const RabbitsRegistryPage    = lazy1(() => import('./components/rabbits/RabbitsRegistryPage'), 'RabbitsRegistryPage');
 
 function CrispChat() {
   const { profile, user } = useAuth();
@@ -377,6 +381,10 @@ function AppContent() {
       'harvest': '#/harvest',
       'sampling': '#/sampling',
       'stocking': '#/stocking',
+      'rabbit-harvest': '#/rabbit-harvest',
+      'breeding-events': '#/breeding-events',
+      'litters': '#/litters',
+      'rabbit-registry': '#/rabbit-registry',
       'weight': '#/weight',
       'analytics': '#/analytics',
       'insights': '#/insights',
@@ -600,6 +608,22 @@ function AppContent() {
       }
       if (hash.includes('#/stocking')) {
         setCurrentView('stocking');
+        return;
+      }
+      if (hash.includes('#/rabbit-harvest')) {
+        setCurrentView('rabbit-harvest');
+        return;
+      }
+      if (hash.includes('#/breeding-events')) {
+        setCurrentView('breeding-events');
+        return;
+      }
+      if (hash.includes('#/litters')) {
+        setCurrentView('litters');
+        return;
+      }
+      if (hash.includes('#/rabbit-registry')) {
+        setCurrentView('rabbit-registry');
         return;
       }
       if (hash.includes('#/weight')) {
@@ -1051,6 +1075,14 @@ function AppContent() {
         return <SamplingEventsPage onNavigate={navigateToView} />;
       case 'stocking':
         return <StockingEventsPage />;
+      case 'rabbit-harvest':
+        return <RabbitHarvestPage />;
+      case 'breeding-events':
+        return <BreedingEventsPage />;
+      case 'litters':
+        return <LittersPage />;
+      case 'rabbit-registry':
+        return <RabbitsRegistryPage />;
       case 'vet-log':
         return (
           <RequireRole moduleId="vet-log" onUnauthorized={handleUnauthorized}>
