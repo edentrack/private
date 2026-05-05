@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Fish, Wheat, MapPin, Check, Lock } from 'lucide-react';
+import { X, Fish, Wheat, Rabbit, MapPin, Check, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -29,6 +29,15 @@ const FARM_TYPES: { id: FarmKind; label: string; subtitle: string; icon: any; co
     color: 'text-blue-600',
     bgColor: 'bg-blue-50 border-blue-200',
     features: ['Pond management', 'Stocking events', 'Water quality logs', 'Harvest records'],
+  },
+  {
+    id: 'rabbits',
+    label: 'Rabbitry',
+    subtitle: 'Meat & Breeder Rabbits',
+    icon: Rabbit,
+    color: 'text-emerald-700',
+    bgColor: 'bg-emerald-50 border-emerald-200',
+    features: ['Hutch management', 'Growth tracking', 'Health records', 'Harvest records'],
   },
 ];
 
@@ -132,7 +141,7 @@ export function CreateFarmModal({ onClose, onCreated }: CreateFarmModalProps) {
           {/* Farm type selector */}
           <div>
             <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2 block">Farm type</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {FARM_TYPES.map((ft) => {
                 const Icon = ft.icon;
                 const selected = farmType === ft.id;
@@ -175,7 +184,7 @@ export function CreateFarmModal({ onClose, onCreated }: CreateFarmModalProps) {
               type="text"
               value={farmName}
               onChange={e => setFarmName(e.target.value)}
-              placeholder={farmType === 'aquaculture' ? 'e.g. Riverside Fish Farm' : 'e.g. North Block Farm'}
+              placeholder={farmType === 'aquaculture' ? 'e.g. Riverside Fish Farm' : farmType === 'rabbits' ? 'e.g. Warren Hill Rabbitry' : 'e.g. North Block Farm'}
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
               autoFocus
             />

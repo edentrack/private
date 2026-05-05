@@ -1,5 +1,5 @@
 export type FlockType = 'Layer' | 'Broiler' | 'Catfish' | 'Tilapia' | 'Clarias' | 'Other Fish';
-export type FarmKind = 'poultry' | 'aquaculture';
+export type FarmKind = 'poultry' | 'aquaculture' | 'rabbits';
 export type FlockStatus = 'active' | 'archived';
 export type ExpenseCategory = 'feed' | 'medication' | 'equipment' | 'labor' | 'chicks purchase' | 'transport' | 'other';
 export type Currency = 'XAF' | 'USD' | 'NGN' | 'GHS' | 'KES' | 'ZAR' | 'CFA' | 'RWF' | 'UGX' | 'TZS' | 'ETB' | 'XOF' | 'CAD' | 'GBP' | 'EUR' | 'INR' | 'BRL' | 'CNY' | 'AUD';

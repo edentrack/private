@@ -82,6 +82,13 @@ export const LAYER_DEFAULT_PHASES: SpeciesPhase[] = [
   { name: 'Laying', startWeek: 21, endWeek: 72 },
 ];
 
+export const RABBIT_DEFAULT_PHASES: SpeciesPhase[] = [
+  { name: 'Kit', startWeek: 1, endWeek: 4 },
+  { name: 'Weanling', startWeek: 5, endWeek: 8 },
+  { name: 'Grower', startWeek: 9, endWeek: 14 },
+  { name: 'Market-ready', startWeek: 15, endWeek: 16 },
+];
+
 // Default aquaculture lifecycle phases — used when a species-specific override
 // isn't available. Uses biological lifecycle terminology that farmers recognise
 // (Fingerling → Juvenile → Grow-out → Pre-harvest), parallel to how poultry
@@ -228,7 +235,7 @@ export const SPECIES_MODULES: Record<AnimalSpecies, SpeciesModule> = {
     ],
 
     defaultCycleWeeks: 16,
-    phases: [],
+    phases: RABBIT_DEFAULT_PHASES,
 
     knowledgeFile: 'rabbits.md',
     defaultTaskTemplates: [
