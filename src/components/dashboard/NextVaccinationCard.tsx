@@ -31,6 +31,7 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
       const { data } = await supabase
         .from('vaccinations')
         .select('*')
+        .eq('farm_id', flock.farm_id)
         .eq('flock_id', flock.id)
         .eq('completed', false)
         .gte('scheduled_date', today)

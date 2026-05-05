@@ -21,21 +21,24 @@ interface ActivityLog {
 }
 
 export function RecentActivityPanel() {
-  const { profile } = useAuth();
+  const { profile, currentFarm } = useAuth();
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (profile) {
+    if (profile && currentFarm?.id) {
       loadActivities();
     }
-  }, [profile]);
+  }, [profile, currentFarm?.id]);
 
   const loadActivities = async () => {
+    if (!currentFarm?.id) return;
     try {
+      // Defense-in-depth: scope by farm_id.
       const { data } = await supabase
         .from('activity_logs')
         .select('*')
+        .eq('farm_id', currentFarm.id)
         .order('created_at', { ascending: false })
         .limit(5);
 

@@ -215,6 +215,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
         const { data: weights } = await supabase
           .from('weight_logs')
           .select('average_weight')
+          .eq('farm_id', currentFarm.id)
           .in('flock_id', broilerFlockIds)
           .eq('date', selectedDate);
 

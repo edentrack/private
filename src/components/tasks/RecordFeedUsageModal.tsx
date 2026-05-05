@@ -97,6 +97,7 @@ export function RecordFeedUsageModal({ flockId, onClose, onSuccess }: RecordFeed
 
       await supabase.from('activity_logs').insert({
         user_id: user.id,
+        farm_id: currentFarm.id,
         action: `Recorded feed usage: ${bagsUsedNum} bags of ${selectedFeed.feed_type}`,
         entity_type: 'feed_stock',
         entity_id: selectedFeedType,

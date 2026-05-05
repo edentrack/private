@@ -444,6 +444,7 @@ export function ExpenseTracking() {
 
       const { error: activityError } = await supabase.from('activity_logs').insert({
         user_id: user!.id,
+        farm_id: currentFarm!.id,
         action: activityMessage,
         entity_type: 'expense',
         entity_id: selectedExpenseFlock,

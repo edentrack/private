@@ -424,6 +424,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
           .from('feed_inventory')
           .select('feed_type_id')
           .eq('id', itemId)
+          .eq('farm_id', currentFarm.id)
           .single();
         if (fi?.feed_type_id) {
           feedTypeId = fi.feed_type_id;

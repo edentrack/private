@@ -80,6 +80,7 @@ export function CreatePayrollRunModal({ onClose, onSuccess }: CreatePayrollRunMo
       const { data: itemsData, error: itemsError } = await supabase
         .from('payroll_items')
         .select('*')
+        .eq('farm_id', currentFarm.id)
         .eq('payroll_run_id', result.payroll_run_id);
 
       if (itemsError) throw itemsError;

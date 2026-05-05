@@ -43,10 +43,10 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
         .order('scheduled_date', { ascending: true })
         .limit(5);
 
+      // Always scope to current farm via the flocks join
+      query = query.eq('flocks.farm_id', currentFarm.id);
       if (mode === 'selected_flock' && flockId) {
         query = query.eq('flock_id', flockId);
-      } else {
-        query = query.eq('flocks.farm_id', currentFarm.id);
       }
 
       const { data, error } = await query;
