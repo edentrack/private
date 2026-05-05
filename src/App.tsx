@@ -679,7 +679,7 @@ function AppContent() {
           setAuthRoute('login');
           return;
         }
-        
+
         // If hash is empty or doesn't match any route, only default to dashboard if logged in
         // Don't redirect if user is actively navigating (prevent interrupting navigation)
         if (!hash || hash === '#' || hash === '') {
@@ -690,8 +690,16 @@ function AppContent() {
           }
           return;
         }
+
+        // Audit fix: for unknown app routes (e.g. mistyped URLs like #/deaths
+        // when the real route is #/mortality), normalise the hash so the URL
+        // bar stops contradicting the rendered page. Previously the URL would
+        // stick on /deaths while the dashboard rendered underneath, which
+        // looked like a broken link.
+        setCurrentView('dashboard');
+        window.location.hash = '#/dashboard';
       }
-      
+
       setInviteToken(null);
     };
 
@@ -988,7 +996,7 @@ function AppContent() {
       case 'weight':
         return (
           <RequireRole moduleId="weight" onUnauthorized={handleUnauthorized}>
-            <WeightTracking flock={selectedFlock} />
+            <WeightTracking flock={selectedFlock} onNavigate={navigateToView} />
           </RequireRole>
         );
       case 'weight-check':

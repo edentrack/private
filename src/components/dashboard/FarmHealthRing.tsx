@@ -123,9 +123,25 @@ export function FarmHealthRing({ size = 42, children, onClick, showLabel = false
 
   const label = score >= 80 ? 'Healthy' : score >= 50 ? 'Fair' : score >= 25 ? 'At risk' : 'Inactive';
 
+  // Audit fix: "22% INACTIVE" was cryptic on first encounter — there was no
+  // tooltip explaining what the score measures or how to raise it. Provide
+  // a single, human-readable tooltip on every hoverable surface (the ring
+  // wrapper, the score number, and the label text) so the meaning is
+  // discoverable without clicking through.
+  const helpText =
+    `Farm Health: ${score}% — ${label}.\n` +
+    `Combines farm setup completeness (workers added, prices set, feed tracked) ` +
+    `with operational health (mortality rate, overdue tasks, recent activity). ` +
+    `Add data daily to raise the score.`;
+
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <div className="relative" style={{ width: size, height: size }} title={`Farm Health: ${score}%`}>
+      <div
+        className="relative"
+        style={{ width: size, height: size }}
+        title={helpText}
+        aria-label={helpText}
+      >
         <svg
           width={size}
           height={size}
@@ -171,7 +187,7 @@ export function FarmHealthRing({ size = 42, children, onClick, showLabel = false
         </div>
       </div>
       {showLabel && (
-        <div style={{ textAlign: 'center', lineHeight: 1.1 }}>
+        <div style={{ textAlign: 'center', lineHeight: 1.1, cursor: 'help' }} title={helpText}>
           <div style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: '0.01em' }}>
             {score}%
           </div>

@@ -3,6 +3,7 @@ import { Plus, Syringe, Check, Calendar, Stethoscope } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { Flock, Vaccination } from '../../types/database';
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { VetLog } from '../vet/VetLog';
@@ -43,9 +44,11 @@ export function VaccinationSchedule({ flock }: VaccinationScheduleProps) {
 
 function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | null; onSwitchTab: () => void; activeTab: string; onTabChange: (t: 'vaccinations' | 'vet-log') => void }) {
   const { t } = useTranslation();
-  const { currentRole } = useAuth();
+  const { currentRole, currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(flock?.id || null);
   const [currentFlock, setCurrentFlock] = useState<Flock | null>(flock);
+  const [hasAnyFlock, setHasAnyFlock] = useState<boolean | null>(null);
   const [vaccinations, setVaccinations] = useState<Vaccination[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [name, setName] = useState('');
@@ -64,6 +67,21 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
       setVaccinations([]);
     }
   }, [selectedFlockId]);
+
+  // Detect whether the farm has ANY active flocks. If not, the "select a flock
+  // above" empty state is misleading because the FlockSwitcher dropdown is
+  // empty. Show a "create your first flock" CTA instead.
+  useEffect(() => {
+    if (!currentFarm?.id) return;
+    supabase
+      .from('flocks')
+      .select('id', { count: 'exact', head: true })
+      .eq('farm_id', currentFarm.id)
+      .eq('status', 'active')
+      .then(({ count }) => {
+        setHasAnyFlock((count ?? 0) > 0);
+      });
+  }, [currentFarm?.id]);
 
   useEffect(() => {
     if (currentFlock) {
@@ -199,7 +217,30 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
         <div className="bg-white rounded-3xl p-12 text-center">
           <Syringe className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-gray-900 mb-2">{t('vaccinations.vaccination_management')}</h3>
-          <p className="text-gray-600">{t('vaccinations.select_flock_above')}</p>
+          {/* When the farm has no flocks/ponds/rabbitries at all, the
+              "select above" instruction is meaningless — the dropdown is
+              empty. Show a species-aware CTA instead. */}
+          {hasAnyFlock === false ? (
+            <>
+              <p className="text-gray-600 mb-6">
+                Create a {farmSpecies.groupTerm.toLowerCase()} first to schedule and track vaccinations.
+              </p>
+              {currentRole && currentRole !== 'viewer' && (
+                <button
+                  type="button"
+                  onClick={() => { window.location.hash = '#/flocks'; }}
+                  className="btn-primary inline-flex items-center"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Create {farmSpecies.groupTerm}
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="text-gray-600">
+              Select a {farmSpecies.groupTerm.toLowerCase()} above to manage vaccinations.
+            </p>
+          )}
         </div>
       ) : (
         <>

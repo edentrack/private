@@ -641,6 +641,8 @@
     "no_feed_stock": "No feed stock recorded yet",
     "click_add_to_start": "Click \"Add\" to get started.",
     "low_stock": "Low stock!",
+    "out_of_stock": "Out of stock",
+    "not_stocked_yet": "Not stocked yet",
     "adjust": "Adjust",
     "equipment_reusable": "Equipment reusable",
     "supplies_consumable": "Supplies consumable",

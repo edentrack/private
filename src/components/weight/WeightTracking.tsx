@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Scale, TrendingUp } from 'lucide-react';
+import { Scale, TrendingUp, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';;
@@ -11,12 +11,14 @@ import { WeightCheckResults } from './WeightCheckResults';
 import { WeightHistoryView } from './WeightHistoryView';
 import { analyzeWeightCheck } from '../../utils/weightAnalysis';
 import { getSpeciesTerminology, getSpeciesByType, AnimalSpecies } from '../../utils/speciesModules';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { WeightProgressWidget } from '../dashboard/WeightProgressWidget';
 import { FeedIntakeChart } from './FeedIntakeChart';
 import { WaterConsumptionChart } from './WaterConsumptionChart';
 
 interface WeightTrackingProps {
   flock: Flock | null;
+  onNavigate?: (view: string) => void;
 }
 
 function calculateRecommendedSampleSize(flockSize: number): number {
@@ -35,10 +37,11 @@ function calculateConfidenceLevel(sampleSize: number, flockSize: number): string
   return 'Low';
 }
 
-export function WeightTracking({ flock: flockProp }: WeightTrackingProps) {
+export function WeightTracking({ flock: flockProp, onNavigate }: WeightTrackingProps) {
   const { t } = useTranslation();
   const { currentRole, user, currentFarm } = useAuth();
   const { farmPermissions } = usePermissions();
+  const farmSpecies = useFarmSpecies();
   const canLogWeight = canPerformAction(currentRole, 'create', 'weight', farmPermissions);
   const [availableFlocks, setAvailableFlocks] = useState<Flock[]>([]);
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(flockProp);
@@ -176,11 +179,30 @@ export function WeightTracking({ flock: flockProp }: WeightTrackingProps) {
   }
 
   if (availableFlocks.length === 0) {
+    // Audit fix: this empty state used to say "Create a flock first to track
+    // bird weights" — wrong on aquaculture/rabbits tenants. Drive the copy
+    // off the active species and add an inline CTA so the user can create
+    // their first group without bouncing back to the nav.
+    const groupTerm = farmSpecies.groupTerm.toLowerCase();
+    const groupTermPlural = farmSpecies.groupTermPlural;
+    const animalTermPlural = farmSpecies.animalTermPlural.toLowerCase();
     return (
       <div className="bg-white rounded-2xl p-12 text-center">
         <Scale className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('weight.no_active_flocks_yet') || 'No Active Flocks'}</h3>
-        <p className="text-gray-600 text-sm max-w-sm mx-auto">{t('weight.create_flock_first') || 'Create a flock to start tracking weight checks and growth'}</p>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">No Active {groupTermPlural}</h3>
+        <p className="text-gray-600 text-sm max-w-sm mx-auto mb-6">
+          Create a {groupTerm} first to track {animalTermPlural} weights and monitor growth patterns.
+        </p>
+        {onNavigate && currentRole && currentRole !== 'viewer' && (
+          <button
+            type="button"
+            onClick={() => onNavigate('flocks')}
+            className="btn-primary inline-flex items-center"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create {farmSpecies.groupTerm}
+          </button>
+        )}
       </div>
     );
   }

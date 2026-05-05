@@ -820,7 +820,18 @@ export function InsightsPage() {
         <div className="section-card text-center py-12">
           <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No {farmSpecies.groupTermPlural} Available</h3>
-          <p className="text-gray-500">Create your first {farmSpecies.groupTerm.toLowerCase()} to see insights</p>
+          <p className="text-gray-500 mb-6">Create your first {farmSpecies.groupTerm.toLowerCase()} to see insights</p>
+          {/* Inline CTA — audit flagged that the empty state was text-only and
+              forced users to bounce back to the nav. */}
+          {currentRole && currentRole !== 'viewer' && (
+            <button
+              type="button"
+              onClick={() => { window.location.hash = '#/flocks'; }}
+              className="btn-primary inline-flex items-center"
+            >
+              Create {farmSpecies.groupTerm}
+            </button>
+          )}
         </div>
       </div>
     );
