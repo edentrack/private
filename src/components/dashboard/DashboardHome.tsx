@@ -18,6 +18,7 @@ import { UnifiedTaskSettings } from '../tasks/UnifiedTaskSettings';
 import { InventoryUsageWidget } from './InventoryUsageWidget';
 import { QuickEggCollectionWidget } from './QuickEggCollectionWidget';
 import { AquaculturePondWidget } from './AquaculturePondWidget';
+import { AquaCycleWidget } from './AquaCycleWidget';
 import { WeatherWidget } from './WeatherWidget';
 import { hasFeatureAccess } from '../../utils/planGating';
 import { canViewAnalytics } from '../../utils/permissions';
@@ -694,6 +695,11 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
           {!isAquaculture && selectedFlock && (
             <div className="animate-fade-in-up stagger-4">
               <ProductionCycleWidget flock={selectedFlock} onNavigate={onNavigate} />
+            </div>
+          )}
+          {isAquaculture && selectedFlock && (
+            <div className="animate-fade-in-up stagger-4">
+              <AquaCycleWidget pond={selectedFlock} onNavigate={onNavigate} />
             </div>
           )}
         </div>
