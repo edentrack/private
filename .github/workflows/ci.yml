@@ -1,0 +1,89 @@
+name: CI
+
+# Gate every PR on typecheck + tests + build.
+#
+# Note on TypeScript: the codebase has 358 pre-existing errors in
+# pdfGenerator/predictiveAnalytics/reportGenerator/weightAnalysis (tracked
+# separately). We DO NOT fail on absolute count — instead we compare PR
+# branch error count against `main`'s and fail only if the PR introduces
+# new errors. Once the backlog is paid down, switch to `tsc --noEmit`
+# directly with no count comparison.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run vitest
+        run: npm test
+
+      - name: Run production build
+        run: npm run build
+
+  typecheck-no-new-errors:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Count TypeScript errors on PR branch
+        id: pr_errors
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.app.json 2>&1 | tee /tmp/pr_tsc.log
+          PR_COUNT=$(grep -cE "^src/.*: error TS" /tmp/pr_tsc.log || echo 0)
+          echo "count=$PR_COUNT" >> $GITHUB_OUTPUT
+          echo "PR branch TypeScript errors: $PR_COUNT"
+
+      - name: Checkout main
+        run: |
+          git fetch origin main
+          git checkout origin/main
+          npm ci
+
+      - name: Count TypeScript errors on main
+        id: main_errors
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.app.json 2>&1 | tee /tmp/main_tsc.log
+          MAIN_COUNT=$(grep -cE "^src/.*: error TS" /tmp/main_tsc.log || echo 0)
+          echo "count=$MAIN_COUNT" >> $GITHUB_OUTPUT
+          echo "main TypeScript errors: $MAIN_COUNT"
+
+      - name: Fail if PR introduces new TypeScript errors
+        run: |
+          PR=${{ steps.pr_errors.outputs.count }}
+          MAIN=${{ steps.main_errors.outputs.count }}
+          if [ "$PR" -gt "$MAIN" ]; then
+            echo "::error::PR adds $((PR - MAIN)) new TypeScript errors (main: $MAIN, PR: $PR). Fix the new errors or the baseline drift."
+            exit 1
+          fi
+          echo "OK — PR errors ($PR) ≤ main errors ($MAIN)"
