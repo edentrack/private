@@ -5,6 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { WaterQualityLog } from '../../types/database';
 import { WhyThisMatters } from '../common/WhyThisMatters';
+import { classifyAll } from '../../utils/waterQualityThresholds';
 
 interface AquaFlock {
   id: string;
@@ -322,6 +323,24 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
           <div className="space-y-0 divide-y divide-gray-100">
             {logs.map(log => {
               const doStatus = getDOStatus(log.dissolved_oxygen);
+              // Phase B Step 13: roll up parameter status into a single
+              // overall alert badge so the user can scan past readings and
+              // spot the bad ones immediately.
+              const flockType = (flocks.find(f => f.id === log.flock_id)?.type || 'Other Fish') as
+                | 'Tilapia'
+                | 'Catfish'
+                | 'Clarias'
+                | 'Other Fish';
+              const wqSummary = classifyAll(
+                {
+                  do_mgL: log.dissolved_oxygen,
+                  pH: log.ph,
+                  ammonia_mgL: log.ammonia_mgl,
+                  nitrite_mgL: log.nitrite_mgl,
+                  temp_c: log.temperature_c,
+                },
+                flockType,
+              );
               return (
                 <div key={log.id} className="py-3 flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -330,6 +349,16 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                       <span className="text-xs text-gray-400">
                         {(() => { const p = String(log.logged_at).split(/[-T]/); const d = p.length >= 3 ? new Date(+p[0], +p[1] - 1, +p[2]) : new Date(log.logged_at); return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); })()}
                       </span>
+                      {wqSummary.overallStatus === 'emergency' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                          <AlertTriangle className="w-3 h-3" /> Emergency
+                        </span>
+                      )}
+                      {wqSummary.overallStatus === 'marginal' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                          Watch
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2 mt-1.5">
                       {log.temperature_c !== null && log.temperature_c !== undefined && (
@@ -368,6 +397,16 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                     </div>
                     {log.notes && (
                       <p className="text-xs text-gray-500 mt-1 truncate">{log.notes}</p>
+                    )}
+                    {wqSummary.emergencies.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {wqSummary.emergencies.map((msg, i) => (
+                          <p key={`e-${i}`} className="text-xs text-red-700 flex items-start gap-1">
+                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            {msg}
+                          </p>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>

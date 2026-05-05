@@ -5,6 +5,10 @@ import { Flock } from '../../types/database';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { getFlockAgeDays } from '../../utils/flockAge';
+import { calculateSGR, formatSGR } from '../../utils/sgrAnalysis';
+import { calculateStockingDensity } from '../../utils/stockingDensity';
+import { calculateHarvestReadiness } from '../../utils/harvestReadiness';
+import type { FishSpeciesType } from '../../utils/fcrAquaculture';
 
 interface AquaCycleWidgetProps {
   pond: Flock | null;
@@ -23,6 +27,11 @@ interface SampleData {
   date: string | null;
   isOverdue: boolean;
   weekNumber: number;
+}
+
+interface PreviousSampleData {
+  abwG: number;
+  date: string;
 }
 
 /**
@@ -84,6 +93,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
     isOverdue: false,
     weekNumber: 0,
   });
+  const [prevSample, setPrevSample] = useState<PreviousSampleData | null>(null);
 
   useEffect(() => {
     if (pond) {
@@ -178,14 +188,31 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
 
   const fetchLatestSample = async () => {
     if (!pond || !currentFarm?.id) return;
-    const { data } = await supabase
+    // Fetch the two most recent samples so we can compute SGR (needs a baseline).
+    const { data: samples } = await supabase
       .from('sampling_events')
       .select('abw_g, sampled_at')
       .eq('farm_id', currentFarm.id)
       .eq('flock_id', pond.id)
       .order('sampled_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(2);
+    const data = samples && samples[0] ? samples[0] : null;
+    if (samples && samples.length >= 2) {
+      // Only count as a baseline if it's on a *different* date — same-date double
+      // samples shouldn't drive a multi-day SGR projection.
+      const latestDate = String(samples[0].sampled_at).split('T')[0];
+      const prevDate = String(samples[1].sampled_at).split('T')[0];
+      if (latestDate !== prevDate) {
+        setPrevSample({
+          abwG: Number(samples[1].abw_g) || 0,
+          date: samples[1].sampled_at,
+        });
+      } else {
+        setPrevSample(null);
+      }
+    } else {
+      setPrevSample(null);
+    }
 
     const ageDays = getFlockAgeDays(pond);
     const week = Math.max(1, Math.floor(ageDays / 7) + 1);
@@ -329,6 +356,99 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
             }`} />
           </div>
         </div>
+
+        {/* Performance pills — SGR, density, harvest readiness.
+            Phase B Steps 9 / 11 / 12 surface here so farmers see the headline
+            metrics without leaving the dashboard. */}
+        {(() => {
+          const speciesType: FishSpeciesType =
+            (pond.type as FishSpeciesType) === 'Tilapia' ||
+            (pond.type as FishSpeciesType) === 'Catfish' ||
+            (pond.type as FishSpeciesType) === 'Clarias'
+              ? (pond.type as FishSpeciesType)
+              : 'Other Fish';
+
+          // SGR — needs prevSample on a different date.
+          let sgr: ReturnType<typeof calculateSGR> | null = null;
+          if (prevSample && sample.abwG && sample.date) {
+            const days = Math.max(
+              1,
+              Math.round(
+                (new Date(sample.date).getTime() - new Date(prevSample.date).getTime()) /
+                  86_400_000,
+              ),
+            );
+            sgr = calculateSGR({
+              previousWeightG: prevSample.abwG,
+              currentWeightG: sample.abwG,
+              days,
+            });
+          }
+
+          // Density — needs pond_size_sqm and current_count.
+          const pondSize = (pond as any).pond_size_sqm as number | null;
+          const density = pondSize
+            ? calculateStockingDensity({
+                species: speciesType,
+                count: pond.current_count || 0,
+                pondSizeSqm: Number(pondSize),
+              })
+            : null;
+
+          // Harvest readiness — needs ABW + SGR.
+          const harvest = sample.abwG
+            ? calculateHarvestReadiness({
+                species: speciesType,
+                currentWeek,
+                currentAbwG: sample.abwG,
+                sgrPercent: sgr?.sgr ?? 0,
+              })
+            : null;
+
+          if (!sgr && !density && !harvest) return null;
+
+          const colorClass = (c: 'green' | 'amber' | 'red' | 'gray'): string => {
+            switch (c) {
+              case 'green':
+                return 'bg-green-100 text-green-800 border-green-200';
+              case 'amber':
+                return 'bg-amber-100 text-amber-800 border-amber-200';
+              case 'red':
+                return 'bg-red-100 text-red-800 border-red-200';
+              default:
+                return 'bg-gray-100 text-gray-700 border-gray-200';
+            }
+          };
+
+          return (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {sgr && sgr.status !== 'invalid' && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(sgr.color)}`}
+                  title={`Specific Growth Rate: ${formatSGR(sgr.sgr)} — ${sgr.label}`}
+                >
+                  SGR {formatSGR(sgr.sgr)}
+                </span>
+              )}
+              {density && density.status !== 'unknown' && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(density.color)}`}
+                  title={density.message}
+                >
+                  Density {density.density.toFixed(1)}/m²
+                </span>
+              )}
+              {harvest && harvest.status !== 'unknown' && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(harvest.color)}`}
+                  title={harvest.message}
+                >
+                  {harvest.recommendation}
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Key milestones — same shape as poultry */}
         <div className="mb-3">
