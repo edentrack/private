@@ -64,6 +64,24 @@ export interface SpeciesModule {
   // Knowledge & tasks
   knowledgeFile: string;
   defaultTaskTemplates: SpeciesTaskTemplate[];
+
+  // Insights / KPI labels — drive species-aware copy out of the species
+  // module so InsightsPage doesn't have to hardcode "kg eggs" or
+  // "Pre-lay phase" for non-poultry.
+
+  /** Sub-label shown under the FCR KPI, e.g. "kg feed/kg eggs". */
+  fcrUnit: string;
+
+  /**
+   * Sell/Keep signal copy for the pre-harvest / pre-lay phase. The audit
+   * flagged that fish farms were inheriting the layer "Pre-lay phase
+   * (typically before week 18); no sell signal yet" string. Each species
+   * provides its own copy.
+   */
+  preHarvestSignal: {
+    headline: string;     // "Keep flock", "Keep growing", "Keep colony"
+    reason: string;       // describes why the signal isn't tripping yet
+  };
 }
 
 // ─── Default phase arrays (exported for components that need type-specific ones) ───
@@ -148,6 +166,15 @@ export const SPECIES_MODULES: Record<AnimalSpecies, SpeciesModule> = {
       { title: 'Record Mortality', frequency: 'daily', category: 'Health' },
       { title: 'Weekly Broiler Weight Check', frequency: 'weekly', category: 'Growth Tracking' },
     ],
+
+    // Layer FCR is feed per egg-mass; broiler FCR is feed per liveweight gain.
+    // We default to the layer phrasing here because Insights' sell/keep logic
+    // already pivots on `isLayerFlock`. Components can refine per-flock-type.
+    fcrUnit: 'kg feed/kg eggs',
+    preHarvestSignal: {
+      headline: 'Keep flock',
+      reason: 'Pre-lay phase (typically before week 18); no sell signal yet.',
+    },
   },
 
   aquaculture: {
@@ -199,6 +226,12 @@ export const SPECIES_MODULES: Record<AnimalSpecies, SpeciesModule> = {
       { title: 'Pond clean / partial water change', frequency: 'monthly', category: 'Sanitation' },
       { title: 'Health inspection', frequency: 'monthly', category: 'Health' },
     ],
+
+    fcrUnit: 'kg feed/kg fish gained',
+    preHarvestSignal: {
+      headline: 'Keep growing',
+      reason: 'Below pre-harvest phase; harvest signal triggers near week 19 (Pre-harvest).',
+    },
   },
 
   rabbits: {
@@ -246,6 +279,12 @@ export const SPECIES_MODULES: Record<AnimalSpecies, SpeciesModule> = {
       { title: 'Clean hutches', frequency: 'weekly', category: 'Sanitation' },
       { title: 'Weight sampling', frequency: 'weekly', category: 'Growth Tracking' },
     ],
+
+    fcrUnit: 'kg feed/kg liveweight gained',
+    preHarvestSignal: {
+      headline: 'Keep colony',
+      reason: 'Below market-ready phase; harvest signal triggers near week 15.',
+    },
   },
 };
 

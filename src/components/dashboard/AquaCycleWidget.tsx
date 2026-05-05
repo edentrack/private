@@ -305,7 +305,14 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
                 <>
                   <p className="text-xl font-bold text-gray-900">{sample.abwG.toFixed(1)} g</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Sampled on {new Date(sample.date!).toLocaleDateString()}
+                    {/* Audit fix: bare DATE strings like "2026-05-05" parse as UTC
+                        midnight, which renders one day earlier in any negative-UTC
+                        locale. Split + reassemble in local time to keep the
+                        widget date consistent with the Sampling page. */}
+                    Sampled on {(() => {
+                      const [y, m, d] = sample.date!.split('T')[0].split('-').map(Number);
+                      return new Date(y, m - 1, d).toLocaleDateString();
+                    })()}
                   </p>
                 </>
               ) : sample.isOverdue ? (

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { Flock, Expense, MortalityLog, EggCollection } from '../../types/database';
 import { useFlockSpecies, useFarmSpecies } from '../../hooks/useSpecies';
+import { pluralize } from '../../utils/pluralize';
 import { formatEggsWithTotal, formatEggsForExport } from '../../utils/eggFormatting';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -700,6 +701,18 @@ export function InsightsPage() {
     const profitMargin = Number(metrics.profitMargin || 0);
     const netProfit = Number(metrics.netProfit || 0);
 
+    // Audit fix: fish + rabbit flocks were inheriting the layer "Pre-lay
+    // phase (typically before week 18)" string. Route those species to
+    // their own preHarvestSignal copy from speciesModules. The detailed
+    // broiler/layer logic below is poultry-specific and stays scoped.
+    if (!isBroilerFlock && !isLayerFlock) {
+      return {
+        label: species.preHarvestSignal.headline,
+        reason: species.preHarvestSignal.reason,
+        tone: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+      };
+    }
+
     if (isBroilerFlock) {
       if ((feedConv > 2.6 && profitMargin < 5) || netProfit < 0) {
         return {
@@ -791,7 +804,7 @@ export function InsightsPage() {
       reason: 'Current feed-to-output performance is acceptable.',
       tone: 'bg-emerald-50 border-emerald-200 text-emerald-800',
     };
-  }, [isBroilerFlock, metrics.feedConversion, metrics.netProfit, metrics.profitMargin, metrics.productionRate, metrics.ageWeeks, weeklyData]);
+  }, [isBroilerFlock, isLayerFlock, species, metrics.feedConversion, metrics.netProfit, metrics.profitMargin, metrics.productionRate, metrics.ageWeeks, weeklyData]);
 
   if (loading) {
     return <InsightsSkeleton />;
@@ -977,7 +990,8 @@ export function InsightsPage() {
                 <div className="bg-white/60 rounded-xl p-4">
                   <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.current_age')}</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {metrics.ageWeeks} {t('insights.weeks')}
+                    {/* Audit fix: "1 weeks" → "1 week"; pluralize util */}
+                    {metrics.ageWeeks} {pluralize(metrics.ageWeeks, 'week')}
                     {metrics.ageDays > 0 && <span className="text-lg font-normal text-gray-400 ml-1.5">{metrics.ageDays}d</span>}
                   </p>
                 </div>
@@ -1051,7 +1065,14 @@ export function InsightsPage() {
                   <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.feed_conversion')}</p>
                   <p className="text-2xl font-bold text-gray-900">{metrics.feedConversion}</p>
                   <p className="text-sm text-gray-500">
-                    {isBroilerFlock ? t('insights.kg_feed_per_kg_meat') : t('insights.kg_feed_per_kg_eggs')}
+                    {/* Audit fix: was hardcoded "kg eggs" for any non-broiler
+                        flock — wrong for aqua + rabbits. Drive off
+                        speciesModules.fcrUnit; broiler keeps its own i18n key. */}
+                    {isBroilerFlock
+                      ? t('insights.kg_feed_per_kg_meat')
+                      : isLayerFlock
+                        ? t('insights.kg_feed_per_kg_eggs')
+                        : species.fcrUnit}
                   </p>
                 </div>
                 {!hideFinancials && (

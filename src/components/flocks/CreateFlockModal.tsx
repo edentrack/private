@@ -492,7 +492,9 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               {t('flocks.cancel')}
             </button>
             <button type="submit" disabled={loading || !species || !type} className="flex-1 px-4 py-2.5 text-sm border-2 border-gray-900 text-gray-900 rounded-lg font-medium hover:bg-[#faf7f2] bg-white disabled:opacity-50 disabled:cursor-not-allowed">
-              {loading ? (isAquaculture ? 'Creating…' : t('flocks.creating')) : (isAquaculture ? 'Create Pond' : t('flocks.create_flock'))}
+              {loading
+                ? (isAquaculture ? 'Creating…' : isRabbits ? 'Creating…' : t('flocks.creating'))
+                : (isAquaculture ? 'Create Pond' : isRabbits ? 'Create Rabbitry' : t('flocks.create_flock'))}
             </button>
           </div>
         </form>

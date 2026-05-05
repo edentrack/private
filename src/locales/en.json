@@ -1883,6 +1883,8 @@
     "end_of_lay": "End of Lay",
     "view_details": "View Production Details",
     "weeks_until_next_phase": "{{weeks}} weeks until next phase",
+    "weeks_until_next_phase_one": "{{weeks}} week until next phase",
+    "weeks_until_next_phase_other": "{{weeks}} weeks until next phase",
     "phase_complete": "Phase complete",
     "phase_progress": "{{percent}}% through {{phase}} phase (Week {{currentWeek}} of {{startWeek}}-{{endWeek}})",
     "cycle_progress": "{{percent}}% complete ({{currentWeek}} of {{targetWeek}} weeks)",

@@ -160,7 +160,10 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
       toast.success(`Sample saved · ABW ${previewAbw?.toFixed(1)} g`);
       resetForm();
       setShowForm(false);
-      loadEvents();
+      // Audit fix: top per-pond card was showing stale ABW after save.
+      // Reload events AND flocks (current_count may have changed via the
+      // compute_abw_g trigger) so the summary card refreshes.
+      await Promise.all([loadEvents(), loadFlocks()]);
     }
   };
 
@@ -230,6 +233,18 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
             if (!latest) return null;
             const biomass = projectedBiomass(latest);
             const sgr = sgrByEventId[latest.id];
+            // Audit fix: the SGR card said "Need 2+ samples" even when 2
+            // samples existed but were on the same date (so daysBetween=0
+            // → SGR null). Distinguish the two empty-state reasons.
+            const sampleCount = events.filter(e => e.flock_id === f.id).length;
+            const distinctDateCount = new Set(
+              events.filter(e => e.flock_id === f.id).map(e => (e.sampled_at || '').split('T')[0]),
+            ).size;
+            const sgrEmptyCopy = sampleCount < 2
+              ? 'Need 2+ samples to show growth rate'
+              : distinctDateCount < 2
+                ? 'Need samples on 2+ different dates'
+                : 'Working out growth rate…';
             return (
               <div key={f.id} className="section-card">
                 <div className="flex items-center gap-2 mb-2">
@@ -268,7 +283,7 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
                     </div>
                     <div className="text-[10px] text-amber-600 mt-0.5">
                       {sgr == null
-                        ? 'Need 2+ samples to show growth rate'
+                        ? sgrEmptyCopy
                         : sgr >= 2 ? 'Healthy grow-out' : sgr >= 1 ? 'Slowing — review feed' : 'Slow — investigate'}
                     </div>
                   </div>

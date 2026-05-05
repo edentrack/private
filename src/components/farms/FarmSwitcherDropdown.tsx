@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Plus, Fish, Wheat, Rabbit, Settings } from 'lucide-react';
+import { ChevronDown, Plus, Fish, Wheat, Rabbit, Settings, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMaxFarms } from '../../utils/planGating';
 import type { FarmKind } from '../../types/database';
@@ -15,7 +15,7 @@ function FarmTypeIcon({ type, className }: { type: FarmKind | undefined; classNa
 }
 
 export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
-  const { currentFarm, allFarms, profile } = useAuth();
+  const { currentFarm, allFarms, profile, switchFarm } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -69,26 +69,46 @@ export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
 
       {open && (
         <div className="absolute left-0 top-full mt-1.5 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-scale-in">
-          {/* Active farm display */}
-          <div className="px-3 py-2.5 flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              currentFarm?.farm_type === 'aquaculture' ? 'bg-blue-50' : currentFarm?.farm_type === 'rabbits' ? 'bg-emerald-50' : 'bg-amber-50'
-            }`}>
-              <FarmTypeIcon
-                type={currentFarm?.farm_type as FarmKind | undefined}
-                className={`w-4 h-4 ${currentFarm?.farm_type === 'aquaculture' ? 'text-blue-500' : currentFarm?.farm_type === 'rabbits' ? 'text-emerald-700' : 'text-amber-600'}`}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{currentFarm?.name || 'My Farm'}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {farmTypeBadge(currentFarm?.farm_type as FarmKind | undefined)}
-                {currentFarm?.location && (
-                  <span className="text-[9px] text-gray-400 truncate">{currentFarm.location}</span>
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Audit fix: dropdown used to show only the active farm and an
+              "Add a new farm" button — switching farms required Settings →
+              My Farms → Switch (3 clicks). List every farm here so the user
+              can quick-switch in one click. The active row keeps a check. */}
+          {(allFarms ?? []).map((farm) => {
+            const isActive = farm.id === currentFarm?.id;
+            const farmType = (farm as any).farm_type as FarmKind | undefined;
+            return (
+              <button
+                key={farm.id}
+                onClick={() => {
+                  if (isActive) { setOpen(false); return; }
+                  setOpen(false);
+                  switchFarm(farm.id);
+                }}
+                className={`w-full px-3 py-2.5 flex items-center gap-3 transition-colors text-left ${
+                  isActive ? 'bg-gray-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  farmType === 'aquaculture' ? 'bg-blue-50' : farmType === 'rabbits' ? 'bg-emerald-50' : 'bg-amber-50'
+                }`}>
+                  <FarmTypeIcon
+                    type={farmType}
+                    className={`w-4 h-4 ${farmType === 'aquaculture' ? 'text-blue-500' : farmType === 'rabbits' ? 'text-emerald-700' : 'text-amber-600'}`}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{farm.name || 'My Farm'}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {farmTypeBadge(farmType)}
+                    {(farm as any).location && (
+                      <span className="text-[9px] text-gray-400 truncate">{(farm as any).location}</span>
+                    )}
+                  </div>
+                </div>
+                {isActive && <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />}
+              </button>
+            );
+          })}
 
           <div className="border-t border-gray-100 my-1" />
 

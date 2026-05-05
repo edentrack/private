@@ -366,7 +366,11 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-600">{t('dashboard.progress')}</span>
             <span className="text-sm font-medium text-gray-700">
-              {weeksUntilNextPhase > 0 ? t('production_cycle.weeks_until_next_phase', { weeks: weeksUntilNextPhase }) : t('production_cycle.phase_complete')}
+              {/* Audit fix: was rendering "1 weeks until next phase" — pass
+                  count to i18next so the _one/_other keys take over. */}
+              {weeksUntilNextPhase > 0
+                ? t('production_cycle.weeks_until_next_phase', { weeks: weeksUntilNextPhase, count: weeksUntilNextPhase })
+                : t('production_cycle.phase_complete')}
             </span>
           </div>
           <div className="h-3 bg-gray-200 rounded-full overflow-hidden">

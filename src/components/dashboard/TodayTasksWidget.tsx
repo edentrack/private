@@ -29,7 +29,12 @@ interface ExtendedTask extends TaskWithMetadata {
   auto_generated?: boolean;
 }
 
-type QuickLogType = 'mortality' | 'feed' | 'egg';
+// Tasks with one of these types need DATA before they can be considered done.
+// The audit found that ticking the checkbox auto-completed them without ever
+// asking for the data — so feeding never decremented inventory and weight
+// samples never landed in /#/sampling. The checkbox now opens the right
+// quick-log surface instead of toggling the status outright.
+type QuickLogType = 'mortality' | 'feed' | 'egg' | 'sample';
 
 interface QuickLogState {
   taskId: string;
@@ -324,6 +329,11 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
           setShowAllTasks(false);
         }
         loadTasks(eggSelectedDateISO);
+        // Audit fix: the "PENDING TASKS" header KPI on DashboardHome
+        // didn't update until a full page reload. DashboardHome listens
+        // for an `edentrack:refresh` window event — dispatch it here so
+        // the counter refreshes live alongside this widget's state.
+        window.dispatchEvent(new CustomEvent('edentrack:refresh'));
       }
     } catch (error) {
       console.error('Error updating task:', error);
@@ -401,11 +411,13 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
     if (category.includes('mortality')) return 'mortality';
     if (category.includes('feed')) return 'feed';
     if (category.includes('egg')) return 'egg';
+    if (category.includes('growth tracking')) return 'sample';
 
     // Fallback to title matching
     if (title.includes('mortality') || title.includes('dead bird')) return 'mortality';
     if (title.includes('feed') || title.includes('feeding')) return 'feed';
     if (title.includes('egg')) return 'egg';
+    if (title.includes('sample weight') || title.includes('weigh')) return 'sample';
 
     return null;
   };
@@ -648,7 +660,28 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
     </div>
   );
 
-  const dailyTasks = tasks.filter((task: any) => task.templateIcon !== 'egg');
+  // Audit fix: defensive client-side dedup. The server-side
+  // normalizeAndDedupTasksForDate is meant to catch duplicates, but the
+  // 2026-05-05 audit showed Riverside Fish Farm rendering "Check water DO
+  // morning" and "Check water DO evening" twice each on the dashboard
+  // widget while /#/tasks showed each only once. Until that helper is
+  // fixed at the source, dedupe here by (title, flockId, scheduledTime)
+  // so the widget never double-renders a task.
+  const dailyTasks = (() => {
+    const filtered = tasks.filter((task: any) => task.templateIcon !== 'egg');
+    const seen = new Set<string>();
+    const out: any[] = [];
+    for (const task of filtered) {
+      const title = (task.title_override || task.templateTitle || '').trim().toLowerCase();
+      const flockKey = task.flock_id || 'farm';
+      const time = task.scheduled_time || task.scheduled_for || '';
+      const key = `${title}|${flockKey}|${time}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(task);
+    }
+    return out;
+  })();
 
   const overdueTasks = dailyTasks.filter((task: any) => task.status === 'pending' && task.isOverdue);
   const dueSoonTasks = dailyTasks.filter(
@@ -684,7 +717,35 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
           }`}
         >
           <button
-            onClick={() => toggleTask(task.id, task.status)}
+            onClick={() => {
+              // Audit fix: data-entry tasks (Feed pond, Sample weight,
+              // Egg collection, Mortality logs) used to auto-complete
+              // when the checkbox was clicked — bypassing the data
+              // capture and leaving Insights at "Feed Consumed: 0 kg".
+              //
+              // For pending tasks of those types we now route the user
+              // into the right surface instead of toggling status.
+              // Already-completed tasks can still be unchecked.
+              if (!isCompleted && quickLogType) {
+                if (quickLogType === 'sample') {
+                  // Sample weight needs the full SamplingEventsPage form
+                  // (per-fish weights, ABW, SGR). The dashboard quick-log
+                  // can't capture all of that, so route to /#/sampling.
+                  window.location.hash = '/sampling';
+                  return;
+                }
+                // mortality / feed / egg already have inline quick-log
+                // forms wired up via the chevron. Open them instead of
+                // ticking the box.
+                setExpandedQuickLog({ taskId: task.id, type: quickLogType });
+                setQuickLogMortalityCount('');
+                setQuickLogMortalityNote('');
+                setQuickLogFeedQuantity('');
+                setQuickLogEggCount('');
+                return;
+              }
+              toggleTask(task.id, task.status);
+            }}
             className={`task-checkbox flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors mt-0.5 cursor-pointer ${
               isCompleted
                 ? 'bg-[#3D5F42] border-[#3D5F42]'

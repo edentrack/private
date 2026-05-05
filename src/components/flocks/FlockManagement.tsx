@@ -16,6 +16,7 @@ import { useFarmSpecies } from '../../hooks/useSpecies';
 import { FlockListSkeleton } from '../common/Skeleton';
 import { atFlockLimit, getMaxFlocks } from '../../utils/planGating';
 import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
+import { pluralize } from '../../utils/pluralize';
 
 interface FlockManagementProps {
   onSelectFlock: (flock: Flock) => void;
@@ -27,8 +28,13 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
   const { t } = useTranslation();
   const { isAquaculture } = useFarmType();
   const farmSpecies = useFarmSpecies();
-  const groupTerm = farmSpecies.groupTerm;
-  const groupTermPlural = farmSpecies.groupTermPlural;
+  const groupTerm = farmSpecies.groupTerm;          // "Flock" | "Pond" | "Rabbitry"
+  const groupTermPlural = farmSpecies.groupTermPlural; // "Flocks" | "Ponds" | "Rabbitries"
+  // The audit flagged that this page reverts to poultry copy on a rabbits
+  // farm. Treat anything non-poultry as "use the species term explicitly"
+  // and only fall through to the i18n strings (which are poultry-coded)
+  // when the active species is poultry.
+  const isPoultryView = farmSpecies.id === 'poultry';
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [mortalityByFlock, setMortalityByFlock] = useState<Record<string, number>>({});
@@ -106,9 +112,12 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
   // (point-of-lay pullets, fingerlings, retroactive tracking).
   const formatFlockAge = (flock: Flock) => {
     const { weeks, days } = getFlockAgeFromHelper(flock);
+    // Use pluralize so we get "1 week old" / "2 weeks old" — kills the
+    // "1 weeks old" grammar bug surfaced in the audit.
+    const weeksWord = pluralize(weeks, 'week');
     return (
       <>
-        {weeks} <span className="text-lg font-medium text-gray-500">{t('flocks.weeks_old')}</span>
+        {weeks} <span className="text-lg font-medium text-gray-500">{weeksWord} old</span>
         {days > 0 && <span className="ml-1.5 text-sm font-normal text-gray-400">{days}d</span>}
       </>
     );
@@ -197,7 +206,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
       <div data-tour="flock-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
-            {isAquaculture ? groupTermPlural : t('flocks.title')}
+            {isPoultryView ? t('flocks.title') : groupTermPlural}
           </h2>
           <p className="text-gray-500 mt-1 text-sm sm:text-base">
             {showArchived ? `Archived ${groupTermPlural}` : `Active ${groupTermPlural}`}
@@ -240,7 +249,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                 className="btn-primary inline-flex items-center justify-center flex-1 sm:flex-none"
               >
                 <Plus className="w-5 h-5 mr-2" />
-                {isAquaculture ? `Add ${groupTerm}` : t('flocks.create_flock')}
+                {isPoultryView ? t('flocks.create_flock') : `Add ${groupTerm}`}
               </button>
             );
           })()}
@@ -249,31 +258,51 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
       {flocks.length === 0 ? (
         <div className="section-card text-center py-12 animate-fade-in-up">
-          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${isAquaculture ? 'bg-blue-50' : 'bg-neon-100'}`}>
-            {isAquaculture
-              ? <Fish className="w-10 h-10 text-blue-500" />
-              : <ChickenIcon className="w-10 h-10 text-neon-600" />
-            }
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            {isAquaculture
-              ? (currentRole === 'viewer' ? 'No ponds yet' : 'Add your first pond')
-              : t('flocks.no_flocks_yet')}
-          </h3>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto text-sm leading-relaxed">
-            {currentRole === 'viewer'
-              ? (isAquaculture ? "Your manager hasn't added any ponds yet. Check back soon." : t('flocks.no_flocks_worker_message'))
-              : (isAquaculture
-                  ? 'A pond is how Edentrack tracks your fish — stocking, water quality, feed, and harvest all tie back to it.'
-                  : t('flocks.no_flocks_owner_message'))}
-          </p>
+          {/* Empty state — driven entirely by the active species so this
+              page no longer reverts to poultry copy on a rabbits farm. */}
+          {(() => {
+            // Visual treatment: blue for fish, neon for poultry, soft amber for rabbits
+            const SpeciesIcon = farmSpecies.icon;
+            const iconWrapBg = isAquaculture ? 'bg-blue-50' : isPoultryView ? 'bg-neon-100' : 'bg-amber-50';
+            const iconClass = isAquaculture ? 'text-blue-500' : isPoultryView ? 'text-neon-600' : 'text-amber-600';
+
+            const emptyHeadline = isPoultryView
+              ? t('flocks.no_flocks_yet')
+              : currentRole === 'viewer'
+                ? `No ${groupTermPlural.toLowerCase()} yet`
+                : `Add your first ${groupTerm.toLowerCase()}`;
+
+            const emptyDescription = currentRole === 'viewer'
+              ? isPoultryView
+                ? t('flocks.no_flocks_worker_message')
+                : `Your manager hasn't added any ${groupTermPlural.toLowerCase()} yet. Check back soon.`
+              : isAquaculture
+                ? 'A pond is how Edentrack tracks your fish — stocking, water quality, feed, and harvest all tie back to it.'
+                : isPoultryView
+                  ? t('flocks.no_flocks_owner_message')
+                  : `A ${groupTerm.toLowerCase()} is how Edentrack tracks your ${farmSpecies.animalTermPlural.toLowerCase()} — feed, health, growth, and harvest all tie back to it.`;
+
+            return (
+              <>
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${iconWrapBg}`}>
+                  {isPoultryView
+                    ? <ChickenIcon className={`w-10 h-10 ${iconClass}`} />
+                    : <SpeciesIcon className={`w-10 h-10 ${iconClass}`} />}
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{emptyHeadline}</h3>
+                <p className="text-gray-500 mb-6 max-w-sm mx-auto text-sm leading-relaxed">
+                  {emptyDescription}
+                </p>
+              </>
+            );
+          })()}
           {currentRole && currentRole !== 'viewer' && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="btn-primary inline-flex items-center"
             >
               <Plus className="w-5 h-5 mr-2" />
-              {isAquaculture ? 'Create Pond' : t('flocks.create_flock')}
+              {isPoultryView ? t('flocks.create_flock') : `Create ${groupTerm}`}
             </button>
           )}
         </div>
@@ -285,8 +314,15 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
               className="section-card hover:shadow-medium hover-lift cursor-pointer animate-fade-in-up"
               style={{ animationDelay: `${index * 0.05}s` }}
               onClick={() => {
+                // Audit fix: tapping a flock/pond card with the "→" arrow
+                // used to drop the user into Loss Tracking — confusing because
+                // "Record Loss" already lives below the card. Now the card
+                // selects the flock and routes to the dashboard so the user
+                // sees a full per-flock overview (Production Cycle, daily
+                // tasks, stats). Loss flow stays one-click from the inline
+                // Record Loss/Mortality button below.
                 onSelectFlock(flock);
-                onNavigate('mortality');
+                onNavigate('dashboard');
               }}
             >
               <div className="flex items-start justify-between mb-4">
@@ -533,7 +569,8 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         className="text-xs text-red-600 hover:text-red-700 font-medium inline-flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
                       >
                         <AlertTriangle className="w-3.5 h-3.5" />
-                        {isAquaculture ? 'Record Loss' : t('mortality.record')}
+                        {/* Use species lossNoun verbatim — "Mortality", "Loss", "Death" */}
+                        {`Record ${farmSpecies.lossNoun}`}
                       </button>
                       <button
                         onClick={(e) => {
@@ -543,7 +580,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         className="text-xs text-amber-600 hover:text-amber-700 font-medium inline-flex items-center gap-1 px-3 py-1.5 rounded-lg hover:bg-amber-50 transition-colors"
                       >
                         <Archive className="w-3.5 h-3.5" />
-                        {isAquaculture ? 'Archive Pond' : t('flocks.archive_flock')}
+                        {isPoultryView ? t('flocks.archive_flock') : `Archive ${groupTerm}`}
                       </button>
                     </>
                   )}
