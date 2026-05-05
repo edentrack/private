@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { Flock, Expense, MortalityLog, EggCollection } from '../../types/database';
+import { useFlockSpecies } from '../../hooks/useSpecies';
 import { formatEggsWithTotal, formatEggsForExport } from '../../utils/eggFormatting';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -88,6 +89,11 @@ export function InsightsPage() {
   const flockKind = selectedFlock?.type || (selectedFlock as any)?.purpose;
   const isLayerFlock = flockKind?.toLowerCase() === 'layer';
   const isBroilerFlock = flockKind?.toLowerCase() === 'broiler';
+  // Species terminology — used to override the i18n keys that hard-code "birds" / "Mortality"
+  // and the egg-production badge that incorrectly defaults to "Egg production" on non-broiler
+  // non-layer flocks (i.e., fish).
+  const species = useFlockSpecies(flockKind);
+  const isAquaFlock = species.id === 'aquaculture';
 
   // Load flocks + auto-select first one immediately, then load its data in parallel
   useEffect(() => {
@@ -891,17 +897,23 @@ export function InsightsPage() {
           <div className="space-y-6">
             {selectedFlock && (
               <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg w-fit">
-                {isBroilerFlock ? (
+                {isAquaFlock ? (
+                  <Scale className="w-4 h-4 text-blue-500" />
+                ) : isBroilerFlock ? (
                   <Scale className="w-4 h-4 text-orange-600" />
                 ) : (
                   <Egg className="w-4 h-4 text-blue-600" />
                 )}
                 <span className="text-sm font-medium text-gray-700 capitalize">
-                  {selectedFlock.type} {t('insights.flock')}
+                  {selectedFlock.type} {species.groupTerm}
                 </span>
-                <span className="text-xs text-gray-500">
-                  {isBroilerFlock ? t('insights.meat_production') : t('insights.egg_production')}
-                </span>
+                {/* Production-type sub-label — hidden for aquaculture since neither
+                    "egg" nor "meat" applies in the same way. */}
+                {!isAquaFlock && (
+                  <span className="text-xs text-gray-500">
+                    {isBroilerFlock ? t('insights.meat_production') : t('insights.egg_production')}
+                  </span>
+                )}
               </div>
             )}
 
@@ -945,7 +957,9 @@ export function InsightsPage() {
                     <p className="text-lg font-semibold text-gray-900">{metrics.profitMargin}%</p>
                   </div>
                   <div className="bg-white/40 rounded-lg p-3">
-                    <p className="text-xs text-gray-500">{t('insights.cost_per_bird_alive')}</p>
+                    <p className="text-xs text-gray-500">
+                      {isAquaFlock ? `Cost per ${species.animalTerm} Alive` : t('insights.cost_per_bird_alive')}
+                    </p>
                     <p className="text-lg font-semibold text-gray-900">{metrics.costPerBird.toLocaleString()} {currencyCode}</p>
                   </div>
                 </div>
@@ -967,13 +981,19 @@ export function InsightsPage() {
                   </p>
                 </div>
                 <div className="bg-white/60 rounded-xl p-4">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.birds_alive')}</p>
+                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                    {isAquaFlock ? `${species.animalTermPlural} Alive` : t('insights.birds_alive')}
+                  </p>
                   <p className="text-2xl font-bold text-gray-900">{metrics.birdsAlive.toLocaleString()} / {metrics.initialCount.toLocaleString()}</p>
                   <p className="text-sm text-gray-500">({metrics.survivalRate}%)</p>
                 </div>
                 <div className="bg-white/60 rounded-xl p-4">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.mortality')}</p>
-                  <p className="text-2xl font-bold text-gray-900">{metrics.totalMortality} {t('dashboard.birds')}</p>
+                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                    {isAquaFlock ? species.lossNounPlural : t('insights.mortality')}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {metrics.totalMortality} {isAquaFlock ? species.animalTermPlural.toLowerCase() : t('dashboard.birds')}
+                  </p>
                   <p className="text-sm text-gray-500">({metrics.mortalityRate}%)</p>
                 </div>
                 <div className="bg-white/60 rounded-xl p-4">
@@ -1037,7 +1057,9 @@ export function InsightsPage() {
                   <div className="bg-white/60 rounded-xl p-4">
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.cost_efficiency')}</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics.costPerBird.toLocaleString()}</p>
-                    <p className="text-sm text-gray-500">{currencyCode}/{t('dashboard.birds')}</p>
+                    <p className="text-sm text-gray-500">
+                      {currencyCode}/{isAquaFlock ? species.animalTerm.toLowerCase() : t('dashboard.birds')}
+                    </p>
                   </div>
                 )}
                 <div className="bg-white/60 rounded-xl p-4">

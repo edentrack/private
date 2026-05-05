@@ -3,6 +3,7 @@ import { AlertTriangle, Calendar, Clock, Plus, Settings, ChevronLeft, ChevronRig
 import { DateTime } from 'luxon';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { TaskTemplate, TaskTypeCategory, TaskScope } from '../../types/database';
 import { UnifiedTaskSettings } from '../tasks/UnifiedTaskSettings';
 import { CompleteTaskModal } from '../tasks/CompleteTaskModal';
@@ -108,6 +109,7 @@ async function fetchTemplates(farmId: string): Promise<TaskTemplate[]> {
 
 export function TasksPage2() {
   const { currentFarm, currentRole, user } = useAuth();
+  const species = useFarmSpecies();
   const canManage = currentRole === 'owner' || currentRole === 'manager';
   const farmTz = getFarmTimeZone(currentFarm);
 
@@ -241,7 +243,13 @@ export function TasksPage2() {
       <div data-tour="task-header" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tasks</h1>
-          <p className="text-gray-500 mt-1">Daily tasks + egg collection tracking</p>
+          <p className="text-gray-500 mt-1">
+            {species.features.eggs
+              ? 'Daily tasks + egg collection tracking'
+              : species.id === 'aquaculture'
+                ? 'Daily pond monitoring + water quality + sampling'
+                : 'Daily tasks'}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 bg-white w-full sm:w-auto">
