@@ -40,6 +40,7 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
       const { data: templatesData } = await supabase
         .from('task_templates')
         .select('*')
+        .eq('farm_id', currentFarm.id)
         .order('display_order');
 
       if (templatesData) {
@@ -102,7 +103,8 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
           completed_at: now.toISOString(),
           completed_by: profile.id,
         })
-        .eq('id', task.id);
+        .eq('id', task.id)
+        .eq('farm_id', currentFarm.id);
 
       if (error) throw error;
 
@@ -156,7 +158,8 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
           completed_at: now.toISOString(),
           completed_by_role: currentFarm.role || 'worker',
         })
-        .eq('id', selectedTask.id);
+        .eq('id', selectedTask.id)
+        .eq('farm_id', currentFarm.id);
 
       if (error) throw error;
 

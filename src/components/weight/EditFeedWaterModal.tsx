@@ -293,13 +293,15 @@ export function EditFeedWaterModal({
         ? (storedUnit === 'bags' || storedUnit === 'bag' ? kg / feedSettings.quantityPerBag : storedUnit === 'g' || storedUnit === 'grams' ? kg * 1000 : kg)
         : kg;
 
+      // Defense-in-depth: every per-record write here is also pinned to farm_id.
       const source = record.source || 'inventory_usage';
       if (source === 'feed_givings') {
         const givenAt = `${toLocalDateString(record.date)}T12:00:00`;
         const { error } = await supabase
           .from('feed_givings')
           .update({ quantity_given: quantityForStorage, given_at: givenAt })
-          .eq('id', record.id);
+          .eq('id', record.id)
+          .eq('farm_id', currentFarm.id);
         if (error) throw error;
       } else {
         if (type === 'feed' && record.feed_type_id) {
@@ -307,6 +309,7 @@ export function EditFeedWaterModal({
             .from('inventory_usage')
             .select('quantity_used')
             .eq('id', record.id)
+            .eq('farm_id', currentFarm.id)
             .single();
           const oldStored = Number((oldRow as any)?.quantity_used) || 0;
           const delta = oldStored - quantityForStorage;
@@ -319,7 +322,8 @@ export function EditFeedWaterModal({
             usage_date: toLocalDateString(record.date),
             feed_type_id: type === 'feed' ? record.feed_type_id : null,
           })
-          .eq('id', record.id);
+          .eq('id', record.id)
+          .eq('farm_id', currentFarm.id);
         if (error) throw error;
       }
 

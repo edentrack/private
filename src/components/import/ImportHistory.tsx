@@ -47,10 +47,12 @@ export function ImportHistory() {
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const loadItemBreakdown = async (importId: string) => {
-    if (itemCounts[importId]) return;
+    if (itemCounts[importId] || !currentFarm?.id) return;
+    // Defense-in-depth: scope by farm_id alongside import_id.
     const { data } = await supabase
       .from('import_items')
       .select('entity_type, status')
+      .eq('farm_id', currentFarm.id)
       .eq('import_id', importId);
 
     const counts: Record<string, number> = {};
@@ -63,13 +65,17 @@ export function ImportHistory() {
 
   const handleUndo = async (importRecord: ImportRecord) => {
     if (!confirm(`Undo this import? All ${importRecord.item_count} imported records will be soft-deleted and can be reviewed in the import again.`)) return;
+    if (!currentFarm?.id) return;
 
     setUndoing(importRecord.id);
     try {
-      // Get all committed items from this import
+      // Defense-in-depth: every read/write below is pinned to currentFarm.id
+      // so an undo can never touch another farm's data even if the import id
+      // were forged.
       const { data: items } = await supabase
         .from('import_items')
         .select('id, entity_type, entity_id')
+        .eq('farm_id', currentFarm.id)
         .eq('import_id', importRecord.id)
         .eq('status', 'committed');
 
@@ -99,18 +105,19 @@ export function ImportHistory() {
         if (!table || !ids.length) continue;
         // Mark as archived/deleted — we use a soft approach where possible
         if (table === 'expenses') {
-          await supabase.from('expenses').delete().in('id', ids);
+          await supabase.from('expenses').delete().in('id', ids).eq('farm_id', currentFarm.id);
         } else if (table === 'feed_stock') {
-          await supabase.from('feed_stock').delete().in('id', ids);
+          await supabase.from('feed_stock').delete().in('id', ids).eq('farm_id', currentFarm.id);
         } else if (table === 'egg_collections') {
-          await supabase.from('egg_collections').delete().in('id', ids);
+          await supabase.from('egg_collections').delete().in('id', ids).eq('farm_id', currentFarm.id);
         } else if (table === 'flocks') {
-          await supabase.from('flocks').update({ status: 'archived' }).in('id', ids);
+          await supabase.from('flocks').update({ status: 'archived' }).in('id', ids).eq('farm_id', currentFarm.id);
         }
         // Reset import_items status back to proposed
         await supabase
           .from('import_items')
           .update({ status: 'proposed' })
+          .eq('farm_id', currentFarm.id)
           .eq('import_id', importRecord.id)
           .eq('entity_type', type);
       }
@@ -119,7 +126,8 @@ export function ImportHistory() {
       await supabase
         .from('imports')
         .update({ is_undone: true, committed_at: null })
-        .eq('id', importRecord.id);
+        .eq('id', importRecord.id)
+        .eq('farm_id', currentFarm.id);
 
       toast.success('Import undone — records removed');
       loadHistory();

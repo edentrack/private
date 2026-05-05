@@ -31,12 +31,14 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
   }, [task]);
 
   const loadTaskTemplate = async () => {
-    if (!task.template_id) return;
+    if (!task.template_id || !currentFarm?.id) return;
 
+    // Defense-in-depth: every lookup is pinned to currentFarm.id.
     const { data: template } = await supabase
       .from('task_templates')
       .select('*')
       .eq('id', task.template_id)
+      .eq('farm_id', currentFarm.id)
       .maybeSingle();
 
     if (template && template.inventory_effect !== 'none') {
@@ -48,6 +50,7 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
             .from('feed_stock')
             .select('feed_type')
             .eq('id', template.inventory_item_id)
+            .eq('farm_id', currentFarm.id)
             .maybeSingle();
 
           if (feedItem) {
@@ -58,6 +61,7 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
             .from('other_inventory')
             .select('item_name')
             .eq('id', template.inventory_item_id)
+            .eq('farm_id', currentFarm.id)
             .maybeSingle();
 
           if (otherItem) {
@@ -164,6 +168,7 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
         .from('tasks')
         .update(updateData)
         .eq('id', task.id)
+        .eq('farm_id', currentFarm.id)
         .select();
 
       if (updateError) {

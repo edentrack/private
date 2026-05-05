@@ -6,11 +6,11 @@
 
 | Risk | Count |
 |------|------:|
-| HIGH (read leak risk) | 73 |
+| HIGH (read leak risk) | 27 |
 | HIGH (insert without farm_id) | 35 |
-| MEDIUM (id-scoped — add farm_id for defense-in-depth) | 88 |
-| LOW (review) | 17 |
-| OK | 421 |
+| MEDIUM (id-scoped — add farm_id for defense-in-depth) | 69 |
+| LOW (review) | 11 |
+| OK | 492 |
 | EXEMPT | 131 |
 
 | Operation | Count |
@@ -24,7 +24,7 @@
 
 Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptions`), farm-membership tables (`farms`, `farm_members`), global tables (`broadcasts`, `announcements`, `feature_flags`, `support_tickets`), storage buckets.
 
-## HIGH (read leak risk) — 73 call(s)
+## HIGH (read leak risk) — 27 call(s)
 
 ### `activity_logs` — 1 call(s)
 
@@ -36,144 +36,8 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           .limit(5);
   ```
 
-### `bird_sales` — 2 call(s)
+### `feed_inventory` — 1 call(s)
 
-- **SELECT** [`src/components/analytics/FlockFinancialSummary.tsx:44`](src/components/analytics/FlockFinancialSummary.tsx#L44)
-  ```ts
-          supabase.from('bird_sales').select('total_amount').eq('flock_id', flock.id),
-        ]);
-  ```
-- **SELECT** [`src/components/analytics/ComprehensiveFarmReport.tsx:325`](src/components/analytics/ComprehensiveFarmReport.tsx#L325)
-  ```ts
-              .from('bird_sales')
-              .select('birds_sold, total_amount')
-              .eq('flock_id', flock.id)
-              .gte('sale_date', startDate)
-              .lte('sale_date', endDate);
-  ```
-
-### `egg_collections` — 2 call(s)
-
-- **SELECT** [`src/utils/predictiveAnalytics.ts:354`](src/utils/predictiveAnalytics.ts#L354)
-  ```ts
-          .from('egg_collections')
-          .select('total_collected')
-          .eq('flock_id', flockId)
-          .order('collection_date', { ascending: false })
-          .limit(30);
-  ```
-- **SELECT** [`src/components/analytics/ComprehensiveFarmReport.tsx:295`](src/components/analytics/ComprehensiveFarmReport.tsx#L295)
-  ```ts
-              .from('egg_collections')
-              .select('total_eggs')
-              .eq('flock_id', flock.id)
-              .gte('collected_on', startDate)
-              .lte('collected_on', endDate);
-  ```
-
-### `egg_sales` — 4 call(s)
-
-- **SELECT** [`src/components/dashboard/FlockPnLCard.tsx:93`](src/components/dashboard/FlockPnLCard.tsx#L93)
-  ```ts
-          supabase.from('egg_sales').select('total_amount').eq('flock_id', flock.id)
-        ]);
-  ```
-- **SELECT** [`src/components/analytics/FlockFinancialSummary.tsx:43`](src/components/analytics/FlockFinancialSummary.tsx#L43)
-  ```ts
-          supabase.from('egg_sales').select('total_amount').eq('flock_id', flock.id),
-          supabase.from('bird_sales').select('total_amount').eq('flock_id', flock.id),
-        ]);
-  ```
-- **SELECT** [`src/components/analytics/AdvancedMetrics.tsx:65`](src/components/analytics/AdvancedMetrics.tsx#L65)
-  ```ts
-            .from('egg_sales')
-            .select('total_amount, trays, trays_sold, unit_price')
-            .eq('flock_id', flock.id),
-          supabase
-            .from('mortality_logs')
-  ```
-- **SELECT** [`src/components/analytics/ComprehensiveFarmReport.tsx:304`](src/components/analytics/ComprehensiveFarmReport.tsx#L304)
-  ```ts
-              .from('egg_sales')
-              .select('total_eggs, total_amount')
-              .eq('flock_id', flock.id)
-              .gte('sale_date', startDate)
-              .lte('sale_date', endDate);
-  ```
-
-### `expenses` — 8 call(s)
-
-- **SELECT** [`src/utils/flockExpenses.ts:25`](src/utils/flockExpenses.ts#L25)
-  ```ts
-        .from('expenses')
-        .select('id')
-        .eq('flock_id', flock.id)
-        .eq('kind', 'chicks_purchase')
-        .maybeSingle();
-  ```
-- **SELECT** [`src/utils/flockExpenses.ts:58`](src/utils/flockExpenses.ts#L58)
-  ```ts
-        .from('expenses')
-        .select('id')
-        .eq('flock_id', flock.id)
-        .eq('kind', 'chicks_purchase')
-        .maybeSingle();
-  ```
-- **SELECT** [`src/utils/flockExpenses.ts:71`](src/utils/flockExpenses.ts#L71)
-  ```ts
-        .from('expenses')
-        .select('id')
-        .eq('flock_id', flock.id)
-        .eq('kind', 'chicks_transport')
-        .maybeSingle();
-  ```
-- **SELECT** [`src/utils/flockExpenses.ts:105`](src/utils/flockExpenses.ts#L105)
-  ```ts
-        .from('expenses')
-        .select('id')
-        .eq('flock_id', flock.id)
-        .eq('kind', 'chicks_transport')
-        .maybeSingle();
-  ```
-- **SELECT** [`src/components/dashboard/FlockPnLCard.tsx:102`](src/components/dashboard/FlockPnLCard.tsx#L102)
-  ```ts
-          .from('expenses')
-          .select('amount, category, flock_id')
-          .eq('flock_id', flock.id);
-  ```
-- **SELECT** [`src/components/analytics/FlockFinancialSummary.tsx:42`](src/components/analytics/FlockFinancialSummary.tsx#L42)
-  ```ts
-          supabase.from('expenses').select('amount').eq('flock_id', flock.id),
-          supabase.from('egg_sales').select('total_amount').eq('flock_id', flock.id),
-          supabase.from('bird_sales').select('total_amount').eq('flock_id', flock.id),
-        ]);
-  ```
-- **SELECT** [`src/components/analytics/AdvancedMetrics.tsx:55`](src/components/analytics/AdvancedMetrics.tsx#L55)
-  ```ts
-            .from('expenses')
-            .select('amount, category')
-            .eq('flock_id', flock.id),
-          supabase
-            .from('weight_logs')
-  ```
-- **SELECT** [`src/components/analytics/ComprehensiveFarmReport.tsx:285`](src/components/analytics/ComprehensiveFarmReport.tsx#L285)
-  ```ts
-              .from('expenses')
-              .select('amount')
-              .eq('flock_id', flock.id)
-              .gte('incurred_on', startDate)
-              .lte('incurred_on', endDate);
-  ```
-
-### `feed_inventory` — 2 call(s)
-
-- **SELECT** [`src/utils/inventoryMovements.ts:54`](src/utils/inventoryMovements.ts#L54)
-  ```ts
-        .from('feed_inventory')
-        .select('quantity')
-        .eq('feed_type_id', inventoryItemId)
-        .single();
-  ```
 - **SELECT** [`src/components/inventory/InventoryPage.tsx:424`](src/components/inventory/InventoryPage.tsx#L424)
   ```ts
             .from('feed_inventory')
@@ -182,105 +46,13 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
             .single();
   ```
 
-### `feed_stock` — 1 call(s)
+### `flocks` — 1 call(s)
 
-- **SELECT** [`src/components/tasks/CompleteTaskModal.tsx:48`](src/components/tasks/CompleteTaskModal.tsx#L48)
-  ```ts
-              .from('feed_stock')
-              .select('feed_type')
-              .eq('id', template.inventory_item_id)
-              .maybeSingle();
-  ```
-
-### `flocks` — 9 call(s)
-
-- **SELECT** [`src/utils/receiptOperations.ts:212`](src/utils/receiptOperations.ts#L212)
-  ```ts
-      .from('flocks')
-      .select('id, current_count')
-      .eq('id', flockId)
-      .single();
-  ```
-- **SELECT** [`src/utils/receiptOperations.ts:375`](src/utils/receiptOperations.ts#L375)
-  ```ts
-              .from('flocks')
-              .select('id, current_count')
-              .eq('id', receipt.flock_id)
-              .maybeSingle();
-  ```
-- **SELECT** [`src/utils/predictiveAnalytics.ts:133`](src/utils/predictiveAnalytics.ts#L133)
-  ```ts
-        .from('flocks')
-        .select('current_count, arrival_date')
-        .eq('id', flockId)
-        .single();
-  ```
-- **SELECT** [`src/utils/predictiveAnalytics.ts:199`](src/utils/predictiveAnalytics.ts#L199)
-  ```ts
-        .from('flocks')
-        .select('current_count, initial_count, arrival_date')
-        .eq('id', flockId)
-        .single();
-  ```
-- **SELECT** [`src/utils/predictiveAnalytics.ts:322`](src/utils/predictiveAnalytics.ts#L322)
-  ```ts
-        .from('flocks')
-        .select('arrival_date, purpose, current_count')
-        .eq('id', flockId)
-        .single();
-  ```
 - **SELECT** [`src/components/dashboard/FlockCycleCountdownCard.tsx:38`](src/components/dashboard/FlockCycleCountdownCard.tsx#L38)
   ```ts
           supabase.from('flocks').select('*').eq('id', flockId).maybeSingle(),
           supabase.rpc('get_flock_cycle_status', { p_flock_id: flockId })
         ]);
-  ```
-- **SELECT** [`src/components/dashboard/WeightProgressWidget.tsx:108`](src/components/dashboard/WeightProgressWidget.tsx#L108)
-  ```ts
-          .from('flocks')
-          .select('arrival_date, purpose, type')
-          .eq('id', flockId)
-          .single();
-  ```
-- **SELECT** [`src/components/mortality/LogMortalityModal.tsx:48`](src/components/mortality/LogMortalityModal.tsx#L48)
-  ```ts
-        .from('flocks')
-        .select('*')
-        .eq('id', flockId)
-        .single();
-  ```
-- **SELECT** [`src/components/vaccinations/VaccinationSchedule.tsx:96`](src/components/vaccinations/VaccinationSchedule.tsx#L96)
-  ```ts
-        .from('flocks')
-        .select('*')
-        .eq('id', selectedFlockId)
-        .single();
-  ```
-
-### `import_items` — 2 call(s)
-
-- **SELECT** [`src/components/import/ImportHistory.tsx:52`](src/components/import/ImportHistory.tsx#L52)
-  ```ts
-        .from('import_items')
-        .select('entity_type, status')
-        .eq('import_id', importId);
-  ```
-- **SELECT** [`src/components/import/ImportHistory.tsx:71`](src/components/import/ImportHistory.tsx#L71)
-  ```ts
-          .from('import_items')
-          .select('id, entity_type, entity_id')
-          .eq('import_id', importRecord.id)
-          .eq('status', 'committed');
-  ```
-
-### `inventory_usage` — 1 call(s)
-
-- **SELECT** [`src/components/weight/EditFeedWaterModal.tsx:307`](src/components/weight/EditFeedWaterModal.tsx#L307)
-  ```ts
-              .from('inventory_usage')
-              .select('quantity_used')
-              .eq('id', record.id)
-              .single();
   ```
 
 ### `invoice_items` — 1 call(s)
@@ -309,32 +81,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           .order('created_at', { ascending: false });
   ```
 
-### `mortality_logs` — 3 call(s)
-
-- **SELECT** [`src/components/mortality/MortalityTracking.tsx:63`](src/components/mortality/MortalityTracking.tsx#L63)
-  ```ts
-        .from('mortality_logs')
-        .select('*')
-        .eq('flock_id', flock.id)
-        .order('event_date', { ascending: false })
-        .limit(100);
-  ```
-- **SELECT** [`src/components/analytics/AdvancedMetrics.tsx:69`](src/components/analytics/AdvancedMetrics.tsx#L69)
-  ```ts
-            .from('mortality_logs')
-            .select('count')
-            .eq('flock_id', flock.id),
-        ]);
-  ```
-- **SELECT** [`src/components/analytics/ComprehensiveFarmReport.tsx:316`](src/components/analytics/ComprehensiveFarmReport.tsx#L316)
-  ```ts
-              .from('mortality_logs')
-              .select('count')
-              .eq('flock_id', flock.id)
-              .gte('event_date', startDate)
-              .lte('event_date', endDate);
-  ```
-
 ### `notifications` — 2 call(s)
 
 - **SELECT** [`src/components/notifications/NotificationCenter.tsx:65`](src/components/notifications/NotificationCenter.tsx#L65)
@@ -352,26 +98,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
         .eq('user_id', user!.id)
         .order('created_at', { ascending: false })
         .limit(100);
-  ```
-
-### `other_inventory` — 1 call(s)
-
-- **SELECT** [`src/components/tasks/CompleteTaskModal.tsx:58`](src/components/tasks/CompleteTaskModal.tsx#L58)
-  ```ts
-              .from('other_inventory')
-              .select('item_name')
-              .eq('id', template.inventory_item_id)
-              .maybeSingle();
-  ```
-
-### `other_inventory_items` — 1 call(s)
-
-- **SELECT** [`src/utils/inventoryMovements.ts:74`](src/utils/inventoryMovements.ts#L74)
-  ```ts
-        .from('other_inventory_items')
-        .select('quantity')
-        .eq('id', inventoryItemId)
-        .single();
   ```
 
 ### `payments` — 2 call(s)
@@ -415,28 +141,13 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           .single();
   ```
 
-### `receipt_items` — 2 call(s)
+### `receipt_items` — 1 call(s)
 
-- **SELECT** [`src/components/sales/ReceiptsList.tsx:40`](src/components/sales/ReceiptsList.tsx#L40)
-  ```ts
-              .from('receipt_items')
-              .select('*')
-              .eq('receipt_id', receipt.id);
-  ```
 - **SELECT** [`src/components/sales/ProcessRefundModal.tsx:29`](src/components/sales/ProcessRefundModal.tsx#L29)
   ```ts
         .from('receipt_items')
         .select('*')
         .eq('receipt_id', receipt.id);
-  ```
-
-### `receipt_refunds` — 1 call(s)
-
-- **SELECT** [`src/components/sales/ReceiptsList.tsx:45`](src/components/sales/ReceiptsList.tsx#L45)
-  ```ts
-              .from('receipt_refunds')
-              .select('*')
-              .eq('receipt_id', receipt.id);
   ```
 
 ### `referrals` — 1 call(s)
@@ -448,25 +159,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
         .eq('referrer_id', profile.id)
         .then(({ data }) => setStats({
           total: data?.length ?? 0,
-  ```
-
-### `revenues` — 1 call(s)
-
-- **SELECT** [`src/components/dashboard/FlockPnLCard.tsx:92`](src/components/dashboard/FlockPnLCard.tsx#L92)
-  ```ts
-          supabase.from('revenues').select('amount').eq('flock_id', flock.id),
-          supabase.from('egg_sales').select('total_amount').eq('flock_id', flock.id)
-        ]);
-  ```
-
-### `sales_receipts` — 1 call(s)
-
-- **SELECT** [`src/utils/receiptOperations.ts:301`](src/utils/receiptOperations.ts#L301)
-  ```ts
-        .from('sales_receipts')
-        .select('*, receipt_items(*)')
-        .eq('id', data.receiptId)
-        .single();
   ```
 
 ### `subscription_tiers` — 3 call(s)
@@ -509,7 +201,7 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
                   .is('ended_at', null)
   ```
 
-### `task_templates` — 4 call(s)
+### `task_templates` — 2 call(s)
 
 - **SELECT** [`src/components/tasks/TaskTemplateSettings.tsx:28`](src/components/tasks/TaskTemplateSettings.tsx#L28)
   ```ts
@@ -518,25 +210,12 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           .order('category', { ascending: true })
           .order('display_order', { ascending: true });
   ```
-- **SELECT** [`src/components/tasks/DailyTaskTemplates.tsx:41`](src/components/tasks/DailyTaskTemplates.tsx#L41)
-  ```ts
-          .from('task_templates')
-          .select('*')
-          .order('display_order');
-  ```
 - **SELECT** [`src/components/tasks/DailyTaskTemplatesOld.tsx:40`](src/components/tasks/DailyTaskTemplatesOld.tsx#L40)
   ```ts
           .from('task_templates')
           .select('*')
           .eq('is_active', true)
           .order('display_order');
-  ```
-- **SELECT** [`src/components/tasks/CompleteTaskModal.tsx:37`](src/components/tasks/CompleteTaskModal.tsx#L37)
-  ```ts
-        .from('task_templates')
-        .select('*')
-        .eq('id', task.template_id)
-        .maybeSingle();
   ```
 
 ### `tasks` — 1 call(s)
@@ -549,7 +228,7 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
         .maybeSingle();
   ```
 
-### `vaccinations` — 3 call(s)
+### `vaccinations` — 2 call(s)
 
 - **SELECT** [`src/components/dashboard/UpcomingHealthEventsCard.tsx:36`](src/components/dashboard/UpcomingHealthEventsCard.tsx#L36)
   ```ts
@@ -567,52 +246,15 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           .eq('completed', false)
           .gte('scheduled_date', today)
   ```
-- **SELECT** [`src/components/vaccinations/VaccinationSchedule.tsx:110`](src/components/vaccinations/VaccinationSchedule.tsx#L110)
-  ```ts
-        .from('vaccinations')
-        .select('*')
-        .eq('flock_id', currentFlock.id)
-        .order('scheduled_date', { ascending: true });
-  ```
 
-### `weight_logs` — 7 call(s)
+### `weight_logs` — 2 call(s)
 
-- **SELECT** [`src/utils/fcrCalculation.ts:126`](src/utils/fcrCalculation.ts#L126)
-  ```ts
-        .from('weight_logs')
-        .select('date, average_weight, total_estimated_weight, bird_count')
-        .in('flock_id', broilerFlockIds)
-        .gte('date', startDate)
-        .lte('date', endDate)
-  ```
-- **SELECT** [`src/components/weight/WeightCheckPage.tsx:33`](src/components/weight/WeightCheckPage.tsx#L33)
-  ```ts
-          .from('weight_logs')
-          .select('average_weight, date')
-          .eq('flock_id', flock.id)
-          .order('date', { ascending: false })
-          .limit(1)
-  ```
-- **SELECT** [`src/components/weight/WeightHistoryView.tsx:51`](src/components/weight/WeightHistoryView.tsx#L51)
-  ```ts
-          .from('weight_logs')
-          .select('*')
-          .eq('flock_id', flock.id)
-          .order('date', { ascending: false });
-  ```
 - **SELECT** [`src/components/dashboard/DailySummaryCard.tsx:216`](src/components/dashboard/DailySummaryCard.tsx#L216)
   ```ts
             .from('weight_logs')
             .select('average_weight')
             .in('flock_id', broilerFlockIds)
             .eq('date', selectedDate);
-  ```
-- **SELECT** [`src/components/dashboard/WeightProgressWidget.tsx:145`](src/components/dashboard/WeightProgressWidget.tsx#L145)
-  ```ts
-          .from('weight_logs')
-          .select('*')
-          .eq('flock_id', flockId)
-          .order('date', { ascending: true });
   ```
 - **SELECT** [`src/components/dashboard/ProductionCycleWidget.tsx:242`](src/components/dashboard/ProductionCycleWidget.tsx#L242)
   ```ts
@@ -622,20 +264,12 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
         .gte('date', weekStartDate.toISOString().split('T')[0])
         .lte('date', weekEndDate.toISOString().split('T')[0])
   ```
-- **SELECT** [`src/components/analytics/AdvancedMetrics.tsx:59`](src/components/analytics/AdvancedMetrics.tsx#L59)
-  ```ts
-            .from('weight_logs')
-            .select('average_weight, date')
-            .eq('flock_id', flock.id)
-            .order('date', { ascending: false })
-            .limit(1),
-  ```
 
 ## HIGH (insert without farm_id) — 35 call(s)
 
 ### `activity_logs` — 8 call(s)
 
-- **INSERT** [`src/components/tasks/DailyTaskTemplates.tsx:163`](src/components/tasks/DailyTaskTemplates.tsx#L163)
+- **INSERT** [`src/components/tasks/DailyTaskTemplates.tsx:166`](src/components/tasks/DailyTaskTemplates.tsx#L166)
   ```ts
         await supabase.from('activity_logs').insert({
           user_id: currentFarm.id,
@@ -675,7 +309,7 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           entity_type: 'expense',
           entity_id: selectedExpenseFlock,
   ```
-- **INSERT** [`src/components/mortality/LogMortalityModal.tsx:122`](src/components/mortality/LogMortalityModal.tsx#L122)
+- **INSERT** [`src/components/mortality/LogMortalityModal.tsx:125`](src/components/mortality/LogMortalityModal.tsx#L125)
   ```ts
         const { error: activityError } = await supabase.from('activity_logs').insert({
           user_id: currentFlock.user_id,
@@ -712,7 +346,7 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
 
 ### `egg_collections` — 3 call(s)
 
-- **INSERT** [`src/utils/eggIntervalTaskSync.ts:257`](src/utils/eggIntervalTaskSync.ts#L257)
+- **INSERT** [`src/utils/eggIntervalTaskSync.ts:259`](src/utils/eggIntervalTaskSync.ts#L259)
   ```ts
       .from('egg_collections')
       .insert(insertPayload)
@@ -837,7 +471,7 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           .from('mortality_logs')
           .insert(mortalityPayload);
   ```
-- **INSERT** [`src/components/mortality/LogMortalityModal.tsx:99`](src/components/mortality/LogMortalityModal.tsx#L99)
+- **INSERT** [`src/components/mortality/LogMortalityModal.tsx:101`](src/components/mortality/LogMortalityModal.tsx#L101)
   ```ts
         const { error: insertError } = await supabase.from('mortality_logs').insert(mortalityPayload);
   
@@ -926,9 +560,9 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           if (error) throw error;
   ```
 
-## MEDIUM (id-scoped — add farm_id for defense-in-depth) — 88 call(s)
+## MEDIUM (id-scoped — add farm_id for defense-in-depth) — 69 call(s)
 
-### `egg_collections` — 6 call(s)
+### `egg_collections` — 3 call(s)
 
 - **UPDATE** [`src/utils/receiptOperations.ts:161`](src/utils/receiptOperations.ts#L161)
   ```ts
@@ -937,28 +571,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           trays: collection.trays - toDeduct,
         })
         .eq('id', collection.id);
-  ```
-- **UPDATE** [`src/utils/receiptOperations.ts:355`](src/utils/receiptOperations.ts#L355)
-  ```ts
-                .from('egg_collections')
-                .update({
-                  trays: mostRecentCollection.data.trays + item.quantity,
-                })
-                .eq('id', mostRecentCollection.data.id);
-  ```
-- **DELETE** [`src/utils/eggIntervalTaskSync.ts:168`](src/utils/eggIntervalTaskSync.ts#L168)
-  ```ts
-        .from('egg_collections')
-        .delete()
-        .eq('id', existing.id);
-  ```
-- **UPDATE** [`src/utils/eggIntervalTaskSync.ts:198`](src/utils/eggIntervalTaskSync.ts#L198)
-  ```ts
-        .from('egg_collections')
-        .update({
-          // Keep legacy fields compatible for existing UI
-          collection_date: params.collectionDate,
-          collected_on: params.collectionDate,
   ```
 - **DELETE** [`src/components/eggs/EditEggCollectionModal.tsx:151`](src/components/eggs/EditEggCollectionModal.tsx#L151)
   ```ts
@@ -990,39 +602,8 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
             trays,
   ```
 
-### `expenses` — 6 call(s)
+### `expenses` — 2 call(s)
 
-- **UPDATE** [`src/utils/flockExpenses.ts:33`](src/utils/flockExpenses.ts#L33)
-  ```ts
-          .from('expenses')
-          .update({
-            amount: totalPurchase,
-            description: `Purchase of ${initialBirds} ${flock.type} chicks at ${purchasePricePerBird} per bird`,
-            incurred_on: flock.arrival_date,
-  ```
-- **DELETE** [`src/utils/flockExpenses.ts:65`](src/utils/flockExpenses.ts#L65)
-  ```ts
-        await supabase.from('expenses').delete().eq('id', existingPurchaseExpense.id);
-      }
-    }
-  
-    if (transportCost > 0) {
-  ```
-- **UPDATE** [`src/utils/flockExpenses.ts:79`](src/utils/flockExpenses.ts#L79)
-  ```ts
-          .from('expenses')
-          .update({
-            amount: transportCost,
-            category: 'transport', // Update to "transport" category for all transport expenses
-            description: `Transport cost for ${initialBirds} ${flock.type} chicks`,
-  ```
-- **DELETE** [`src/utils/flockExpenses.ts:112`](src/utils/flockExpenses.ts#L112)
-  ```ts
-        await supabase.from('expenses').delete().eq('id', existingTransportExpense.id);
-      }
-    }
-  }
-  ```
 - **UPDATE** [`src/components/expenses/EditExpenseModal.tsx:99`](src/components/expenses/EditExpenseModal.tsx#L99)
   ```ts
           .from('expenses')
@@ -1036,15 +617,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           .from('expenses')
           .delete()
           .eq('id', expense.id);
-  ```
-
-### `feed_givings` — 1 call(s)
-
-- **UPDATE** [`src/components/weight/EditFeedWaterModal.tsx:300`](src/components/weight/EditFeedWaterModal.tsx#L300)
-  ```ts
-            .from('feed_givings')
-            .update({ quantity_given: quantityForStorage, given_at: givenAt })
-            .eq('id', record.id);
   ```
 
 ### `feed_inventory` — 3 call(s)
@@ -1089,24 +661,8 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
         const hint = logAction.task_title_hint || '';
   ```
 
-### `flocks` — 11 call(s)
+### `flocks` — 6 call(s)
 
-- **UPDATE** [`src/utils/receiptOperations.ts:222`](src/utils/receiptOperations.ts#L222)
-  ```ts
-      .from('flocks')
-      .update({
-        current_count: newCount,
-        updated_at: new Date().toISOString(),
-      })
-  ```
-- **UPDATE** [`src/utils/receiptOperations.ts:382`](src/utils/receiptOperations.ts#L382)
-  ```ts
-                .from('flocks')
-                .update({
-                  current_count: flock.current_count + item.quantity,
-                  updated_at: new Date().toISOString(),
-                })
-  ```
 - **UPDATE** [`src/components/aquaculture/StockingEventsPage.tsx:176`](src/components/aquaculture/StockingEventsPage.tsx#L176)
   ```ts
         await supabase.from('flocks').update({ current_count: newCount }).eq('id', formFlockId);
@@ -1148,26 +704,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
             initial_count: initialCount,
             purchase_price_per_bird: purchasePriceNum,
   ```
-- **UPDATE** [`src/components/mortality/LogMortalityModal.tsx:113`](src/components/mortality/LogMortalityModal.tsx#L113)
-  ```ts
-          .from('flocks')
-          .update({
-            current_count: newCount,
-            updated_at: new Date().toISOString()
-          })
-  ```
-- **UPDATE** [`src/components/mortality/MortalityTracking.tsx:90`](src/components/mortality/MortalityTracking.tsx#L90)
-  ```ts
-          .from('flocks')
-          .update({ current_count: newCount })
-          .eq('id', flock.id);
-  ```
-- **UPDATE** [`src/components/mortality/MortalityTracking.tsx:125`](src/components/mortality/MortalityTracking.tsx#L125)
-  ```ts
-          .from('flocks')
-          .update({ current_count: newCount })
-          .eq('id', flock.id);
-  ```
 
 ### `import_items` — 2 call(s)
 
@@ -1184,17 +720,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
                   payload: updated.payload,
                   linked_flock_id: updated.linked_flock_id,
                   status: 'edited',
-  ```
-
-### `inventory_usage` — 1 call(s)
-
-- **UPDATE** [`src/components/weight/EditFeedWaterModal.tsx:316`](src/components/weight/EditFeedWaterModal.tsx#L316)
-  ```ts
-            .from('inventory_usage')
-            .update({
-              quantity_used: quantityForStorage,
-              usage_date: toLocalDateString(record.date),
-              feed_type_id: type === 'feed' ? record.feed_type_id : null,
   ```
 
 ### `invoice_items` — 1 call(s)
@@ -1228,15 +753,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
       if (error) { showToast('Failed to delete', 'error'); return; }
   ```
 
-### `mortality_logs` — 1 call(s)
-
-- **DELETE** [`src/components/mortality/MortalityTracking.tsx:117`](src/components/mortality/MortalityTracking.tsx#L117)
-  ```ts
-          .from('mortality_logs')
-          .delete()
-          .eq('id', log.id);
-  ```
-
 ### `mortality_spike_alerts` — 1 call(s)
 
 - **UPDATE** [`src/components/dashboard/DashboardHome.tsx:525`](src/components/dashboard/DashboardHome.tsx#L525)
@@ -1263,16 +779,8 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
       setNotifications(prev => prev.filter(n => n.id !== id));
   ```
 
-### `other_inventory_items` — 5 call(s)
+### `other_inventory_items` — 4 call(s)
 
-- **UPDATE** [`src/utils/inventoryMovements.ts:83`](src/utils/inventoryMovements.ts#L83)
-  ```ts
-          .from('other_inventory_items')
-          .update({
-            quantity: newQuantity,
-            updated_at: new Date().toISOString(),
-          })
-  ```
 - **UPDATE** [`src/components/dashboard/InventoryUsageWidget.tsx:461`](src/components/dashboard/InventoryUsageWidget.tsx#L461)
   ```ts
               .from('other_inventory_items')
@@ -1477,7 +985,7 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
                   .eq('id', updated.id);
   ```
 
-### `tasks` — 10 call(s)
+### `tasks` — 7 call(s)
 
 - **UPDATE** [`src/utils/unifiedTaskSystem.ts:335`](src/utils/unifiedTaskSystem.ts#L335)
   ```ts
@@ -1494,29 +1002,6 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
           is_archived: true,
           archived_at: now,
           archived_by: userId,
-  ```
-- **UPDATE** [`src/components/tasks/DailyTaskTemplates.tsx:99`](src/components/tasks/DailyTaskTemplates.tsx#L99)
-  ```ts
-          .from('tasks')
-          .update({
-            status: 'completed',
-            completed_at: now.toISOString(),
-            completed_by: profile.id,
-  ```
-- **UPDATE** [`src/components/tasks/DailyTaskTemplates.tsx:152`](src/components/tasks/DailyTaskTemplates.tsx#L152)
-  ```ts
-          .from('tasks')
-          .update({
-            status: 'completed',
-            completed: true,
-            completed_at: now.toISOString(),
-  ```
-- **UPDATE** [`src/components/tasks/CompleteTaskModal.tsx:164`](src/components/tasks/CompleteTaskModal.tsx#L164)
-  ```ts
-          .from('tasks')
-          .update(updateData)
-          .eq('id', task.id)
-          .select();
   ```
 - **UPDATE** [`src/components/tasks/egg/EggIntervalEntryModal.tsx:178`](src/components/tasks/egg/EggIntervalEntryModal.tsx#L178)
   ```ts
@@ -1574,7 +1059,7 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
 
 ### `vaccinations` — 1 call(s)
 
-- **UPDATE** [`src/components/vaccinations/VaccinationSchedule.tsx:151`](src/components/vaccinations/VaccinationSchedule.tsx#L151)
+- **UPDATE** [`src/components/vaccinations/VaccinationSchedule.tsx:155`](src/components/vaccinations/VaccinationSchedule.tsx#L155)
   ```ts
         .from('vaccinations')
         .update({
@@ -1598,79 +1083,23 @@ Exempt tables (no per-farm scoping needed): user-level (`profiles`, `subscriptio
 
 ### `weight_logs` — 2 call(s)
 
-- **DELETE** [`src/components/weight/WeightHistoryView.tsx:97`](src/components/weight/WeightHistoryView.tsx#L97)
+- **DELETE** [`src/components/weight/WeightHistoryView.tsx:99`](src/components/weight/WeightHistoryView.tsx#L99)
   ```ts
           .from('weight_logs')
           .delete()
           .eq('id', logId);
   ```
-- **UPDATE** [`src/components/weight/WeightHistoryView.tsx:126`](src/components/weight/WeightHistoryView.tsx#L126)
+- **UPDATE** [`src/components/weight/WeightHistoryView.tsx:128`](src/components/weight/WeightHistoryView.tsx#L128)
   ```ts
           .from('weight_logs')
           .update({ date: editDate })
           .eq('id', logId);
   ```
 
-## LOW (review) — 17 call(s)
+## LOW (review) — 11 call(s)
 
-### `egg_collections` — 1 call(s)
+### `import_items` — 1 call(s)
 
-- **UPDATE** [`src/components/import/ImportHistory.tsx:106`](src/components/import/ImportHistory.tsx#L106)
-  ```ts
-            await supabase.from('egg_collections').delete().in('id', ids);
-          } else if (table === 'flocks') {
-            await supabase.from('flocks').update({ status: 'archived' }).in('id', ids);
-  ```
-
-### `expenses` — 1 call(s)
-
-- **DELETE** [`src/components/import/ImportHistory.tsx:102`](src/components/import/ImportHistory.tsx#L102)
-  ```ts
-            await supabase.from('expenses').delete().in('id', ids);
-          } else if (table === 'feed_stock') {
-            await supabase.from('feed_stock').delete().in('id', ids);
-  ```
-
-### `feed_inventory` — 1 call(s)
-
-- **UPDATE** [`src/utils/inventoryMovements.ts:63`](src/utils/inventoryMovements.ts#L63)
-  ```ts
-          .from('feed_inventory')
-          .update({
-            quantity: newStock,
-            updated_at: new Date().toISOString(),
-          })
-  ```
-
-### `feed_stock` — 1 call(s)
-
-- **DELETE** [`src/components/import/ImportHistory.tsx:104`](src/components/import/ImportHistory.tsx#L104)
-  ```ts
-            await supabase.from('feed_stock').delete().in('id', ids);
-          } else if (table === 'egg_collections') {
-            await supabase.from('egg_collections').delete().in('id', ids);
-  ```
-
-### `flocks` — 1 call(s)
-
-- **UPDATE** [`src/components/import/ImportHistory.tsx:108`](src/components/import/ImportHistory.tsx#L108)
-  ```ts
-            await supabase.from('flocks').update({ status: 'archived' }).in('id', ids);
-          }
-          // Reset import_items status back to proposed
-          await supabase
-            .from('import_items')
-  ```
-
-### `import_items` — 2 call(s)
-
-- **UPDATE** [`src/components/import/ImportHistory.tsx:112`](src/components/import/ImportHistory.tsx#L112)
-  ```ts
-            .from('import_items')
-            .update({ status: 'proposed' })
-            .eq('import_id', importRecord.id)
-            .eq('entity_type', type);
-  ```
 - **UPDATE** [`src/components/import/ProposedImportReview.tsx:221`](src/components/import/ProposedImportReview.tsx#L221)
   ```ts
           .from('import_items')

@@ -36,14 +36,17 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
     if (receiptsData) {
       const receiptsWithDetails = await Promise.all(
         receiptsData.map(async (receipt) => {
+          // Defense-in-depth: scope by farm_id alongside receipt_id.
           const { data: items } = await supabase
             .from('receipt_items')
             .select('*')
+            .eq('farm_id', currentFarm.id)
             .eq('receipt_id', receipt.id);
 
           const { data: refunds } = await supabase
             .from('receipt_refunds')
             .select('*')
+            .eq('farm_id', currentFarm.id)
             .eq('receipt_id', receipt.id);
 
           return {

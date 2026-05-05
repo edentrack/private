@@ -47,9 +47,11 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
   const loadHistory = async () => {
     setLoading(true);
     try {
+      // Defense-in-depth: scope by farm_id alongside flock_id.
       const { data } = await supabase
         .from('weight_logs')
         .select('*')
+        .eq('farm_id', flock.farm_id)
         .eq('flock_id', flock.id)
         .order('date', { ascending: false });
 
