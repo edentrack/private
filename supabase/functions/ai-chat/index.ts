@@ -36,9 +36,7 @@ const MODEL_SONNET  = "claude-sonnet-4-6";           // standard analysis, healt
 
 const MAX_REQUESTS_PER_MINUTE = 15;
 
-const FISH_KNOWLEDGE = await Deno.readTextFile(new URL('./knowledge/fish-aquaculture.md', import.meta.url));
-const POULTRY_KNOWLEDGE = await Deno.readTextFile(new URL('./knowledge/poultry.md', import.meta.url));
-const RABBIT_KNOWLEDGE = await Deno.readTextFile(new URL('./knowledge/rabbits.md', import.meta.url));
+import { FISH_KNOWLEDGE, POULTRY_KNOWLEDGE, RABBIT_KNOWLEDGE } from './knowledge-inline.ts';
 
 function selectModel(messages: ChatMessage[]): string {
   const last = messages[messages.length - 1];
