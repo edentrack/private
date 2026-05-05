@@ -248,7 +248,7 @@ export const SPECIES_MODULES: Record<AnimalSpecies, SpeciesModule> = {
       eggs: false,
       harvest: true,
       weight: true,
-      breeding: false,
+      breeding: true,
       vaccination: true,
     },
     defaultPurchaseTerm: 'rabbits',

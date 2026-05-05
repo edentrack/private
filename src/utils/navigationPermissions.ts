@@ -33,7 +33,11 @@ export type ModuleName =
   | 'harvest'
   | 'water-quality'
   | 'stocking'
-  | 'sampling';
+  | 'sampling'
+  | 'rabbit-harvest'
+  | 'breeding-events'
+  | 'litters'
+  | 'rabbit-registry';
 
 export interface ModuleVisibility {
   visible: boolean;
@@ -115,6 +119,10 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'water-quality':
     case 'stocking':
     case 'sampling':
+    case 'rabbit-harvest':
+    case 'breeding-events':
+    case 'litters':
+    case 'rabbit-registry':
       return { visible: true };
 
     case 'smart-upload':
@@ -168,6 +176,10 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'water-quality':
     case 'stocking':
     case 'sampling':
+    case 'rabbit-harvest':
+    case 'breeding-events':
+    case 'litters':
+    case 'rabbit-registry':
       return { visible: true };
 
     case 'ai-assistant':
@@ -236,6 +248,10 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'water-quality':
     case 'stocking':
     case 'sampling':
+    case 'rabbit-harvest':
+    case 'breeding-events':
+    case 'litters':
+    case 'rabbit-registry':
       return { visible: true };
 
     case 'smart-upload':

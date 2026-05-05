@@ -197,7 +197,7 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">{t('vaccinations.title')}</h2>
-          <p className="text-gray-600">{t('vaccinations.subtitle')}</p>
+          <p className="text-gray-600">{`Manage vaccinations for your ${farmSpecies.groupTermPlural.toLowerCase()}`}</p>
         </div>
         {currentFlock && currentRole && currentRole !== 'viewer' && (
           <button
