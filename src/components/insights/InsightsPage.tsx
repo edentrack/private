@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { Flock, Expense, MortalityLog, EggCollection } from '../../types/database';
-import { useFlockSpecies } from '../../hooks/useSpecies';
+import { useFlockSpecies, useFarmSpecies } from '../../hooks/useSpecies';
 import { formatEggsWithTotal, formatEggsForExport } from '../../utils/eggFormatting';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -93,6 +93,7 @@ export function InsightsPage() {
   // and the egg-production badge that incorrectly defaults to "Egg production" on non-broiler
   // non-layer flocks (i.e., fish).
   const species = useFlockSpecies(flockKind);
+  const farmSpecies = useFarmSpecies();
   const isAquaFlock = species.id === 'aquaculture';
 
   // Load flocks + auto-select first one immediately, then load its data in parallel
@@ -805,8 +806,8 @@ export function InsightsPage() {
         </div>
         <div className="section-card text-center py-12">
           <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">{t('insights.no_flocks_available')}</h3>
-          <p className="text-gray-500">{t('insights.create_first_flock_insights')}</p>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">No {farmSpecies.groupTermPlural} Available</h3>
+          <p className="text-gray-500">Create your first {farmSpecies.groupTerm.toLowerCase()} to see insights</p>
         </div>
       </div>
     );

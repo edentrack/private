@@ -19,7 +19,10 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
 
   const farmKind = (currentFarm as any)?.farm_type ?? 'poultry';
   const isAquaculture = farmKind === 'aquaculture';
-  const [species] = useState<AnimalSpecies>(isAquaculture ? 'aquaculture' : 'poultry');
+  const isRabbits = farmKind === 'rabbits';
+  const [species] = useState<AnimalSpecies>(
+    isAquaculture ? 'aquaculture' : isRabbits ? 'rabbits' : 'poultry'
+  );
 
   const [name, setName] = useState('');
   const [type, setType] = useState<FlockType | null>(null);
@@ -183,7 +186,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
       >
         <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-gray-200/60">
           <h2 className="text-lg font-bold text-gray-900">
-            {isAquaculture ? 'Create new pond' : `${t('flocks.create_new')} flock`}
+            {isAquaculture ? 'Create new pond' : isRabbits ? 'Create new rabbitry' : `${t('flocks.create_new')} flock`}
           </h2>
           <button
             onClick={onClose}
@@ -260,7 +263,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
 
           <div>
             <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-1">
-              {isAquaculture ? 'Pond name' : t('flocks.flock_name')}
+              {isAquaculture ? 'Pond name' : isRabbits ? 'Rabbitry name' : t('flocks.flock_name')}
             </label>
             <input
               id="name"
@@ -269,7 +272,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               onChange={(e) => setName(e.target.value)}
               required
               className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
-              placeholder={isAquaculture ? 'e.g. Pond 1 — Catfish' : t('flocks.flock_name_placeholder')}
+              placeholder={isAquaculture ? 'e.g. Pond 1 — Catfish' : isRabbits ? 'e.g. Hutch Block A' : t('flocks.flock_name_placeholder')}
             />
           </div>
 
@@ -334,6 +337,13 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                     { label: 'Juveniles', weeks: 12, sublabel: '12w+ · 50–150g' },
                     { label: 'Adults', weeks: 20, sublabel: '20w+ · grown stock' },
                   ]
+                : isRabbits
+                ? [
+                    { label: 'Kits (weaned)', weeks: 4, sublabel: '~4w · just weaned' },
+                    { label: 'Weanlings', weeks: 6, sublabel: '~6w · most common buy-in' },
+                    { label: 'Growers', weeks: 9, sublabel: '~9w · growing phase' },
+                    { label: 'Adults', weeks: 16, sublabel: '16w+ · breeding stock' },
+                  ]
                 : [
                     { label: 'Day-old chicks', weeks: 0, sublabel: 'Fresh from hatchery' },
                     { label: 'Growers', weeks: 6, sublabel: '~6w old' },
@@ -385,7 +395,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                   )}
                   {ageAtArrivalWeeks > 0 && (
                     <p className="text-[10px] text-gray-500 mt-1">
-                      Tracking will start at {isAquaculture ? 'pond' : 'flock'} week {ageAtArrivalWeeks + 1} ·
+                      Tracking will start at {isAquaculture ? 'pond' : isRabbits ? 'rabbitry' : 'flock'} week {ageAtArrivalWeeks + 1} ·
                       not week 1.
                     </p>
                   )}
@@ -396,7 +406,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
 
           <div>
             <label htmlFor="initialCount" className="block text-xs font-medium text-gray-700 mb-1">
-              {isAquaculture ? 'Fingerlings stocked' : t('flocks.initial_count')}
+              {isAquaculture ? 'Fingerlings stocked' : isRabbits ? 'Rabbits stocked' : t('flocks.initial_count')}
               {!isAquaculture && (
                 <span className="ml-1 text-gray-400 font-normal">
                   (max {getMaxBirdsPerFlock((profile?.subscription_tier as any) || 'basic').toLocaleString()} on your plan)
@@ -414,7 +424,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               placeholder={isAquaculture ? '1000' : '1000'}
             />
             <p className="text-[10px] text-gray-600 mt-0.5">
-              {isAquaculture ? 'Total fingerlings you stocked in this pond' : t('flocks.total_birds_you_started_with')}
+              {isAquaculture ? 'Total fingerlings you stocked in this pond' : isRabbits ? 'Total rabbits in this hutch block' : t('flocks.total_birds_you_started_with')}
             </p>
           </div>
 
@@ -435,7 +445,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             )}
             {!currentCount && (
               <p className="text-[10px] text-gray-600 mt-0.5">
-                {isAquaculture ? 'Leave empty if no fish died before using this app' : t('flocks.leave_empty_if_no_deaths')}
+                {isAquaculture ? 'Leave empty if no fish died before using this app' : isRabbits ? 'Leave empty if no rabbits died before using this app' : t('flocks.leave_empty_if_no_deaths')}
               </p>
             )}
           </div>
@@ -445,7 +455,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="purchasePricePerBird" className="block text-xs font-medium text-gray-700 mb-1">
-                  {isAquaculture ? 'Price per fingerling' : t('flocks.price_per_bird')}
+                  {isAquaculture ? 'Price per fingerling' : isRabbits ? 'Price per rabbit' : t('flocks.price_per_bird')}
                 </label>
                 <input
                   id="purchasePricePerBird"

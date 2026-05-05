@@ -37,12 +37,24 @@ const DEFAULT: FarmTypeInfo = {
 
 let _cache: { farmId: string; info: FarmTypeInfo } | null = null;
 
-// Aquaculture info shape — used both in the synchronous initializer
-// and the async useEffect path. Keep them in sync.
 function makeAquacultureInfo(loading: boolean): FarmTypeInfo {
   return {
     farmType: 'unknown',
     isAquaculture: true,
+    showEggs: false,
+    showFCR: false,
+    showWeight: true,
+    showHarvest: true,
+    loading,
+    broilerCount: 0,
+    layerCount: 0,
+  };
+}
+
+function makeRabbitsInfo(loading: boolean): FarmTypeInfo {
+  return {
+    farmType: 'unknown',
+    isAquaculture: false,
     showEggs: false,
     showFCR: false,
     showWeight: true,
@@ -58,12 +70,8 @@ export function useFarmType(): FarmTypeInfo {
   const [info, setInfo] = useState<FarmTypeInfo>(() => {
     // Cache hit for the same farm — return previous resolved info
     if (_cache && currentFarm && _cache.farmId === currentFarm.id) return _cache.info;
-    // Synchronously derive aquaculture from farm_type so the very first render
-    // after a farm switch already knows what species we're on. Without this,
-    // components that don't gate on `loading` momentarily render as poultry.
-    if ((currentFarm as any)?.farm_type === 'aquaculture') {
-      return makeAquacultureInfo(false);
-    }
+    if ((currentFarm as any)?.farm_type === 'aquaculture') return makeAquacultureInfo(false);
+    if ((currentFarm as any)?.farm_type === 'rabbits') return makeRabbitsInfo(false);
     return DEFAULT;
   });
 
@@ -73,9 +81,14 @@ export function useFarmType(): FarmTypeInfo {
       return;
     }
 
-    // Aquaculture farms are identified by farm_type on the farm record — no flock query needed
     if ((currentFarm as any).farm_type === 'aquaculture') {
       const result = makeAquacultureInfo(false);
+      _cache = { farmId: currentFarm.id, info: result };
+      setInfo(result);
+      return;
+    }
+    if ((currentFarm as any).farm_type === 'rabbits') {
+      const result = makeRabbitsInfo(false);
       _cache = { farmId: currentFarm.id, info: result };
       setInfo(result);
       return;

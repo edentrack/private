@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Plus, Fish, Wheat, Settings } from 'lucide-react';
+import { ChevronDown, Plus, Fish, Wheat, Rabbit, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMaxFarms } from '../../utils/planGating';
 import type { FarmKind } from '../../types/database';
@@ -10,6 +10,7 @@ interface FarmSwitcherDropdownProps {
 
 function FarmTypeIcon({ type, className }: { type: FarmKind | undefined; className?: string }) {
   if (type === 'aquaculture') return <Fish className={className ?? 'w-3 h-3'} />;
+  if (type === 'rabbits') return <Rabbit className={className ?? 'w-3 h-3'} />;
   return <Wheat className={className ?? 'w-3 h-3'} />;
 }
 
@@ -34,6 +35,13 @@ export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
       return (
         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-blue-50 text-blue-600 border border-blue-100">
           <Fish className="w-2.5 h-2.5" /> Fish
+        </span>
+      );
+    }
+    if (type === 'rabbits') {
+      return (
+        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <Rabbit className="w-2.5 h-2.5" /> Rabbitry
         </span>
       );
     }
@@ -64,11 +72,11 @@ export function FarmSwitcherDropdown({ onAddFarm }: FarmSwitcherDropdownProps) {
           {/* Active farm display */}
           <div className="px-3 py-2.5 flex items-center gap-3">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-              currentFarm?.farm_type === 'aquaculture' ? 'bg-blue-50' : 'bg-amber-50'
+              currentFarm?.farm_type === 'aquaculture' ? 'bg-blue-50' : currentFarm?.farm_type === 'rabbits' ? 'bg-emerald-50' : 'bg-amber-50'
             }`}>
               <FarmTypeIcon
                 type={currentFarm?.farm_type as FarmKind | undefined}
-                className={`w-4 h-4 ${currentFarm?.farm_type === 'aquaculture' ? 'text-blue-500' : 'text-amber-600'}`}
+                className={`w-4 h-4 ${currentFarm?.farm_type === 'aquaculture' ? 'text-blue-500' : currentFarm?.farm_type === 'rabbits' ? 'text-emerald-700' : 'text-amber-600'}`}
               />
             </div>
             <div className="flex-1 min-w-0">

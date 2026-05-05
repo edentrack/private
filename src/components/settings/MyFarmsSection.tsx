@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Fish, Wheat, MapPin, Check, Pencil, X, Save, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Fish, Wheat, Rabbit, MapPin, Check, Pencil, X, Save, Trash2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
@@ -57,6 +57,13 @@ export function MyFarmsSection() {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
           <Fish className="w-3 h-3" /> Fish Farm
+        </span>
+      );
+    }
+    if (type === 'rabbits') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <Rabbit className="w-3 h-3" /> Rabbitry
         </span>
       );
     }
@@ -149,10 +156,12 @@ export function MyFarmsSection() {
               ) : (
                 <div className="flex items-start gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    farm.farm_type === 'aquaculture' ? 'bg-blue-100' : 'bg-amber-100'
+                    farm.farm_type === 'aquaculture' ? 'bg-blue-100' : farm.farm_type === 'rabbits' ? 'bg-emerald-100' : 'bg-amber-100'
                   }`}>
                     {farm.farm_type === 'aquaculture'
                       ? <Fish className="w-5 h-5 text-blue-600" />
+                      : farm.farm_type === 'rabbits'
+                      ? <Rabbit className="w-5 h-5 text-emerald-700" />
                       : <Wheat className="w-5 h-5 text-amber-700" />
                     }
                   </div>

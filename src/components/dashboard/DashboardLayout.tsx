@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves, Droplets, Beaker, Truck } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useSimpleMode } from '../../contexts/SimpleModeContext';
 import { useFarmType } from '../../hooks/useFarmType';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { ChickenIcon } from '../icons/ChickenIcon';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { canViewModule, ModuleName } from '../../utils/navigationPermissions';
@@ -45,6 +46,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   const { farmPermissions } = usePermissions();
   const { simpleMode } = useSimpleMode();
   const { showEggs, showFCR, showHarvest, isAquaculture, loading: farmTypeLoading } = useFarmType();
+  const farmSpecies = useFarmSpecies();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [desktopMoreMenuOpen, setDesktopMoreMenuOpen] = useState(false);
   const [mobileMoreMenuOpen, setMobileMoreMenuOpen] = useState(false);
@@ -87,8 +89,8 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   }, []);
 
   const getNavItems = () => {
-    const flocksLabel = isAquaculture ? 'Ponds' : (t('nav.flocks') || 'Flocks');
-    const flocksIcon = isAquaculture ? Fish : ChickenIcon;
+    const flocksLabel = farmSpecies.groupTermPlural;
+    const flocksIcon = farmSpecies.id === 'aquaculture' ? Fish : farmSpecies.id === 'rabbits' ? Rabbit : ChickenIcon;
 
     const allItems: Array<{ id: ModuleName; label: string; icon: any; badge?: number }> = [
       { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
@@ -96,7 +98,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'insights', label: t('nav.insights'), icon: TrendingUp },
       { id: 'tasks', label: t('nav.tasks') || 'Tasks', icon: ListChecks },
       { id: 'egg-records', label: 'Egg Records', icon: Egg },
-      { id: 'mortality', label: isAquaculture ? 'Fish Losses' : 'Mortality', icon: HeartOff },
+      { id: 'mortality', label: farmSpecies.lossNounPlural, icon: HeartOff },
       { id: 'harvest', label: 'Harvest', icon: Waves },
       { id: 'water-quality', label: 'Water Quality', icon: Droplets },
       { id: 'sampling', label: 'Weight Sampling', icon: Beaker },

@@ -134,6 +134,17 @@ const AQUACULTURE_SUGGESTIONS = [
   "What's my estimated biomass right now?",
 ];
 
+const RABBIT_SUGGESTIONS = [
+  "How often should I clean the hutches?",
+  "When should I separate the kits from the doe?",
+  "What's a healthy weaning weight for my rabbits?",
+  "Why are my does not breeding?",
+  "My rabbit has runny eyes and a runny nose — what's wrong?",
+  "What feed should I give during the grow-out phase?",
+  "Help me plan a vaccination schedule for my rabbitry",
+  "What's my current mortality rate?",
+];
+
 
 const STORAGE_KEY = 'eden_chat_messages';
 const STORAGE_DATE_KEY = 'eden_chat_date';
@@ -168,7 +179,11 @@ export function AIAssistantPage() {
   const { showToast } = useToast();
   const { t } = useTranslation();
   const farmSpecies = useFarmSpecies();
-  const suggestions = farmSpecies.id === 'aquaculture' ? AQUACULTURE_SUGGESTIONS : POULTRY_SUGGESTIONS;
+  const suggestions = farmSpecies.id === 'aquaculture'
+    ? AQUACULTURE_SUGGESTIONS
+    : farmSpecies.id === 'rabbits'
+    ? RABBIT_SUGGESTIONS
+    : POULTRY_SUGGESTIONS;
   const [messages, setMessages] = useState<ChatMessage[]>(() => loadTodayMessages());
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1117,6 +1132,8 @@ export function AIAssistantPage() {
             <p className="text-sm text-gray-500">
               {farmSpecies.id === 'aquaculture'
                 ? 'Pond health · Water quality · FCR · Diagnostics · Data import'
+                : farmSpecies.id === 'rabbits'
+                ? 'Hutch health · Feed · Growth tracking · Diagnostics · Data import'
                 : 'Farm performance · Flock health · Diagnostics · Data import'}
             </p>
           </div>

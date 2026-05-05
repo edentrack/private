@@ -7,6 +7,7 @@ import { formatEggsCompact } from '../../utils/eggFormatting';
 import { useTranslation } from 'react-i18next';
 import { calculateFCRForFarm, getFCRStatus } from '../../utils/fcrCalculation';
 import { useFarmType } from '../../hooks/useFarmType';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 type TimePeriod = 'today' | 'week' | 'month';
 
@@ -37,6 +38,7 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
   const { t } = useTranslation();
   const { profile, currentFarm } = useAuth();
   const { showEggs, showFCR } = useFarmType();
+  const farmSpecies = useFarmSpecies();
   const [period, setPeriod] = useState<TimePeriod>('today');
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
   const [flocks, setFlocks] = useState<Flock[]>([]);
@@ -316,7 +318,7 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
             <div className="w-6 h-6 bg-red-600 rounded-lg flex items-center justify-center">
               <AlertTriangle className="w-3 h-3 text-white" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900">{t('dashboard.mortality_rate')}</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{farmSpecies.lossNoun} Rate</h3>
           </div>
           <div className="mb-1">
             <span className="text-lg font-bold text-red-600">{kpiData.mortalityRate.toFixed(2)}%</span>

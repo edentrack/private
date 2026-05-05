@@ -41,6 +41,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
   const { user, profile, currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();
   const { showEggs, showFCR, farmType, isAquaculture } = useFarmType();
+  const isRabbits = (currentFarm as any)?.farm_type === 'rabbits';
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
@@ -414,6 +415,27 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
           btnText: 'white',
           btnLabel: 'Create My First Pond',
           hint: 'You can manage multiple ponds — catfish, tilapia, or mixed.',
+        }
+      : isRabbits
+      ? {
+          strip: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
+          iconBg: 'rgba(5,150,105,0.10)',
+          iconBorder: 'rgba(5,150,105,0.25)',
+          emoji: '🐇',
+          workerHeading: 'No rabbitries yet',
+          ownerHeading: 'Add your first rabbitry',
+          workerBody: "Your manager hasn't added any rabbitries yet. Check back soon.",
+          ownerBody: 'A rabbitry is how Edentrack tracks your rabbits — feed, health, growth, and harvest all tie back to it.',
+          steps: [
+            { n: '1', text: 'Create a rabbitry (breed, count, arrival date)' },
+            { n: '2', text: 'Log daily tasks — feeding, health checks, deaths' },
+            { n: '3', text: 'Track growth by week and plan your harvest' },
+          ],
+          btnBg: '#059669',
+          btnShadow: '0 4px 16px rgba(5,150,105,0.30)',
+          btnText: 'white',
+          btnLabel: 'Create My First Rabbitry',
+          hint: 'You can manage multiple rabbitries — meat rabbits, breeders, or both.',
         }
       : {
           strip: 'linear-gradient(90deg, #ffdd00 0%, #f59e0b 100%)',
