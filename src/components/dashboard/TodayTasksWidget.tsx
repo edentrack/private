@@ -12,6 +12,7 @@ import {
   TaskWithMetadata,
 } from '../../utils/unifiedTaskSystem';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { useTranslation } from 'react-i18next';
 import { EggIntervalEntryModal } from '../tasks/egg/EggIntervalEntryModal';
 import { EggIntervalSizes, getTotalGoodEggs } from '../../utils/eggIntervalTaskSync';
@@ -37,6 +38,7 @@ interface QuickLogState {
 
 export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidgetProps) {
   const { currentFarm, user, currentRole, profile } = useAuth();
+  const species = useFarmSpecies();
   const { farmPermissions } = usePermissions();
   const canAddTasks = currentRole?.toLowerCase() !== 'worker' && currentRole?.toLowerCase() !== 'viewer';
   const { t } = useTranslation();
@@ -1077,7 +1079,8 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
             )}
           </div>
 
-          {/* Egg Collection */}
+          {/* Egg Collection — only relevant for species that produce eggs (poultry layers/mixed) */}
+          {species.features.eggs && (
           <div className="pt-2.5 border-t border-gray-100">
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -1186,6 +1189,7 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
               </div>
             )}
           </div>
+          )}
         </div>
       )}
 
