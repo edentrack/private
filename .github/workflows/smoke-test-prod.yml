@@ -1,0 +1,69 @@
+name: Production smoke test
+
+# Pings critical assets and routes on edentrack.app to catch deploys that
+# silently 404 (the species images regressed once because they weren't
+# included in the Vercel build output even though they were in git).
+#
+# Triggers:
+# - workflow_dispatch (manual)
+# - schedule: every hour, light cost
+# - workflow_run after Vercel claims a successful deploy (best-effort —
+#   we don't have direct hook into Vercel's deploy completion event;
+#   the schedule + manual run cover the same case in practice).
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 * * * *'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check species images
+        run: |
+          set -e
+          base="https://edentrack.app"
+          assets=(
+            "/species/broiler.jpg"
+            "/species/layer.jpg"
+            "/species/tilapia.jpg"
+            "/species/catfish.jpg"
+            "/species/clarias.jpg"
+            "/species/other-fish.jpg"
+            "/species/meat-rabbit.jpg"
+            "/species/breeder-rabbit.jpg"
+          )
+          fail=0
+          for path in "${assets[@]}"; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "$base$path")
+            if [ "$code" != "200" ]; then
+              echo "::error::$base$path returned HTTP $code"
+              fail=1
+            else
+              echo "OK $path -> $code"
+            fi
+          done
+          exit $fail
+
+      - name: Check critical routes
+        run: |
+          set -e
+          base="https://edentrack.app"
+          # The hash routes render to the same / (SPA), so we only check the index
+          # plus a couple of physical routes. Add edge-function health checks here
+          # once those endpoints are available.
+          routes=(
+            "/"
+          )
+          fail=0
+          for path in "${routes[@]}"; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "$base$path")
+            if [ "$code" != "200" ]; then
+              echo "::error::$base$path returned HTTP $code"
+              fail=1
+            else
+              echo "OK $path -> $code"
+            fi
+          done
+          exit $fail

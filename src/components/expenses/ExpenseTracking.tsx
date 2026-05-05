@@ -120,10 +120,17 @@ export function ExpenseTracking() {
   };
 
   const loadExpenses = async () => {
-    // Load ALL expenses since day 1 (no date filter, no limit)
+    // Multi-tenant safety: scope by farm_id. Without this filter, expenses
+    // from other farms leaked into the page (audit found a fresh tenant
+    // showing -265,500 CFA "balance left" pulled from a different farm).
+    if (!currentFarm?.id) {
+      setExpenses([]);
+      return;
+    }
     let query = supabase
       .from('expenses')
       .select('*')
+      .eq('farm_id', currentFarm.id)
       .order('incurred_on', { ascending: false });
 
     if (selectedFlockId) {

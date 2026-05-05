@@ -42,12 +42,14 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
   }, [flockId, flock]);
 
   const loadFlock = async () => {
-    if (!flockId) return;
+    if (!flockId || !currentFarm?.id) return;
 
+    // Defense-in-depth: scope by farm_id alongside id.
     const { data } = await supabase
       .from('flocks')
       .select('*')
       .eq('id', flockId)
+      .eq('farm_id', currentFarm.id)
       .single();
 
     if (data) {
@@ -115,7 +117,8 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
           current_count: newCount,
           updated_at: new Date().toISOString()
         })
-        .eq('id', currentFlock.id);
+        .eq('id', currentFlock.id)
+        .eq('farm_id', currentFlock.farm_id);
 
       if (updateError) throw updateError;
 

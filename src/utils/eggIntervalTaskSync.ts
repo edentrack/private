@@ -167,7 +167,8 @@ export async function syncEggIntervalFromTaskCompletion(
     const { error } = await supabase
       .from('egg_collections')
       .delete()
-      .eq('id', existing.id);
+      .eq('id', existing.id)
+      .eq('farm_id', params.farmId);
     if (error) throw error;
 
     return { eggCollectionId: existing.id, synced: false };
@@ -216,7 +217,8 @@ export async function syncEggIntervalFromTaskCompletion(
         source_task_id: params.taskId,
         source_interval_key: params.sourceIntervalKey,
       })
-      .eq('id', existing.id);
+      .eq('id', existing.id)
+      .eq('farm_id', params.farmId);
 
     if (error) {
       if (isMissingIntervalTrackingColumns(error)) {

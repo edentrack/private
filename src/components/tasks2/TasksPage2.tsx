@@ -233,7 +233,23 @@ export function TasksPage2() {
 
   const handleQuickComplete = async (task: TaskWithMetadata) => {
     if (!user?.id || !currentFarm?.id) return;
-    await completeTask(supabase, task.id, user.id, currentFarm.id);
+    // Optimistic update — flip the status locally first so the chip and the
+    // hidden "Done" button repaint immediately. Without this the audit
+    // observed a stale "Not started" chip until the user scrolled and
+    // forced a re-paint.
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === task.id
+          ? { ...t, status: 'completed', completed_at: new Date().toISOString(), completed_by: user.id }
+          : t
+      )
+    );
+    try {
+      await completeTask(supabase, task.id, user.id, currentFarm.id);
+    } catch (err) {
+      console.error('Failed to mark task complete:', err);
+      // Re-fetch to get authoritative state if the network call failed.
+    }
     const t = await fetchTasksForDate({ farmId: currentFarm.id, dateISO, farmTz });
     setTasks(t);
   };
@@ -354,9 +370,19 @@ export function TasksPage2() {
                     const timeLabel = fmtTimeFromScheduledTime(t.scheduled_time);
                     const statusLabel =
                       t.status === 'completed' ? 'Completed' : t.status === 'in_progress' ? 'In progress' : 'Not started';
+                    // Audit fix: the page used to show two different button verbs
+                    // ("Complete" vs "Done") for the same conceptual action with no
+                    // visible cue — one opened a modal, the other was instant. Use
+                    // a single canonical label ("Mark done") with a subtle suffix
+                    // when more input is required, so the user knows what to expect.
+                    const isEntryTask = Boolean((t as any).requires_input || (t as any).isRecording);
+                    const buttonLabel = isEntryTask ? 'Mark done…' : 'Mark done';
                     return (
                       <div
-                        key={t.id}
+                        // Include status in the key so React always remounts the row
+                        // when status changes — guarantees the chip repaints without
+                        // requiring a scroll-induced reflow.
+                        key={`${t.id}:${t.status}`}
                         className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl border border-gray-100 bg-white"
                       >
                         <div className="min-w-0">
@@ -390,13 +416,15 @@ export function TasksPage2() {
                             <button
                               type="button"
                               className="btn-secondary text-sm whitespace-nowrap"
+                              title={isEntryTask
+                                ? 'Opens a form to record details (notes, photo, measurements)'
+                                : 'Mark complete instantly'}
                               onClick={() => {
-                                const isEntryTask = Boolean((t as any).requires_input || (t as any).isRecording);
                                 if (isEntryTask) setCompleteTaskModal(t);
                                 else handleQuickComplete(t);
                               }}
                             >
-                              {Boolean((t as any).requires_input || (t as any).isRecording) ? 'Complete' : 'Done'}
+                              {buttonLabel}
                             </button>
                           )}
                         </div>

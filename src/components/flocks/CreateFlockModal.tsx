@@ -216,17 +216,6 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('flocks.select_type')}</label>
               <div className={`grid gap-2 ${availableTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {availableTypes.map((animalType) => {
-                  const getImageForType = (t: string) => {
-                    if (t === 'Layer') return '/species/layer.jpg';
-                    if (t === 'Broiler') return '/species/broiler.jpg';
-                    if (t === 'Tilapia') return '/species/tilapia.jpg';
-                    if (t === 'Catfish') return '/species/catfish.jpg';
-                    if (t === 'Clarias') return '/species/clarias.jpg';
-                    if (t === 'Other Fish') return '/species/other-fish.jpg';
-                    if (t === 'Meat Rabbits') return '/species/meat-rabbit.jpg';
-                    if (t === 'Breeder Rabbits') return '/species/breeder-rabbit.jpg';
-                    return '/species/broiler.jpg';
-                  };
                   const getDescriptionForType = (animalType: string) => {
                     if (animalType === 'Layer') return t('flocks.egg_production');
                     if (animalType === 'Broiler') return t('flocks.meat_production');
@@ -234,24 +223,25 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                     if (animalType === 'Breeder Rabbits') return t('flocks.breeding');
                     return '';
                   };
+                  const isSelected = type === animalType;
                   return (
                     <button
                       key={animalType}
                       type="button"
                       onClick={() => setType(animalType as FlockType)}
-                      className={`p-2 rounded-xl border-2 transition-all bg-[#faf7f2] text-left ${
-                        type === animalType ? 'border-gray-900 bg-[#f5f0e8]' : 'border-gray-200 hover:border-gray-300'
+                      className={`px-3 py-3.5 rounded-xl border-2 transition-all bg-[#faf7f2] text-center ${
+                        isSelected ? 'border-gray-900 bg-[#f5f0e8] shadow-sm' : 'border-gray-200 hover:border-gray-400'
                       }`}
                     >
-                      <img
-                        src={getImageForType(animalType)}
-                        alt={animalType}
-                        className="w-10 h-10 object-cover rounded-lg mx-auto mb-1"
-                        style={{ backgroundColor: '#f5f0e8' }}
-                      />
-                      <div className="text-xs font-bold text-gray-900 leading-tight">{animalType}</div>
+                      <div className={`text-sm font-bold tracking-tight leading-tight ${
+                        isSelected ? 'text-gray-900' : 'text-gray-800'
+                      }`}>
+                        {animalType}
+                      </div>
                       {getDescriptionForType(animalType) && (
-                        <div className="text-[10px] text-gray-600 mt-0.5">{getDescriptionForType(animalType)}</div>
+                        <div className="text-[11px] italic text-gray-500 mt-1 leading-tight">
+                          {getDescriptionForType(animalType)}
+                        </div>
                       )}
                     </button>
                   );

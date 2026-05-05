@@ -916,6 +916,8 @@
     "no_feed_stock": "Aucun stock d'aliments enregistré pour le moment",
     "click_add_to_start": "Cliquez sur \"Ajouter\" pour commencer.",
     "low_stock": "Stock faible !",
+    "out_of_stock": "Rupture de stock",
+    "not_stocked_yet": "Pas encore approvisionné",
     "adjust": "Ajuster",
     "equipment_reusable": "Équipement réutilisable",
     "supplies_consumable": "Fournitures consommables",

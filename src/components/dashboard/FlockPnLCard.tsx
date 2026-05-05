@@ -88,9 +88,12 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
       setCycle(cycleData);
 
       // Load revenues (bird sales + egg sales)
+      // Defense-in-depth: scope by farm_id alongside flock_id so an
+      // accidental cross-farm flock id can't reach into another farm's
+      // sales data even if RLS were misconfigured.
       const [revenuRes, eggSalesRes] = await Promise.all([
-        supabase.from('revenues').select('amount').eq('flock_id', flock.id),
-        supabase.from('egg_sales').select('total_amount').eq('flock_id', flock.id)
+        supabase.from('revenues').select('amount').eq('farm_id', currentFarm.id).eq('flock_id', flock.id),
+        supabase.from('egg_sales').select('total_amount').eq('farm_id', currentFarm.id).eq('flock_id', flock.id)
       ]);
 
       const birdRevenue = revenuRes.data?.reduce((sum, r) => sum + (r.amount || 0), 0) || 0;
@@ -101,6 +104,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
       const { data: expenses } = await supabase
         .from('expenses')
         .select('amount, category, flock_id')
+        .eq('farm_id', currentFarm.id)
         .eq('flock_id', flock.id);
 
       // Separate feed expenses from other direct expenses

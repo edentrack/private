@@ -205,8 +205,13 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       <div data-tour="flock-header" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
+          {/* Audit fix: previously fell back to t('flocks.title') ("Flock
+              Management") for poultry which clashed with the species term
+              shown in the subtitle and elsewhere. Drive the H1 directly off
+              the species term so the page header, subtitle, and nav stay
+              in sync. */}
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
-            {isPoultryView ? t('flocks.title') : groupTermPlural}
+            {groupTermPlural}
           </h2>
           <p className="text-gray-500 mt-1 text-sm sm:text-base">
             {showArchived ? `Archived ${groupTermPlural}` : `Active ${groupTermPlural}`}

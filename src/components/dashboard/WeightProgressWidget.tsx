@@ -104,10 +104,12 @@ export function WeightProgressWidget({ flockId }: WeightProgressWidgetProps) {
     try {
       setLoading(true);
 
+      // Defense-in-depth: scope by farm_id alongside id.
       const { data: flock } = await supabase
         .from('flocks')
         .select('arrival_date, purpose, type')
         .eq('id', flockId)
+        .eq('farm_id', currentFarm.id)
         .single();
 
       if (!flock) return;
@@ -144,6 +146,7 @@ export function WeightProgressWidget({ flockId }: WeightProgressWidgetProps) {
       const { data: weightLogs } = await supabase
         .from('weight_logs')
         .select('*')
+        .eq('farm_id', currentFarm.id)
         .eq('flock_id', flockId)
         .order('date', { ascending: true });
 

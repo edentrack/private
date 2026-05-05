@@ -122,9 +122,12 @@ export async function calculateFCRForFarm(
     void convertFeedToKg;
 
     // Get weight logs for broiler flocks — also select bird_count for accurate weight estimates
+    // Defense-in-depth: pin to farm_id so a stale broilerFlockIds list can't
+    // pull weights from another farm.
     const { data: weightLogs } = await supabase
       .from('weight_logs')
       .select('date, average_weight, total_estimated_weight, bird_count')
+      .eq('farm_id', farmId)
       .in('flock_id', broilerFlockIds)
       .gte('date', startDate)
       .lte('date', endDate)

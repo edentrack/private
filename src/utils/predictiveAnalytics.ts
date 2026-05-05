@@ -129,10 +129,12 @@ export class PredictiveAnalytics {
   }
 
   static async predictFeedConsumption(farmId: string, flockId: string, daysAhead: number = 7): Promise<Prediction[]> {
+    // Defense-in-depth: scope by farm_id alongside id.
     const { data: flock } = await supabase
       .from('flocks')
       .select('current_count, arrival_date')
       .eq('id', flockId)
+      .eq('farm_id', farmId)
       .single();
 
     if (!flock) return [];
@@ -195,10 +197,12 @@ export class PredictiveAnalytics {
   }
 
   static async detectMortalityAnomaly(farmId: string, flockId: string, todayCount: number): Promise<AnomalyDetection> {
+    // Defense-in-depth: scope by farm_id alongside id.
     const { data: flock } = await supabase
       .from('flocks')
       .select('current_count, initial_count, arrival_date')
       .eq('id', flockId)
+      .eq('farm_id', farmId)
       .single();
 
     if (!flock) {
@@ -318,10 +322,12 @@ export class PredictiveAnalytics {
   }
 
   static async predictOptimalReplacementDate(farmId: string, flockId: string): Promise<{ date: string; reason: string; confidence: number }> {
+    // Defense-in-depth: scope by farm_id alongside id.
     const { data: flock } = await supabase
       .from('flocks')
       .select('arrival_date, purpose, current_count')
       .eq('id', flockId)
+      .eq('farm_id', farmId)
       .single();
 
     if (!flock) {
@@ -353,6 +359,7 @@ export class PredictiveAnalytics {
       const { data: recentProduction } = await supabase
         .from('egg_collections')
         .select('total_collected')
+        .eq('farm_id', farmId)
         .eq('flock_id', flockId)
         .order('collection_date', { ascending: false })
         .limit(30);

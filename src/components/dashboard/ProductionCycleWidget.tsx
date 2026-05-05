@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Check, Circle, ArrowRight, Scale, Egg, AlertCircle, Zap } from 'lucide-react';
+import { RefreshCw, Check, Circle, ArrowRight, Scale, Egg, AlertCircle, Zap, Rabbit as RabbitIcon } from 'lucide-react';
 import { Flock } from '../../types/database';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { getFlockAgeDays } from '../../utils/flockAge';
+import { RABBIT_DEFAULT_PHASES } from '../../utils/speciesModules';
 
 interface ProductionCycleWidgetProps {
   flock: Flock | null;
@@ -158,26 +159,53 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
     setCurrentWeek(week);
 
     const isBroiler = flock.type?.toLowerCase() === 'broiler';
-    
-    // Use farmSettings if available, otherwise use defaults
-    // IMPORTANT: Use nullish coalescing to ensure 0 values are handled correctly
-    const target = isBroiler 
-      ? (farmSettings?.broilerDuration ?? 8)
-      : (farmSettings?.layerDuration ?? 72);
-    
-    // Ensure target is a valid positive number
-    const validTarget = target && target > 0 ? target : (isBroiler ? 8 : 72);
+    const isRabbit = (flock as any).species === 'rabbits'
+      || (flock.type as string) === 'Meat Rabbits' || (flock.type as string) === 'Breeder Rabbits';
+
+    // Target weeks per species. Rabbits market-ready around 16 weeks.
+    let target: number;
+    if (isRabbit) {
+      target = 16;
+    } else if (isBroiler) {
+      target = farmSettings?.broilerDuration ?? 8;
+    } else {
+      target = farmSettings?.layerDuration ?? 72;
+    }
+    const validTarget = target && target > 0 ? target : (isRabbit ? 16 : isBroiler ? 8 : 72);
     setTargetWeek(validTarget);
 
-    // Calculate PHASE progress after milestones/phase are set
-    // This is the PHASE progress bar (shows progress within current phase)
-    // We'll calculate this in a useEffect after currentPhaseData is set
-
-    if (isBroiler) {
+    if (isRabbit) {
+      setRabbitMilestones(week);
+    } else if (isBroiler) {
       setBroilerMilestones(week);
     } else {
       setLayerMilestones(week);
     }
+  };
+
+  // Rabbit milestones: Kit / Weanling / Grower / Market-ready.
+  // No farm-settings override yet — rabbit phase customisation is a follow-up.
+  const setRabbitMilestones = (week: number) => {
+    const phases = RABBIT_DEFAULT_PHASES;
+    const rabbitMilestones: Milestone[] = phases.map(phase => ({
+      week: phase.startWeek,
+      label: phase.name,
+      completed: week > phase.endWeek,
+      current: week >= phase.startWeek && week <= phase.endWeek,
+    }));
+    setMilestones(rabbitMilestones);
+
+    const foundPhase = phases.find(p => week >= p.startWeek && week <= p.endWeek);
+    if (foundPhase) {
+      setCurrentPhase(foundPhase.name);
+      setFeedType('—');
+      setCurrentPhaseData({ ...foundPhase, feedType: '—' });
+    } else {
+      setCurrentPhase('Market-ready');
+      setFeedType('—');
+      setCurrentPhaseData(null);
+    }
+    setNextPhaseData(null);
   };
 
   // Calculate phase progress whenever currentPhaseData or currentWeek changes
@@ -329,7 +357,9 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
   }
 
   const isBroiler = flock.type?.toLowerCase() === 'broiler';
-  
+  const isRabbit = (flock as any).species === 'rabbits'
+    || (flock.type as string) === 'Meat Rabbits' || (flock.type as string) === 'Breeder Rabbits';
+
   // Calculate weeks until next phase (for display only, no state updates)
   const weeksUntilNextPhase = currentPhaseData
     ? Math.max(0, currentPhaseData.endWeek - currentWeek)
@@ -346,7 +376,9 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
             <h3 className="font-semibold text-gray-900">{t('dashboard.production_cycle')}</h3>
           </div>
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/60 rounded-full">
-            {isBroiler ? (
+            {isRabbit ? (
+              <RabbitIcon className="w-4 h-4 text-amber-700" />
+            ) : isBroiler ? (
               <Scale className="w-4 h-4 text-orange-600" />
             ) : (
               <Egg className="w-4 h-4 text-blue-600" />

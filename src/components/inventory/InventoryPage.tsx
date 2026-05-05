@@ -673,34 +673,77 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {feedStock.map((feed) => {
               const currentStock = feed.current_stock_bags || 0;
-              const isLowStock = currentStock < lowStockThreshold;
+              // Audit fix: brand-new accounts had three default feed items
+              // pre-seeded at 0kg, all flagged with a red "Low stock!" border —
+              // alarming first-time UX. Distinguish "Not stocked yet"
+              // (never updated, 0) from "Out of stock" (was tracked, now 0)
+              // from "Low stock" (under threshold but > 0).
+              const wasEverStocked = !!feed.last_updated;
+              const isNotStockedYet = !wasEverStocked && currentStock === 0;
+              const isOutOfStock = wasEverStocked && currentStock === 0;
+              const isLowStock = !isNotStockedYet && !isOutOfStock && currentStock < lowStockThreshold;
+              const stockState = isNotStockedYet
+                ? 'not-yet'
+                : isOutOfStock
+                  ? 'out'
+                  : isLowStock
+                    ? 'low'
+                    : 'ok';
+              const cardBorderClass =
+                stockState === 'not-yet'
+                  ? 'border-gray-200'
+                  : stockState === 'out'
+                    ? 'border-red-300 bg-red-50'
+                    : stockState === 'low'
+                      ? 'border-amber-300 bg-amber-50'
+                      : 'border-gray-200';
+              const stockNumberClass =
+                stockState === 'not-yet'
+                  ? 'text-gray-400'
+                  : stockState === 'out'
+                    ? 'text-red-600'
+                    : stockState === 'low'
+                      ? 'text-amber-600'
+                      : 'text-green-600';
+              const stockMessage =
+                stockState === 'not-yet'
+                  ? t('inventory.not_stocked_yet') || 'Not stocked yet'
+                  : stockState === 'out'
+                    ? t('inventory.out_of_stock') || 'Out of stock'
+                    : stockState === 'low'
+                      ? t('inventory.low_stock')
+                      : null;
+              const stockMessageClass =
+                stockState === 'out'
+                  ? 'text-red-600'
+                  : stockState === 'low'
+                    ? 'text-amber-700'
+                    : 'text-gray-500';
               return (
                 <div
                   key={feed.id}
-                  className={`border-2 rounded-2xl p-3 ${
-                    isLowStock ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                  }`}
+                  className={`border-2 rounded-2xl p-3 ${cardBorderClass}`}
                 >
                   <div className="flex items-start justify-between mb-1">
                     <h3 className="font-bold text-gray-900 text-sm">{feed.feed_type}</h3>
-                    {isLowStock && (
-                      <AlertTriangle className="w-5 h-5 text-red-500" />
+                    {(stockState === 'out' || stockState === 'low') && (
+                      <AlertTriangle className={`w-5 h-5 ${stockState === 'out' ? 'text-red-500' : 'text-amber-500'}`} />
                     )}
                   </div>
                   <div className="flex justify-between items-baseline mb-1">
                     <span className="text-sm text-gray-600">{t('inventory.stock')}:</span>
                     <div className="text-right">
-                      <span className={`text-xl font-bold ${isLowStock ? 'text-red-600' : 'text-green-600'}`}>
+                      <span className={`text-xl font-bold ${stockNumberClass}`}>
                         {currentStock.toFixed(1)}
                       </span>
                       <span className="text-sm text-gray-500 ml-1">{feed.unit || 'bags'}</span>
                     </div>
                   </div>
-                  {isLowStock && (
-                    <p className="text-xs text-red-600 font-medium mb-1">{t('inventory.low_stock')}</p>
+                  {stockMessage && (
+                    <p className={`text-xs font-medium mb-1 ${stockMessageClass}`}>{stockMessage}</p>
                   )}
                   <p className="text-xs text-gray-500 mb-2">{t('inventory.last_updated')}: {formatDate(feed.last_updated)}</p>
-                  
+
                   <div className="flex gap-2">
                     <button
                       onClick={() => toggleItemVisibility(getItemKey('feed', feed.feed_type))}
@@ -709,6 +752,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
                           ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
+                      aria-label={hiddenItems.has(getItemKey('feed', feed.feed_type)) ? t('inventory.show_in_dashboard') : t('inventory.hide_from_dashboard')}
                       title={hiddenItems.has(getItemKey('feed', feed.feed_type)) ? t('inventory.show_in_dashboard') : t('inventory.hide_from_dashboard')}
                     >
                       {hiddenItems.has(getItemKey('feed', feed.feed_type)) ? (
@@ -725,6 +769,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
                       }}
                       disabled={currentRole === 'viewer'}
                       className="px-3 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors"
+                      aria-label={t('inventory.adjust_stock_quantity')}
                       title={t('inventory.adjust_stock_quantity')}
                     >
                       <Pencil className="w-4 h-4" />
@@ -733,6 +778,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
                       onClick={() => handleDeleteFeedItem(feed)}
                       disabled={!canManageInventory}
                       className="px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                      aria-label={t('inventory.delete_feed_item')}
                       title={t('inventory.delete_feed_item')}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -741,6 +787,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
                       <button
                         onClick={() => loadRelatedExpenses(feed.id, feed.feed_type, true, feed.unit || 'bags')}
                         className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                        aria-label={t('inventory.view_related_expenses')}
                         title={t('inventory.view_related_expenses')}
                       >
                         <Receipt className="w-4 h-4" />

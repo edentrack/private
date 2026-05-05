@@ -141,6 +141,39 @@ export function getCurrencyForCountry(country: string): string {
   return countryInfo?.currency || 'USD';
 }
 
+/**
+ * Map legacy / colloquial currency codes to their ISO 4217 equivalents,
+ * scoped by country when the alias is ambiguous.
+ *
+ * Audit fix: farms in Cameroon stored the colloquial "CFA" value in
+ * `currency_code`, which then mismatched the country-derived `XAF` and
+ * tripped the "Custom currency selected" warning even though the user
+ * had picked a country with a perfectly well-known ISO currency.
+ */
+const CFA_CENTRAL_AFRICA_COUNTRIES = new Set([
+  'Cameroon', 'Central African Republic', 'Chad', 'Republic of Congo',
+  'Equatorial Guinea', 'Gabon',
+]);
+const CFA_WEST_AFRICA_COUNTRIES = new Set([
+  'Senegal', 'Ivory Coast', 'Benin', 'Togo', 'Burkina Faso',
+  'Guinea-Bissau', 'Mali', 'Niger',
+]);
+
+export function normalizeCurrencyCode(country: string, storedCode: string | null | undefined): string {
+  const code = (storedCode || '').trim().toUpperCase();
+  if (!code) return getCurrencyForCountry(country);
+  // CFA is colloquial and ambiguous — pin to the right ISO using the country.
+  if (code === 'CFA') {
+    if (CFA_CENTRAL_AFRICA_COUNTRIES.has(country)) return 'XAF';
+    if (CFA_WEST_AFRICA_COUNTRIES.has(country)) return 'XOF';
+    // Unknown country with "CFA" — fall back to country mapping if any,
+    // otherwise leave the code untouched so the user can correct it.
+    const mapped = getCurrencyForCountry(country);
+    return mapped !== 'USD' ? mapped : 'XAF';
+  }
+  return code;
+}
+
 export function getCurrencySymbol(currencyCode: string): string {
   const country = Object.values(COUNTRY_CURRENCY_MAP).find(
     info => info.currency === currencyCode

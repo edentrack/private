@@ -208,10 +208,12 @@ async function deductBroilerInventory(
     flockId = anyFlock.id;
   }
 
+  // Defense-in-depth: scope by farm_id alongside id.
   const { data: flock } = await supabase
     .from('flocks')
     .select('id, current_count')
     .eq('id', flockId)
+    .eq('farm_id', farmId)
     .single();
 
   if (!flock) return;
@@ -224,7 +226,8 @@ async function deductBroilerInventory(
       current_count: newCount,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', flockId);
+    .eq('id', flockId)
+    .eq('farm_id', farmId);
 
   if (error) throw error;
 
@@ -301,6 +304,7 @@ export async function processRefund(data: ProcessRefundData): Promise<ReceiptRes
       .from('sales_receipts')
       .select('*, receipt_items(*)')
       .eq('id', data.receiptId)
+      .eq('farm_id', data.farmId)
       .single();
 
     if (!receipt) throw new Error('Receipt not found');
@@ -356,7 +360,8 @@ export async function processRefund(data: ProcessRefundData): Promise<ReceiptRes
               .update({
                 trays: mostRecentCollection.data.trays + item.quantity,
               })
-              .eq('id', mostRecentCollection.data.id);
+              .eq('id', mostRecentCollection.data.id)
+              .eq('farm_id', data.farmId);
 
             await supabase.from('inventory_movements').insert({
               farm_id: data.farmId,
@@ -375,6 +380,7 @@ export async function processRefund(data: ProcessRefundData): Promise<ReceiptRes
             .from('flocks')
             .select('id, current_count')
             .eq('id', receipt.flock_id)
+            .eq('farm_id', data.farmId)
             .maybeSingle();
 
           if (flock) {
@@ -384,7 +390,8 @@ export async function processRefund(data: ProcessRefundData): Promise<ReceiptRes
                 current_count: flock.current_count + item.quantity,
                 updated_at: new Date().toISOString(),
               })
-              .eq('id', flock.id);
+              .eq('id', flock.id)
+              .eq('farm_id', data.farmId);
 
             await supabase.from('inventory_movements').insert({
               farm_id: data.farmId,

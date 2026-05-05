@@ -9,7 +9,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Farm } from '../../types/database';
-import { SUPPORTED_COUNTRIES, getCurrencyForCountry, getCurrencySymbol } from '../../utils/currency';
+import { SUPPORTED_COUNTRIES, getCurrencyForCountry, getCurrencySymbol, normalizeCurrencyCode } from '../../utils/currency';
 import { FarmPermissionsSettings } from './FarmPermissionsSettings';
 import { FarmLocationSettings } from './FarmLocationSettings';
 import { TeamContactsSettings } from './TeamContactsSettings';
@@ -84,7 +84,13 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
         setFarmName(farmData.name ?? '');
         const farmCountry = farmData.country || 'Cameroon';
         setCountry(farmCountry);
-        const code = farmData.currency_code || farmData.currency || 'XAF';
+        const rawCode = farmData.currency_code || farmData.currency || 'XAF';
+        // Audit fix: the DB sometimes stores legacy aliases like "CFA"
+        // alongside a country whose ISO code is "XAF" or "XOF". Normalising
+        // here prevents the page from showing "Custom currency selected"
+        // for users who picked a perfectly normal country, and keeps the
+        // exchange-rate API (which needs ISO codes) working.
+        const code = normalizeCurrencyCode(farmCountry, rawCode);
         setCurrencyCode(code);
         setEggsPerTray(farmData.eggs_per_tray?.toString() || '30');
         setCostPerEggOverride(farmData.cost_per_egg_override?.toString() || '');
@@ -92,6 +98,9 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
         setFeedQuantityPerBag(farmData.feed_quantity_per_bag?.toString() || '50');
 
         const mappedCurrency = getCurrencyForCountry(farmCountry);
+        // Only treat as "custom currency" when the country is explicitly
+        // marked as Other / Custom OR the stored code legitimately differs
+        // from the country mapping (after alias normalisation).
         if (mappedCurrency !== code && farmCountry !== 'Other / Custom') {
           setIsCustomCurrency(true);
           setCustomCurrencyCode(code);

@@ -45,14 +45,18 @@ export async function createInventoryMovement(params: CreateMovementParams) {
 }
 
 export async function updateInventoryStock(
+  farmId: string,
   inventoryType: InventoryType,
   inventoryItemId: string,
   quantityChange: number
 ) {
+  // Defense-in-depth: every read/update here is pinned to farm_id so an
+  // accidental cross-farm inventory id can't reach into another farm's stock.
   if (inventoryType === 'feed') {
     const { data: currentItem } = await supabase
       .from('feed_inventory')
       .select('quantity')
+      .eq('farm_id', farmId)
       .eq('feed_type_id', inventoryItemId)
       .single();
 
@@ -65,6 +69,7 @@ export async function updateInventoryStock(
           quantity: newStock,
           updated_at: new Date().toISOString(),
         })
+        .eq('farm_id', farmId)
         .eq('feed_type_id', inventoryItemId);
 
       if (error) throw error;
@@ -74,6 +79,7 @@ export async function updateInventoryStock(
       .from('other_inventory_items')
       .select('quantity')
       .eq('id', inventoryItemId)
+      .eq('farm_id', farmId)
       .single();
 
     if (currentItem) {
@@ -85,7 +91,8 @@ export async function updateInventoryStock(
           quantity: newQuantity,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', inventoryItemId);
+        .eq('id', inventoryItemId)
+        .eq('farm_id', farmId);
 
       if (error) throw error;
     }
@@ -114,7 +121,7 @@ export async function recordInventoryIncrease(
     createdBy: userId,
   });
 
-  await updateInventoryStock(inventoryType, inventoryItemId, quantity);
+  await updateInventoryStock(farmId, inventoryType, inventoryItemId, quantity);
 }
 
 export async function recordInventoryDecrease(
@@ -139,5 +146,5 @@ export async function recordInventoryDecrease(
     createdBy: userId,
   });
 
-  await updateInventoryStock(inventoryType, inventoryItemId, -quantity);
+  await updateInventoryStock(farmId, inventoryType, inventoryItemId, -quantity);
 }

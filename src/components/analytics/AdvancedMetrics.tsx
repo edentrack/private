@@ -20,7 +20,7 @@ interface Metrics {
 }
 
 export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps) {
-  const { profile } = useAuth();
+  const { profile, currentFarm } = useAuth();
   const [metrics, setMetrics] = useState<Metrics>({
     fcr: 0,
     averageDailyGain: 0,
@@ -39,7 +39,7 @@ export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps
   }, [flock]);
 
   const calculateMetrics = async () => {
-    if (!flock) {
+    if (!flock || !currentFarm?.id) {
       setLoading(false);
       return;
     }
@@ -50,24 +50,29 @@ export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps
         (Date.now() - new Date(flock.arrival_date).getTime()) / (1000 * 60 * 60 * 24)
       );
 
+      // Defense-in-depth: scope by farm_id alongside flock_id.
       const [expensesRes, weightRes, eggSalesRes, mortalityRes] = await Promise.all([
         supabase
           .from('expenses')
           .select('amount, category')
+          .eq('farm_id', currentFarm.id)
           .eq('flock_id', flock.id),
         supabase
           .from('weight_logs')
           .select('average_weight, date')
+          .eq('farm_id', currentFarm.id)
           .eq('flock_id', flock.id)
           .order('date', { ascending: false })
           .limit(1),
         supabase
           .from('egg_sales')
           .select('total_amount, trays, trays_sold, unit_price')
+          .eq('farm_id', currentFarm.id)
           .eq('flock_id', flock.id),
         supabase
           .from('mortality_logs')
           .select('count')
+          .eq('farm_id', currentFarm.id)
           .eq('flock_id', flock.id),
       ]);
 
