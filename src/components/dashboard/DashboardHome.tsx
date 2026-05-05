@@ -29,7 +29,7 @@ import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 import { cleanHistoricalDuplicateTasks } from '../../utils/unifiedTaskSystem';
 import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
-import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES, AQUACULTURE_DEFAULT_PHASES } from '../../utils/speciesModules';
+import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES, AQUACULTURE_DEFAULT_PHASES, RABBIT_DEFAULT_PHASES } from '../../utils/speciesModules';
 
 interface DashboardHomeProps {
   onNavigate: (view: string) => void;
@@ -378,6 +378,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
   const getFlockTargetWeeks = (flock: Flock | null): number => {
     if (!flock) return 72;
     if (isAquaculture) return 24;
+    if (isRabbits) return 16; // Market-ready around week 15-16 for meat rabbits
     const isBroiler = flock.type?.toLowerCase() === 'broiler';
     return isBroiler
       ? (farmSettings?.broilerDuration ?? 8)
@@ -582,11 +583,15 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 animate-fade-in-up stagger-1">
         <div className="flex items-center gap-3">
-          <div className="stat-label">{isAquaculture ? 'Total Fish' : t('dashboard.total_birds')}</div>
+          <div className="stat-label">
+            {isAquaculture ? 'Total Fish' : isRabbits ? 'Total Rabbits' : t('dashboard.total_birds')}
+          </div>
           <div className="text-xl sm:text-4xl font-bold text-gray-900">{stats.totalBirds.toLocaleString()}</div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="stat-label">{isAquaculture ? 'Active Ponds' : t('dashboard.active_flocks')}</div>
+          <div className="stat-label">
+            {isAquaculture ? 'Active Ponds' : isRabbits ? 'Active Rabbitries' : t('dashboard.active_flocks')}
+          </div>
           <div className="text-xl sm:text-4xl font-bold text-gray-900">{stats.totalFlocks}</div>
         </div>
         <div className="flex items-center gap-3">
@@ -646,13 +651,15 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
             // Use farm settings phases if available, otherwise use defaults from species module
             const phases = isAquaculture
               ? AQUACULTURE_DEFAULT_PHASES
-              : isBroiler
-                ? (farmSettings.broilerPhases && farmSettings.broilerPhases.length > 0
-                    ? farmSettings.broilerPhases
-                    : BROILER_DEFAULT_PHASES)
-                : (farmSettings.layerPhases && farmSettings.layerPhases.length > 0
-                    ? farmSettings.layerPhases
-                    : LAYER_DEFAULT_PHASES);
+              : isRabbits
+                ? RABBIT_DEFAULT_PHASES
+                : isBroiler
+                  ? (farmSettings.broilerPhases && farmSettings.broilerPhases.length > 0
+                      ? farmSettings.broilerPhases
+                      : BROILER_DEFAULT_PHASES)
+                  : (farmSettings.layerPhases && farmSettings.layerPhases.length > 0
+                      ? farmSettings.layerPhases
+                      : LAYER_DEFAULT_PHASES);
             const currentPhase = phases.find(p => currentWeek >= p.startWeek && currentWeek <= p.endWeek);
             
             return (
