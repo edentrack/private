@@ -9,7 +9,19 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-check
+dist-verify
 *.local
+
+# Vite timestamp scratch files (regenerated on every dev run)
+vite.config.ts.timestamp-*
+
+# Backup files from side-by-side review sessions
+*.NEW
+*.OLD
+
+# Supabase CLI scratch files
+supabase/.temp/
 
 .vscode/*
 !.vscode/extensions.json
