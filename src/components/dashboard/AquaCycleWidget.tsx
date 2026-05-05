@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw, Check, Circle, ArrowRight, Scale, Fish, AlertCircle, Zap } from 'lucide-react';
+import { WhyThisMatters } from '../common/WhyThisMatters';
 import { Flock } from '../../types/database';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -296,8 +297,9 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs text-gray-600 uppercase tracking-wide mb-0.5">
+              <p className="text-xs text-gray-600 uppercase tracking-wide mb-0.5 flex items-center">
                 Week {currentWeek} ABW
+                {onNavigate && <WhyThisMatters topic="abw_sampling" onNavigate={onNavigate} />}
               </p>
               {sample.abwG ? (
                 <>
@@ -325,7 +327,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
         <div className="mb-3">
           <p className="text-sm font-medium text-gray-700 mb-2">Key Milestones</p>
           <div className="space-y-2">
-            {milestones.slice(0, 4).map((m, idx) => (
+            {milestones.map((m, idx) => (
               <div
                 key={idx}
                 className={`flex items-center gap-2 text-sm ${

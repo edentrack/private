@@ -81,6 +81,126 @@ const FISH_KNOWLEDGE = `
 - Feed cost = 60–70% of production cost; target >30% profit margin
 `;
 
+const POULTRY_KNOWLEDGE = `
+## Poultry Overview (West Africa)
+**Broilers**: Cobb 500 / Ross 308, 6–8 week cycle, target 2.0–2.5 kg live weight. FCR 1.6–1.8 = excellent, >2.2 = investigate. Mortality target <5% per cycle.
+**Layers**: ISA Brown / Lohmann Brown, peak lay rate 90–95% at weeks 28–35. Cull when lay rate drops below 60% sustained for 4 weeks.
+**Dual-purpose (Noiler/Sasso/Kuroiler)**: ~16 weeks to market, hardier, lower inputs, popular West African backyard farms.
+
+## Brooding (first 2 weeks decide the whole cycle)
+Day 1–3: 32–35°C · Day 4–7: 30–32°C · Week 2: 27–29°C · Week 3: 24–26°C · Week 4+: 18–24°C.
+Chills in week 1 → huddling → crushing → respiratory disease → mortality spike. Pre-warm brooder 24h before chicks arrive.
+Ventilation: 5 m³/hr/bird. Ammonia smell = change litter + increase airflow.
+
+## Feeding (broilers g/day per bird)
+Wk1: 25–30g · Wk2: 60–70g · Wk3: 100–110g · Wk4: 130–145g · Wk5: 165–180g · Wk6: 195–210g · Wk7: 220–235g.
+Feed bands: Starter 1–14d (22–24% protein) → Grower 15–28d (20–22%) → Finisher 29d+ (18–20%).
+Sell broilers when FCR climbs past 2.0 — each extra day costs more feed than the weight gained.
+
+## Layers lighting
+Pullets (1–18 wk): natural daylight only — extending light triggers premature lay (smaller eggs, burnout by wk 50).
+Pre-lay onwards: 14–16 hrs/day. Adjust by max 15 min/day to avoid stress and lay-rate drop.
+
+## Diseases
+- **NCD (Newcastle)**: paralysis, twisted necks, sudden mass death — NO TREATMENT. Vaccinate day 7, 21, wk 8, then every 3 months. Most important vaccine.
+- **Gumboro (IBD)**: bloody diarrhea, prostration, 2–4 week birds — vaccinate day 14 and 21.
+- **IB (Infectious Bronchitis)**: respiratory + drop in lay + soft-shelled eggs — vaccinate alongside NCD.
+- **Coccidiosis**: bloody droppings in 2–6 week chicks — amprolium or sulfadimidine 5–7 days. Coccidiostat in feed prevents recurrence.
+- **CRD/Mycoplasma**: rattling breath, swollen sinuses — tylosin in water 5 days.
+- **E. coli (airsacculitis)**: follows stress events — antibiotics + identify and reduce stress cause.
+- **Fowl Typhoid (Salmonella)**: green diarrhea, sudden mortality — enrofloxacin + hygiene overhaul.
+
+## Vaccination Schedule (layers)
+Day 1: Marek's (hatchery) · Day 7: NCD+IB eye drop · Day 14: Gumboro water · Day 21: NCD+IB booster · Day 28: Gumboro booster · Wk 6: Fowl Pox wing-web · Wk 8: NCD Lasota · Wk 10: Deworm · Wk 16: NCD+IB+EDS injection. NCD booster every 3 months.
+
+## Quick Diagnostics
+- **Sudden mass death**: NCD/HPAI (check nervous symptoms), heat stress (gasping, wings spread, afternoon), water cut-off, suffocation (cold night huddling).
+- **Drop in lay rate**: stress event recovers in 3–7d; disease (IB/EDS); light schedule disrupted; feed quality drop; age-related decline normal after wk 50.
+- **Bloody droppings**: coccidiosis (most likely in 2–6 wk chicks) — amprolium 5 days.
+- **Gasping with open beaks**: heat stress → fans + cool water; OR ammonia → change litter immediately.
+- **Cannibalism/pecking**: overcrowding, bright lighting, protein deficiency, boredom.
+- **Cracked eggs**: calcium deficiency → add oyster shell; or IB; or heat stress.
+
+## Formulas
+Mortality % = deaths ÷ initial count × 100. Target <5% broilers.
+FCR = total feed (kg) ÷ total live weight gained (kg). Broilers target 1.6–1.8.
+Lay rate % = eggs collected ÷ hens housed × 100. Target 90%+ at peak.
+Days to market = (target weight g − current weight g) ÷ daily gain g.
+
+## Seasonal (West Africa)
+Demand peaks: Christmas, Easter, Eid, independence days. Order broiler chicks 8 weeks ahead of peak.
+Rainy season: coccidiosis risk — keep litter dry, turn weekly. Cold nights stress young chicks.
+Harmattan: dust + dryness → respiratory disease. Check dust levels, increase water points.
+`;
+
+const RABBIT_KNOWLEDGE = `
+## Rabbit Overview (Smallholder, West Africa)
+Breeds: New Zealand White, Californian, Flemish Giant, Chinchilla, local crosses.
+Cycle: 12–14 weeks kit to market. Market weight: 2.0–2.5 kg live. FCR target 3.0–3.5 (good), >4.0 = investigate.
+Does: 5–7 litters/year intensive, 4–5 semi-intensive. Average litter: 8 kits (range 6–10). Productive doe life 2.5–3 years.
+Breeding: does ready at 5–6 months (4–4.5 kg), bucks at 6–7 months. Buck:doe ratio 1:8–1:10.
+
+## Lifecycle Phases
+Kit (wk 1–4): hairless, blind, on doe's milk. Eyes open day 10. Doe nurses only 1–2×/day — do NOT disturb.
+Weanling (wk 5–8): recently weaned, MOST VULNERABLE phase — digestive upsets, enterotoxemia risk. Hay is critical.
+Grower (wk 9–14): fastest weight gain, highest feed intake, FCR best here.
+Market-ready (wk 15+): 2.0–2.5 kg — sell before FCR worsens past 3.5.
+
+## Hutch Setup
+Temperature: 15–22°C optimal, 10–28°C acceptable. >30°C = heat stress risk; >32°C = lethal. Give frozen bottles, shade, fan.
+Floor: wire mesh (15×15mm) PLUS solid resting board (15cm×25cm wood) in each hutch — wire-only causes sore hocks.
+Buck: ALWAYS solo-house. Bucks fight fatally when together.
+Space: doe+litter 1m², doe alone 0.5–0.7m², buck 0.5m², growers 0.15m²/rabbit (max 6–8 per group hutch).
+
+## Feeding (daily per animal)
+Weanling (wk 5–8): 60–80g pellets, unlimited hay, introduce greens very slowly.
+Grower (wk 9–14): 120–150g pellets, unlimited hay, 200–300g greens/day.
+Adult doe (not pregnant): 100–120g pellets, unlimited hay, 200g greens.
+Lactating doe: 200–280g pellets, unlimited hay, 300–400g greens.
+ALWAYS provide hay — prevents GI stasis, the silent killer. Hay = non-negotiable.
+NEVER feed: onions, garlic, avocado, rhubarb, raw beans, wet/wilted greens, bread, sweets.
+
+## Diseases
+- **Pasteurellosis (snuffles)**: white nasal discharge, sneezing, eye infection — most common disease. Treat: enrofloxacin 5–7 days. Cull chronic carriers — they shed bacteria for life and infect the whole herd. Isolate IMMEDIATELY.
+- **Coccidiosis**: bloody or mucousy diarrhea in wk 4–10 kits — amprolium or sulfaquinoxaline 5–7 days. Prevent with clean water + dry hutches.
+- **Enterotoxemia**: sudden death in weanlings, often after feed change or antibiotic use — probiotics + electrolytes, often fatal. NEVER change feed abruptly (transition over 7 days).
+- **Sore hocks (pododermatitis)**: ulcers on foot pads from wire-only floors or wet bedding — add solid resting board, dry the hutch.
+- **Ear mites**: scratching ears, brown crust inside ear — ivermectin injection or topical mineral oil.
+- **Heat stroke**: >32°C, ears bright red, panting, flat — cool water on ears, frozen bottles, fan, shade.
+- **Mastitis**: hot hard mammary gland, doe rejects kits — antibiotics, foster kits if possible.
+- **GI stasis / hairballs**: not eating, no droppings — pineapple juice, simethicone, high hay, exercise.
+
+## Breeding & Kindling
+Always bring DOE to BUCK's hutch (never the reverse — bucks perform poorly in unfamiliar hutch, does are territorial and fight).
+Successful mating: buck mounts and falls off sideways/backwards. Confirm pregnancy by palpating abdomen at day 10–12 (grape-sized lumps).
+Gestation: 30–32 days. Place clean nest box at day 28 (doe pulls fur from belly 24–48h before).
+Most kindlings happen at night/dawn. Check first thing in morning. Kits nurse only 1–2x/day — normal.
+Semi-intensive re-breed schedule (recommended): re-breed doe at wk 6–8 post-kindling, wean kits at wk 5–6. Yields 4–5 litters/year. Healthier does, longer life.
+
+## Quick Diagnostics
+- **Sudden death**: heat stroke (hot weather + poor ventilation), enterotoxemia (weanlings), RHD (multiple deaths same day), predation.
+- **White nasal discharge + sneezing**: Pasteurellosis — isolate immediately, treat, cull chronic cases.
+- **Bloody/mucousy diarrhea (kits wk 4–10)**: coccidiosis — amprolium or sulfa.
+- **Doe rejects kits / cannibalism**: first-time doe (usually improves), stress, low protein, mastitis.
+- **Slow growth (<1.5 kg at wk 12)**: internal parasites, subclinical coccidiosis, low protein feed, overcrowding, poor genetics.
+- **Limping, swollen feet**: sore hocks — add solid resting board, dry the hutch.
+
+## Formulas
+Kit survival % = kits weaned ÷ kits born alive × 100. Target >70%. Below 70% = investigate (cold, disease, low milk).
+FCR = total feed (kg) ÷ live weight gain (kg). Target 3.0–3.5.
+Doe productivity = litters/year × kits/litter × survival rate. Good doe: 5 × 8 × 0.8 = 32 kits/year.
+Days to market = (target weight g − current weight g) ÷ daily gain g.
+
+## Cull Decisions
+Cull doe when: misses 3 consecutive matings; litter size <5 for 2 litters; survival <60% for 2 litters; chronic snuffles; age >3 years with declining output; recurring mastitis.
+Cull buck when: refuses to breed 4+ weeks; daughters' litters consistently below average; age >4 years.
+
+## Seasonal & Market (West Africa)
+Demand peaks: Christmas, Easter, Eid. Plan grow-out batches 12–14 weeks ahead. Rabbit meat is a niche but growing market — hotels and urban buyers pay 1.5–2× chicken price/kg.
+Harmattan: dust + dryness aggravates snuffles. Consider wet sacks near hutches.
+Rainy season: hutches get wet → coccidiosis spikes, sore hocks worsen. Raise hutches, improve drainage.
+`;
+
 function selectModel(messages: ChatMessage[]): string {
   const last = messages[messages.length - 1];
   if (!last) return MODEL_SONNET;
@@ -972,10 +1092,12 @@ Deno.serve(async (req: Request) => {
         : `Owners have FULL access to all features and data.`
     );
 
-    const aquaIdentityNote = farmType === "aquaculture"
+    const speciesNote = farmType === "aquaculture"
       ? `\n\n## THIS IS A FISH FARM (AQUACULTURE)\nYou are now advising a fish farmer. Replace all poultry language with aquaculture equivalents: pond/fish/fingerlings/stocking. For any mortality question, check water quality first — 80% of fish deaths are water-quality related.\n${FISH_KNOWLEDGE}`
-      : "";
-    const systemMessage = SYSTEM_PROMPT + aquaIdentityNote + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+      : farmType === "rabbits"
+      ? `\n\n## THIS IS A RABBIT FARM (RABBITRY)\nYou are now advising a rabbit farmer. Use rabbit-specific terms: hutch, doe, buck, kit, weanling, grower, litter. Reference hutch hygiene, hay availability, Pasteurella, and GI stasis as the recurring issues. Do NOT use poultry or fish terms.\n${RABBIT_KNOWLEDGE}`
+      : `\n\n## THIS IS A POULTRY FARM\nYou are advising a poultry farmer. Apply poultry-specific knowledge — broilers, layers, or dual-purpose depending on context. Use flock/birds/chicks/hens appropriately.\n${POULTRY_KNOWLEDGE}`;
+    const systemMessage = SYSTEM_PROMPT + speciesNote + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     // Keep fewer turns on long conversations to stay within context limits

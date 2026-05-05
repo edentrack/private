@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Egg, Package, AlertTriangle, DollarSign, HelpCircle } from 'lucide-react';
+import { WhyThisMatters } from '../common/WhyThisMatters';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
@@ -32,9 +33,10 @@ interface KPIData {
 interface CoreKPISectionProps {
   /** When this value changes, KPIs (including egg counts) are refetched */
   refreshTrigger?: number;
+  onNavigate?: (view: string) => void;
 }
 
-export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
+export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionProps) {
   const { t } = useTranslation();
   const { profile, currentFarm } = useAuth();
   const { showEggs, showFCR } = useFarmType();
@@ -318,7 +320,10 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
             <div className="w-6 h-6 bg-red-600 rounded-lg flex items-center justify-center">
               <AlertTriangle className="w-3 h-3 text-white" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900">{farmSpecies.lossNoun} Rate</h3>
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+              {farmSpecies.lossNoun} Rate
+              {onNavigate && <WhyThisMatters topic="mortality_threshold" onNavigate={onNavigate} />}
+            </h3>
           </div>
           <div className="mb-1">
             <span className="text-lg font-bold text-red-600">{kpiData.mortalityRate.toFixed(2)}%</span>
@@ -357,6 +362,7 @@ export function CoreKPISection({ refreshTrigger }: CoreKPISectionProps) {
             </div>
             <div className="flex items-center gap-1">
               <h3 className="text-sm font-semibold text-gray-900">FCR</h3>
+              {onNavigate && <WhyThisMatters topic="fcr" onNavigate={onNavigate} />}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowFCRTooltip(true)}

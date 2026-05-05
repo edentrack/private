@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { SamplingEvent } from '../../types/database';
+import { WhyThisMatters } from '../common/WhyThisMatters';
 
 interface AquaFlock {
   id: string;
@@ -41,7 +42,11 @@ function formatDate(s: string): string {
   return parseDate(s).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export function SamplingEventsPage() {
+interface SamplingEventsPageProps {
+  onNavigate?: (view: string) => void;
+}
+
+export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
   const { currentFarm } = useAuth();
   const toast = useToast();
 
@@ -51,9 +56,14 @@ export function SamplingEventsPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const todayLocal = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   // Form state
   const [formFlockId, setFormFlockId] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(todayLocal);
   const [formWeights, setFormWeights] = useState<string[]>(Array(10).fill(''));
   const [formNotes, setFormNotes] = useState('');
 
@@ -92,7 +102,7 @@ export function SamplingEventsPage() {
   };
 
   const resetForm = () => {
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate(todayLocal());
     setFormWeights(Array(10).fill(''));
     setFormNotes('');
     if (flocks.length > 0) setFormFlockId(flocks[0].id);
@@ -139,6 +149,7 @@ export function SamplingEventsPage() {
       sampled_at: formDate,
       sample_size: validWeights.length,
       individual_weights_g: validWeights,
+      abw_g: previewAbw,
       notes: formNotes || null,
     });
     setSubmitting(false);
@@ -228,21 +239,30 @@ export function SamplingEventsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <div className="bg-indigo-50 rounded-lg p-2">
-                    <div className="text-[10px] font-medium text-indigo-700 uppercase tracking-wide">ABW</div>
+                    <div className="text-[10px] font-medium text-indigo-700 uppercase tracking-wide flex items-center">
+                      ABW
+                      {onNavigate && <WhyThisMatters topic="abw_sampling" onNavigate={onNavigate} />}
+                    </div>
                     <div className="text-lg font-bold text-indigo-900">
                       {latest.abw_g ? `${latest.abw_g.toFixed(1)} g` : '—'}
                     </div>
                     <div className="text-[10px] text-indigo-600 mt-0.5">{formatDate(latest.sampled_at)}</div>
                   </div>
                   <div className="bg-emerald-50 rounded-lg p-2">
-                    <div className="text-[10px] font-medium text-emerald-700 uppercase tracking-wide">Biomass</div>
+                    <div className="text-[10px] font-medium text-emerald-700 uppercase tracking-wide flex items-center">
+                      Biomass
+                      {onNavigate && <WhyThisMatters topic="biomass_projection" onNavigate={onNavigate} />}
+                    </div>
                     <div className="text-lg font-bold text-emerald-900">
                       {biomass != null ? `${biomass.toFixed(1)} kg` : '—'}
                     </div>
                     <div className="text-[10px] text-emerald-600 mt-0.5">{f.current_count.toLocaleString()} fish</div>
                   </div>
                   <div className="bg-amber-50 rounded-lg p-2 col-span-2">
-                    <div className="text-[10px] font-medium text-amber-700 uppercase tracking-wide">Growth (SGR)</div>
+                    <div className="text-[10px] font-medium text-amber-700 uppercase tracking-wide flex items-center">
+                      Growth (SGR)
+                      {onNavigate && <WhyThisMatters topic="sgr" onNavigate={onNavigate} />}
+                    </div>
                     <div className="text-lg font-bold text-amber-900">
                       {sgr != null ? `${sgr.toFixed(2)} %/day` : '—'}
                     </div>
@@ -294,9 +314,10 @@ export function SamplingEventsPage() {
 
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-medium text-gray-600">
+              <label className="flex items-center text-xs font-medium text-gray-600">
                 Individual Weights (grams)
                 <span className="ml-2 text-gray-400 font-normal">— at least 5, ideally 10–20</span>
+                {onNavigate && <WhyThisMatters topic="sample_size_recommendation" onNavigate={onNavigate} />}
               </label>
               {previewAbw != null && (
                 <span className="text-xs text-[#3D5F42] font-medium">

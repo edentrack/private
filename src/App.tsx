@@ -1036,11 +1036,11 @@ function AppContent() {
           </RequireRole>
         );
       case 'water-quality':
-        return <WaterQualityPage />;
+        return <WaterQualityPage onNavigate={navigateToView} />;
       case 'harvest':
         return <HarvestPage />;
       case 'sampling':
-        return <SamplingEventsPage />;
+        return <SamplingEventsPage onNavigate={navigateToView} />;
       case 'stocking':
         return <StockingEventsPage />;
       case 'vet-log':

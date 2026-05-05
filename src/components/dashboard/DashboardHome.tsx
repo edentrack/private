@@ -732,7 +732,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
 
       {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(farm.plan, 'kpis') && (
         <div data-tour="kpi-section">
-          <CoreKPISection refreshTrigger={eggRefreshTrigger} />
+          <CoreKPISection refreshTrigger={eggRefreshTrigger} onNavigate={onNavigate} />
         </div>
       )}
 

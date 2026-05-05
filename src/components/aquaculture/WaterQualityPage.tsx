@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { WaterQualityLog } from '../../types/database';
+import { WhyThisMatters } from '../common/WhyThisMatters';
 
 interface AquaFlock {
   id: string;
@@ -20,7 +21,11 @@ function getDOStatus(do2: number | null | undefined): { label: string; color: st
 
 const AQUA_TYPES = ['Catfish', 'Tilapia', 'Clarias', 'Other Fish'];
 
-export function WaterQualityPage() {
+interface WaterQualityPageProps {
+  onNavigate?: (view: string) => void;
+}
+
+export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
   const { currentFarm } = useAuth();
   const toast = useToast();
 
@@ -30,9 +35,14 @@ export function WaterQualityPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const todayLocal = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   // Form state
   const [formFlockId, setFormFlockId] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(todayLocal);
   const [formTemp, setFormTemp] = useState('');
   const [formDO, setFormDO] = useState('');
   const [formPH, setFormPH] = useState('');
@@ -75,7 +85,7 @@ export function WaterQualityPage() {
   };
 
   const resetForm = () => {
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate(todayLocal());
     setFormTemp('');
     setFormDO('');
     setFormPH('');
@@ -179,8 +189,9 @@ export function WaterQualityPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <Thermometer className="inline w-3 h-3 mr-1" />Temperature (°C)
+              <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
+                <Thermometer className="w-3 h-3 mr-1 flex-shrink-0" />Temperature (°C)
+                {onNavigate && <WhyThisMatters topic="water_temperature" onNavigate={onNavigate} />}
               </label>
               <input
                 type="number"
@@ -194,8 +205,9 @@ export function WaterQualityPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <Wind className="inline w-3 h-3 mr-1" />Dissolved Oxygen (mg/L)
+              <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
+                <Wind className="w-3 h-3 mr-1 flex-shrink-0" />Dissolved Oxygen (mg/L)
+                {onNavigate && <WhyThisMatters topic="dissolved_oxygen" onNavigate={onNavigate} />}
               </label>
               <input
                 type="number"
@@ -210,8 +222,9 @@ export function WaterQualityPage() {
               <p className="text-xs text-gray-400 mt-0.5">Normal: ≥5 mg/L</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <FlaskConical className="inline w-3 h-3 mr-1" />pH
+              <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
+                <FlaskConical className="w-3 h-3 mr-1 flex-shrink-0" />pH
+                {onNavigate && <WhyThisMatters topic="ph_for_fish" onNavigate={onNavigate} />}
               </label>
               <input
                 type="number"
@@ -226,8 +239,9 @@ export function WaterQualityPage() {
               <p className="text-xs text-gray-400 mt-0.5">Ideal: 6.5 – 8.5</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <AlertTriangle className="inline w-3 h-3 mr-1" />Ammonia NH₃ (mg/L)
+              <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
+                <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />Ammonia NH₃ (mg/L)
+                {onNavigate && <WhyThisMatters topic="ammonia" onNavigate={onNavigate} />}
               </label>
               <input
                 type="number"
@@ -242,8 +256,9 @@ export function WaterQualityPage() {
               <p className="text-xs text-gray-400 mt-0.5">Safe: &lt;0.02 mg/L · Critical: &gt;0.1</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                <AlertTriangle className="inline w-3 h-3 mr-1" />Nitrite NO₂ (mg/L)
+              <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
+                <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />Nitrite NO₂ (mg/L)
+                {onNavigate && <WhyThisMatters topic="nitrite" onNavigate={onNavigate} />}
               </label>
               <input
                 type="number"
