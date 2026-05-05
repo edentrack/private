@@ -217,14 +217,15 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               <div className={`grid gap-2 ${availableTypes.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 {availableTypes.map((animalType) => {
                   const getImageForType = (t: string) => {
-                    if (t === 'Layer') return '/layer.jpg';
-                    if (t === 'Broiler') return '/broiler.png';
-                    if (t === 'Tilapia') return '/tilapia.jpg';
-                    if (t === 'Catfish') return '/catfish.png';
-                    if (t === 'Clarias') return '/catfish.png';
-                    if (t === 'Other Fish') return '/other-fish.avif';
-                    if (t === 'Meat Rabbits' || t === 'Breeder Rabbits') return '/rabbit.avif';
-                    return '/broiler.png';
+                    if (t === 'Layer') return '/species/layer.jpg';
+                    if (t === 'Broiler') return '/species/broiler.jpg';
+                    if (t === 'Tilapia') return '/species/tilapia.jpg';
+                    if (t === 'Catfish') return '/species/catfish.jpg';
+                    if (t === 'Clarias') return '/species/clarias.jpg';
+                    if (t === 'Other Fish') return '/species/other-fish.jpg';
+                    if (t === 'Meat Rabbits') return '/species/meat-rabbit.jpg';
+                    if (t === 'Breeder Rabbits') return '/species/breeder-rabbit.jpg';
+                    return '/species/broiler.jpg';
                   };
                   const getDescriptionForType = (animalType: string) => {
                     if (animalType === 'Layer') return t('flocks.egg_production');
@@ -245,10 +246,8 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                       <img
                         src={getImageForType(animalType)}
                         alt={animalType}
-                        className={`w-10 h-10 object-contain mx-auto mb-1 mix-blend-multiply ${
-                          (animalType === 'Other Fish' || animalType === 'Meat Rabbits' || animalType === 'Breeder Rabbits') ? 'image-remove-white' : ''
-                        }`}
-                        style={{ backgroundColor: 'transparent' }}
+                        className="w-10 h-10 object-cover rounded-lg mx-auto mb-1"
+                        style={{ backgroundColor: '#f5f0e8' }}
                       />
                       <div className="text-xs font-bold text-gray-900 leading-tight">{animalType}</div>
                       {getDescriptionForType(animalType) && (

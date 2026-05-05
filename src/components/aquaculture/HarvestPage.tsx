@@ -33,9 +33,14 @@ export function HarvestPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const todayLocal = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   // Form state
   const [formFlockId, setFormFlockId] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(todayLocal);
   const [formWeight, setFormWeight] = useState('');
   const [formPricePerKg, setFormPricePerKg] = useState('');
   const [formTotalAmount, setFormTotalAmount] = useState('');
@@ -86,7 +91,7 @@ export function HarvestPage() {
   };
 
   const resetForm = () => {
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate(todayLocal());
     setFormWeight('');
     setFormPricePerKg('');
     setFormTotalAmount('');

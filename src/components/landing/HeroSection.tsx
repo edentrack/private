@@ -322,7 +322,8 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
 
           {/* Subheading */}
           <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Track flocks, manage sales, monitor inventory, and grow your profits with the most comprehensive farm management platform.
+            Run poultry, fish, and rabbits from one place. Log daily tasks, track feed and water,
+            and let Eden AI turn your records into decisions you can act on today.
           </p>
 
           {/* Tagline */}

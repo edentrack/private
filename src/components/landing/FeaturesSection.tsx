@@ -6,54 +6,54 @@ export default function FeaturesSection() {
   const mainFeatures = [
     {
       icon: TrendingUp,
-      title: 'Multi-Species Support',
-      description: 'Manage poultry, rabbits, and fish all in one platform',
-      color: 'text-neon-600',
-      bgColor: 'bg-neon-100',
-    },
-    {
-      icon: BarChart3,
-      title: 'Real-Time Analytics',
-      description: 'Track performance, expenses, and revenue with live insights',
-      color: 'text-agri-brown-600',
-      bgColor: 'bg-agri-brown-100',
-    },
-    {
-      icon: Smartphone,
-      title: 'Mobile-First',
-      description: 'Access your farm data anywhere, anytime on any device',
-      color: 'text-neon-600',
-      bgColor: 'bg-neon-100',
-    },
-    {
-      icon: Globe,
-      title: 'Multi-Language',
-      description: 'Available in English, French, and more languages',
-      color: 'text-agri-brown-600',
-      bgColor: 'bg-agri-brown-100',
-    },
-    {
-      icon: Shield,
-      title: 'Secure & Private',
-      description: 'Your data is encrypted and secure with role-based access',
+      title: 'Three species, one app',
+      description: 'Layers, broilers, tilapia, catfish, meat rabbits, breeders — same shell, species-aware features.',
       color: 'text-neon-600',
       bgColor: 'bg-neon-100',
     },
     {
       icon: Zap,
-      title: 'AI-Powered Insights',
-      description: 'Get intelligent recommendations and forecasts',
+      title: 'Eden AI on every screen',
+      description: 'Ask about feeding rates, water-quality emergencies, harvest timing — answers grounded in your real farm data.',
+      color: 'text-agri-brown-600',
+      bgColor: 'bg-agri-brown-100',
+    },
+    {
+      icon: BarChart3,
+      title: 'Records that turn into decisions',
+      description: 'Daily entries become weekly trends, FCR, survival, and a clear sell-vs-keep signal.',
+      color: 'text-neon-600',
+      bgColor: 'bg-neon-100',
+    },
+    {
+      icon: Smartphone,
+      title: 'Built mobile-first',
+      description: 'Designed for the farm gate, not a desk. Works on any phone, online or offline.',
+      color: 'text-agri-brown-600',
+      bgColor: 'bg-agri-brown-100',
+    },
+    {
+      icon: Globe,
+      title: 'Localized for your market',
+      description: 'Currencies, languages, and feed/medicine names that match where you actually farm.',
+      color: 'text-neon-600',
+      bgColor: 'bg-neon-100',
+    },
+    {
+      icon: Shield,
+      title: 'Roles for the whole team',
+      description: 'Owner, manager, worker, viewer — each sees what they need, nothing they shouldn’t.',
       color: 'text-agri-brown-600',
       bgColor: 'bg-agri-brown-100',
     },
   ];
 
   const trackFeatures = [
-    { text: 'Flock Management', subtext: 'Track poultry, rabbits, and fish with species-specific features' },
-    { text: 'Sales & Revenue', subtext: 'Record sales, manage customers, and track revenue in real-time' },
-    { text: 'Expense Tracking', subtext: 'Monitor all expenses and analyze spending patterns' },
-    { text: 'Inventory Management', subtext: 'Track feed, supplies, and other inventory items' },
-    { text: 'Weight Analysis', subtext: 'Monitor growth and market readiness with detailed analytics' },
+    { text: 'Multi-species tracking', subtext: 'Flocks, ponds, and rabbitries — pick your species, the app adapts every label, KPI, and task list.' },
+    { text: 'Daily tasks, weekly trends', subtext: 'Log feeding, water DO, mortality, weights — Edentrack rolls them into the metrics that matter.' },
+    { text: 'Sales and expenses', subtext: 'Per-flock revenue, per-pond costs, per-rabbitry margins. Profit and loss without the spreadsheet.' },
+    { text: 'Feed and inventory', subtext: 'Auto-deduct as you log daily tasks. Per-species feeding rates and starter/grower/finisher schedules built in.' },
+    { text: 'Weights and growth', subtext: 'Bird weight checks for poultry, individual fish sampling with ABW and SGR, weanling growth curves for rabbits.' },
   ];
 
   const additionalFeatures = [

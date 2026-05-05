@@ -404,29 +404,26 @@ export function EggIntervalTaskTracker({
         };
 
         if (curveView === 'day') {
-          const { data: firstCollectionRow } = await supabase
-            .from('egg_collections')
-            .select('collection_date, collected_on, interval_start_at')
-            .eq('farm_id', currentFarm.id)
-            .eq('flock_id', selectedFlockId)
-            .order('collection_date', { ascending: true })
-            .order('collected_on', { ascending: true })
-            .order('interval_start_at', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
-          const firstDate =
-            String(
-              firstCollectionRow?.collection_date ||
-                firstCollectionRow?.collected_on ||
-                firstCollectionRow?.interval_start_at ||
-                selectedDate
-            ).slice(0, 10) || selectedDate;
-          const dayStart = /^\d{4}-\d{2}-\d{2}$/.test(firstDate) ? firstDate : selectedDate;
+          // Bug fix (2026-05-05 audit): the day-view used to start at the
+          // first egg-collection in DB (could be months old) and end on
+          // selectedDate, producing a chart that spanned 60+ data points
+          // and read as monthly when the user expected daily. Anchor to a
+          // rolling 14-day window ending on selectedDate so the chart
+          // always shows "today + 13 days back" — current vs. previous-day
+          // comparison reads naturally.
           const dayEnd = selectedDate;
+          const dayStart = DateTime.fromISO(selectedDate, { zone: 'utc' })
+            .minus({ days: 13 })
+            .toISODate() || selectedDate;
 
           const eggs = await fetchCollectionsRange(dayStart, dayEnd);
-          const scoped = eggs.filter((e: any) => e.flock_id === selectedFlockId || e.flock_id == null);
+          // Bug fix (2026-05-05 audit): the `|| e.flock_id == null` clause
+          // double-counted any orphan egg-collection rows into every flock's
+          // chart, producing implausibly high daily totals (e.g. 1,054 eggs
+          // for a flock physically incapable of producing that). Drop the
+          // null branch — orphan rows must be re-assigned, not silently
+          // attributed to the active flock.
+          const scoped = eggs.filter((e: any) => e.flock_id === selectedFlockId);
           const byDay = new Map<string, number>();
           scoped.forEach((c: any) => {
             const day = String(c.collection_date || c.collected_on || '').slice(0, 10);
@@ -443,6 +440,11 @@ export function EggIntervalTaskTracker({
             values.push(Math.round(byDay.get(iso) || 0));
             d = d.plus({ days: 1 });
           }
+          // "Today vs previous day" comparison: shift the values one day
+          // forward so each label sees its previous day's count alongside
+          // its own. The previous-day for the leftmost label is unknown,
+          // shown as 0.
+          const previous = values.map((_, i) => (i === 0 ? 0 : values[i - 1]));
           const selectedIdx = Math.max(
             0,
             DateTime.fromISO(selectedDate, { zone: 'utc' }).diff(
@@ -450,14 +452,16 @@ export function EggIntervalTaskTracker({
               'days'
             ).days
           );
+          const todayCount = values[values.length - 1] || 0;
+          const yesterdayCount = values[values.length - 2] || 0;
           setPeriodCurve({
             labels,
             current: values,
-            previous: [],
+            previous,
             projected: values.map((v) => v),
             elapsedIndex: Math.min(values.length - 1, Math.floor(selectedIdx)),
-            currentTotal: values.reduce((a, b) => a + b, 0),
-            previousTotal: 0,
+            currentTotal: todayCount,
+            previousTotal: yesterdayCount,
             projectedTotal: null,
             trendTurningLabel: null,
           });
@@ -471,7 +475,13 @@ export function EggIntervalTaskTracker({
             : DateTime.fromISO(selectedDate, { zone: 'utc' }).minus({ days: 27 });
           const end = DateTime.fromISO(selectedDate, { zone: 'utc' });
           const eggs = await fetchCollectionsRange(flockStart.toISODate() || selectedDate, end.toISODate() || selectedDate);
-          const scoped = eggs.filter((e: any) => e.flock_id === selectedFlockId || e.flock_id == null);
+          // Bug fix (2026-05-05 audit): the `|| e.flock_id == null` clause
+          // double-counted any orphan egg-collection rows into every flock's
+          // chart, producing implausibly high daily totals (e.g. 1,054 eggs
+          // for a flock physically incapable of producing that). Drop the
+          // null branch — orphan rows must be re-assigned, not silently
+          // attributed to the active flock.
+          const scoped = eggs.filter((e: any) => e.flock_id === selectedFlockId);
           const byWeek = new Map<number, number>();
           scoped.forEach((c: any) => {
             const dayIso = String(c.collection_date || c.collected_on || '').slice(0, 10);
@@ -1035,18 +1045,20 @@ export function EggIntervalTaskTracker({
             <Egg className="w-5 h-5 text-[#3D5F42]" />
             {t('tasks.egg_interval.header')}
           </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {eggTemplate ? (
-              <>
-                {t('tasks.egg_interval.schedule')}:{' '}
-                {intervalTimes.length > 0 ? intervalTimes.join(', ') : t('tasks.egg_interval.not_configured')} •{' '}
-                {t('tasks.egg_interval.template')}:{' '}
-                {eggTemplate.title}
-              </>
-            ) : (
-              t('tasks.egg_interval.template_not_found')
-            )}
-          </p>
+          {/* Audit fix: this used to dump the full template scaffolding at
+              the user — "Schedule: 8, 12, 15, 19 · Template: Egg collection
+              template" — which read as system noise. Hide template/interval
+              metadata in user view; expose only when not configured. */}
+          {eggTemplate && intervalTimes.length === 0 && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mt-1 inline-block">
+              {t('tasks.egg_interval.not_configured')}
+            </p>
+          )}
+          {!eggTemplate && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mt-1 inline-block">
+              {t('tasks.egg_interval.template_not_found')}
+            </p>
+          )}
           {!isSelectedDateToday && (
             <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mt-2 inline-block">
               {t('tasks.egg_interval.historical_entry')}
@@ -1271,16 +1283,46 @@ export function EggIntervalTaskTracker({
 
             {curveView !== 'hours' && periodCurve && (
               <div className="mt-2">
-                <div className="bg-[#3D5F42]/5 border border-[#3D5F42]/10 rounded-xl p-2">
-                  <div className="text-xs text-gray-600">
-                    {curveView === 'day'
-                      ? 'Day trend total collected'
-                      : curveView === 'week'
-                      ? 'Week total collected'
-                      : 'Month total collected'}
+                {curveView === 'day' ? (
+                  // Today-vs-yesterday summary. Tighter than a single
+                  // "total" since the user wanted the comparison surfaced.
+                  (() => {
+                    const today = Math.round(periodCurve.currentTotal || 0);
+                    const yesterday = Math.round(periodCurve.previousTotal || 0);
+                    const delta = today - yesterday;
+                    const pct = yesterday > 0 ? Math.round((delta / yesterday) * 100) : null;
+                    const trendColor = delta >= 0 ? 'text-emerald-700' : 'text-red-700';
+                    const trendBg = delta >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100';
+                    return (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-[#3D5F42]/5 border border-[#3D5F42]/10 rounded-xl p-2">
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Today</div>
+                          <div className="text-lg font-bold text-gray-900">{today.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-gray-50 border border-gray-100 rounded-xl p-2">
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Yesterday</div>
+                          <div className="text-lg font-bold text-gray-900">{yesterday.toLocaleString()}</div>
+                        </div>
+                        <div className={`${trendBg} border rounded-xl p-2`}>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Change</div>
+                          <div className={`text-lg font-bold ${trendColor}`}>
+                            {delta >= 0 ? '+' : ''}{delta.toLocaleString()}
+                            {pct != null && (
+                              <span className="ml-1 text-xs font-medium">({pct >= 0 ? '+' : ''}{pct}%)</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className="bg-[#3D5F42]/5 border border-[#3D5F42]/10 rounded-xl p-2">
+                    <div className="text-xs text-gray-600">
+                      {curveView === 'week' ? 'Week total collected' : 'Month total collected'}
+                    </div>
+                    <div className="text-lg font-bold text-gray-900">{Math.round(periodCurve.currentTotal).toLocaleString()}</div>
                   </div>
-                  <div className="text-lg font-bold text-gray-900">{Math.round(periodCurve.currentTotal).toLocaleString()}</div>
-                </div>
+                )}
               </div>
             )}
 

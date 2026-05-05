@@ -44,9 +44,14 @@ export function StockingEventsPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const todayLocal = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   // Form state
   const [formFlockId, setFormFlockId] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(todayLocal);
   const [formSpecies, setFormSpecies] = useState('catfish');
   const [formCount, setFormCount] = useState('');
   const [formSource, setFormSource] = useState('');
@@ -94,7 +99,7 @@ export function StockingEventsPage() {
   };
 
   const resetForm = () => {
-    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormDate(todayLocal());
     setFormCount('');
     setFormSource('');
     setFormCostPer('');

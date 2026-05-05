@@ -292,51 +292,55 @@ export function EggProductionReports({ flockId }: EggProductionReportsProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
-            <p className="text-sm font-medium text-green-900">Total Collected</p>
-          </div>
-          <p className="text-2xl font-bold text-green-900">
-            {summary.totalEggs.toLocaleString()}
-          </p>
-          <p className="text-sm text-green-700 mt-1">eggs</p>
-        </div>
+      {(() => {
+        // Audit fix: cards used to say "Damaged" with no period context, so
+        // users didn't know if "31 eggs damaged" was today, this week, or
+        // all-time. Compute a clear period label and append it to every
+        // headline so the meaning is unambiguous.
+        const periodLabel = period === 'daily' ? 'today'
+          : period === 'weekly' ? 'this week'
+          : period === 'monthly' ? 'this month'
+          : 'in selected range';
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <p className="text-[11px] font-medium text-green-900 truncate">Collected {periodLabel}</p>
+              </div>
+              <p className="text-xl font-bold text-green-900">{summary.totalEggs.toLocaleString()}</p>
+              <p className="text-[10px] text-green-700 mt-0.5">eggs</p>
+            </div>
 
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <p className="text-sm font-medium text-blue-900">Avg per Day</p>
-          </div>
-          <p className="text-2xl font-bold text-blue-900">
-            {avgPerDay.toLocaleString()}
-          </p>
-          <p className="text-sm text-blue-700 mt-1">eggs/day</p>
-        </div>
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <p className="text-[11px] font-medium text-blue-900 truncate">Avg per day</p>
+              </div>
+              <p className="text-xl font-bold text-blue-900">{avgPerDay.toLocaleString()}</p>
+              <p className="text-[10px] text-blue-700 mt-0.5">eggs/day</p>
+            </div>
 
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-5 h-5 text-amber-600" />
-            <p className="text-sm font-medium text-amber-900">Collections</p>
-          </div>
-          <p className="text-2xl font-bold text-amber-900">
-            {collections.length}
-          </p>
-          <p className="text-sm text-amber-700 mt-1">records</p>
-        </div>
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <FileText className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <p className="text-[11px] font-medium text-amber-900 truncate">Collections {periodLabel}</p>
+              </div>
+              <p className="text-xl font-bold text-amber-900">{collections.length}</p>
+              <p className="text-[10px] text-amber-700 mt-0.5">records</p>
+            </div>
 
-        <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-red-600" />
-            <p className="text-sm font-medium text-red-900">Damaged</p>
+            <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp className="w-4 h-4 text-red-600 flex-shrink-0" />
+                <p className="text-[11px] font-medium text-red-900 truncate">Damaged {periodLabel}</p>
+              </div>
+              <p className="text-xl font-bold text-red-900">{summary.damagedEggs.toLocaleString()}</p>
+              <p className="text-[10px] text-red-700 mt-0.5">eggs</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-red-900">
-            {summary.damagedEggs.toLocaleString()}
-          </p>
-          <p className="text-sm text-red-700 mt-1">eggs</p>
-        </div>
-      </div>
+        );
+      })()}
 
       <div className="flex gap-2">
         <button
@@ -369,51 +373,47 @@ export function EggProductionReports({ flockId }: EggProductionReportsProps) {
             {collections.map((col) => (
               <div
                 key={col.id}
-                className="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors"
+                className="bg-gray-50 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors"
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="font-semibold text-gray-900">
+                {/* Audit fix: detailed record rows used to be ~p-4 padding +
+                    text-2xl headline + repeated size grid. On mobile this
+                    eats the whole screen. Compact to single-row layout
+                    with a horizontal size strip below. */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
                       {new Date(col.collection_date).toLocaleDateString('en-US', {
                         weekday: 'short',
-                        year: 'numeric',
                         month: 'short',
                         day: 'numeric',
                       })}
                     </p>
-                    <p className="text-sm text-gray-600">{col.flock_name}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{col.flock_name}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-gray-900">{formatEggsCompact(col.total_eggs, eggsPerTray)}</p>
-                    <p className="text-sm text-gray-600">{col.total_eggs.toLocaleString()} total eggs</p>
+                    <p className="text-base font-semibold text-gray-900">{col.total_eggs.toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-500">{formatEggsCompact(col.total_eggs, eggsPerTray)}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-5 gap-2 text-sm">
-                  <div className="text-center">
-                    <p className="text-gray-600">Small</p>
-                    <p className="font-semibold text-gray-900">{col.small_eggs}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600">Medium</p>
-                    <p className="font-semibold text-gray-900">{col.medium_eggs}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600">Large</p>
-                    <p className="font-semibold text-gray-900">{col.large_eggs}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-gray-600">Jumbo</p>
-                    <p className="font-semibold text-gray-900">{col.jumbo_eggs}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-red-600">Damaged</p>
-                    <p className="font-semibold text-red-900">{col.damaged_eggs}</p>
-                  </div>
+                <div className="mt-1.5 flex items-center gap-2 text-[11px] text-gray-600 flex-wrap">
+                  <span>S {col.small_eggs}</span>
+                  <span className="text-gray-300">·</span>
+                  <span>M {col.medium_eggs}</span>
+                  <span className="text-gray-300">·</span>
+                  <span>L {col.large_eggs}</span>
+                  <span className="text-gray-300">·</span>
+                  <span>J {col.jumbo_eggs}</span>
+                  {col.damaged_eggs > 0 && (
+                    <>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-red-700">Dmg {col.damaged_eggs}</span>
+                    </>
+                  )}
                 </div>
 
                 {col.notes && (
-                  <p className="mt-2 text-sm text-gray-700 italic border-t pt-2">
+                  <p className="mt-1 text-[11px] text-gray-600 italic line-clamp-1">
                     {col.notes}
                   </p>
                 )}
