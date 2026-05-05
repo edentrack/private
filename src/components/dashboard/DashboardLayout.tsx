@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves, Droplets, Beaker } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Waves, Droplets, Beaker, Truck } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -100,6 +100,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'harvest', label: 'Harvest', icon: Waves },
       { id: 'water-quality', label: 'Water Quality', icon: Droplets },
       { id: 'sampling', label: 'Weight Sampling', icon: Beaker },
+      { id: 'stocking', label: 'Stocking', icon: Truck },
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
@@ -116,9 +117,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // Items only relevant when eggs are tracked (layer/mixed farms)
     const eggOnlyItems = new Set(['sales', 'egg-records']);
     // Items only for aquaculture farms
-    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling']);
-    // Items hidden for aquaculture farms
-    const poultryOnlyItems = new Set(['vaccinations']);
+    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking']);
+    // Items hidden for aquaculture farms — 'weight' is replaced by 'sampling' (Weight Sampling)
+    // which is the species-correct surface for fish (ABW, biomass, SGR), so the legacy
+    // Weight & FCR page (broiler/layer charts) is not exposed.
+    const poultryOnlyItems = new Set(['vaccinations', 'weight']);
 
     const filteredItems = allItems.filter(item => {
       const visibility = canViewModule(currentRole, item.id, farmPermissions);

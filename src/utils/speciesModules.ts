@@ -82,9 +82,14 @@ export const LAYER_DEFAULT_PHASES: SpeciesPhase[] = [
   { name: 'Laying', startWeek: 21, endWeek: 72 },
 ];
 
+// Default aquaculture lifecycle phases — used when a species-specific override
+// isn't available. Uses biological lifecycle terminology that farmers recognise
+// (Fingerling → Juvenile → Grow-out → Pre-harvest), parallel to how poultry
+// uses Chick → Grower → Pullet → Pre-lay → Laying.
 export const AQUACULTURE_DEFAULT_PHASES: SpeciesPhase[] = [
-  { name: 'Stocking', startWeek: 1, endWeek: 2 },
-  { name: 'Grow-out', startWeek: 3, endWeek: 20 },
+  { name: 'Fingerling', startWeek: 1, endWeek: 4 },
+  { name: 'Juvenile', startWeek: 5, endWeek: 12 },
+  { name: 'Grow-out', startWeek: 13, endWeek: 20 },
   { name: 'Pre-harvest', startWeek: 21, endWeek: 24 },
 ];
 

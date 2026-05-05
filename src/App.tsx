@@ -73,6 +73,7 @@ const PlatformSettings       = lazy1(() => import('./components/superadmin/Platf
 const WaterQualityPage       = lazy1(() => import('./components/aquaculture/WaterQualityPage'), 'WaterQualityPage');
 const HarvestPage            = lazy1(() => import('./components/aquaculture/HarvestPage'), 'HarvestPage');
 const SamplingEventsPage     = lazy1(() => import('./components/aquaculture/SamplingEventsPage'), 'SamplingEventsPage');
+const StockingEventsPage     = lazy1(() => import('./components/aquaculture/StockingEventsPage'), 'StockingEventsPage');
 
 function CrispChat() {
   const { profile, user } = useAuth();
@@ -375,6 +376,7 @@ function AppContent() {
       'water-quality': '#/water-quality',
       'harvest': '#/harvest',
       'sampling': '#/sampling',
+      'stocking': '#/stocking',
       'weight': '#/weight',
       'analytics': '#/analytics',
       'insights': '#/insights',
@@ -594,6 +596,10 @@ function AppContent() {
       }
       if (hash.includes('#/sampling')) {
         setCurrentView('sampling');
+        return;
+      }
+      if (hash.includes('#/stocking')) {
+        setCurrentView('stocking');
         return;
       }
       if (hash.includes('#/weight')) {
@@ -1035,6 +1041,8 @@ function AppContent() {
         return <HarvestPage />;
       case 'sampling':
         return <SamplingEventsPage />;
+      case 'stocking':
+        return <StockingEventsPage />;
       case 'vet-log':
         return (
           <RequireRole moduleId="vet-log" onUnauthorized={handleUnauthorized}>

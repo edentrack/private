@@ -241,24 +241,27 @@ export const RABBIT_GROWTH_TARGETS: Record<number, WeeklyTarget> = {
   16: { weight: 2.5, description: 'Market ready - maximum' },
 };
 
-// Fish Growth Targets (Tilapia)
+// Fish Growth Targets (Tilapia) — descriptions use biological lifecycle names
+// (Fingerling → Juvenile → Grow-out → Pre-harvest) so the chart milestones
+// match the AquaCycleWidget phases farmers see on the dashboard.
 export const TILAPIA_GROWTH_TARGETS: Record<number, WeeklyTarget> = {
-  4: { weight: 0.02, description: 'Fingerling stage complete' },
-  8: { weight: 0.05, description: 'Early grow-out' },
-  12: { weight: 0.15, description: 'Mid grow-out' },
-  16: { weight: 0.30, description: 'Late grow-out' },
-  20: { weight: 0.45, description: 'Pre-market' },
-  24: { weight: 0.60, description: 'Market ready' },
+  4: { weight: 0.02, description: 'Fingerling phase complete' },
+  8: { weight: 0.05, description: 'Juvenile phase' },
+  12: { weight: 0.15, description: 'Mid-juvenile · feed transition' },
+  16: { weight: 0.30, description: 'Grow-out phase' },
+  20: { weight: 0.45, description: 'Pre-harvest · approaching market' },
+  24: { weight: 0.60, description: 'Market ready · harvest window' },
 };
 
 // Fish Growth Targets (Catfish)
 export const CATFISH_GROWTH_TARGETS: Record<number, WeeklyTarget> = {
-  4: { weight: 0.025, description: 'Fingerling stage complete' },
-  8: { weight: 0.08, description: 'Early grow-out' },
-  12: { weight: 0.20, description: 'Mid grow-out' },
-  16: { weight: 0.35, description: 'Late grow-out' },
-  20: { weight: 0.50, description: 'Pre-market' },
-  28: { weight: 0.75, description: 'Market ready' },
+  4: { weight: 0.025, description: 'Fingerling phase complete' },
+  8: { weight: 0.08, description: 'Juvenile phase' },
+  12: { weight: 0.20, description: 'Mid-juvenile · feed transition' },
+  16: { weight: 0.40, description: 'Grow-out phase' },
+  20: { weight: 0.65, description: 'Late grow-out' },
+  24: { weight: 0.90, description: 'Pre-harvest · market ready' },
+  28: { weight: 1.20, description: 'Extended growth · max market size' },
 };
 
 export function calculateCurrentWeek(startDate: string): number {

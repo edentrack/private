@@ -3,6 +3,7 @@ import { RefreshCw, Check, Circle, ArrowRight, Scale, Fish, AlertCircle, Zap } f
 import { Flock } from '../../types/database';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { getFlockAgeDays } from '../../utils/flockAge';
 
 interface AquaCycleWidgetProps {
   pond: Flock | null;
@@ -30,15 +31,32 @@ interface SampleData {
  */
 type FishPhase = { name: string; startWeek: number; endWeek: number; feedType: string };
 
+// Catfish lifecycle phases. Names match standard aquaculture terminology so the
+// app teaches farmers the right vocabulary as they use it (mirrors how the
+// poultry widget shows "Chick / Grower / Pullet" not "Stage 1 / Stage 2").
+//
+//   Fingerling — stocked at 5–10g, growing to ~20g
+//   Juvenile  — 20–200g, fastest growth phase, switch feed protein down
+//   Grow-out  — 200g to ~700g, biggest feed costs of the cycle
+//   Pre-harvest — 700g–1.2kg, market-ready, reduce feeding 24h before harvest
 const CATFISH_PHASES: FishPhase[] = [
-  { name: 'Stocking', startWeek: 1, endWeek: 2, feedType: 'Starter (45–50% protein)' },
-  { name: 'Grow-out', startWeek: 3, endWeek: 20, feedType: 'Grower (40–45% protein)' },
+  { name: 'Fingerling', startWeek: 1, endWeek: 4, feedType: 'Starter (45–50% protein)' },
+  { name: 'Juvenile', startWeek: 5, endWeek: 12, feedType: 'Grower (40–45% protein)' },
+  { name: 'Grow-out', startWeek: 13, endWeek: 20, feedType: 'Grower (40–45% protein)' },
   { name: 'Pre-harvest', startWeek: 21, endWeek: 24, feedType: 'Finisher (35–40% protein)' },
 ];
 
+// Tilapia lifecycle phases. Same biological progression as catfish but
+// shorter cycle and lower-protein feed bands.
+//
+//   Fingerling — stocked at 5–15g, growing to ~25g
+//   Juvenile  — 25–100g, mono-sex critical here to avoid breeding
+//   Grow-out  — 100–400g, peak feed conversion
+//   Pre-harvest — 400g–800g, market-ready
 const TILAPIA_PHASES: FishPhase[] = [
-  { name: 'Stocking', startWeek: 1, endWeek: 3, feedType: 'Starter (40% protein)' },
-  { name: 'Grow-out', startWeek: 4, endWeek: 18, feedType: 'Grower (32–36% protein)' },
+  { name: 'Fingerling', startWeek: 1, endWeek: 4, feedType: 'Starter (40% protein)' },
+  { name: 'Juvenile', startWeek: 5, endWeek: 10, feedType: 'Grower (32–36% protein)' },
+  { name: 'Grow-out', startWeek: 11, endWeek: 18, feedType: 'Grower (32–36% protein)' },
   { name: 'Pre-harvest', startWeek: 19, endWeek: 22, feedType: 'Finisher (28–32% protein)' },
 ];
 
@@ -113,10 +131,9 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
 
   const calculateCycle = () => {
     if (!pond) return;
-    const arrival = new Date(pond.arrival_date || pond.created_at);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - arrival.getTime()) / 86_400_000);
-    const week = Math.max(1, Math.floor(diffDays / 7) + 1);
+    // Honour age_at_arrival_days — handles fish bought as fingerlings/juveniles
+    // (and any pond the user starts to track retroactively).
+    const week = Math.max(1, Math.floor(getFlockAgeDays(pond) / 7) + 1);
     setCurrentWeek(week);
 
     const { phases, targetWeek: tw } = getPhasesForType(pond.type);
@@ -169,10 +186,9 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
       .limit(1)
       .maybeSingle();
 
-    const arrival = new Date(pond.arrival_date || pond.created_at);
+    const ageDays = getFlockAgeDays(pond);
+    const week = Math.max(1, Math.floor(ageDays / 7) + 1);
     const now = new Date();
-    const diffDays = Math.floor((now.getTime() - arrival.getTime()) / 86_400_000);
-    const week = Math.max(1, Math.floor(diffDays / 7) + 1);
 
     // Sampling target: every 2 weeks. Overdue if last sample is more than 14 days ago.
     let isOverdue = false;
