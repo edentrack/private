@@ -4,6 +4,7 @@ import { Flock } from '../../types/database';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { getFlockAgeDays } from '../../utils/flockAge';
 
 interface ProductionCycleWidgetProps {
   flock: Flock | null;
@@ -151,10 +152,9 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
   const calculateCycle = () => {
     if (!flock) return;
 
-    const arrivalDate = new Date(flock.arrival_date || flock.created_at);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24));
-    const week = Math.max(1, Math.floor(diffDays / 7) + 1);
+    // Honour age_at_arrival_days — handles point-of-lay pullets,
+    // older growers, and retroactive tracking.
+    const week = Math.max(1, Math.floor(getFlockAgeDays(flock) / 7) + 1);
     setCurrentWeek(week);
 
     const isBroiler = flock.type?.toLowerCase() === 'broiler';
@@ -199,15 +199,16 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
   const fetchWeightData = async () => {
     if (!flock || flock.type?.toLowerCase() !== 'broiler') return;
 
-    const arrivalDate = new Date(flock.arrival_date || flock.created_at);
+    // Use the age helper so age_at_arrival_days is respected. The weight-log
+    // date range is "the past 7 days from today" rather than "week N from
+    // arrival" — this avoids breaking when age_at_arrival_days > 0 (the old
+    // formula would compute a date far in the future).
+    const ageDays = getFlockAgeDays(flock);
+    const week = Math.max(1, Math.floor(ageDays / 7) + 1);
     const now = new Date();
-    const diffDays = Math.floor((now.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24));
-    const week = Math.max(1, Math.floor(diffDays / 7) + 1);
-
-    const weekStartDate = new Date(arrivalDate);
-    weekStartDate.setDate(arrivalDate.getDate() + (week - 1) * 7);
-    const weekEndDate = new Date(weekStartDate);
-    weekEndDate.setDate(weekStartDate.getDate() + 6);
+    const weekEndDate = new Date(now);
+    const weekStartDate = new Date(now);
+    weekStartDate.setDate(now.getDate() - 6);
 
     const { data: weightLogs } = await supabase
       .from('weight_logs')

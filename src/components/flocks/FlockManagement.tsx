@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { invalidateFarmTypeCache, useFarmType } from '../../hooks/useFarmType';
 import { FlockListSkeleton } from '../common/Skeleton';
 import { atFlockLimit, getMaxFlocks } from '../../utils/planGating';
+import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
 
 interface FlockManagementProps {
   onSelectFlock: (flock: Flock) => void;
@@ -99,18 +100,10 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
     return map[type] || (isAquaculture ? '🐟' : '🐓');
   };
 
-  const getFlockAge = (arrivalDate: string) => {
-    const arrival = new Date(arrivalDate);
-    const now = new Date();
-    const diffTime = now.getTime() - arrival.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const weeks = Math.floor(diffDays / 7) + 1;
-    const days = diffDays % 7;
-    return { weeks, days };
-  };
-  
-  const formatFlockAge = (arrivalDate: string) => {
-    const { weeks, days } = getFlockAge(arrivalDate);
+  // Pulled into the shared flockAge helper so age_at_arrival_days is honoured
+  // (point-of-lay pullets, fingerlings, retroactive tracking).
+  const formatFlockAge = (flock: Flock) => {
+    const { weeks, days } = getFlockAgeFromHelper(flock);
     return (
       <>
         {weeks} <span className="text-lg font-medium text-gray-500">{t('flocks.weeks_old')}</span>
@@ -350,7 +343,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                 <div className={`p-4 rounded-2xl bg-gradient-to-br ${isAquaculture ? 'from-blue-50 to-blue-100/50' : 'from-neon-50 to-neon-100/50'}`}>
                   <div className="stat-label">{isAquaculture ? 'Age in Pond' : t('flocks.age')}</div>
                   <div className="text-3xl font-bold text-gray-900">
-                    {formatFlockAge(flock.arrival_date)}
+                    {formatFlockAge(flock)}
                   </div>
                 </div>
 

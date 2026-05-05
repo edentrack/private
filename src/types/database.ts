@@ -158,6 +158,13 @@ export interface Flock {
   type: FlockType;
   start_date: string;
   arrival_date: string;
+  /**
+   * Age of the animals (in days) at arrival_date.
+   * 0 = brought in fresh / day-old / freshly stocked (default and pre-feature behaviour).
+   * Set to 126 for 18-week-old point-of-lay pullets, 42 for 6-week-old fingerlings, etc.
+   * Use the helper `getFlockAgeDays(flock)` to compute current age.
+   */
+  age_at_arrival_days?: number;
   initial_count: number;
   current_count: number;
   status: FlockStatus;

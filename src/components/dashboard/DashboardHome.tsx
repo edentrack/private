@@ -28,6 +28,7 @@ import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 import { cleanHistoricalDuplicateTasks } from '../../utils/unifiedTaskSystem';
+import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
 import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES, AQUACULTURE_DEFAULT_PHASES } from '../../utils/speciesModules';
 
 interface DashboardHomeProps {
@@ -362,14 +363,15 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     }
   };
 
-  const getFlockAge = (arrivalDate: string) => {
-    const arrival = new Date(arrivalDate);
-    const now = new Date();
-    const diffTime = now.getTime() - arrival.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const weeks = Math.floor(diffDays / 7) + 1;
-    const days = diffDays % 7;
-    return { weeks, days };
+  // Wrapper around the shared helper so age_at_arrival_days is honoured.
+  // Accepts a flock so it can read the field; old callers passing only
+  // arrival_date will be migrated to pass the flock object below.
+  const getFlockAge = (flockOrArrival: Flock | string) => {
+    if (typeof flockOrArrival === 'string') {
+      // Backwards-compat: build a stub flock with no arrival-age offset.
+      return getFlockAgeFromHelper({ arrival_date: flockOrArrival });
+    }
+    return getFlockAgeFromHelper(flockOrArrival);
   };
 
   const getFlockTargetWeeks = (flock: Flock | null): number => {
@@ -573,7 +575,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
           <div className="stat-label">{t('dashboard.current_week')}</div>
           <div className="text-xl sm:text-4xl font-bold text-gray-900">
             {selectedFlock ? (() => {
-              const age = getFlockAge(selectedFlock.arrival_date);
+              const age = getFlockAge(selectedFlock);
               return `Week ${age.weeks}`;
             })() : '-'}
           </div>
@@ -586,7 +588,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
             <span className="text-sm text-gray-500">{t('dashboard.progress')}</span>
             <span className="text-sm font-medium text-gray-700">
               {selectedFlock ? (() => {
-                const age = getFlockAge(selectedFlock.arrival_date);
+                const age = getFlockAge(selectedFlock);
                 return (
                   <>
                     {t('dashboard.week_label', { week: age.weeks })}
@@ -598,7 +600,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
           </div>
           <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
             {selectedFlock && farmSettings ? (() => {
-              const { weeks: currentWeek } = getFlockAge(selectedFlock.arrival_date);
+              const { weeks: currentWeek } = getFlockAge(selectedFlock);
               const targetWeeks = getFlockTargetWeeks(selectedFlock);
               const progressPercent = Math.min((currentWeek / targetWeeks) * 100, 100);
               return (
@@ -612,7 +614,7 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
             )}
           </div>
           {selectedFlock && farmSettings ? (() => {
-            const { weeks: currentWeek } = getFlockAge(selectedFlock.arrival_date);
+            const { weeks: currentWeek } = getFlockAge(selectedFlock);
             const targetWeeks = getFlockTargetWeeks(selectedFlock);
             const progressPercent = targetWeeks > 0 ? Math.min((currentWeek / targetWeeks) * 100, 100) : 0;
             

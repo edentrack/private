@@ -30,6 +30,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
   const [purchasePricePerBird, setPurchasePricePerBird] = useState('');
   const [purchaseTransportCost, setPurchaseTransportCost] = useState('');
   const [pondSizeSqm, setPondSizeSqm] = useState('');
+  // Age the animals already had when stocked. Default 0 = "freshly hatched/stocked".
+  // Most fish farmers buy fingerlings (~6 weeks) and most layer farmers
+  // sometimes buy point-of-lay pullets (~18 weeks), so this picker matters.
+  const [ageAtArrivalWeeks, setAgeAtArrivalWeeks] = useState(0);
+  const [showCustomAge, setShowCustomAge] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -98,6 +103,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
         species,
         start_date: startDate,
         arrival_date: arrivalDate,
+        age_at_arrival_days: Math.max(0, Math.round(ageAtArrivalWeeks * 7)),
         initial_count: initialCountNum,
         current_count: currentCountNum,
         purchase_price_per_bird: purchasePriceNum,
@@ -309,6 +315,83 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                 className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
               />
             </div>
+          </div>
+
+          {/* Age-at-arrival picker — handles point-of-lay pullets, fingerlings,
+              and retroactive tracking. Default = 0 (freshly hatched/stocked). */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              How old were they when you got them?
+            </label>
+            {(() => {
+              // Species-specific lifecycle presets — pick the most common
+              // entry points so the farmer can tap one chip instead of
+              // figuring out the week number.
+              const presets: Array<{ label: string; weeks: number; sublabel?: string }> = isAquaculture
+                ? [
+                    { label: 'Fry', weeks: 1, sublabel: '1–2w · 0.1–2g' },
+                    { label: 'Fingerlings', weeks: 6, sublabel: '5–8w · 5–15g · most common' },
+                    { label: 'Juveniles', weeks: 12, sublabel: '12w+ · 50–150g' },
+                    { label: 'Adults', weeks: 20, sublabel: '20w+ · grown stock' },
+                  ]
+                : [
+                    { label: 'Day-old chicks', weeks: 0, sublabel: 'Fresh from hatchery' },
+                    { label: 'Growers', weeks: 6, sublabel: '~6w old' },
+                    { label: 'Pullets', weeks: 13, sublabel: '~13w old' },
+                    { label: 'Point-of-lay', weeks: 18, sublabel: '~18w · ready to lay' },
+                  ];
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {presets.map((p) => {
+                      const active = !showCustomAge && ageAtArrivalWeeks === p.weeks;
+                      return (
+                        <button
+                          key={p.label}
+                          type="button"
+                          onClick={() => { setAgeAtArrivalWeeks(p.weeks); setShowCustomAge(false); }}
+                          className={`text-left px-2.5 py-1.5 rounded-lg border transition-all ${
+                            active
+                              ? 'border-gray-900 bg-[#f5f0e8]'
+                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="text-xs font-semibold text-gray-900">{p.label}</div>
+                          {p.sublabel && <div className="text-[10px] text-gray-500 mt-0.5">{p.sublabel}</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomAge((v) => !v)}
+                    className="mt-1.5 text-[11px] text-gray-600 hover:text-gray-900 underline"
+                  >
+                    {showCustomAge ? '— close custom' : '+ enter custom age'}
+                  </button>
+                  {showCustomAge && (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        max="200"
+                        step="1"
+                        value={ageAtArrivalWeeks}
+                        onChange={(e) => setAgeAtArrivalWeeks(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-20 px-2 py-1 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-400"
+                      />
+                      <span className="text-xs text-gray-600">weeks old at arrival</span>
+                    </div>
+                  )}
+                  {ageAtArrivalWeeks > 0 && (
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Tracking will start at {isAquaculture ? 'pond' : 'flock'} week {ageAtArrivalWeeks + 1} ·
+                      not week 1.
+                    </p>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           <div>
