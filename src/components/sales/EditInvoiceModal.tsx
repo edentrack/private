@@ -19,7 +19,7 @@ interface InvoiceItem {
 }
 
 export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: EditInvoiceModalProps) {
-  const { profile } = useAuth();
+  const { profile, currentFarm } = useAuth();
   const [customerId, setCustomerId] = useState(invoice.customer_id || '');
   const [invoiceDate, setInvoiceDate] = useState(invoice.invoice_date.split('T')[0]);
   const [dueDate, setDueDate] = useState(invoice.due_date?.split('T')[0] || '');
@@ -37,9 +37,12 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
   }, [invoice.id]);
 
   const loadInvoiceItems = async () => {
+    if (!currentFarm?.id) return;
+    // Defense-in-depth: scope by farm_id alongside invoice_id.
     const { data } = await supabase
       .from('invoice_items')
       .select('*')
+      .eq('farm_id', currentFarm.id)
       .eq('invoice_id', invoice.id);
 
     if (data) {
@@ -96,7 +99,8 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
           notes,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', invoice.id);
+        .eq('id', invoice.id)
+        .eq('farm_id', currentFarm?.id || '');
 
       if (invoiceError) throw invoiceError;
 
@@ -105,6 +109,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
       const { error: deleteError } = await supabase
         .from('invoice_items')
         .delete()
+        .eq('farm_id', currentFarm?.id || '')
         .eq('invoice_id', invoice.id)
         .not('id', 'in', `(${existingItemIds.join(',')})`);
 
@@ -118,7 +123,8 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
             })
-            .eq('id', item.id);
+            .eq('id', item.id)
+            .eq('farm_id', currentFarm?.id || '');
 
           if (updateError) throw updateError;
         } else {

@@ -39,6 +39,7 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
       const { data: templatesData } = await supabase
         .from('task_templates')
         .select('*')
+        .eq('farm_id', currentFarm.id)
         .eq('is_active', true)
         .order('display_order');
 

@@ -13,7 +13,7 @@ interface FlockCycleCountdownCardProps {
 }
 
 export function FlockCycleCountdownCard({ flockId, onNavigate, compact = false }: FlockCycleCountdownCardProps) {
-  const { currentRole } = useAuth();
+  const { currentRole, currentFarm } = useAuth();
   const { farmPermissions } = usePermissions();
   const [flock, setFlock] = useState<Flock | null>(null);
   const [cycleStatus, setCycleStatus] = useState<FlockCycleStatus | null>(null);
@@ -34,8 +34,12 @@ export function FlockCycleCountdownCard({ flockId, onNavigate, compact = false }
 
   const loadData = async () => {
     try {
+      const farmId = currentFarm?.id;
+      const flockQuery = supabase.from('flocks').select('*').eq('id', flockId);
+      // Defense-in-depth: scope by farm_id when available.
+      if (farmId) flockQuery.eq('farm_id', farmId);
       const [flockRes, cycleRes] = await Promise.all([
-        supabase.from('flocks').select('*').eq('id', flockId).maybeSingle(),
+        flockQuery.maybeSingle(),
         supabase.rpc('get_flock_cycle_status', { p_flock_id: flockId })
       ]);
 

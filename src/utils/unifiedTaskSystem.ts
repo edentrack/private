@@ -331,6 +331,7 @@ export async function completeTask(
   try {
     const now = new Date().toISOString();
 
+    // Defense-in-depth: scope by farm_id alongside id.
     const { error } = await supabaseClient
       .from('tasks')
       .update({
@@ -339,7 +340,8 @@ export async function completeTask(
         completed_by: userId,
         data_payload: dataPayload || null,
       })
-      .eq('id', taskId);
+      .eq('id', taskId)
+      .eq('farm_id', farmId);
 
     if (error) throw error;
 
@@ -347,6 +349,7 @@ export async function completeTask(
       .from('tasks')
       .select('title_override, task_templates(title)')
       .eq('id', taskId)
+      .eq('farm_id', farmId)
       .maybeSingle();
 
     const taskTitle = task?.title_override || (task as any)?.task_templates?.title || 'Task';

@@ -9,7 +9,7 @@ interface TaskTemplateSettingsProps {
 }
 
 export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
-  const { profile } = useAuth();
+  const { profile, currentFarm } = useAuth();
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -20,13 +20,15 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
   }, [profile]);
 
   const loadTemplates = async () => {
-    if (!profile) return;
+    if (!profile || !currentFarm?.id) return;
 
     setLoading(true);
     try {
+      // Defense-in-depth: scope task_templates by farm_id.
       const { data, error } = await supabase
         .from('task_templates')
         .select('*')
+        .eq('farm_id', currentFarm.id)
         .order('category', { ascending: true })
         .order('display_order', { ascending: true });
 
