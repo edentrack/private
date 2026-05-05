@@ -281,9 +281,11 @@ export function ComprehensiveFarmReport({
           const singleLayerFlockId = layerFlocks.length === 1 ? layerFlocks[0].id : null;
           const attachLegacyEggSales = flock.id === singleLayerFlockId;
 
+          // Defense-in-depth: every per-flock query is also scoped by farm_id.
           const { data: flockExpenses } = await supabase
             .from('expenses')
             .select('amount')
+            .eq('farm_id', currentFarm.id)
             .eq('flock_id', flock.id)
             .gte('incurred_on', startDate)
             .lte('incurred_on', endDate);
@@ -294,6 +296,7 @@ export function ComprehensiveFarmReport({
           const { data: flockEggCollections } = await supabase
             .from('egg_collections')
             .select('total_eggs')
+            .eq('farm_id', currentFarm.id)
             .eq('flock_id', flock.id)
             .gte('collected_on', startDate)
             .lte('collected_on', endDate);
@@ -303,6 +306,7 @@ export function ComprehensiveFarmReport({
           const { data: flockEggSales } = await supabase
             .from('egg_sales')
             .select('total_eggs, total_amount')
+            .eq('farm_id', currentFarm.id)
             .eq('flock_id', flock.id)
             .gte('sale_date', startDate)
             .lte('sale_date', endDate);
@@ -315,6 +319,7 @@ export function ComprehensiveFarmReport({
           const { data: flockMortality } = await supabase
             .from('mortality_logs')
             .select('count')
+            .eq('farm_id', currentFarm.id)
             .eq('flock_id', flock.id)
             .gte('event_date', startDate)
             .lte('event_date', endDate);
@@ -324,6 +329,7 @@ export function ComprehensiveFarmReport({
           const { data: flockBirdSales } = await supabase
             .from('bird_sales')
             .select('birds_sold, total_amount')
+            .eq('farm_id', currentFarm.id)
             .eq('flock_id', flock.id)
             .gte('sale_date', startDate)
             .lte('sale_date', endDate);

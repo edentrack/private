@@ -90,12 +90,14 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
   }, [currentFlock]);
 
   const loadFlockData = async () => {
-    if (!selectedFlockId) return;
+    if (!selectedFlockId || !currentFarm?.id) return;
 
+    // Defense-in-depth: scope by farm_id alongside id.
     const { data } = await supabase
       .from('flocks')
       .select('*')
       .eq('id', selectedFlockId)
+      .eq('farm_id', currentFarm.id)
       .single();
 
     if (data) {
@@ -106,9 +108,11 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
   const loadVaccinations = async () => {
     if (!currentFlock) return;
 
+    // Defense-in-depth: scope by farm_id alongside flock_id.
     const { data } = await supabase
       .from('vaccinations')
       .select('*')
+      .eq('farm_id', currentFlock.farm_id)
       .eq('flock_id', currentFlock.id)
       .order('scheduled_date', { ascending: true });
 

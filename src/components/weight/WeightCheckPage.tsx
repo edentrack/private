@@ -32,6 +32,7 @@ export function WeightCheckPage({ flock, onBack }: WeightCheckPageProps) {
       const { data: previousCheck } = await supabase
         .from('weight_logs')
         .select('average_weight, date')
+        .eq('farm_id', flock.farm_id)
         .eq('flock_id', flock.id)
         .order('date', { ascending: false })
         .limit(1)

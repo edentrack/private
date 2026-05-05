@@ -59,9 +59,11 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
   const loadMortalityLogs = async () => {
     if (!flock) return;
 
+    // Defense-in-depth: scope by farm_id alongside flock_id.
     const { data } = await supabase
       .from('mortality_logs')
       .select('*')
+      .eq('farm_id', flock.farm_id)
       .eq('flock_id', flock.id)
       .order('event_date', { ascending: false })
       .limit(100);
@@ -89,7 +91,8 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
       await supabase
         .from('flocks')
         .update({ current_count: newCount })
-        .eq('id', flock.id);
+        .eq('id', flock.id)
+        .eq('farm_id', flock.farm_id);
 
       setCount(0);
       setDate(todayLocal());
@@ -116,7 +119,8 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
       const { error } = await supabase
         .from('mortality_logs')
         .delete()
-        .eq('id', log.id);
+        .eq('id', log.id)
+        .eq('farm_id', flock.farm_id);
 
       if (error) throw error;
 
@@ -124,7 +128,8 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
       await supabase
         .from('flocks')
         .update({ current_count: newCount })
-        .eq('id', flock.id);
+        .eq('id', flock.id)
+        .eq('farm_id', flock.farm_id);
 
       loadMortalityLogs();
       toast.success(`${species.lossNoun} record deleted`);

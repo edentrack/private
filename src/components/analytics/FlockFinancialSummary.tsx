@@ -16,7 +16,7 @@ interface FinancialData {
 }
 
 export function FlockFinancialSummary({ flock, compact = false }: FlockFinancialSummaryProps) {
-  const { profile } = useAuth();
+  const { profile, currentFarm } = useAuth();
   const [financials, setFinancials] = useState<FinancialData>({
     totalExpenses: 0,
     totalRevenue: 0,
@@ -25,23 +25,24 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (flock) {
+    if (flock && currentFarm?.id) {
       loadFinancials();
     } else {
       setFinancials({ totalExpenses: 0, totalRevenue: 0, profit: 0 });
       setLoading(false);
     }
-  }, [flock]);
+  }, [flock, currentFarm?.id]);
 
   const loadFinancials = async () => {
-    if (!flock) return;
+    if (!flock || !currentFarm?.id) return;
 
     setLoading(true);
     try {
+      // Defense-in-depth: scope by farm_id alongside flock_id.
       const [expensesRes, eggSalesRes, birdSalesRes] = await Promise.all([
-        supabase.from('expenses').select('amount').eq('flock_id', flock.id),
-        supabase.from('egg_sales').select('total_amount').eq('flock_id', flock.id),
-        supabase.from('bird_sales').select('total_amount').eq('flock_id', flock.id),
+        supabase.from('expenses').select('amount').eq('farm_id', currentFarm.id).eq('flock_id', flock.id),
+        supabase.from('egg_sales').select('total_amount').eq('farm_id', currentFarm.id).eq('flock_id', flock.id),
+        supabase.from('bird_sales').select('total_amount').eq('farm_id', currentFarm.id).eq('flock_id', flock.id),
       ]);
 
       const totalExpenses = expensesRes.data?.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0) || 0;

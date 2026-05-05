@@ -8,6 +8,10 @@ interface UpsertChickExpensesParams {
   currencyCode: string;
 }
 
+// Multi-tenancy hardening (2026-05-05): every read/write here scopes by
+// farm_id in addition to flock_id/id. If RLS ever loosens, these queries
+// still won't reach into another farm's data.
+
 export async function upsertChickExpenses({
   flock,
   userId,
@@ -24,6 +28,7 @@ export async function upsertChickExpenses({
     const { data: existingPurchaseExpense } = await supabase
       .from('expenses')
       .select('id')
+      .eq('farm_id', farmId)
       .eq('flock_id', flock.id)
       .eq('kind', 'chicks_purchase')
       .maybeSingle();
@@ -38,7 +43,8 @@ export async function upsertChickExpenses({
           date: flock.arrival_date,
           currency: currencyCode as any,
         })
-        .eq('id', existingPurchaseExpense.id);
+        .eq('id', existingPurchaseExpense.id)
+        .eq('farm_id', farmId);
     } else {
       await supabase.from('expenses').insert({
         user_id: userId,
@@ -57,12 +63,17 @@ export async function upsertChickExpenses({
     const { data: existingPurchaseExpense } = await supabase
       .from('expenses')
       .select('id')
+      .eq('farm_id', farmId)
       .eq('flock_id', flock.id)
       .eq('kind', 'chicks_purchase')
       .maybeSingle();
 
     if (existingPurchaseExpense) {
-      await supabase.from('expenses').delete().eq('id', existingPurchaseExpense.id);
+      await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', existingPurchaseExpense.id)
+        .eq('farm_id', farmId);
     }
   }
 
@@ -70,6 +81,7 @@ export async function upsertChickExpenses({
     const { data: existingTransportExpense } = await supabase
       .from('expenses')
       .select('id')
+      .eq('farm_id', farmId)
       .eq('flock_id', flock.id)
       .eq('kind', 'chicks_transport')
       .maybeSingle();
@@ -79,20 +91,21 @@ export async function upsertChickExpenses({
         .from('expenses')
         .update({
           amount: transportCost,
-          category: 'transport', // Update to "transport" category for all transport expenses
+          category: 'transport',
           description: `Transport cost for ${initialBirds} ${flock.type} chicks`,
           incurred_on: flock.arrival_date,
           date: flock.arrival_date,
           currency: currencyCode as any,
         })
-        .eq('id', existingTransportExpense.id);
+        .eq('id', existingTransportExpense.id)
+        .eq('farm_id', farmId);
     } else {
       await supabase.from('expenses').insert({
         user_id: userId,
         farm_id: farmId,
         flock_id: flock.id,
         kind: 'chicks_transport',
-        category: 'transport', // Use "transport" category for all transport expenses
+        category: 'transport',
         amount: transportCost,
         currency: currencyCode as any,
         description: `Transport cost for ${initialBirds} ${flock.type} chicks`,
@@ -104,12 +117,17 @@ export async function upsertChickExpenses({
     const { data: existingTransportExpense } = await supabase
       .from('expenses')
       .select('id')
+      .eq('farm_id', farmId)
       .eq('flock_id', flock.id)
       .eq('kind', 'chicks_transport')
       .maybeSingle();
 
     if (existingTransportExpense) {
-      await supabase.from('expenses').delete().eq('id', existingTransportExpense.id);
+      await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', existingTransportExpense.id)
+        .eq('farm_id', farmId);
     }
   }
 }
