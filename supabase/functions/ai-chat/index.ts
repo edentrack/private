@@ -32,7 +32,11 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const MODEL_HAIKU   = "claude-haiku-4-5-20251001";  // fast, simple tasks
 const MODEL_SONNET  = "claude-sonnet-4-6";           // standard analysis, health advice
-// Opus reserved for future use if needed
+const MODEL_OPUS    = "claude-opus-4-6";             // expert-tier review (uncertain diagnosis fallback)
+
+// Whitelist of model IDs callers can request via the `model` field.
+// Anything else falls back to selectModel() routing.
+const ALLOWED_MODEL_OVERRIDES = new Set([MODEL_HAIKU, MODEL_SONNET, MODEL_OPUS]);
 
 const MAX_REQUESTS_PER_MINUTE = 15;
 
@@ -105,6 +109,18 @@ interface ChatRequest {
   farm_id: string;
   messages: ChatMessage[];
   include_context?: boolean;
+  /**
+   * Optional model override. Whitelisted: claude-haiku-4-5-20251001,
+   * claude-sonnet-4-6, claude-opus-4-6. Anything else is ignored and the
+   * normal selectModel() heuristic runs.
+   *
+   * Used by the FishHealthPage to:
+   *  - send `claude-sonnet-4-6` for the initial photo diagnosis (already
+   *    the default, but explicit for predictability)
+   *  - send `claude-opus-4-6` when the user clicks "Get expert review"
+   *    after Sonnet returned uncertain or low-confidence results
+   */
+  model?: string;
 }
 
 async function getFarmContext(supabase: any, farmId: string): Promise<{ context: string; setupConfig: any; farmType: string }> {
@@ -778,7 +794,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ChatRequest = await req.json();
-    const { farm_id, messages, include_context } = body;
+    const { farm_id, messages, include_context, model: requestedModel } = body;
 
     if (!farm_id || !messages || !Array.isArray(messages)) {
       return new Response(
@@ -943,8 +959,13 @@ Deno.serve(async (req: Request) => {
     const firstUserIdx = rawMessages.findIndex(m => m.role === "user");
     const cleanedMessages = firstUserIdx >= 0 ? rawMessages.slice(firstUserIdx) : rawMessages;
 
-    const chosenModel = selectModel(cleanedMessages);
-    console.log(`Model selected: ${chosenModel} for message: "${messages[messages.length-1]?.content?.slice(0,60)}"`);
+    // Honour an explicit model override if it's whitelisted; otherwise fall
+    // back to the heuristic. Used by FishHealthPage to lock photo diagnosis
+    // to Sonnet on first call, then escalate to Opus when "Get expert review"
+    // is requested.
+    const overrideModel = requestedModel && ALLOWED_MODEL_OVERRIDES.has(requestedModel) ? requestedModel : null;
+    const chosenModel = overrideModel || selectModel(cleanedMessages);
+    console.log(`Model selected: ${chosenModel}${overrideModel ? ' (override)' : ''} for message: "${messages[messages.length-1]?.content?.slice(0,60)}"`);
 
 
     const claudeMessages = cleanedMessages.map((m: ChatMessage) => {

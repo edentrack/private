@@ -74,6 +74,7 @@ const WaterQualityPage       = lazy1(() => import('./components/aquaculture/Wate
 const HarvestPage            = lazy1(() => import('./components/aquaculture/HarvestPage'), 'HarvestPage');
 const SamplingEventsPage     = lazy1(() => import('./components/aquaculture/SamplingEventsPage'), 'SamplingEventsPage');
 const StockingEventsPage     = lazy1(() => import('./components/aquaculture/StockingEventsPage'), 'StockingEventsPage');
+const FishHealthPage         = lazy1(() => import('./components/aquaculture/FishHealthPage'), 'FishHealthPage');
 const PondInspectionsPage    = lazy1(() => import('./components/aquaculture/PondInspectionsPage'), 'PondInspectionsPage');
 const RabbitHarvestPage      = lazy1(() => import('./components/rabbits/RabbitHarvestPage'), 'RabbitHarvestPage');
 const BreedingEventsPage     = lazy1(() => import('./components/rabbits/BreedingEventsPage'), 'BreedingEventsPage');
@@ -382,6 +383,7 @@ function AppContent() {
       'harvest': '#/harvest',
       'sampling': '#/sampling',
       'stocking': '#/stocking',
+      'fish-health': '#/fish-health',
       'pond-inspections': '#/pond-inspections',
       'rabbit-harvest': '#/rabbit-harvest',
       'breeding-events': '#/breeding-events',
@@ -610,6 +612,10 @@ function AppContent() {
       }
       if (hash.includes('#/stocking')) {
         setCurrentView('stocking');
+        return;
+      }
+      if (hash.includes('#/fish-health')) {
+        setCurrentView('fish-health');
         return;
       }
       if (hash.includes('#/pond-inspections')) {
@@ -1081,6 +1087,8 @@ function AppContent() {
         return <SamplingEventsPage onNavigate={navigateToView} />;
       case 'stocking':
         return <StockingEventsPage />;
+      case 'fish-health':
+        return <FishHealthPage />;
       case 'pond-inspections':
         return <PondInspectionsPage />;
       case 'rabbit-harvest':
