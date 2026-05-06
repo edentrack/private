@@ -15,8 +15,10 @@ import { canViewInventoryCosts } from '../../utils/permissions';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// jsPDF + jspdf-autotable are pulled in dynamically inside handleExport so
+// that 'pdf' chunk doesn't load on every Expenses page visit. See Phase 3
+// of CLAUDE_CODE_AUTONOMOUS_ROADMAP.md.
+import type jsPDFType from 'jspdf';
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
 
@@ -633,11 +635,16 @@ export function ExpenseTracking() {
     return flock?.name || t('expenses.unknown');
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!currentFarm) return;
 
+    // Lazy-load the PDF stack — saves ~130 KB gzipped from the initial
+    // dependency closure of this page.
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
     // Initialize PDF
-    const doc = new jsPDF();
+    const doc: jsPDFType = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
     let yPos = margin;

@@ -4,7 +4,9 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { buildCreditScore, CreditScoreResult } from '../../utils/creditScore';
-import { downloadCreditworthinessPDF } from '../../utils/creditworthinessPDF';
+// creditworthinessPDF pulls in jsPDF + jspdf-autotable. Dynamic-imported in
+// handleDownload so the chunk only loads when the user clicks the button —
+// see Phase 3 of CLAUDE_CODE_AUTONOMOUS_ROADMAP.md.
 
 const TIER_COLORS: Record<CreditScoreResult['tier'], { bg: string; ring: string; text: string }> = {
   excellent: { bg: 'bg-emerald-50', ring: 'ring-emerald-200', text: 'text-emerald-700' },
@@ -43,6 +45,7 @@ export function CreditScorePage() {
     if (!score || !currentFarm || !user) return;
     setDownloading(true);
     try {
+      const { downloadCreditworthinessPDF } = await import('../../utils/creditworthinessPDF');
       downloadCreditworthinessPDF({
         farmName: currentFarm.name,
         ownerName: profile?.full_name || user.email || 'Farm Owner',
