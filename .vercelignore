@@ -1,0 +1,12 @@
+edentrack-video-pipeline/
+remotion/
+scripts/
+supabase/functions/auto-signup/
+docs/
+*.md
+!README.md
+EDENTRACK_UPDATE_REPORT.html
+DAILY_REPORT_IMPLEMENTATION.md
+DAILY_REPORT_QUICKSTART.md
+OFFLINE_SYNC_IMPLEMENTATION.md
+CLAUDE_CODE_BRIEF.md
