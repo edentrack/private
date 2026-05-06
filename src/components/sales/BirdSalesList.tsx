@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bird, Calendar, DollarSign, User, ChevronDown, ChevronUp, Scale, AlertCircle } from 'lucide-react';
+import { Bird, Calendar, User, ChevronDown, ChevronUp, Scale } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';

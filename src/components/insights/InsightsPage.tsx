@@ -76,6 +76,7 @@ export function InsightsPage() {
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>([]);
   const [feedBagsUsed, setFeedBagsUsed] = useState(0);
   const [revenues, setRevenues] = useState<any[]>([]);
+  const [stockingEvents, setStockingEvents] = useState<{ fingerling_count: number; stocked_at: string }[]>([]);
   const [profitPoolUsed, setProfitPoolUsed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -220,6 +221,16 @@ export function InsightsPage() {
         );
       }
 
+      // Stocking events — used to adjust survival-rate denominator after
+      // restocks. Pushed AFTER the kind-specific queries so it doesn't shift
+      // the existing index map. Read via `stockingResultIdx` below.
+      const stockingResultIdx = queries.length;
+      queries.push(safe('stocking_events', supabase
+        .from('stocking_events')
+        .select('fingerling_count, stocked_at')
+        .eq('farm_id', currentFarm.id)
+        .eq('flock_id', flockId)));
+
       // Add paid_from_profit query into the same parallel batch
       queries.push(safe('expenses (paid_from_profit)', supabase
         .from('expenses')
@@ -233,6 +244,7 @@ export function InsightsPage() {
       const paidFromProfitRows = results[results.length - 1]?.data;
       const usedFromRevenue = (paidFromProfitRows || []).reduce((sum: number, row: any) => sum + Number(row.amount || 0), 0);
       setProfitPoolUsed(usedFromRevenue);
+      setStockingEvents((results[stockingResultIdx]?.data ?? []) as { fingerling_count: number; stocked_at: string }[]);
 
       setExpenses(results[0].data || []);
       setMortality(results[1].data || []);
@@ -325,12 +337,20 @@ export function InsightsPage() {
 
     const initialCount = selectedFlock.initial_count || 0;
     const birdsAlive = selectedFlock.current_count || 0;
+    // Restocks (LOG_STOCKING) raise the denominator. Without this fix the
+    // survival rate stayed pinned to the original initial_count and
+    // produced misleading numbers after a top-up.
+    const restockedCount = stockingEvents.reduce(
+      (sum, s) => sum + (Number(s.fingerling_count) || 0),
+      0
+    );
+    const totalStocked = initialCount + restockedCount;
 
-    const survivalRate = initialCount > 0
-      ? (((initialCount - totalMortality) / initialCount) * 100).toFixed(1)
+    const survivalRate = totalStocked > 0
+      ? (((totalStocked - totalMortality) / totalStocked) * 100).toFixed(1)
       : '100.0';
-    const mortalityRate = initialCount > 0
-      ? ((totalMortality / initialCount) * 100).toFixed(1)
+    const mortalityRate = totalStocked > 0
+      ? ((totalMortality / totalStocked) * 100).toFixed(1)
       : '0.0';
 
     // Production rate: 7-day rolling average so it stays non-zero even if today not logged yet.
@@ -425,7 +445,7 @@ export function InsightsPage() {
       totalWeight,
       dailyWeightGain
     };
-  }, [selectedFlock, expenses, mortality, eggCollections, eggSales, birdSales, weightLogs, eggsPerTray, feedBagsUsed, revenues, isLayerFlock, isBroilerFlock]);
+  }, [selectedFlock, expenses, mortality, eggCollections, eggSales, birdSales, weightLogs, eggsPerTray, feedBagsUsed, revenues, stockingEvents, isLayerFlock, isBroilerFlock]);
 
   const weeklyData = useMemo(() => {
     if (!selectedFlock) return [];
@@ -555,9 +575,9 @@ export function InsightsPage() {
       ['Production Metrics'],
       ['Metric', 'Value', 'Unit'],
       ['Current Age', `${metrics.ageWeeks} weeks (${metrics.ageDays} days)`, ''],
-      ['Birds Alive', `${metrics.birdsAlive}/${metrics.initialCount}`, 'birds'],
+      [`${species.animalTermPlural} Alive`, `${metrics.birdsAlive}/${metrics.initialCount}`, species.animalTermPlural.toLowerCase()],
       ['Survival Rate', `${metrics.survivalRate}%`, ''],
-      ['Mortality', `${metrics.totalMortality} (${metrics.mortalityRate}%)`, 'birds'],
+      ['Mortality', `${metrics.totalMortality} (${metrics.mortalityRate}%)`, species.animalTermPlural.toLowerCase()],
       ['Feed Consumed', feedBagsUsed.toString(), 'kg'],
     ];
 
@@ -1028,7 +1048,7 @@ export function InsightsPage() {
                     {species.id === 'poultry' ? t('insights.mortality') : species.lossNounPlural}
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {metrics.totalMortality} {isAquaFlock ? species.animalTermPlural.toLowerCase() : t('dashboard.birds')}
+                    {metrics.totalMortality} {species.animalTermPlural.toLowerCase()}
                   </p>
                   <p className="text-sm text-gray-500">({metrics.mortalityRate}%)</p>
                 </div>

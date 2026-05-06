@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText, Building2, Award, CalendarDays } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -105,6 +105,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'stocking', label: 'Stocking', icon: Truck },
       { id: 'fish-health', label: 'Fish Health', icon: AlertTriangle },
       { id: 'pond-inspections', label: 'Pond Inspections', icon: Eye },
+      { id: 'pond-planner', label: 'Pond Planner', icon: CalendarDays },
       { id: 'rabbit-harvest', label: 'Rabbit Harvest', icon: Scale },
       { id: 'breeding-events', label: 'Breeding', icon: Heart },
       { id: 'litters', label: 'Litters', icon: Baby },
@@ -113,9 +114,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
       { id: 'sales', label: t('nav.sales'), icon: ShoppingCart },
+      { id: 'credit-score', label: 'Credit Score', icon: Award },
       { id: 'weight', label: isAquaculture ? 'Weight & FCR' : t('nav.weight'), icon: Scale },
       { id: 'shifts', label: t('nav.shifts'), icon: Calendar },
       { id: 'team', label: t('nav.team'), icon: Users },
+      { id: 'cooperatives', label: 'Cooperatives', icon: Building2 },
       { id: 'ai-assistant', label: t('nav.ai_assistant') || 'Eden AI', icon: Zap },
       { id: 'reports', label: 'Reports', icon: FileText },
       { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },

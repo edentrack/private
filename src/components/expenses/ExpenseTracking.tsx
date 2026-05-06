@@ -8,6 +8,7 @@ import { Expense, ExpenseCategory, Currency, Flock, InventoryLinkType, Inventory
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { EditExpenseModal } from './EditExpenseModal';
 import { InventoryLinkSection } from './InventoryLinkSection';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { CreateDailyUsageTaskModal } from '../inventory/CreateDailyUsageTaskModal';
 import { recordInventoryIncrease } from '../../utils/inventoryMovements';
 import { canViewInventoryCosts } from '../../utils/permissions';
@@ -68,7 +69,8 @@ const getCategoryEmoji = (cat: string, species: SpeciesId = 'poultry'): string =
 
 export function ExpenseTracking() {
   const { t } = useTranslation();
-  const { user, profile, currentFarm, currentRole } = useAuth();
+  const { user, currentFarm, currentRole } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const { farmPermissions } = usePermissions();
   const farmSpecies = useFarmSpecies();
   const speciesId: SpeciesId = farmSpecies.id;
@@ -457,7 +459,11 @@ export function ExpenseTracking() {
       const { error: insertError } = await supabase.from('expenses').insert(expensePayload);
 
       if (insertError) {
-        throw insertError;
+        if (isNetworkError(insertError)) {
+          await tryWrite('expenses', 'insert', expensePayload);
+        } else {
+          throw insertError;
+        }
       }
 
       const activityMessage = inventoryEnabled && inventoryType !== 'none'
