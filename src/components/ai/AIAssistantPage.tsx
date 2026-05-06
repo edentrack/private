@@ -22,7 +22,17 @@ interface PendingFile {
 }
 
 interface LogAction {
-  type: 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE' | 'COMPLETE_TASK' | 'CREATE_TASK' | 'LOG_WEIGHT' | 'LOG_FEED_USAGE' | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE';
+  type:
+    | 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE'
+    | 'COMPLETE_TASK' | 'CREATE_TASK'
+    | 'LOG_WEIGHT' | 'LOG_FEED_USAGE'
+    | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE'
+    // Fish (aquaculture) — Eden as operator
+    | 'LOG_WATER_QUALITY' | 'LOG_POND_INSPECTION' | 'LOG_STOCKING'
+    | 'LOG_HARVEST' | 'LOG_SAMPLING' | 'LOG_FISH_LOSS'
+    // Rabbit — Eden as operator
+    | 'LOG_BREEDING' | 'LOG_KINDLING' | 'LOG_WEANING'
+    | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST';
   log_date?: string;  // universal ISO date override for bulk imports
   // Common
   flock_name?: string;
@@ -77,6 +87,64 @@ interface LogAction {
   birds_sold?: number;
   price_per_bird?: number;
   total_amount?: number;
+  // ─── Fish (aquaculture) species-aware actions ────────────────────────
+  // pond_name is an alias for flock_name for fish — the executor checks
+  // pond_name first and falls back to flock_name. Kept separate so the
+  // system prompt can read naturally.
+  pond_name?: string;
+  // LOG_WATER_QUALITY
+  dissolved_oxygen?: number;
+  temperature_c?: number;
+  ph?: number;
+  ammonia_mgl?: number;
+  nitrite_mgl?: number;
+  // LOG_POND_INSPECTION
+  water_clarity?: 'clear' | 'murky' | 'green' | 'brown' | 'black';
+  fish_behavior?: 'normal' | 'lethargic' | 'gasping' | 'erratic' | 'feeding-vigorous';
+  feeding_response?: 'vigorous' | 'normal' | 'slow' | 'none';
+  dead_fish_count?: number;
+  // LOG_STOCKING
+  fingerling_count?: number;
+  species?: 'tilapia' | 'catfish' | 'clarias' | 'other';
+  source?: string;
+  cost_per_fingerling?: number;
+  total_cost?: number;
+  stocked_at?: string;
+  // LOG_HARVEST (fish)
+  total_weight_kg?: number;
+  price_per_kg?: number;
+  buyer_name?: string;
+  harvested_at?: string;
+  // LOG_SAMPLING
+  abw_g?: number;
+  sampled_at?: string;
+  // ─── Rabbit species-aware actions ─────────────────────────────────────
+  rabbitry_name?: string;
+  // LOG_BREEDING / LOG_KINDLING / REGISTER_RABBIT
+  doe_tag?: string;
+  buck_tag?: string;
+  mating_date?: string;
+  expected_kindling_date?: string;
+  // LOG_KINDLING
+  kits_born_alive?: number;
+  kits_born_dead?: number;
+  kindling_date?: string;
+  breeding_event_hint?: string;
+  // LOG_WEANING
+  kits_weaned?: number;
+  weaning_date?: string;
+  // REGISTER_RABBIT
+  tag?: string;
+  sex?: 'doe' | 'buck';
+  breed?: string;
+  birth_date?: string;
+  sire_tag?: string;
+  dam_tag?: string;
+  // LOG_RABBIT_HARVEST
+  total_live_weight_kg?: number;
+  total_carcass_weight_kg?: number;
+  sale_price?: number;
+  harvest_date?: string;
 }
 
 interface ChatMessage {
@@ -569,6 +637,235 @@ export function AIAssistantPage() {
       }).select('id');
       if (taskErr) throw new Error(`Task creation failed: ${taskErr.message}`);
       if (!taskData?.length) throw new Error('Task not saved — possible permission issue.');
+
+    // ─── Fish (aquaculture) actions ───────────────────────────────────────
+    } else if (logAction.type === 'LOG_WATER_QUALITY') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const { data: wqData, error: wqErr } = await supabase.from('water_quality_logs').insert({
+        farm_id: farmId, flock_id: flock.id,
+        logged_at: recordDate,
+        temperature_c: logAction.temperature_c ?? null,
+        dissolved_oxygen: logAction.dissolved_oxygen ?? null,
+        ph: logAction.ph ?? null,
+        ammonia_mgl: logAction.ammonia_mgl ?? null,
+        nitrite_mgl: logAction.nitrite_mgl ?? null,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (wqErr) throw new Error(`Water quality save failed: ${wqErr.message}`);
+      if (!wqData?.length) throw new Error('Water quality record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_POND_INSPECTION') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const { data: piData, error: piErr } = await supabase.from('pond_inspections').insert({
+        farm_id: farmId, flock_id: flock.id,
+        inspection_date: recordDate,
+        water_clarity: logAction.water_clarity || null,
+        fish_behavior: logAction.fish_behavior || null,
+        feeding_response: logAction.feeding_response || null,
+        dead_fish_count: logAction.dead_fish_count ?? 0,
+        notes: logAction.notes || null,
+        inspected_by: user?.id || null,
+      }).select('id');
+      if (piErr) throw new Error(`Pond inspection save failed: ${piErr.message}`);
+      if (!piData?.length) throw new Error('Pond inspection not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_STOCKING') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const fingerlingCount = logAction.fingerling_count || 0;
+      const totalCost = logAction.total_cost ?? (logAction.cost_per_fingerling ? logAction.cost_per_fingerling * fingerlingCount : null);
+      const { data: stockData, error: stockErr } = await supabase.from('stocking_events').insert({
+        farm_id: farmId, flock_id: flock.id,
+        stocked_at: logAction.stocked_at || recordDate,
+        species: logAction.species || 'catfish',
+        fingerling_count: fingerlingCount,
+        source: logAction.source || null,
+        cost_per_fingerling: logAction.cost_per_fingerling ?? null,
+        total_cost: totalCost,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (stockErr) throw new Error(`Stocking save failed: ${stockErr.message}`);
+      if (!stockData?.length) throw new Error('Stocking record not saved — possible permission issue.');
+      if (fingerlingCount > 0) {
+        await supabase.from('flocks').update({ current_count: (flock.current_count || 0) + fingerlingCount }).eq('id', flock.id).eq('farm_id', farmId);
+      }
+
+    } else if (logAction.type === 'LOG_HARVEST') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const totalAmount = logAction.total_amount ?? (logAction.price_per_kg && logAction.total_weight_kg ? logAction.price_per_kg * logAction.total_weight_kg : null);
+      const { data: harvData, error: harvErr } = await supabase.from('harvest_records').insert({
+        farm_id: farmId, flock_id: flock.id,
+        harvested_at: logAction.harvested_at || recordDate,
+        total_weight_kg: logAction.total_weight_kg || 0,
+        price_per_kg: logAction.price_per_kg ?? null,
+        total_amount: totalAmount,
+        buyer_name: logAction.buyer_name || null,
+        payment_status: logAction.payment_status || 'pending',
+        notes: logAction.notes || null,
+      }).select('id');
+      if (harvErr) throw new Error(`Fish harvest save failed: ${harvErr.message}`);
+      if (!harvData?.length) throw new Error('Fish harvest record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_SAMPLING') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const sampleSize = logAction.sample_size || 10;
+      const abwG = logAction.abw_g || 0;
+      // Synthesise individual_weights_g — AI-driven sampling simplification (UI form allows per-fish entry)
+      const individualWeights = Array(sampleSize).fill(abwG);
+      const { data: sampData, error: sampErr } = await supabase.from('sampling_events').insert({
+        farm_id: farmId, flock_id: flock.id,
+        sampled_at: logAction.sampled_at || recordDate,
+        sample_size: sampleSize,
+        individual_weights_g: individualWeights,
+        notes: logAction.notes || null,
+        created_by: user?.id || null,
+      }).select('id');
+      if (sampErr) throw new Error(`Sampling save failed: ${sampErr.message}`);
+      if (!sampData?.length) throw new Error('Sampling record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_FISH_LOSS') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const { data: fishLossData, error: fishLossErr } = await supabase.from('mortality_logs').insert({
+        farm_id: farmId, flock_id: flock.id,
+        count: logAction.count, cause: logAction.cause || 'unknown',
+        notes: logAction.notes || '',
+        event_date: recordDate,
+        created_by: user?.id || null,
+      }).select('id');
+      if (fishLossErr) throw new Error(`Fish loss save failed: ${fishLossErr.message}`);
+      if (!fishLossData?.length) throw new Error('Fish loss record not saved — possible permission issue.');
+
+    // ─── Rabbit actions ───────────────────────────────────────────────────
+    } else if (logAction.type === 'LOG_BREEDING') {
+      if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_BREEDING');
+      if (!logAction.buck_tag) throw new Error('buck_tag is required for LOG_BREEDING');
+      const matingDate = logAction.mating_date || recordDate;
+      let expectedKindling = logAction.expected_kindling_date;
+      if (!expectedKindling) {
+        const d = new Date(matingDate);
+        d.setDate(d.getDate() + 31);
+        expectedKindling = d.toISOString().split('T')[0];
+      }
+      const rabbitryForBreeding = await findFlock(logAction.rabbitry_name || logAction.flock_name);
+      const { data: breedData, error: breedErr } = await supabase.from('breeding_events').insert({
+        farm_id: farmId,
+        flock_id: rabbitryForBreeding?.id || null,
+        doe_tag: logAction.doe_tag,
+        buck_tag: logAction.buck_tag,
+        mating_date: matingDate,
+        expected_kindling_date: expectedKindling,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (breedErr) throw new Error(`Breeding event save failed: ${breedErr.message}`);
+      if (!breedData?.length) throw new Error('Breeding event not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_KINDLING') {
+      if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_KINDLING');
+      const kindlingDate = logAction.kindling_date || recordDate;
+      // Fuzzy-match the closest preceding breeding_event for this doe within 35 days
+      let breedingEventId: string | null = null;
+      try {
+        const lookback = new Date(kindlingDate);
+        lookback.setDate(lookback.getDate() - 35);
+        const { data: beMatch } = await supabase.from('breeding_events')
+          .select('id').eq('farm_id', farmId).eq('doe_tag', logAction.doe_tag)
+          .gte('mating_date', lookback.toISOString().split('T')[0])
+          .lte('mating_date', kindlingDate)
+          .order('mating_date', { ascending: false }).limit(1);
+        breedingEventId = beMatch?.[0]?.id || null;
+      } catch {}
+      const { data: litterData, error: litterErr } = await supabase.from('litters').insert({
+        farm_id: farmId,
+        breeding_event_id: breedingEventId,
+        doe_tag: logAction.doe_tag,
+        kindling_date: kindlingDate,
+        kits_born_alive: logAction.kits_born_alive ?? 0,
+        kits_born_dead: logAction.kits_born_dead ?? 0,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (litterErr) throw new Error(`Kindling save failed: ${litterErr.message}`);
+      if (!litterData?.length) throw new Error('Kindling record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_WEANING') {
+      if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_WEANING');
+      const { data: latestLitter } = await supabase.from('litters')
+        .select('id').eq('farm_id', farmId).eq('doe_tag', logAction.doe_tag)
+        .is('kits_weaned', null).order('kindling_date', { ascending: false }).limit(1);
+      if (!latestLitter?.length) throw new Error(`No un-weaned litter found for doe "${logAction.doe_tag}"`);
+      const { error: weanErr } = await supabase.from('litters')
+        .update({ kits_weaned: logAction.kits_weaned ?? 0, weaning_date: logAction.weaning_date || recordDate })
+        .eq('id', latestLitter[0].id).eq('farm_id', farmId);
+      if (weanErr) throw new Error(`Weaning update failed: ${weanErr.message}`);
+
+    } else if (logAction.type === 'REGISTER_RABBIT') {
+      if (!logAction.tag) throw new Error('tag is required for REGISTER_RABBIT');
+      if (!logAction.sex) throw new Error('sex (doe/buck) is required for REGISTER_RABBIT');
+      const rabbitryForReg = await findFlock(logAction.rabbitry_name || logAction.flock_name);
+      const { data: rabbitData, error: rabbitErr } = await supabase.from('rabbits').insert({
+        farm_id: farmId,
+        flock_id: rabbitryForReg?.id || null,
+        tag: logAction.tag, sex: logAction.sex,
+        breed: logAction.breed || null,
+        birth_date: logAction.birth_date || null,
+        sire_tag: logAction.sire_tag || null,
+        dam_tag: logAction.dam_tag || null,
+        status: 'active',
+        notes: logAction.notes || null,
+      }).select('id');
+      if (rabbitErr) {
+        if (rabbitErr.code === '23505') throw new Error(`Rabbit tag "${logAction.tag}" already exists on this farm`);
+        throw new Error(`Rabbit registration failed: ${rabbitErr.message}`);
+      }
+      if (!rabbitData?.length) throw new Error('Rabbit not registered — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_RABBIT_LOSS') {
+      const rabbitryName = logAction.rabbitry_name || logAction.flock_name;
+      const flock = await findFlock(rabbitryName);
+      if (!flock) throw new Error(`Rabbitry "${rabbitryName}" not found`);
+      const { data: rLossData, error: rLossErr } = await supabase.from('mortality_logs').insert({
+        farm_id: farmId, flock_id: flock.id,
+        count: logAction.count, cause: logAction.cause || 'unknown',
+        notes: logAction.notes || '',
+        event_date: recordDate,
+        created_by: user?.id || null,
+      }).select('id');
+      if (rLossErr) throw new Error(`Rabbit loss save failed: ${rLossErr.message}`);
+      if (!rLossData?.length) throw new Error('Rabbit loss record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_RABBIT_HARVEST') {
+      const rabbitryName = logAction.rabbitry_name || logAction.flock_name;
+      const flock = await findFlock(rabbitryName);
+      if (!flock) throw new Error(`Rabbitry "${rabbitryName}" not found`);
+      const harvestCount = logAction.count || 0;
+      // rabbit_harvest_records has price_per_kg + total_amount; schema has no sale_price/currency cols
+      const { data: rhrData, error: rhrErr } = await supabase.from('rabbit_harvest_records').insert({
+        farm_id: farmId, flock_id: flock.id,
+        harvested_at: logAction.harvest_date || recordDate,
+        count: harvestCount,
+        total_live_weight_kg: logAction.total_live_weight_kg ?? null,
+        total_carcass_weight_kg: logAction.total_carcass_weight_kg ?? null,
+        price_per_kg: logAction.price_per_kg ?? null,
+        total_amount: logAction.total_amount ?? logAction.sale_price ?? null,
+        buyer_name: logAction.buyer_name || null,
+        payment_status: logAction.payment_status || 'pending',
+        notes: logAction.notes || null,
+      }).select('id');
+      if (rhrErr) throw new Error(`Rabbit harvest save failed: ${rhrErr.message}`);
+      if (!rhrData?.length) throw new Error('Rabbit harvest not saved — possible permission issue.');
+      if (harvestCount > 0) {
+        await supabase.from('flocks').update({ current_count: Math.max(0, (flock.current_count || 0) - harvestCount) }).eq('id', flock.id).eq('farm_id', farmId);
+      }
     }
   };
 
@@ -615,6 +912,38 @@ export function AIAssistantPage() {
         showToast(`Task added: "${logAction.title}"`, 'success');
       } else if (logAction.type === 'COMPLETE_TASK') {
         showToast(`Task marked as complete`, 'success');
+      } else if (logAction.type === 'LOG_WATER_QUALITY') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Water quality logged for "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_POND_INSPECTION') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Pond inspection saved for "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_STOCKING') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Stocked ${logAction.fingerling_count?.toLocaleString() || 0} fingerlings into "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_HARVEST') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Fish harvest logged for "${pond}": ${logAction.total_weight_kg} kg`, 'success');
+      } else if (logAction.type === 'LOG_SAMPLING') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Sampling logged for "${pond}": ABW ${logAction.abw_g} g`, 'success');
+      } else if (logAction.type === 'LOG_FISH_LOSS') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Logged ${logAction.count} fish loss in "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_BREEDING') {
+        showToast(`Breeding recorded: ${logAction.doe_tag} × ${logAction.buck_tag}`, 'success');
+      } else if (logAction.type === 'LOG_KINDLING') {
+        showToast(`Kindling recorded for doe ${logAction.doe_tag}: ${logAction.kits_born_alive} kits alive`, 'success');
+      } else if (logAction.type === 'LOG_WEANING') {
+        showToast(`Weaning logged: ${logAction.kits_weaned} kits weaned from doe ${logAction.doe_tag}`, 'success');
+      } else if (logAction.type === 'REGISTER_RABBIT') {
+        showToast(`Rabbit "${logAction.tag}" (${logAction.sex}) registered`, 'success');
+      } else if (logAction.type === 'LOG_RABBIT_LOSS') {
+        const rabbitry = logAction.rabbitry_name || logAction.flock_name;
+        showToast(`Logged ${logAction.count} rabbit loss in "${rabbitry}"`, 'success');
+      } else if (logAction.type === 'LOG_RABBIT_HARVEST') {
+        const rabbitry = logAction.rabbitry_name || logAction.flock_name;
+        showToast(`Rabbit harvest logged: ${logAction.count} rabbits from "${rabbitry}"`, 'success');
       }
     } catch (err: any) {
       console.error('[Eden AI] Save failed:', err);
@@ -1099,6 +1428,42 @@ export function AIAssistantPage() {
     if (a.type === 'LOG_EXPENSE') return `${a.description} · ${(a.amount||0).toLocaleString()} ${cur}${dateLabel}`;
     if (a.type === 'LOG_WEIGHT') return `Weight "${a.flock_name}": ${a.avg_weight_kg} kg avg${dateLabel}`;
     if (a.type === 'LOG_FEED_USAGE') return `${a.bags_used} bag(s) of ${a.feed_type} used${dateLabel}`;
+    if (a.type === 'LOG_WATER_QUALITY') {
+      const pond = a.pond_name || a.flock_name;
+      return `Water quality "${pond}": DO ${a.dissolved_oxygen ?? '—'} mg/L, pH ${a.ph ?? '—'}, Temp ${a.temperature_c ?? '—'}°C${dateLabel}`;
+    }
+    if (a.type === 'LOG_POND_INSPECTION') {
+      const pond = a.pond_name || a.flock_name;
+      return `Pond inspection "${pond}": clarity ${a.water_clarity || '—'}, fish ${a.fish_behavior || '—'}${a.dead_fish_count ? `, ${a.dead_fish_count} dead` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_STOCKING') {
+      const pond = a.pond_name || a.flock_name;
+      return `Stocked ${(a.fingerling_count || 0).toLocaleString()} ${a.species || 'fish'} fingerlings into "${pond}"${dateLabel}`;
+    }
+    if (a.type === 'LOG_HARVEST') {
+      const pond = a.pond_name || a.flock_name;
+      return `Fish harvest "${pond}": ${a.total_weight_kg} kg${a.price_per_kg ? ` @ ${a.price_per_kg}/${cur}/kg` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_SAMPLING') {
+      const pond = a.pond_name || a.flock_name;
+      return `Sampling "${pond}": n=${a.sample_size || 10}, ABW ${a.abw_g || '—'} g${dateLabel}`;
+    }
+    if (a.type === 'LOG_FISH_LOSS') {
+      const pond = a.pond_name || a.flock_name;
+      return `${a.count} fish loss in "${pond}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_BREEDING') return `Breeding: ${a.doe_tag} × ${a.buck_tag}${a.mating_date ? ` on ${a.mating_date}` : ''}`;
+    if (a.type === 'LOG_KINDLING') return `Kindling: doe ${a.doe_tag} — ${a.kits_born_alive ?? 0} alive, ${a.kits_born_dead ?? 0} dead${dateLabel}`;
+    if (a.type === 'LOG_WEANING') return `Weaning: ${a.kits_weaned ?? 0} kits from doe ${a.doe_tag}${dateLabel}`;
+    if (a.type === 'REGISTER_RABBIT') return `Register rabbit: tag "${a.tag}" · ${a.sex}${a.breed ? ` · ${a.breed}` : ''}`;
+    if (a.type === 'LOG_RABBIT_LOSS') {
+      const rabbitry = a.rabbitry_name || a.flock_name;
+      return `${a.count} rabbit loss in "${rabbitry}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_RABBIT_HARVEST') {
+      const rabbitry = a.rabbitry_name || a.flock_name;
+      return `Rabbit harvest "${rabbitry}": ${a.count} rabbits${a.total_live_weight_kg ? `, ${a.total_live_weight_kg} kg live wt` : ''}${dateLabel}`;
+    }
     return 'Log data';
   };
 
