@@ -6,7 +6,10 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrency } from './currency';
-import { formatEggsWithTotal } from './eggFormatting';
+
+// jsPDF's color setters require an `[r, g, b]` tuple, not just any number[].
+// Centralised here so every call site spreads from a tuple.
+type RGB = [number, number, number];
 
 interface PDFReportData {
   farmName: string;
@@ -44,10 +47,9 @@ export function generatePDFReport(data: PDFReportData, currencyCode: string = 'X
   const margin = 15;
   let yPosition = margin;
 
-  // Colors
-  const primaryColor = [75, 61, 36]; // agri-brown
-  const accentColor = [255, 221, 0]; // neon
-  const lightGray = [245, 245, 245];
+  // Colors — typed as RGB tuples so jsPDF setters accept `...spread`.
+  const primaryColor: RGB = [75, 61, 36]; // agri-brown
+  const lightGray: RGB = [245, 245, 245];
 
   // Header
   doc.setFillColor(...primaryColor);
@@ -160,7 +162,7 @@ export function generatePDFReport(data: PDFReportData, currencyCode: string = 'X
       margin: { left: margin, right: margin },
       headStyles: { 
         fillColor: primaryColor,
-        textColor: [255, 255, 255],
+        textColor: [255, 255, 255] as RGB,
         fontStyle: 'bold',
       },
       styles: { fontSize: 9 },
@@ -193,7 +195,7 @@ export function generatePDFReport(data: PDFReportData, currencyCode: string = 'X
       margin: { left: margin, right: margin },
       headStyles: { 
         fillColor: primaryColor,
-        textColor: [255, 255, 255],
+        textColor: [255, 255, 255] as RGB,
         fontStyle: 'bold',
       },
       styles: { fontSize: 9 },
@@ -242,7 +244,7 @@ export function generatePDFReport(data: PDFReportData, currencyCode: string = 'X
         margin: { left: margin, right: margin },
         headStyles: { 
           fillColor: primaryColor,
-          textColor: [255, 255, 255],
+          textColor: [255, 255, 255] as RGB,
           fontStyle: 'bold',
         },
         styles: { fontSize: 9 },
@@ -272,7 +274,7 @@ export function generatePDFReport(data: PDFReportData, currencyCode: string = 'X
       margin: { left: margin, right: margin },
       headStyles: { 
         fillColor: primaryColor,
-        textColor: [255, 255, 255],
+        textColor: [255, 255, 255] as RGB,
         fontStyle: 'bold',
       },
       styles: { fontSize: 9 },
@@ -303,7 +305,7 @@ export function generatePDFReport(data: PDFReportData, currencyCode: string = 'X
       margin: { left: margin, right: margin },
       headStyles: { 
         fillColor: primaryColor,
-        textColor: [255, 255, 255],
+        textColor: [255, 255, 255] as RGB,
         fontStyle: 'bold',
       },
       styles: { fontSize: 9 },
@@ -334,7 +336,7 @@ export function generatePDFReport(data: PDFReportData, currencyCode: string = 'X
       margin: { left: margin, right: margin },
       headStyles: { 
         fillColor: primaryColor,
-        textColor: [255, 255, 255],
+        textColor: [255, 255, 255] as RGB,
         fontStyle: 'bold',
       },
       styles: { fontSize: 9 },
@@ -369,7 +371,7 @@ function addSectionHeader(
   title: string,
   margin: number,
   yPosition: number,
-  color: number[],
+  color: RGB,
   pageWidth: number
 ): number {
   doc.setFillColor(...color);

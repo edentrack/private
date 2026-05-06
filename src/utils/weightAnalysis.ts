@@ -102,7 +102,7 @@ export function getUniformityRating(cv: number): string {
 
 export function calculateGrowthPerformance(
   currentWeight: number,
-  targetWeight: number,
+  _targetWeight: number,
   previousWeight: number | null,
   daysSinceLastCheck: number | null,
   flockType: string,
@@ -142,7 +142,7 @@ export function calculateMarketReadiness(
   currentWeight: number,
   flockType: string,
   currentWeek: number,
-  dailyGain: number | null,
+  _dailyGain: number | null,
   customCriteria?: {
     minAge: number;
     minWeight: number;

@@ -67,7 +67,7 @@ export async function generateDailyReport(farmId: string, farmName: string, curr
 
     const safe = (i: number) => settled[i].status === 'fulfilled' ? (settled[i] as PromiseFulfilledResult<any>).value : { data: null };
     const [
-      flocksData, tasksData, taskTemplatesData, birdSalesData, eggSalesData, expensesData,
+      flocksData, tasksData, _taskTemplatesData, birdSalesData, eggSalesData, expensesData,
       inventoryData, eggInventoryData, eggCollectionsData, mortalityData,
       feedUsageData, vaccinationsData, weightLogsData, revenuesData,
       prevBirdSalesData, prevEggSalesData, prevExpensesData, prevMortalityData,
@@ -91,14 +91,17 @@ export async function generateDailyReport(farmId: string, farmName: string, curr
       vaccinations: vaccinationsData.data || [],
       weightLogs: weightLogsData.data || [],
       inventoryMovements: await (async () => {
-        const { data, error } = await supabase
-          .from('other_inventory_movements')
-          .select('*')
-          .eq('farm_id', farmId)
-          .catch(() => ({ data: [], error: null }));
-        if (error) return [];
-        return data || [];
-      })().catch(() => []),
+        try {
+          const { data, error } = await supabase
+            .from('other_inventory_movements')
+            .select('*')
+            .eq('farm_id', farmId);
+          if (error) return [];
+          return data || [];
+        } catch {
+          return [];
+        }
+      })(),
       revenues: revenuesData.data || [],
       prevWeekBirdSales: prevBirdSalesData.data || [],
       prevWeekEggSales: prevEggSalesData.data || [],
@@ -257,9 +260,8 @@ function formatDailyReport(data: ReportData): string {
       const eggsToday = eggsByFlock[flock.id] || 0;
       const flockExpenses = expenses.filter(e => e.flock_id === flock.id);
       const totalFlockExpenses = flockExpenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
-      // Note: Feed usage is tracked at farm level, not per flock
-      const totalFeedUsed = 0; // Will be shown in overall feed usage section
-      const survivalRate = flock.initial_count > 0 
+      // Note: Feed usage is tracked at farm level, not per flock — see overall feed-usage section.
+      const survivalRate = flock.initial_count > 0
         ? (((flock.current_count / flock.initial_count) * 100)).toFixed(1)
         : '100.0';
       // Use initial_count: expenses were incurred for all birds started, not just survivors
@@ -374,6 +376,13 @@ function formatDailyReport(data: ReportData): string {
   const totalEggRevenue = eggSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
   const totalRevenue = totalBirdRevenue + totalEggRevenue;
 
+  // Week-over-week comparison values — hoisted out of the totalRevenue>0
+  // block because the expenses block below references them too.
+  const prevBirdRev = prevWeekBirdSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
+  const prevEggRev = prevWeekEggSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
+  const prevRevenue = prevBirdRev + prevEggRev;
+  const prevExpensesTotal = prevWeekExpenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
+
   if (totalRevenue > 0) {
     lines.push('💰 SALES THIS WEEK');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -415,12 +424,7 @@ function formatDailyReport(data: ReportData): string {
       lines.push('');
     }
 
-  // 4. Week-over-week comparison
-  const prevBirdRev = prevWeekBirdSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
-  const prevEggRev = prevWeekEggSales.reduce((sum: number, s: any) => sum + (s.total_amount || 0), 0);
-  const prevRevenue = prevBirdRev + prevEggRev;
-  const prevExpensesTotal = prevWeekExpenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0);
-
+    // 4. Week-over-week comparison values are hoisted above this block.
     lines.push(`💵 Total Revenue: ${totalRevenue.toLocaleString()} ${currency}${pctChange(totalRevenue, prevRevenue)}`);
     lines.push('');
   }
