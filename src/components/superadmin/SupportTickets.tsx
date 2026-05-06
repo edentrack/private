@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Search, MessageSquare, AlertCircle, CheckCircle, Clock, X } from 'lucide-react';
+import { ArrowLeft, Search, MessageSquare } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 

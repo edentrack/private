@@ -26,7 +26,7 @@ async function computeHealthScore(farmId: string): Promise<number> {
   const [
     workersRes, workersWithPayRes, configRes,
     expensesRes, eggCollRes, mortalityRes,
-    tasksRes, feedRes, salesRes,
+    tasksRes, feedRes, _salesRes,
     recentActivityRes,
   ] = await Promise.allSettled([
     supabase.from('farm_workers').select('id').eq('farm_id', farmId).eq('is_active', true).limit(1),
@@ -74,7 +74,7 @@ async function computeHealthScore(farmId: string): Promise<number> {
   return baseScore;
 }
 
-export function FarmHealthRing({ size = 42, children, onClick, showLabel = false }: FarmHealthRingProps) {
+export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLabel = false }: FarmHealthRingProps) {
   const { currentFarm, currentRole } = useAuth();
   const [score, setScore] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

@@ -6,7 +6,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { queueCreate, queueUpdate, queueDelete } from '../lib/offlineSync';
-import { isOnline } from '../lib/offlineDB';
 
 interface UseOfflineModeResult {
   isOnline: boolean;

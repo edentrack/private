@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { X, Search, Book, Video, ChevronRight } from 'lucide-react';
 import { helpArticles, faqItems, categories } from '../../data/helpContent';
 

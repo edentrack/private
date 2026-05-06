@@ -52,7 +52,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // After creation
-  const [createdFarmId, setCreatedFarmId] = useState('');
+  const [, setCreatedFarmId] = useState('');
   const [joinLink, setJoinLink] = useState('');
   const [copied, setCopied] = useState(false);
 

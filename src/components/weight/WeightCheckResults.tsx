@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Scale, Target, AlertCircle, DollarSign, Calendar, CheckCircle, Clock, FileText, Download, History } from 'lucide-react';
+import { TrendingUp, Scale, Target, DollarSign, Calendar, CheckCircle, Clock, FileText, Download, History } from 'lucide-react';
 import { Flock } from '../../types/database';
 import { WeightAnalysisResult } from '../../utils/weightAnalysis';
 import { CalculationBreakdown } from './CalculationBreakdown';

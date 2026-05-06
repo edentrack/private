@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Settings, X, Pencil, Trash2, RefreshCw, Copy, Eye, EyeOff, HelpCircle, Clock, Save, AlertCircle, Plus } from 'lucide-react';
+import { Settings, X, Pencil, Trash2, RefreshCw, Copy, Eye, EyeOff, HelpCircle, Clock, Save, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { TaskTemplate, TaskScope, TaskTypeCategory } from '../../types/database';
@@ -687,7 +687,7 @@ function EditTemplateModal({ template, farmTz, onClose, onSave, onAutoSave }: Ed
   const [saving, setSaving] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [autoSaveState, setAutoSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
+  const [_autoSaveError, setAutoSaveError] = useState<string | null>(null);
 
   const buildTemplateForSave = () => {
     const times = normalizeTimes(form.scheduled_times as any);

@@ -20,7 +20,7 @@ export function FarmsManagement() {
   const [farms, setFarms] = useState<FarmData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedFarm, setSelectedFarm] = useState<FarmData | null>(null);
+  const [, _setSelectedFarm] = useState<FarmData | null>(null);
   const [impersonateUser, setImpersonateUser] = useState<{id: string, name: string, email: string} | null>(null);
   const { showToast } = useToast();
 

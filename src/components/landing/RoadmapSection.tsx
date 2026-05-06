@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Leaf, Circle, Smartphone, TrendingUp, Globe, Box, Users, Calendar, Gauge, Zap, ArrowRight } from 'lucide-react';
+import { useState } from 'react';
+import { Leaf, Circle, Smartphone, TrendingUp, Globe, Box, Users, Calendar, Gauge, Zap } from 'lucide-react';
 
 export default function RoadmapSection() {
   const [activeTab, setActiveTab] = useState<'all' | 'animals' | 'features'>('all');
@@ -105,11 +105,9 @@ export default function RoadmapSection() {
 
   const allUpdates = [...upcomingAnimals.map(a => ({ ...a, type: 'animal' as const })), ...upcomingFeatures.map(f => ({ ...f, type: 'feature' as const }))];
 
-  const filteredUpdates = activeTab === 'all' 
-    ? allUpdates 
-    : activeTab === 'animals' 
-    ? upcomingAnimals.map(a => ({ ...a, type: 'animal' as const }))
-    : upcomingFeatures.map(f => ({ ...f, type: 'feature' as const }));
+  // filteredUpdates was removed when the section switched to a static
+  // single-list layout; activeTab still drives the heading copy below.
+  void allUpdates;
 
   return (
     <section id="roadmap" className="py-20 lg:py-32 bg-gradient-to-br from-white to-agri-gold-50">

@@ -38,7 +38,7 @@ export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidge
     latestSample: null,
     sgr: null,
   });
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     if (!currentFarm?.id || !pond?.id) return;

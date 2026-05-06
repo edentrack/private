@@ -28,7 +28,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export function DailyReportSettings() {
-  const { t } = useTranslation();
+  useTranslation(); // copy hardcoded for now; wire `t` if/when translated
   const { currentFarm } = useAuth();
   const [reportScheduleEnabled, setReportScheduleEnabled] = useState(false);
   const [reportTimezone, setReportTimezone] = useState('Africa/Douala');

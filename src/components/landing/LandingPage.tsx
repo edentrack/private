@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Menu, X, LayoutDashboard, TrendingUp, Brain, FileUp, CheckCircle,
-  BarChart3, Users, Package, Calendar, Scale, Syringe, DollarSign,
-  ShoppingCart, Zap, Sprout, Crown, Check, ChevronDown, ChevronUp,
+  Menu, X, LayoutDashboard, TrendingUp, Brain, FileUp,
+  BarChart3, Users, Package, Scale, Syringe, DollarSign,
+  Zap, Sprout, Crown, Check, ChevronDown, ChevronUp,
   ArrowRight, Leaf, Building2, Shield, Stethoscope, Wifi, MessageCircle,
   ClipboardList, Egg,
 } from 'lucide-react';
@@ -10,7 +10,7 @@ import { FIXED_PRICES, detectRegion, getPriceCurrency, formatPrice, type RegionC
 import { supabase } from '../../lib/supabaseClient';
 
 const Y = '#ffdd00';
-const YD = '#e6c700';
+// YD (darker accent) is unused after the most recent landing redesign.
 
 const PLANS = [
   {
@@ -707,7 +707,7 @@ export default function LandingPage() {
             { value: 'EN + FR', label: 'Languages' },
             { value: '40+', label: 'Currencies' },
             { value: '100%', label: 'Offline-capable' },
-          ].map(({ value, label }, i) => (
+          ].map(({ value, label }) => (
             <div key={label} className="py-6 px-4 text-center" style={{ background: 'rgba(10,10,10,0.8)' }}>
               <div className="text-xl sm:text-2xl font-bold text-white">{value}</div>
               <div className="text-xs text-gray-500 mt-1">{label}</div>

@@ -363,12 +363,12 @@ export function EggIntervalTaskTracker({
     const d = DateTime.fromISO(iso, { zone: 'utc' });
     return d.minus({ days: d.weekday - 1 }).toISODate() || iso;
   };
-  const endOfWeek = (iso: string) => {
+  const _endOfWeek = (iso: string) => {
     const s = startOfWeek(iso);
     return DateTime.fromISO(s, { zone: 'utc' }).plus({ days: 6 }).toISODate() || iso;
   };
-  const startOfMonth = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' }).startOf('month').toISODate() || iso;
-  const endOfMonth = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' }).endOf('month').toISODate() || iso;
+  const _startOfMonth = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' }).startOf('month').toISODate() || iso;
+  const _endOfMonth = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' }).endOf('month').toISODate() || iso;
 
   useEffect(() => {
     if (curveView === 'hours') {
@@ -828,7 +828,7 @@ export function EggIntervalTaskTracker({
     );
 
     const eggsSoFar = todayIntervalEggs.slice(0, elapsedIndex + 1).reduce((a, b) => a + b, 0);
-    const yesterdaySoFar = yesterdayIntervalEggs.slice(0, elapsedIndex + 1).reduce((a, b) => a + b, 0);
+    const _yesterdaySoFar = yesterdayIntervalEggs.slice(0, elapsedIndex + 1).reduce((a, b) => a + b, 0);
     const yesterdayTotal = yesterdayIntervalEggs.reduce((a, b) => a + b, 0);
     const recordedTodayTotal = Math.round(todayIntervalEggs.reduce((a, b) => a + b, 0));
 

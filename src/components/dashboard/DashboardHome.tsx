@@ -22,7 +22,7 @@ import { AquaCycleWidget } from './AquaCycleWidget';
 import { WeatherWidget } from './WeatherWidget';
 import { hasFeatureAccess } from '../../utils/planGating';
 import { canViewAnalytics } from '../../utils/permissions';
-import { shouldHideFinancialData } from '../../utils/navigationPermissions';
+// shouldHideFinancialData is now applied per-child component, not at this layer.
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
@@ -35,11 +35,11 @@ interface DashboardHomeProps {
   onSelectFlock: (flock: Flock) => void;
 }
 
-export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps) {
+export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: DashboardHomeProps) {
   const { t } = useTranslation();
   const { user, profile, currentFarm, currentRole } = useAuth();
-  const { farmPermissions } = usePermissions();
-  const { showEggs, showFCR, farmType, isAquaculture } = useFarmType();
+  usePermissions(); // hook side-effects only — farmPermissions consumed by children
+  const { showEggs, isAquaculture } = useFarmType();
   const isRabbits = (currentFarm as any)?.farm_type === 'rabbits';
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
@@ -47,16 +47,17 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMortalityModal, setShowMortalityModal] = useState(false);
-  const [mortalityFlock, setMortalityFlock] = useState<Flock | null>(null);
+  const [mortalityFlock] = useState<Flock | null>(null);
   const [showTaskSettingsModal, setShowTaskSettingsModal] = useState(false);
   const [showCompleteTaskModal, setShowCompleteTaskModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [farm, setFarm] = useState<Farm | null>(null);
   const [stats, setStats] = useState({ totalBirds: 0, totalFlocks: 0, pendingTasks: 0 });
-  const [salesStats, setSalesStats] = useState({ birdsSold: 0, totalRevenue: 0, remaining: 0 });
+  // salesStats was previously fetched + computed but never rendered — left
+  // dead by an earlier dashboard refactor. Drop entirely.
   const [refreshTasks, setRefreshTasks] = useState(0);
   const [eggRefreshTrigger, setEggRefreshTrigger] = useState(0);
-  const [generatingReport, setGeneratingReport] = useState(false);
+  const [generatingReport] = useState(false);
   const [spikeAlerts, setSpikeAlerts] = useState<any[]>([]);
   const [todayEggs, setTodayEggs] = useState<any[]>([]);
   const [todayMortality, setTodayMortality] = useState<any[]>([]);
@@ -65,7 +66,8 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     mainTasks: true,
     quickActions: false,
   });
-  const hideFinancials = shouldHideFinancialData(currentRole, farmPermissions);
+  // hideFinancials was previously consumed by an inline panel that has been
+  // moved to its own card; computed inline by the consuming components now.
   // Ref so loadDashboardData can read currentFarm without being recreated on every object change
   const currentFarmRef = useRef(currentFarm);
   useEffect(() => { currentFarmRef.current = currentFarm; }, [currentFarm]);
@@ -302,20 +304,11 @@ export function DashboardHome({ onNavigate, onSelectFlock }: DashboardHomeProps)
     shareViaWhatsApp(lines.join('\n'));
   };
 
-  const handleLogMortality = (flock: Flock) => {
-    setMortalityFlock(flock);
-    setShowMortalityModal(true);
-  };
+  // handleLogMortality / getTaskTitle / isTaskCompleted were removed as
+  // dead code — earlier refactor extracted these into the relevant child
+  // components.
 
   const selectedFlock = flocks.find(f => f.id === selectedFlockId);
-
-  const getTaskTitle = (task: Task): string => {
-    return task.title_override || task.task_templates?.title || 'Task';
-  };
-
-  const isTaskCompleted = (task: Task): boolean => {
-    return task.status === 'completed';
-  };
 
   const loadFarmSettings = async () => {
     if (!currentFarm?.id) return;

@@ -41,7 +41,7 @@ interface FlockBasic {
   purpose?: string;
 }
 
-export function InventoryPage({ onNavigate }: InventoryPageProps) {
+export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
   const { t } = useTranslation();
   const { currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Check, X, AlertTriangle, Edit2, ChevronDown, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Check, X, AlertTriangle, Edit2, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -202,7 +202,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
         throw new Error(errorData.error || 'Commit failed');
       }
 
-      const result = await response.json();
+      const _result = await response.json();
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to commit import');

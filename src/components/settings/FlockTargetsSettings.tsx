@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Save, RotateCcw, Edit2, X, RefreshCw, Plus, Trash2, Package } from 'lucide-react';
+import { TrendingUp, Save, RotateCcw, Edit2, X, Plus, Trash2, Package } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';

@@ -42,7 +42,7 @@ const FARM_TYPES: { id: FarmKind; label: string; subtitle: string; icon: any; co
 ];
 
 export function CreateFarmModal({ onClose, onCreated }: CreateFarmModalProps) {
-  const { user, profile, allFarms, switchFarm } = useAuth();
+  const { user, profile, allFarms } = useAuth();
   const { showToast } = useToast();
 
   const [farmType, setFarmType] = useState<FarmKind>('poultry');

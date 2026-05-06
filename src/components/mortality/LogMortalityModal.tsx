@@ -16,7 +16,7 @@ interface LogMortalityModalProps {
 }
 
 export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess, createTaskRecord = false }: LogMortalityModalProps) {
-  const { user, profile, currentFarm } = useAuth();
+  const { user, currentFarm } = useAuth();
   const species = useFarmSpecies();
   const animalTerm = species.animalTermPlural.toLowerCase();
   const groupTerm = species.groupTerm.toLowerCase();

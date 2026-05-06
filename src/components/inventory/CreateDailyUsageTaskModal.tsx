@@ -26,7 +26,7 @@ export function CreateDailyUsageTaskModal({
   const { profile, currentFarm } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [timeOfDay, setTimeOfDay] = useState('17:00');
+  const [, _setTimeOfDay] = useState('17:00');
 
   if (!isOpen) return null;
 

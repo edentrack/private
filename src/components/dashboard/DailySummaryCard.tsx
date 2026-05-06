@@ -5,16 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRealtimeSubscription } from '../../contexts/RealtimeContext';
 import { formatEggsWithTotal } from '../../utils/eggFormatting';
 import { useTranslation } from 'react-i18next';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
+// Recharts imports were dead — chart was extracted into a sub-component.
 
 interface FeedPrediction {
   dailyUsage: number;
@@ -57,7 +48,7 @@ interface DailySummaryCardProps {
 }
 
 export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
-  const { profile, currentFarm } = useAuth();
+  const { currentFarm } = useAuth();
   const { subscribeToTable } = useRealtimeSubscription();
   const { t } = useTranslation();
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -73,8 +64,8 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [feedPredictions, setFeedPredictions] = useState<FeedPrediction[]>([]);
-  const [feedUsageRecords, setFeedUsageRecords] = useState<FeedUsageRecord[]>([]);
+  const [, setFeedPredictions] = useState<FeedPrediction[]>([]);
+  const [, setFeedUsageRecords] = useState<FeedUsageRecord[]>([]);
 
   const eggsPerTray = useMemo(() => currentFarm?.eggs_per_tray || 30, [currentFarm?.eggs_per_tray]);
 
@@ -84,9 +75,8 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
     if (!currentFarm?.id) return;
 
     try {
-      const startOfDay = `${selectedDate}T00:00:00`;
-      const endOfDay = `${selectedDate}T23:59:59`;
-
+      // startOfDay/endOfDay variables previously bracketed range queries;
+      // current implementation uses .eq('usage_date', selectedDate) instead.
       // Get feed usage records ONLY from inventory_usage table (the usage widget)
       // This represents actual usage when chickens finish feed from buckets
       let records: FeedUsageRecord[] = [];
@@ -224,9 +214,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
         }
       }
 
-      const startOfDay = `${selectedDate}T00:00:00`;
-      const endOfDay = `${selectedDate}T23:59:59`;
-
+      // startOfDay/endOfDay variables removed — query uses .eq('usage_date').
       // Get feed usage ONLY from inventory_usage table (the usage widget)
       // This represents actual usage when chickens finish feed from buckets
       const { data: feedUsage } = await supabase

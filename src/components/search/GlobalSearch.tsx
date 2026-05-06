@@ -18,7 +18,7 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
   const { t } = useTranslation();
-  const { profile, currentFarm } = useAuth();
+  const { currentFarm } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);

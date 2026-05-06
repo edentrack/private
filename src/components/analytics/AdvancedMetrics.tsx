@@ -19,7 +19,7 @@ interface Metrics {
   roi: number;
 }
 
-export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps) {
+export function AdvancedMetrics({ flock, compact: _compact = false }: AdvancedMetricsProps) {
   const { profile, currentFarm } = useAuth();
   const [metrics, setMetrics] = useState<Metrics>({
     fcr: 0,
@@ -103,7 +103,8 @@ export function AdvancedMetrics({ flock, compact = false }: AdvancedMetricsProps
         ? feedExpenses / (flock.current_count * currentWeight)
         : 0;
 
-      const expectedMaturityWeight = flock.type === 'Broiler' ? 2.5 : 1.8;
+      // expectedMaturityWeight was a placeholder for projected-revenue
+      // calc that moved to a backend RPC; the local was left dangling.
       const expectedMaturityAge = flock.type === 'Broiler' ? 42 : 140;
       const daysRemaining = Math.max(0, expectedMaturityAge - flockAge);
 

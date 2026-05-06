@@ -52,7 +52,7 @@ function savePushedAlertIds(ids: string[]) {
 
 export function NotificationCenter() {
   const { user, currentFarm } = useAuth();
-  const { t } = useTranslation();
+  useTranslation(); // i18n side-effect; copy is hardcoded here for now
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [showPanel, setShowPanel] = useState(false);

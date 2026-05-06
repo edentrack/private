@@ -23,7 +23,7 @@ interface Shift {
 
 export function ShiftsPage() {
   const { t } = useTranslation();
-  const { profile, currentFarm, currentRole } = useAuth();
+  const { currentFarm, currentRole } = useAuth();
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [members, setMembers] = useState<FarmMemberWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,7 +241,7 @@ export function ShiftsPage() {
     }));
   };
 
-  const formatDateTime = (dateString: string) => {
+  const _formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
       month: 'short',

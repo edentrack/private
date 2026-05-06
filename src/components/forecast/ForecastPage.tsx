@@ -16,7 +16,7 @@ export function ForecastPage() {
   const [loading, setLoading] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+  // refreshKey was used to retrigger child fetches; replaced by realtime sub.
 
   const ensureWeeks = useEnsureFlockForecastWeeks();
   const deleteWeeks = useDeleteFlockForecastWeeks();

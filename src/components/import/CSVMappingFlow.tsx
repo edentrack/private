@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ArrowRight, AlertTriangle, Check, Loader2, X } from 'lucide-react';
+import { ChevronDown, ArrowRight, AlertTriangle, Check, Loader2} from "lucide-react";
 import { supabase } from '../../lib/supabaseClient';
 
 interface Props {
@@ -46,8 +46,8 @@ const ENTITY_FIELDS: Record<EntityType, { key: string; label: string; required?:
   ],
 };
 
-const CATEGORY_OPTIONS = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
-const LOG_TYPE_OPTIONS = ['mortality', 'weight', 'egg_count', 'feed_usage', 'water_intake', 'notes'];
+const _CATEGORY_OPTIONS = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
+const _LOG_TYPE_OPTIONS = ['mortality', 'weight', 'egg_count', 'feed_usage', 'water_intake', 'notes'];
 
 export function CSVMappingFlow({ file, importId, farmId, scope, targetFlockId, onComplete, onCancel }: Props) {
   const [step, setStep] = useState<'type' | 'mapping' | 'preview' | 'processing'>('type');

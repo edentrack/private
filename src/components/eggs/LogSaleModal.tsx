@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { createEggSaleWithRevenue } from '../../utils/eggInventory';
 import { CustomerLookup } from '../customers/CustomerLookup';
 
 interface LogSaleModalProps {

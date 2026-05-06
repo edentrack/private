@@ -18,7 +18,6 @@ import { useRealtime } from '../../contexts/RealtimeContext';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useVoiceCommands } from '../../hooks/useVoiceCommands';
-import { PredictiveAnalytics } from '../../utils/predictiveAnalytics';
 import { WeatherIntegration, WeatherData } from '../../utils/weatherIntegration';
 
 export function SmartDashboard() {
@@ -28,7 +27,7 @@ export function SmartDashboard() {
   const { setLanguage } = useLanguage();
   const language = (i18n.language || 'en') as 'en' | 'fr';
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [predictions, setPredictions] = useState<any>(null);
+  const [, setPredictions] = useState<any>(null);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
 
   const voiceCommands = useVoiceCommands([

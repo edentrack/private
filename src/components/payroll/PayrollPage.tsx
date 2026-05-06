@@ -259,7 +259,7 @@ export function PayrollPage() {
     { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, hideForWorker: true }
   ].filter(tab => !tab.hideForWorker || isOwnerOrManager);
 
-  const currency = currentFarm?.currency_code || currentFarm?.currency || 'XAF';
+  const _currency = currentFarm?.currency_code || currentFarm?.currency || 'XAF';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
