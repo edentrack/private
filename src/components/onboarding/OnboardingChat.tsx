@@ -20,11 +20,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Loader2, Send, CheckCircle2, ClipboardList } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { EdenAvatarAnimated } from '../ai/EdenAvatarAnimated';
+import { trackEvent } from '../../utils/analytics';
 
 interface Msg {
   role: 'user' | 'assistant';
@@ -99,14 +101,15 @@ function stripLogBlocks(text: string): string {
 export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
   const { user, refreshSession } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: 'assistant',
-      content:
-        "Hey! I'm Eden. I'll set up your farm in a few quick questions. First — what's your farm called?",
+      content: t('onboarding.chat.first_message'),
       timestamp: Date.now(),
     },
   ]);
+  const [firstActionFired, setFirstActionFired] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -125,7 +128,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       : { onboarding_status: 'chose_form' };
     const { error } = await supabase.from('profiles').update(update).eq('id', user.id);
     if (error) {
-      showToast(`Could not save your progress: ${error.message}`, 'error');
+      showToast(`${t('onboarding.chat.save_failed')}: ${error.message}`, 'error');
       return false;
     }
     return true;
@@ -366,6 +369,16 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         if (result.complete) shouldComplete = true;
         if (result.switchToForm) shouldSwitch = true;
       }
+      // Fire the "first action executed" event once per session — this is
+      // the analytics signal that the user got to value, the 90-second
+      // goal in the brief.
+      if (pills.length > 0 && !firstActionFired) {
+        setFirstActionFired(true);
+        trackEvent('onboarding_first_action_executed', {
+          user_id: user?.id ?? null,
+          action_type: actions[0]?.type,
+        });
+      }
 
       const visibleText = stripLogBlocks(replyText);
       setMessages((prev) => [
@@ -379,6 +392,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       ]);
 
       if (shouldSwitch) {
+        trackEvent('onboarding_chat_to_form_switched', { user_id: user?.id ?? null });
         if (await flipOnboardingStatus('chose_form')) {
           if (refreshSession) await refreshSession();
           onSwitchToForm();
@@ -386,8 +400,9 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       } else if (shouldComplete) {
         setCompleting(true);
         if (await flipOnboardingStatus('completed')) {
+          trackEvent('onboarding_chat_completed', { user_id: user?.id ?? null });
           if (refreshSession) await refreshSession();
-          showToast('🎉 Welcome to EdenTrack!', 'success');
+          showToast(t('onboarding.chat.complete_toast'), 'success');
           onComplete();
         } else {
           setCompleting(false);
@@ -405,6 +420,10 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
   };
 
   const handleSkip = async () => {
+    trackEvent('onboarding_chat_to_form_switched', {
+      user_id: user?.id ?? null,
+      reason: 'manual_skip',
+    });
     if (await flipOnboardingStatus('chose_form')) {
       if (refreshSession) await refreshSession();
       onSwitchToForm();
@@ -418,8 +437,8 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         <div className="flex items-center gap-2 min-w-0">
           <EdenAvatarAnimated size="sm" />
           <div className="min-w-0">
-            <h1 className="text-sm font-semibold text-gray-900 truncate">Setting up your farm</h1>
-            <p className="text-xs text-gray-500 truncate">Talk to Eden — about 5 minutes</p>
+            <h1 className="text-sm font-semibold text-gray-900 truncate">{t('onboarding.chat.header_title')}</h1>
+            <p className="text-xs text-gray-500 truncate">{t('onboarding.chat.header_subtitle')}</p>
           </div>
         </div>
         <button
@@ -427,7 +446,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
           className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 min-h-[36px]"
         >
           <ClipboardList className="w-3.5 h-3.5" />
-          Skip — go to form
+          {t('onboarding.chat.skip_button')}
         </button>
       </div>
 
@@ -475,7 +494,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
           <div className="flex justify-start">
             <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2.5 inline-flex items-center gap-2 text-gray-600 text-sm">
               <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-              Eden is thinking…
+              {t('onboarding.chat.thinking')}
             </div>
           </div>
         )}
@@ -483,7 +502,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
           <div className="flex justify-center">
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 inline-flex items-center gap-2 text-emerald-700 text-sm">
               <ArrowRight className="w-4 h-4" />
-              Wrapping up — heading to your dashboard…
+              {t('onboarding.chat.wrapping_up')}
             </div>
           </div>
         )}
@@ -502,7 +521,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
                 sendMessage();
               }
             }}
-            placeholder="Type your reply…"
+            placeholder={t('onboarding.chat.input_placeholder')}
             rows={1}
             disabled={sending || completing}
             className="flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-3 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 min-h-[48px] max-h-32"
