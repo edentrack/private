@@ -80,6 +80,10 @@ const RabbitHarvestPage      = lazy1(() => import('./components/rabbits/RabbitHa
 const BreedingEventsPage     = lazy1(() => import('./components/rabbits/BreedingEventsPage'), 'BreedingEventsPage');
 const LittersPage            = lazy1(() => import('./components/rabbits/LittersPage'), 'LittersPage');
 const RabbitsRegistryPage    = lazy1(() => import('./components/rabbits/RabbitsRegistryPage'), 'RabbitsRegistryPage');
+const CooperativesPage       = lazy1(() => import('./components/cooperatives/CooperativesPage'), 'CooperativesPage');
+const CooperativeDashboard   = lazy1(() => import('./components/cooperatives/CooperativeDashboard'), 'CooperativeDashboard');
+const CreditScorePage        = lazy1(() => import('./components/credit/CreditScorePage'), 'CreditScorePage');
+const PondCyclePlanningPage  = lazy1(() => import('./components/aquaculture/planning/PondCyclePlanningPage'), 'PondCyclePlanningPage');
 
 function CrispChat() {
   const { profile, user } = useAuth();
@@ -119,16 +123,17 @@ function CrispChat() {
 
 function AppContent() {
   const { t } = useTranslation();
-  const { user, profile, loading, refreshSession, signOut, currentRole, currentFarm } = useAuth();
+  const { user, profile, loading, refreshSession, currentRole, currentFarm } = useAuth();
   const { isImpersonating } = useImpersonation();
   const [authRoute, setAuthRoute] = useState<'login' | 'signup' | 'forgot-password' | 'reset-password' | 'invite'>('login');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedFlock, setSelectedFlock] = useState<Flock | null>(null);
+  const [selectedCooperativeId, setSelectedCooperativeId] = useState<string | null>(null);
   const [pullToRefresh, setPullToRefresh] = useState({ isActive: false, distance: 0, isRefreshing: false });
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  const [showNoFarmMessage, setShowNoFarmMessage] = useState(false);
+  const [, setShowNoFarmMessage] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
   // Detect Flutterwave payment return (lands at origin with ?status=...&tx_ref=...&transaction_id=...)
@@ -405,6 +410,9 @@ function AppContent() {
       'ai-assistant': '#/ai-assistant',
       'smart-upload': '#/smart-upload',
       'my-work': '#/my-work',
+      'cooperatives': '#/cooperatives',
+      'credit-score': '#/credit-score',
+      'pond-planner': '#/pond-planner',
     };
 
     const hash = hashMap[view] ?? `#/${view}`;
@@ -692,6 +700,25 @@ function AppContent() {
       }
       if (hash.includes('#/ai-assistant')) {
         setCurrentView('ai-assistant');
+        return;
+      }
+      const coopMatch = hash.match(/#\/cooperatives\/([0-9a-f-]{36})/i);
+      if (coopMatch) {
+        setSelectedCooperativeId(coopMatch[1]);
+        setCurrentView('cooperative-dashboard');
+        return;
+      }
+      if (hash.includes('#/cooperatives')) {
+        setSelectedCooperativeId(null);
+        setCurrentView('cooperatives');
+        return;
+      }
+      if (hash.includes('#/credit-score') || hash.includes('#/creditworthiness')) {
+        setCurrentView('credit-score');
+        return;
+      }
+      if (hash.includes('#/pond-planner') || hash.includes('#/pond-planning')) {
+        setCurrentView('pond-planner');
         return;
       }
       if (hash.includes('#/dashboard')) {
@@ -1186,6 +1213,33 @@ function AppContent() {
         );
       case 'notifications':
         return <NotificationsPage />;
+      case 'cooperatives':
+        return <CooperativesPage />;
+      case 'cooperative-dashboard':
+        return selectedCooperativeId ? (
+          <CooperativeDashboard
+            cooperativeId={selectedCooperativeId}
+            onBack={() => {
+              window.location.hash = '#/cooperatives';
+              setSelectedCooperativeId(null);
+              setCurrentView('cooperatives');
+            }}
+          />
+        ) : (
+          <CooperativesPage />
+        );
+      case 'credit-score':
+        return (
+          <RequireRole moduleId="credit-score" onUnauthorized={handleUnauthorized}>
+            <CreditScorePage />
+          </RequireRole>
+        );
+      case 'pond-planner':
+        return (
+          <RequireRole moduleId="pond-planner" onUnauthorized={handleUnauthorized}>
+            <PondCyclePlanningPage />
+          </RequireRole>
+        );
       // case 'roadmap': // Disabled for now
       //   return (
       //     <RequireRole moduleId="roadmap" onUnauthorized={handleUnauthorized}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Minus, TrendingUp, TrendingDown, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';

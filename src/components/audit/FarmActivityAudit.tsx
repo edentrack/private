@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, Search, Filter, Download, User, Calendar, FileText, DollarSign, Syringe, AlertTriangle, Scale, TrendingUp, Package, ShoppingCart, Users, Clock } from 'lucide-react';
+import { Activity, Search, Filter, Download, User, Calendar, DollarSign, Syringe, AlertTriangle, Scale, TrendingUp, Package, ShoppingCart, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,7 +19,7 @@ interface ActivityLog {
 
 export function FarmActivityAudit() {
   const { t } = useTranslation();
-  const { currentFarm, profile } = useAuth();
+  const { currentFarm } = useAuth();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');

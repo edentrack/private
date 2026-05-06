@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Calendar, Egg, ShoppingBag, Package, AlertTriangle, ChevronLeft, ChevronRight, Scale, X, TrendingUp } from 'lucide-react';
+import { Calendar, Egg, ShoppingBag, Package, AlertTriangle, ChevronLeft, ChevronRight, Scale } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRealtimeSubscription } from '../../contexts/RealtimeContext';
