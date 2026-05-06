@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { Flock } from '../../types/database';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface FlockSwitcherProps {
   selectedFlockId: string | null;
@@ -16,10 +17,18 @@ export function FlockSwitcher({
   selectedFlockId,
   onFlockChange,
   showAllOption = true,
-  label = 'Filter by Flock'
+  label,
 }: FlockSwitcherProps) {
   const { t } = useTranslation();
   const { currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
+  // Audit fix: filter copy was hardcoded "Filter by Flock" / "All Flocks" /
+  // "{count} birds". Drive each off the species module so rabbit farms see
+  // "Filter by Rabbitry" / "All Rabbitries" / "{count} rabbits", and
+  // aquaculture farms see "Filter by Pond" / "All Ponds" / "{count} fish".
+  const resolvedLabel = label ?? `Filter by ${farmSpecies.groupTerm}`;
+  const allOptionLabel = `All ${farmSpecies.groupTermPlural}`;
+  const animalUnitLabel = farmSpecies.animalTermPlural.toLowerCase();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -61,9 +70,9 @@ export function FlockSwitcher({
 
   return (
     <div className="relative">
-      {label && (
+      {resolvedLabel && (
         <label className="block text-sm font-medium text-gray-500 mb-2">
-          {label}
+          {resolvedLabel}
         </label>
       )}
       <button
@@ -77,7 +86,7 @@ export function FlockSwitcher({
           style={{ backgroundColor: 'transparent' }}
         />
         <span className="text-gray-900 font-medium">
-          {selectedFlock ? selectedFlock.name : t('insights.all_flocks')}
+          {selectedFlock ? selectedFlock.name : allOptionLabel}
         </span>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -119,7 +128,7 @@ export function FlockSwitcher({
               >
                 <div className="font-medium">{flock.name}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  {flock.type} - {flock.current_count} {t('dashboard.birds')}
+                  {flock.type} - {flock.current_count} {animalUnitLabel}
                 </div>
               </button>
             ))}

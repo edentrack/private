@@ -104,8 +104,16 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
       'Tilapia': '🐠',
       'Clarias': '🐡',
       'Other Fish': '🐟',
+      'Meat Rabbits': '🐰',
+      'Breeder Rabbits': '🐰',
     };
-    return map[type] || (isAquaculture ? '🐟' : '🐓');
+    if (map[type]) return map[type];
+    // Audit fix: previously fell through to chicken emoji (🐓) for any
+    // unmapped type. On a rabbit farm this rendered the rabbit card with a
+    // chicken icon. Branch on the active farm species instead.
+    if (isAquaculture) return '🐟';
+    if (farmSpecies.id === 'rabbits') return '🐰';
+    return '🐓';
   };
 
   // Pulled into the shared flockAge helper so age_at_arrival_days is honoured
