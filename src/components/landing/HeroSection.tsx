@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Play, CheckCircle2, TrendingUp, Package, DollarSign, Users, Calendar, BarChart3, Clock, User, Mail, Phone, MessageSquare, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, Play, CheckCircle2, TrendingUp, Package, DollarSign, Calendar, Clock, User, Mail, Phone, MessageSquare, X } from 'lucide-react';
 import { ChickenIcon } from '../icons/ChickenIcon';
 import { supabase } from '../../lib/supabaseClient';
 

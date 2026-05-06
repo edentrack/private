@@ -38,6 +38,10 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [mortalityByFlock, setMortalityByFlock] = useState<Record<string, number>>({});
+  // Sum of restocks per flock — added to initial_count so survival-rate
+  // doesn't stay pinned to the original stock after a top-up. See
+  // CLAUDE_CODE_AUTONOMOUS_ROADMAP.md Phase 8 #2.
+  const [restockedByFlock, setRestockedByFlock] = useState<Record<string, number>>({});
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingFlock, setEditingFlock] = useState<Flock | null>(null);
   const [showMortalityModal, setShowMortalityModal] = useState(false);
@@ -85,6 +89,17 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
           mortalityMap[log.flock_id] = (mortalityMap[log.flock_id] || 0) + (log.count || 0);
         });
         setMortalityByFlock(mortalityMap);
+
+        const { data: stockingData } = await supabase
+          .from('stocking_events')
+          .select('flock_id, fingerling_count')
+          .eq('farm_id', currentFarm?.id)
+          .in('flock_id', data.map(f => f.id));
+        const stockingMap: Record<string, number> = {};
+        (stockingData || []).forEach((row: { flock_id: string; fingerling_count: number }) => {
+          stockingMap[row.flock_id] = (stockingMap[row.flock_id] || 0) + (Number(row.fingerling_count) || 0);
+        });
+        setRestockedByFlock(stockingMap);
       }
     } catch (error) {
       console.error('Error loading flocks:', error);
@@ -415,8 +430,10 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                     <span className="text-lg font-bold text-gray-900">
                       {(() => {
                         const mortality = mortalityByFlock[flock.id] || 0;
-                        const survivalRate = flock.initial_count > 0
-                          ? ((flock.initial_count - mortality) / flock.initial_count) * 100
+                        const restocks = restockedByFlock[flock.id] || 0;
+                        const denom = (flock.initial_count || 0) + restocks;
+                        const survivalRate = denom > 0
+                          ? ((denom - mortality) / denom) * 100
                           : 100;
                         return survivalRate.toFixed(1);
                       })()}%

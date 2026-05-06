@@ -3,6 +3,7 @@ import { X, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { ConfirmEggCollectionModal } from './ConfirmEggCollectionModal';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 type EggSize = 'small' | 'medium' | 'large' | 'jumbo';
 
@@ -15,6 +16,7 @@ interface LogCollectionModalProps {
 
 export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskRecord = false }: LogCollectionModalProps) {
   const { user, currentFarm } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const [date, setDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -130,7 +132,7 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
 
       const traysForRecord = Math.round(liveTotals.totalTraysCount) + (liveTotals.totalLoose > 0 ? 1 : 0);
 
-      const { error: insertError } = await supabase.from('egg_collections').insert({
+      const collectionPayload = {
         farm_id: currentFarm.id,
         flock_id: flockId,
         collection_date: date,
@@ -146,9 +148,16 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
         notes: notes || null,
         photo_url: photoUrl,
         created_by: user.id,
-      });
+      };
+      const { error: insertError } = await supabase.from('egg_collections').insert(collectionPayload);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        if (isNetworkError(insertError)) {
+          await tryWrite('egg_collections', 'insert', collectionPayload);
+        } else {
+          throw insertError;
+        }
+      }
 
       // Keep egg_inventory in sync (good eggs only).
       const { data: inv } = await supabase

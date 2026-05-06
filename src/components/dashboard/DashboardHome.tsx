@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { DashboardSkeleton } from '../common/Skeleton';
-import { Plus, Check, Clock, ArrowRight, TrendingUp, Bird, Users, Package, ArrowUpRight, Play, Pause, DollarSign, Share2, ChevronDown, AlertTriangle, X } from 'lucide-react';
+import { Plus, TrendingUp, Package, DollarSign, Share2, ChevronDown, AlertTriangle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,7 +22,6 @@ import { AquaCycleWidget } from './AquaCycleWidget';
 import { WeatherWidget } from './WeatherWidget';
 import { hasFeatureAccess } from '../../utils/planGating';
 import { canViewAnalytics } from '../../utils/permissions';
-import { getTaskTimeStatus, formatTaskDueTime } from '../../utils/taskPermissions';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
