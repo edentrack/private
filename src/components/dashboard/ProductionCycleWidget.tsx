@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { getFlockAgeDays } from '../../utils/flockAge';
 import { RABBIT_DEFAULT_PHASES } from '../../utils/speciesModules';
+import { calculateKindlingRate, formatKindlingRate } from '../../utils/kindlingRate';
+import { calculateRabbitFCR, formatRabbitFCR } from '../../utils/fcrRabbits';
 
 interface ProductionCycleWidgetProps {
   flock: Flock | null;
@@ -50,9 +52,16 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
     layerPhases?: Array<{ name: string; startWeek: number; endWeek: number; feedType: string }>;
   } | null>(null);
 
+  // Rabbit-specific metrics — only populated for rabbit farms.
+  const [rabbitMetrics, setRabbitMetrics] = useState<{
+    kindlingRate: ReturnType<typeof calculateKindlingRate> | null;
+    fcr: ReturnType<typeof calculateRabbitFCR> | null;
+  }>({ kindlingRate: null, fcr: null });
+
   useEffect(() => {
     if (flock && currentFarm?.id) {
       loadFarmSettings();
+      loadRabbitMetrics();
     }
   }, [flock, currentFarm?.id]);
 
@@ -181,6 +190,101 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
     } else {
       setLayerMilestones(week);
     }
+  };
+
+  /**
+   * Phase C wire-up: pull rabbit-specific metrics for the dashboard pills.
+   * - Kindling rate: from `litters` table — kits weaned in the last 90 days
+   *   over active does count.
+   * - Rabbit FCR: feed_usage_logs share + crude liveweight estimate from
+   *   current_count × est. avg weight.
+   * Both fail-soft if the table/data isn't available.
+   */
+  const loadRabbitMetrics = async () => {
+    if (!flock || !currentFarm?.id) return;
+    const isRabbit =
+      (flock as any).species === 'rabbits' ||
+      (flock.type as string) === 'Meat Rabbits' ||
+      (flock.type as string) === 'Breeder Rabbits';
+    if (!isRabbit) {
+      setRabbitMetrics({ kindlingRate: null, fcr: null });
+      return;
+    }
+
+    // Kindling rate over 90-day window
+    const periodDays = 90;
+    const since = new Date(Date.now() - periodDays * 86_400_000).toISOString().split('T')[0];
+
+    let kindlingRate: ReturnType<typeof calculateKindlingRate> | null = null;
+    try {
+      // Litters table: count weaned kits in window for this farm
+      const { data: litters } = await supabase
+        .from('litters')
+        .select('weaned_count, weaned_on, kindled_on')
+        .eq('farm_id', currentFarm.id)
+        .gte('weaned_on', since);
+      const weanedKits = (litters || []).reduce((sum, l: any) => sum + (Number(l.weaned_count) || 0), 0);
+
+      // Active does = rabbits in registry table (or breeder-type flocks)
+      const { data: activeDoesRows } = await supabase
+        .from('rabbits_registry')
+        .select('id', { count: 'exact', head: true })
+        .eq('farm_id', currentFarm.id)
+        .eq('sex', 'female')
+        .eq('status', 'active');
+      const activeDoes = (activeDoesRows as any)?.count ?? 0;
+
+      if (activeDoes > 0) {
+        kindlingRate = calculateKindlingRate({ weanedKits, periodDays, activeDoes });
+      }
+    } catch {
+      // Litters or registry table not yet available — silently skip
+      kindlingRate = null;
+    }
+
+    // Rabbit FCR — coarse estimate.
+    let fcr: ReturnType<typeof calculateRabbitFCR> | null = null;
+    try {
+      const startDate = String(flock.arrival_date).split('T')[0];
+
+      // Feed for this farm in window, attributed to this flock by share.
+      const { data: rabbitFlocks } = await supabase
+        .from('flocks')
+        .select('id, current_count, type')
+        .eq('farm_id', currentFarm.id)
+        .eq('status', 'active')
+        .in('type', ['Meat Rabbits', 'Breeder Rabbits']);
+      const rabbitTotalCount = (rabbitFlocks || []).reduce(
+        (s, f) => s + (Number(f.current_count) || 0),
+        0,
+      );
+      const ourShare = rabbitTotalCount > 0 ? (flock.current_count || 0) / rabbitTotalCount : 0;
+
+      const { data: feedLogs } = await supabase
+        .from('feed_usage_logs')
+        .select('quantity_used')
+        .eq('farm_id', currentFarm.id)
+        .gte('created_at', `${startDate}T00:00:00`);
+      const totalFarmFeedKg = (feedLogs || []).reduce((s, l: any) => s + (Number(l.quantity_used) || 0), 0);
+      const myFeedKg = totalFarmFeedKg * ourShare;
+
+      // Liveweight gained: assume 0.05 kg starting (kit at week 5) → current avg
+      // (use 2.0 kg as fallback if no weight data). Coarse but better than nothing.
+      const currentCount = flock.current_count || 0;
+      const initialAvgKg = 0.7; // typical weanling weight
+      const currentAvgKg = 2.0; // fallback grow-out target
+      const liveweightGainedKg = Math.max(0, (currentAvgKg - initialAvgKg) * currentCount);
+
+      fcr = calculateRabbitFCR({
+        feedKg: myFeedKg,
+        liveweightGainedKg,
+        rabbitType: (flock.type as 'Meat Rabbits' | 'Breeder Rabbits') ?? 'Meat Rabbits',
+      });
+    } catch {
+      fcr = null;
+    }
+
+    setRabbitMetrics({ kindlingRate, fcr });
   };
 
   // Rabbit milestones: Kit / Weanling / Grower / Market-ready.
@@ -475,6 +579,42 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
                   : 'text-gray-400'
               }`} />
             </div>
+          </div>
+        )}
+
+        {/* Phase C: rabbit-specific pills (kindling rate + FCR).
+            Pills only render when their metric is populated, so non-rabbit
+            flocks see nothing extra. */}
+        {isRabbit && (rabbitMetrics.kindlingRate || rabbitMetrics.fcr) && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {rabbitMetrics.kindlingRate && rabbitMetrics.kindlingRate.status !== 'invalid' && (
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                  rabbitMetrics.kindlingRate.color === 'green'
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : rabbitMetrics.kindlingRate.color === 'amber'
+                      ? 'bg-amber-100 text-amber-800 border-amber-200'
+                      : 'bg-red-100 text-red-800 border-red-200'
+                }`}
+                title={rabbitMetrics.kindlingRate.message}
+              >
+                Kindling {formatKindlingRate(rabbitMetrics.kindlingRate.kitsPerDoePerYear)}
+              </span>
+            )}
+            {rabbitMetrics.fcr && rabbitMetrics.fcr.fcr !== null && (
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
+                  rabbitMetrics.fcr.color === 'green'
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : rabbitMetrics.fcr.color === 'amber'
+                      ? 'bg-amber-100 text-amber-800 border-amber-200'
+                      : 'bg-red-100 text-red-800 border-red-200'
+                }`}
+                title={`Rabbit FCR: ${formatRabbitFCR(rabbitMetrics.fcr.fcr)} kg feed / kg gain — ${rabbitMetrics.fcr.label}`}
+              >
+                FCR {formatRabbitFCR(rabbitMetrics.fcr.fcr)}
+              </span>
+            )}
           </div>
         )}
 

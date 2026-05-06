@@ -280,3 +280,140 @@ When the farmer's farm is rabbits:
 - For mortality questions, ask first about: temperature, hutch hygiene, feed change history, hay availability.
 - Distinguish kit-stage (week 1–4, on milk) from weanling (week 5–8, vulnerable) from grower (week 9+).
 - Use kg for weights, weeks for age, litters for breeding output.
+
+## Formulas (use exact arithmetic in answers)
+
+### Average Liveweight at Market
+`market_weight_kg = sum(grow-out weights at week 16) / count`
+Sample 5–10 grow-outs at week 14–16. Target 1.8–2.5 kg liveweight depending on breed and market preference.
+
+### Specific Growth Rate (rabbits)
+Less commonly used than for fish, but the same formula applies:
+`SGR (% per day) = ((ln(weight_now) - ln(weight_previous)) / days_between) × 100`
+
+Healthy SGR for grow-out rabbits (week 8–14): 1.0–1.8 %/day. Below 0.8% means feed quality, environment, or disease pressure to investigate.
+
+### Kindling rate (THE rabbit-breeding KPI)
+`kindlingRate = (kits_weaned_in_period × 365 / period_days) ÷ active_does`
+
+Worked example: 15 does, measured over 90 days. 60 kits weaned in that window.
+`rate = (60 × 365 ÷ 90) ÷ 15 = 243.3 ÷ 15 = 16.2 kits/doe/year`
+That's below the 20 minimum benchmark — diagnose: doe age, breeding rest period, environment, kit survival.
+
+Healthy ranges:
+- >40 kits/doe/year: excellent (intensive commercial)
+- 30–40: good (well-run smallholder/commercial)
+- 20–30: fair
+- <20: poor — investigate
+
+Levers for improving kindling rate:
+1. **Doe rest period**: typical re-breed at 10 days post-kindling for tighter cycles. Wait too long → lower year-over-year output. Wait too little → exhausted does, fewer kits per litter.
+2. **Doe age**: peak fertility 6 months–2.5 years. Cull does after 3 years or once productivity drops 20%+ from her peak.
+3. **Buck:doe ratio**: 1 buck per 8–10 does is the smallholder norm. Above 1:15, fertility drops. Provide rest days for the buck.
+4. **Kit survival to weaning**: target 75–85%. Below that, examine doe milk supply (nutrition), nest box hygiene, environment.
+5. **Nutrition**: pellets need to be 17–18% protein for breeders, with ad-lib hay; calcium for milking does.
+
+### FCR (meat rabbits)
+`FCR = total_feed_kg / total_liveweight_gain_kg`
+
+Worked example: 100 grow-out rabbits, week 5 average 0.7 kg, week 16 average 2.2 kg.
+- Total gain = (2.2 − 0.7) × 100 = 150 kg
+- Feed used over 11 weeks = 510 kg
+- `FCR = 510 / 150 = 3.4`
+
+That's acceptable for a smallholder operation; commercial target is ≤3.0. Lower FCR = lower feed cost per kg of meat sold.
+
+FCR targets:
+- Commercial intensive: ≤3.0
+- Smallholder commercial: 3.0–3.5
+- Backyard / casual: 3.5–4.5
+- >4.5: investigate seriously (feed quality, breed, disease eating into surviving stock)
+
+If FCR is high: 90% of the time it's feed quality (low-protein pellets, mouldy hay) or disease (silent coccidia + Pasteurella reduce gain without obvious mortality).
+
+### Days to Market Estimate
+For meat rabbits: 12–16 weeks from birth to market (1.8–2.5 kg).
+- Local breeds (NZW × native crosses): 14–18 weeks
+- Pure breeds (NZW, Californian, Flemish): 12–14 weeks under good management
+
+`weeks_remaining = (target_weight - current_avg_weight) ÷ avg_weekly_gain`
+
+Avg weekly gain in healthy grow-out: 100–180 g/week. Slow weeks (<50 g) = problem to diagnose.
+
+## Vaccination Protocol (East/West/Central Africa)
+
+### Required vaccinations
+| Disease | Primary | Booster | Dose | Notes |
+|---------|---------|---------|------|-------|
+| Myxomatosis | 8 weeks | every 6 months | 0.5 ml SC | Two-week reaction window — separate from naive does |
+| RHD (RHDV1/RHDV2) | 10–12 weeks | annual | 0.5 ml SC | Mortality 90%+ without; combine with Myxo where vaccine available |
+| Pre-mating booster | — | 2 weeks before mating | as above | Maintain titre during pregnancy |
+| Rainy-season booster | — | start of rainy season | as above | Vector pressure peaks |
+
+Do NOT vaccinate:
+- Pregnant does in last 2 weeks of gestation
+- Sick rabbits (treat first, vaccinate after recovery)
+- Kits under 6 weeks (maternal antibodies block immunity)
+
+### Optional / risk-based
+- Pasteurella vaccine (Pastormone or autogenous) — only if your herd has chronic snuffles. Most operations cull carriers + improve biosecurity instead.
+- Coccidiostat in feed (sulfaquinoxaline, salinomycin) — seasonal, especially during the rainy season.
+
+### Withdrawal periods (before slaughter)
+- Antibiotics: 14–21 days depending on drug
+- Vaccines: 21 days
+- Coccidiostats: 5–7 days
+
+## Common Pitfalls (don't repeat these)
+
+1. **Not separating buck access from does** — does coming into heat get bred immediately. Either schedule strictly or keep buck in a separate cage.
+2. **Heat stress in rainy/hot season** — rabbits don't sweat. Above 30°C they stop eating, fertility drops. Provide shade, cool water, frozen plastic bottles in hutch.
+3. **Buying from auction** — high disease load. Always quarantine new stock 14+ days minimum.
+4. **Concrete floors with no rest mat** — sore hocks (pododermatitis) = chronic, painful, hurts production. Provide a wooden or rubber mat in every cage.
+5. **Sudden feed changes** — GI stasis kills rabbits in 24–48h. Always transition feed over 7–10 days.
+6. **No hay** — rabbits need 60–70% of dry matter intake from hay. Pellet-only diets cause dental + digestive issues.
+7. **Overcrowding nest box** — does crush kits. One nest box per doe, deep enough to bury kits up to neck level for warmth.
+8. **Skipping vaccinations to save cost** — one Myxo or RHD outbreak wipes out the herd; vaccine cost is 100x cheaper than restocking.
+
+## Decision: When to Cull a Doe
+
+Cull a doe if any of:
+1. Two consecutive litters with <60% survival to weaning
+2. Two consecutive missed conceptions (heat detected, mating done, no pregnancy)
+3. >3 years old AND productivity dropped >20% from her peak
+4. Chronic snuffles (3+ episodes in 6 months)
+5. Sore hocks or other chronic conditions affecting welfare
+6. Any signs of mastitis that didn't fully resolve
+
+Replace with a daughter (kept from a high-performing line) or buy from a known-clean source — never auction stock.
+
+## Quick Diagnostics — symptom to likely cause
+
+### Rabbit going off feed (most common cause: GI stasis)
+1. Most likely: **GI stasis** (hairball, dehydration, sudden feed change). Action: subcutaneous fluids if you can, syringe pineapple juice or simethicone, gentle abdominal massage. Consult vet within 6h.
+2. Possible: **dental issues** — check teeth, look for drool. Old does often grow tooth spurs.
+3. Possible: **heat stress** — temperature >28°C? Provide cooling immediately.
+
+### Sneezing / nasal discharge
+1. Most likely: **Pasteurella (snuffles)** — chronic, hard to fully cure. Isolate; long course of antibiotics. Cull persistent carriers.
+2. Possible: dust from poor-quality hay or pellets. Switch source.
+3. Possible: ammonia buildup in cage — clean droppings tray.
+
+### Kits found dead in nest
+1. Most likely: **chilled kits** — doe didn't pull enough fur, kits got cold. Add fur from another nest or wool, place hot-water-bottle in nest temporarily.
+2. Possible: doe rejected litter (first-time doe, stress). Foster to another doe within 24h if possible.
+3. Possible: **mastitis** — kits unfed because doe in pain. Examine doe's mammary glands.
+4. Possible: **rats** — kits eaten or harassed. Improve nest box security.
+
+### Sudden adult death
+1. Most likely: **RHD or Myxomatosis outbreak** — check vaccination records, isolate immediately, contact vet.
+2. Possible: **heat stroke** — find cooler housing.
+3. Possible: **GI stasis** missed.
+4. Possible: **predator stress** — stress alone can kill rabbits.
+
+## Seasonal & Market Timing (West/Central Africa)
+
+- **Demand spikes**: Christmas/New Year (Dec), Easter (Mar/Apr), independence days, weddings.
+- **Price drops**: post-Christmas glut, rainy-season high availability of bushmeat alternatives.
+- **Rainy season risks**: humidity → respiratory disease + coccidiosis; vector pressure for Myxo. Vaccinate early, dry the hutch.
+- **Dry season risks**: heat stress, water access, dust irritation. Cool hutches, maintain water supply.
