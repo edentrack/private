@@ -37,7 +37,7 @@ export function getNavigationGroups(
     {
       id: 'team',
       label: 'TEAM & OPS',
-      items: items.filter(item => ['team', 'shifts'].includes(item.id)),
+      items: items.filter(item => ['team', 'shifts', 'cooperatives'].includes(item.id)),
     },
     {
       id: 'other',

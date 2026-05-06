@@ -39,7 +39,8 @@ export type ModuleName =
   | 'rabbit-harvest'
   | 'breeding-events'
   | 'litters'
-  | 'rabbit-registry';
+  | 'rabbit-registry'
+  | 'cooperatives';
 
 export interface ModuleVisibility {
   visible: boolean;
@@ -125,6 +126,7 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'cooperatives':
       return { visible: true };
 
     case 'smart-upload':
@@ -213,6 +215,7 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'team':
     case 'audit':
     case 'billing':
+    case 'cooperatives':
       return { visible: false, reason: 'Not available for workers' };
 
     case 'settings':
@@ -254,6 +257,7 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'cooperatives':
       return { visible: true };
 
     case 'smart-upload':
@@ -347,7 +351,7 @@ export function getVisibleModules(
     'insights', 'analytics', 'forecast', 'compare',
     'mortality', 'weight', 'payroll', 'team',
     'task-history', 'audit', 'smart-upload', 'marketplace', 'roadmap',
-    'settings', 'billing',
+    'settings', 'billing', 'cooperatives',
   ];
   return all.filter(mod => canViewModule(role, mod, farmPermissions).visible);
 }
