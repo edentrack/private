@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, Lightbulb, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet } from 'lucide-react';
+import { Send, Loader2, Lightbulb, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet, Volume2, VolumeX } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
@@ -7,7 +7,9 @@ import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { EdenAvatarAnimated } from './EdenAvatarAnimated';
+import { EdenFarmSelector } from './EdenFarmSelector';
 import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
+import { useEdenChat, EdenChatScope, EdenChatMessage } from '../../hooks/useEdenChat';
 
 interface ImageAttachment {
   data: string;       // base64 (no prefix)
@@ -22,7 +24,17 @@ interface PendingFile {
 }
 
 interface LogAction {
-  type: 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE' | 'COMPLETE_TASK' | 'CREATE_TASK' | 'LOG_WEIGHT' | 'LOG_FEED_USAGE' | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE';
+  type:
+    | 'LOG_MORTALITY' | 'LOG_EGGS' | 'LOG_EXPENSE' | 'LOG_PURCHASE'
+    | 'COMPLETE_TASK' | 'CREATE_TASK'
+    | 'LOG_WEIGHT' | 'LOG_FEED_USAGE'
+    | 'LOG_EGG_SALE' | 'LOG_BIRD_SALE'
+    // Fish (aquaculture) — Eden as operator
+    | 'LOG_WATER_QUALITY' | 'LOG_POND_INSPECTION' | 'LOG_STOCKING'
+    | 'LOG_HARVEST' | 'LOG_SAMPLING' | 'LOG_FISH_LOSS'
+    // Rabbit — Eden as operator
+    | 'LOG_BREEDING' | 'LOG_KINDLING' | 'LOG_WEANING'
+    | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST';
   log_date?: string;  // universal ISO date override for bulk imports
   // Common
   flock_name?: string;
@@ -77,6 +89,66 @@ interface LogAction {
   birds_sold?: number;
   price_per_bird?: number;
   total_amount?: number;
+  // ─── Fish (aquaculture) species-aware actions ────────────────────────
+  // pond_name is an alias for flock_name for fish — the executor checks
+  // pond_name first and falls back to flock_name. Kept separate so the
+  // system prompt can read naturally.
+  pond_name?: string;
+  // LOG_WATER_QUALITY
+  dissolved_oxygen?: number;
+  temperature_c?: number;
+  ph?: number;
+  ammonia_mgl?: number;
+  nitrite_mgl?: number;
+  // LOG_POND_INSPECTION
+  water_clarity?: 'clear' | 'murky' | 'green' | 'brown' | 'black';
+  fish_behavior?: 'normal' | 'lethargic' | 'gasping' | 'erratic' | 'feeding-vigorous';
+  feeding_response?: 'vigorous' | 'normal' | 'slow' | 'none';
+  dead_fish_count?: number;
+  // LOG_STOCKING
+  fingerling_count?: number;
+  species?: 'tilapia' | 'catfish' | 'clarias' | 'other';
+  source?: string;
+  cost_per_fingerling?: number;
+  total_cost?: number;
+  stocked_at?: string;
+  // LOG_HARVEST (fish)
+  total_weight_kg?: number;
+  price_per_kg?: number;
+  buyer_name?: string;
+  harvested_at?: string;
+  // LOG_SAMPLING
+  abw_g?: number;
+  sampled_at?: string;
+  // ─── Rabbit species-aware actions ─────────────────────────────────────
+  rabbitry_name?: string;
+  // LOG_BREEDING / LOG_KINDLING / REGISTER_RABBIT
+  doe_tag?: string;
+  buck_tag?: string;
+  mating_date?: string;
+  expected_kindling_date?: string;
+  // LOG_KINDLING
+  kits_born_alive?: number;
+  kits_born_dead?: number;
+  kindling_date?: string;
+  breeding_event_hint?: string;
+  // LOG_WEANING
+  kits_weaned?: number;
+  weaning_date?: string;
+  // REGISTER_RABBIT
+  tag?: string;
+  sex?: 'doe' | 'buck';
+  breed?: string;
+  birth_date?: string;
+  sire_tag?: string;
+  dam_tag?: string;
+  // LOG_RABBIT_HARVEST
+  total_live_weight_kg?: number;
+  total_carcass_weight_kg?: number;
+  sale_price?: number;
+  harvest_date?: string;
+  // Cross-farm mode: Eden includes this in [LOG] blocks to specify the target farm.
+  target_farm_id?: string;
 }
 
 interface ChatMessage {
@@ -146,36 +218,32 @@ const RABBIT_SUGGESTIONS = [
 ];
 
 
-const STORAGE_KEY = 'eden_chat_messages';
-const STORAGE_DATE_KEY = 'eden_chat_date';
-
-function loadTodayMessages(): ChatMessage[] {
-  try {
-    const savedDate = localStorage.getItem(STORAGE_DATE_KEY);
-    const today = new Date().toDateString();
-    if (savedDate !== today) {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.setItem(STORAGE_DATE_KEY, today);
-      return [];
-    }
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
-  } catch {
-    return [];
-  }
-}
-
-function saveTodayMessages(msgs: ChatMessage[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
-    localStorage.setItem(STORAGE_DATE_KEY, new Date().toDateString());
-  } catch {}
+/**
+ * Map a persisted Supabase row to the in-memory display shape. Persisted rows
+ * only carry log_action; richer fields (bulkLogActions, payRunAction, etc.)
+ * are derived at runtime from the edge-function response and are not stored.
+ *
+ * Pre-Phase-1 we cached chat in `localStorage` under `eden_chat_messages`
+ * keyed by date; that is now superseded by per-scope caching inside
+ * useEdenChat. The old key is left orphaned (auto-evicts as cache fills);
+ * if the page is opened on the day of upgrade users see no chat history,
+ * which is acceptable per the migration plan in EDEN_PER_FARM_CHAT.md.
+ */
+function persistedToDisplay(row: EdenChatMessage): ChatMessage {
+  const log = row.log_action as LogAction | null | undefined;
+  return {
+    id: row.id,
+    role: row.role,
+    content: row.content,
+    images: undefined,
+    logAction: log ?? undefined,
+    logConfirmed: row.log_confirmed ?? undefined,
+    timestamp: new Date(row.created_at),
+  };
 }
 
 export function AIAssistantPage() {
-  const { currentFarm, user } = useAuth();
+  const { currentFarm, user, allFarms } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const farmSpecies = useFarmSpecies();
@@ -184,22 +252,56 @@ export function AIAssistantPage() {
     : farmSpecies.id === 'rabbits'
     ? RABBIT_SUGGESTIONS
     : POULTRY_SUGGESTIONS;
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadTodayMessages());
+
+  // Phase 1 — per-farm chat persistence. The conversation scope is either a
+  // single farm OR "All my farms" (cross-farm mode). Cross-farm mode requires
+  // disambiguation on writes; see docs/EDEN_PER_FARM_CHAT.md.
+  const [crossFarm, setCrossFarm] = useState(false);
+  const scope: EdenChatScope = crossFarm
+    ? { mode: 'all' }
+    : { mode: 'farm', farmId: currentFarm?.id ?? '' };
+  const persistedChat = useEdenChat(user?.id ?? null, scope);
+
+  // The on-screen `messages` list mirrors persisted history but carries
+  // transient UI state (logSaving, bulkLogProgress) that does NOT go to DB.
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
+  // Phase G voice support — Whisper-backed (better African-language coverage
+  // than browser SpeechRecognition). MediaRecorder captures audio; we stop
+  // when the user taps the mic again, then ship the blob to /transcribe-audio.
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const [transcribing, setTranscribing] = useState(false);
+  // Language picker for voice (Whisper hint + TTS voice). Persisted via localStorage.
+  const [voiceLang, setVoiceLang] = useState<'en' | 'fr' | 'sw' | 'yo' | 'ha' | 'pidgin'>(() => {
+    try {
+      const stored = localStorage.getItem('eden_voice_lang') as any;
+      if (['en', 'fr', 'sw', 'yo', 'ha', 'pidgin'].includes(stored)) return stored;
+    } catch {}
+    return 'en';
+  });
+  // TTS auto-play of Eden's replies. Defaults off so we don't surprise users.
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    try { return localStorage.getItem('eden_tts_enabled') === 'true'; } catch { return false; }
+  });
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [usageInfo, setUsageInfo] = useState<{ used: number; cap: number; tier: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
+  // Phase G: replaced browser SpeechRecognition with MediaRecorder + Whisper.
+  // Recognition ref removed — see mediaRecorderRef above.
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
+  // Mirror persisted history into the display state when scope or DB rows
+  // change. Transient UI flags (logSaving, bulkLog progress) are dropped here
+  // — they're never useful after a reload anyway.
   useEffect(() => {
-    saveTodayMessages(messages);
-  }, [messages]);
+    setMessages(persistedChat.messages.map(persistedToDisplay));
+  }, [persistedChat.messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -226,31 +328,151 @@ export function AIAssistantPage() {
   }, []);
 
 
-  const toggleVoice = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+  /**
+   * Phase G voice: record audio with MediaRecorder, then upload to our
+   * `transcribe-audio` edge function (which calls Whisper).
+   *
+   * Why not the browser's built-in SpeechRecognition? Because Whisper
+   * handles Hausa, Yoruba, Swahili, and Nigerian Pidgin meaningfully
+   * better than Chrome's SpeechRecognition (which has narrow language
+   * coverage and falls over for non-English speakers).
+   *
+   * Flow:
+   *   tap mic → start recording (mediaRecorder)
+   *   tap mic again → stop, upload, transcribe, drop into input box
+   *   user can edit before hitting Send
+   */
+  const toggleVoice = async () => {
+    if (transcribing) return;
+
+    if (listening) {
+      // Stop the current recording. The 'stop' handler runs the upload.
+      mediaRecorderRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
       showToast('Voice input not supported in this browser', 'error');
       return;
     }
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err: any) {
+      showToast(err?.name === 'NotAllowedError' ? 'Microphone permission denied' : 'Could not access microphone', 'error');
       return;
     }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setInput(transcript);
-      setListening(false);
+
+    // Pick a MIME type the browser actually supports. Chrome/Edge default
+    // to audio/webm;codecs=opus. Safari needs audio/mp4. Whisper handles both.
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+    const mimeType = candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = [];
+
+    mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
     };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
-    recognitionRef.current = recognition;
-    recognition.start();
+    mediaRecorder.onstop = async () => {
+      // Free the mic immediately so the OS shows it's released.
+      stream.getTracks().forEach(t => t.stop());
+
+      const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+      audioChunksRef.current = [];
+      if (blob.size === 0) return;
+
+      setTranscribing(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', blob, mimeType.includes('mp4') ? 'audio.m4a' : 'audio.webm');
+        formData.append('language', voiceLang);
+
+        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+          body: formData,
+        });
+        if (error) throw error;
+        const text = (data as any)?.text;
+        if (text) {
+          // Append to existing input rather than overwriting — lets the user
+          // dictate in chunks.
+          setInput(prev => (prev ? `${prev.trim()} ${text}` : text));
+        } else {
+          showToast('Could not transcribe — try speaking closer to the mic', 'warning');
+        }
+      } catch (err: any) {
+        const msg = err?.message || 'Transcription failed';
+        if (msg.includes('not configured')) {
+          showToast('Voice transcription not yet configured — admin needs to set OPENAI_API_KEY', 'error');
+        } else {
+          showToast(msg, 'error');
+        }
+      } finally {
+        setTranscribing(false);
+      }
+    };
+
+    mediaRecorder.start();
     setListening(true);
+
+    // Safety auto-stop at 60 seconds. Whisper handles up to 25 MB; a 60s
+    // opus recording is ~500 KB — well under. Avoids hung mic sessions.
+    setTimeout(() => {
+      if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        setListening(false);
+      }
+    }, 60_000);
+  };
+
+  /**
+   * Browser TTS for Eden's replies. Falls back to a default voice when
+   * the requested language isn't available.
+   *
+   * Pidgin and Hausa rarely have native TTS voices in the browser — we
+   * fall back to the closest English voice. The user can disable TTS via
+   * the speaker toggle.
+   */
+  const speakText = (text: string) => {
+    if (!ttsEnabled || !text) return;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel(); // stop any in-flight speech
+      const utter = new SpeechSynthesisUtterance(text.replace(/[*#`_~]/g, '').slice(0, 4000));
+      // Map our voiceLang to a BCP-47 tag. Pidgin/Hausa have no widely-supported
+      // tag, so fall back to en.
+      const langMap: Record<string, string> = {
+        en: 'en-US',
+        fr: 'fr-FR',
+        sw: 'sw-KE',
+        yo: 'yo-NG',
+        ha: 'en-NG', // best fallback
+        pidgin: 'en-NG',
+      };
+      utter.lang = langMap[voiceLang] || 'en-US';
+      // Try to pick a matching voice if installed.
+      const voices = window.speechSynthesis.getVoices();
+      const pref = voices.find(v => v.lang === utter.lang) || voices.find(v => v.lang.startsWith(utter.lang.slice(0, 2)));
+      if (pref) utter.voice = pref;
+      utter.rate = 0.95;
+      window.speechSynthesis.speak(utter);
+    } catch {
+      // swallow — TTS is non-critical
+    }
+  };
+
+  const toggleTts = () => {
+    const next = !ttsEnabled;
+    setTtsEnabled(next);
+    try { localStorage.setItem('eden_tts_enabled', String(next)); } catch {}
+    if (!next && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+  };
+
+  const handleVoiceLangChange = (lang: typeof voiceLang) => {
+    setVoiceLang(lang);
+    try { localStorage.setItem('eden_voice_lang', lang); } catch {}
   };
 
   const addImages = async (files: FileList | null) => {
@@ -569,14 +791,256 @@ export function AIAssistantPage() {
       }).select('id');
       if (taskErr) throw new Error(`Task creation failed: ${taskErr.message}`);
       if (!taskData?.length) throw new Error('Task not saved — possible permission issue.');
+
+    // ─── Fish (aquaculture) actions ───────────────────────────────────────
+    } else if (logAction.type === 'LOG_WATER_QUALITY') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const { data: wqData, error: wqErr } = await supabase.from('water_quality_logs').insert({
+        farm_id: farmId, flock_id: flock.id,
+        logged_at: recordDate,
+        temperature_c: logAction.temperature_c ?? null,
+        dissolved_oxygen: logAction.dissolved_oxygen ?? null,
+        ph: logAction.ph ?? null,
+        ammonia_mgl: logAction.ammonia_mgl ?? null,
+        nitrite_mgl: logAction.nitrite_mgl ?? null,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (wqErr) throw new Error(`Water quality save failed: ${wqErr.message}`);
+      if (!wqData?.length) throw new Error('Water quality record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_POND_INSPECTION') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const { data: piData, error: piErr } = await supabase.from('pond_inspections').insert({
+        farm_id: farmId, flock_id: flock.id,
+        inspection_date: recordDate,
+        water_clarity: logAction.water_clarity || null,
+        fish_behavior: logAction.fish_behavior || null,
+        feeding_response: logAction.feeding_response || null,
+        dead_fish_count: logAction.dead_fish_count ?? 0,
+        notes: logAction.notes || null,
+        inspected_by: user?.id || null,
+      }).select('id');
+      if (piErr) throw new Error(`Pond inspection save failed: ${piErr.message}`);
+      if (!piData?.length) throw new Error('Pond inspection not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_STOCKING') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const fingerlingCount = logAction.fingerling_count || 0;
+      const totalCost = logAction.total_cost ?? (logAction.cost_per_fingerling ? logAction.cost_per_fingerling * fingerlingCount : null);
+      const { data: stockData, error: stockErr } = await supabase.from('stocking_events').insert({
+        farm_id: farmId, flock_id: flock.id,
+        stocked_at: logAction.stocked_at || recordDate,
+        species: logAction.species || 'catfish',
+        fingerling_count: fingerlingCount,
+        source: logAction.source || null,
+        cost_per_fingerling: logAction.cost_per_fingerling ?? null,
+        total_cost: totalCost,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (stockErr) throw new Error(`Stocking save failed: ${stockErr.message}`);
+      if (!stockData?.length) throw new Error('Stocking record not saved — possible permission issue.');
+      if (fingerlingCount > 0) {
+        await supabase.from('flocks').update({ current_count: (flock.current_count || 0) + fingerlingCount }).eq('id', flock.id).eq('farm_id', farmId);
+      }
+
+    } else if (logAction.type === 'LOG_HARVEST') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const totalAmount = logAction.total_amount ?? (logAction.price_per_kg && logAction.total_weight_kg ? logAction.price_per_kg * logAction.total_weight_kg : null);
+      const { data: harvData, error: harvErr } = await supabase.from('harvest_records').insert({
+        farm_id: farmId, flock_id: flock.id,
+        harvested_at: logAction.harvested_at || recordDate,
+        total_weight_kg: logAction.total_weight_kg || 0,
+        price_per_kg: logAction.price_per_kg ?? null,
+        total_amount: totalAmount,
+        buyer_name: logAction.buyer_name || null,
+        payment_status: logAction.payment_status || 'pending',
+        notes: logAction.notes || null,
+      }).select('id');
+      if (harvErr) throw new Error(`Fish harvest save failed: ${harvErr.message}`);
+      if (!harvData?.length) throw new Error('Fish harvest record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_SAMPLING') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const sampleSize = logAction.sample_size || 10;
+      const abwG = logAction.abw_g || 0;
+      // Synthesise individual_weights_g — AI-driven sampling simplification (UI form allows per-fish entry)
+      const individualWeights = Array(sampleSize).fill(abwG);
+      const { data: sampData, error: sampErr } = await supabase.from('sampling_events').insert({
+        farm_id: farmId, flock_id: flock.id,
+        sampled_at: logAction.sampled_at || recordDate,
+        sample_size: sampleSize,
+        individual_weights_g: individualWeights,
+        notes: logAction.notes || null,
+        created_by: user?.id || null,
+      }).select('id');
+      if (sampErr) throw new Error(`Sampling save failed: ${sampErr.message}`);
+      if (!sampData?.length) throw new Error('Sampling record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_FISH_LOSS') {
+      const pondName = logAction.pond_name || logAction.flock_name;
+      const flock = await findFlock(pondName);
+      if (!flock) throw new Error(`Pond "${pondName}" not found`);
+      const { data: fishLossData, error: fishLossErr } = await supabase.from('mortality_logs').insert({
+        farm_id: farmId, flock_id: flock.id,
+        count: logAction.count, cause: logAction.cause || 'unknown',
+        notes: logAction.notes || '',
+        event_date: recordDate,
+        created_by: user?.id || null,
+      }).select('id');
+      if (fishLossErr) throw new Error(`Fish loss save failed: ${fishLossErr.message}`);
+      if (!fishLossData?.length) throw new Error('Fish loss record not saved — possible permission issue.');
+
+    // ─── Rabbit actions ───────────────────────────────────────────────────
+    } else if (logAction.type === 'LOG_BREEDING') {
+      if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_BREEDING');
+      if (!logAction.buck_tag) throw new Error('buck_tag is required for LOG_BREEDING');
+      const matingDate = logAction.mating_date || recordDate;
+      let expectedKindling = logAction.expected_kindling_date;
+      if (!expectedKindling) {
+        const d = new Date(matingDate);
+        d.setDate(d.getDate() + 31);
+        expectedKindling = d.toISOString().split('T')[0];
+      }
+      const rabbitryForBreeding = await findFlock(logAction.rabbitry_name || logAction.flock_name);
+      const { data: breedData, error: breedErr } = await supabase.from('breeding_events').insert({
+        farm_id: farmId,
+        flock_id: rabbitryForBreeding?.id || null,
+        doe_tag: logAction.doe_tag,
+        buck_tag: logAction.buck_tag,
+        mating_date: matingDate,
+        expected_kindling_date: expectedKindling,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (breedErr) throw new Error(`Breeding event save failed: ${breedErr.message}`);
+      if (!breedData?.length) throw new Error('Breeding event not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_KINDLING') {
+      if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_KINDLING');
+      const kindlingDate = logAction.kindling_date || recordDate;
+      // Fuzzy-match the closest preceding breeding_event for this doe within 35 days
+      let breedingEventId: string | null = null;
+      try {
+        const lookback = new Date(kindlingDate);
+        lookback.setDate(lookback.getDate() - 35);
+        const { data: beMatch } = await supabase.from('breeding_events')
+          .select('id').eq('farm_id', farmId).eq('doe_tag', logAction.doe_tag)
+          .gte('mating_date', lookback.toISOString().split('T')[0])
+          .lte('mating_date', kindlingDate)
+          .order('mating_date', { ascending: false }).limit(1);
+        breedingEventId = beMatch?.[0]?.id || null;
+      } catch {}
+      const { data: litterData, error: litterErr } = await supabase.from('litters').insert({
+        farm_id: farmId,
+        breeding_event_id: breedingEventId,
+        doe_tag: logAction.doe_tag,
+        kindling_date: kindlingDate,
+        kits_born_alive: logAction.kits_born_alive ?? 0,
+        kits_born_dead: logAction.kits_born_dead ?? 0,
+        notes: logAction.notes || null,
+      }).select('id');
+      if (litterErr) throw new Error(`Kindling save failed: ${litterErr.message}`);
+      if (!litterData?.length) throw new Error('Kindling record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_WEANING') {
+      if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_WEANING');
+      const { data: latestLitter } = await supabase.from('litters')
+        .select('id').eq('farm_id', farmId).eq('doe_tag', logAction.doe_tag)
+        .is('kits_weaned', null).order('kindling_date', { ascending: false }).limit(1);
+      if (!latestLitter?.length) throw new Error(`No un-weaned litter found for doe "${logAction.doe_tag}"`);
+      const { error: weanErr } = await supabase.from('litters')
+        .update({ kits_weaned: logAction.kits_weaned ?? 0, weaning_date: logAction.weaning_date || recordDate })
+        .eq('id', latestLitter[0].id).eq('farm_id', farmId);
+      if (weanErr) throw new Error(`Weaning update failed: ${weanErr.message}`);
+
+    } else if (logAction.type === 'REGISTER_RABBIT') {
+      if (!logAction.tag) throw new Error('tag is required for REGISTER_RABBIT');
+      if (!logAction.sex) throw new Error('sex (doe/buck) is required for REGISTER_RABBIT');
+      const rabbitryForReg = await findFlock(logAction.rabbitry_name || logAction.flock_name);
+      const { data: rabbitData, error: rabbitErr } = await supabase.from('rabbits').insert({
+        farm_id: farmId,
+        flock_id: rabbitryForReg?.id || null,
+        tag: logAction.tag, sex: logAction.sex,
+        breed: logAction.breed || null,
+        birth_date: logAction.birth_date || null,
+        sire_tag: logAction.sire_tag || null,
+        dam_tag: logAction.dam_tag || null,
+        status: 'active',
+        notes: logAction.notes || null,
+      }).select('id');
+      if (rabbitErr) {
+        if (rabbitErr.code === '23505') throw new Error(`Rabbit tag "${logAction.tag}" already exists on this farm`);
+        throw new Error(`Rabbit registration failed: ${rabbitErr.message}`);
+      }
+      if (!rabbitData?.length) throw new Error('Rabbit not registered — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_RABBIT_LOSS') {
+      const rabbitryName = logAction.rabbitry_name || logAction.flock_name;
+      const flock = await findFlock(rabbitryName);
+      if (!flock) throw new Error(`Rabbitry "${rabbitryName}" not found`);
+      const { data: rLossData, error: rLossErr } = await supabase.from('mortality_logs').insert({
+        farm_id: farmId, flock_id: flock.id,
+        count: logAction.count, cause: logAction.cause || 'unknown',
+        notes: logAction.notes || '',
+        event_date: recordDate,
+        created_by: user?.id || null,
+      }).select('id');
+      if (rLossErr) throw new Error(`Rabbit loss save failed: ${rLossErr.message}`);
+      if (!rLossData?.length) throw new Error('Rabbit loss record not saved — possible permission issue.');
+
+    } else if (logAction.type === 'LOG_RABBIT_HARVEST') {
+      const rabbitryName = logAction.rabbitry_name || logAction.flock_name;
+      const flock = await findFlock(rabbitryName);
+      if (!flock) throw new Error(`Rabbitry "${rabbitryName}" not found`);
+      const harvestCount = logAction.count || 0;
+      // rabbit_harvest_records has price_per_kg + total_amount; schema has no sale_price/currency cols
+      const { data: rhrData, error: rhrErr } = await supabase.from('rabbit_harvest_records').insert({
+        farm_id: farmId, flock_id: flock.id,
+        harvested_at: logAction.harvest_date || recordDate,
+        count: harvestCount,
+        total_live_weight_kg: logAction.total_live_weight_kg ?? null,
+        total_carcass_weight_kg: logAction.total_carcass_weight_kg ?? null,
+        price_per_kg: logAction.price_per_kg ?? null,
+        total_amount: logAction.total_amount ?? logAction.sale_price ?? null,
+        buyer_name: logAction.buyer_name || null,
+        payment_status: logAction.payment_status || 'pending',
+        notes: logAction.notes || null,
+      }).select('id');
+      if (rhrErr) throw new Error(`Rabbit harvest save failed: ${rhrErr.message}`);
+      if (!rhrData?.length) throw new Error('Rabbit harvest not saved — possible permission issue.');
+      if (harvestCount > 0) {
+        await supabase.from('flocks').update({ current_count: Math.max(0, (flock.current_count || 0) - harvestCount) }).eq('id', flock.id).eq('farm_id', farmId);
+      }
     }
   };
 
   const confirmLog = async (messageId: string, logAction: LogAction) => {
-    if (!currentFarm) return;
+    // In cross-farm mode the action targets a specific farm via target_farm_id.
+    // In single-farm mode it always targets currentFarm.
+    const targetFarmId = crossFarm
+      ? (logAction.target_farm_id ?? null)
+      : (currentFarm?.id ?? null);
+
+    if (!targetFarmId) {
+      if (crossFarm) {
+        showToast('Eden did not specify which farm — re-ask and mention the farm name', 'error');
+      } else {
+        showToast('Please select a farm first', 'error');
+      }
+      return;
+    }
 
     // Duplicate detection for single logs
-    const dupeMsg = await checkForDuplicate(logAction, currentFarm.id);
+    const dupeMsg = await checkForDuplicate(logAction, targetFarmId);
     if (dupeMsg) {
       const ok = window.confirm(`⚠️ Possible duplicate detected:\n${dupeMsg}\n\nSave anyway?`);
       if (!ok) return;
@@ -587,10 +1051,12 @@ export function AIAssistantPage() {
     const currency = logAction.currency || 'XAF';
 
     try {
-      await executeLogAction(logAction, currentFarm.id, currency);
+      await executeLogAction(logAction, targetFarmId, currency);
 
       // Only set logConfirmed AFTER the insert actually succeeded
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logSaving: false, logConfirmed: true } : m));
+      // Persist the confirmation flag (best-effort).
+      void persistedChat.setLogConfirmed(messageId, true);
 
       if (logAction.type === 'LOG_MORTALITY') {
         showToast(`Logged ${logAction.count} deaths in "${logAction.flock_name}"`, 'success');
@@ -615,6 +1081,38 @@ export function AIAssistantPage() {
         showToast(`Task added: "${logAction.title}"`, 'success');
       } else if (logAction.type === 'COMPLETE_TASK') {
         showToast(`Task marked as complete`, 'success');
+      } else if (logAction.type === 'LOG_WATER_QUALITY') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Water quality logged for "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_POND_INSPECTION') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Pond inspection saved for "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_STOCKING') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Stocked ${logAction.fingerling_count?.toLocaleString() || 0} fingerlings into "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_HARVEST') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Fish harvest logged for "${pond}": ${logAction.total_weight_kg} kg`, 'success');
+      } else if (logAction.type === 'LOG_SAMPLING') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Sampling logged for "${pond}": ABW ${logAction.abw_g} g`, 'success');
+      } else if (logAction.type === 'LOG_FISH_LOSS') {
+        const pond = logAction.pond_name || logAction.flock_name;
+        showToast(`Logged ${logAction.count} fish loss in "${pond}"`, 'success');
+      } else if (logAction.type === 'LOG_BREEDING') {
+        showToast(`Breeding recorded: ${logAction.doe_tag} × ${logAction.buck_tag}`, 'success');
+      } else if (logAction.type === 'LOG_KINDLING') {
+        showToast(`Kindling recorded for doe ${logAction.doe_tag}: ${logAction.kits_born_alive} kits alive`, 'success');
+      } else if (logAction.type === 'LOG_WEANING') {
+        showToast(`Weaning logged: ${logAction.kits_weaned} kits weaned from doe ${logAction.doe_tag}`, 'success');
+      } else if (logAction.type === 'REGISTER_RABBIT') {
+        showToast(`Rabbit "${logAction.tag}" (${logAction.sex}) registered`, 'success');
+      } else if (logAction.type === 'LOG_RABBIT_LOSS') {
+        const rabbitry = logAction.rabbitry_name || logAction.flock_name;
+        showToast(`Logged ${logAction.count} rabbit loss in "${rabbitry}"`, 'success');
+      } else if (logAction.type === 'LOG_RABBIT_HARVEST') {
+        const rabbitry = logAction.rabbitry_name || logAction.flock_name;
+        showToast(`Rabbit harvest logged: ${logAction.count} rabbits from "${rabbitry}"`, 'success');
       }
     } catch (err: any) {
       console.error('[Eden AI] Save failed:', err);
@@ -897,8 +1395,14 @@ export function AIAssistantPage() {
     const text = messageText || input.trim();
     if ((!text && pendingImages.length === 0 && !pendingFile) || loading) return;
 
-    if (!currentFarm) {
+    // In cross-farm mode there is no single currentFarm — that's the point.
+    // We still require the user to belong to at least one farm to send anything.
+    if (!crossFarm && !currentFarm) {
       showToast('Please select a farm first', 'error');
+      return;
+    }
+    if (crossFarm && (!allFarms || allFarms.length === 0)) {
+      showToast('No farms available for cross-farm mode.', 'error');
       return;
     }
 
@@ -911,10 +1415,27 @@ export function AIAssistantPage() {
       : '';
     const fullText = (text || '') + fileBlock;
 
+    const userContent = text || (fileAttachment ? `Please import ${fileAttachment.name}` : '');
+
+    // Persist user message first. This is the source of truth — local state
+    // gets refreshed via the hook's effect.
+    let persistedUserId: string | null = null;
+    try {
+      const persisted = await persistedChat.appendUserMessage(userContent);
+      persistedUserId = persisted.id;
+    } catch (err: any) {
+      console.error('Failed to persist user message:', err);
+      showToast('Could not save your message. Please retry.', 'error');
+      return;
+    }
+
+    // Optimistically add to display state — the hook effect will replace
+    // this with the canonical row on next tick, but the UI needs the message
+    // visible immediately, with attachments which aren't persisted.
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: persistedUserId,
       role: 'user',
-      content: text || (fileAttachment ? `Please import ${fileAttachment.name}` : ''),
+      content: userContent,
       images: imgs.length > 0 ? imgs : undefined,
       attachedFile: fileAttachment ? { name: fileAttachment.name, rowCount: fileAttachment.rowCount } : undefined,
       timestamp: new Date(),
@@ -950,7 +1471,20 @@ export function AIAssistantPage() {
         },
       ];
 
-      const body = JSON.stringify({ farm_id: currentFarm.id, messages: allMessages, include_context: true });
+      // Pick the right anchor farm. In cross-farm mode the edge function
+      // still needs ONE farm_id as the auth anchor (any farm the user
+      // belongs to works) and the full list of farms to fetch context for.
+      const anchorFarmId = currentFarm?.id ?? allFarms[0]?.id ?? '';
+      const requestBody: Record<string, unknown> = {
+        farm_id: anchorFarmId,
+        messages: allMessages,
+        include_context: true,
+      };
+      if (crossFarm && allFarms && allFarms.length > 0) {
+        requestBody.cross_farm = true;
+        requestBody.cross_farm_farm_ids = allFarms.map((f) => f.id);
+      }
+      const body = JSON.stringify(requestBody);
 
       const doFetch = () => {
         const ctrl = new AbortController();
@@ -1003,12 +1537,32 @@ export function AIAssistantPage() {
       }
 
       const bulkActions: LogAction[] = data.bulkLogActions || [];
-      const msgId = (Date.now() + 1).toString();
+
+      // Persist Eden's reply to Supabase. log_target_farm_id captures the
+      // destination farm in cross-farm mode (Eden may have asked for it
+      // before generating a [LOG]); falls back to the conversation's farm.
+      const replyContent = data.message || 'I apologize, but I could not generate a response.';
+      const targetFarmId = crossFarm
+        ? (data.logAction?.target_farm_id ?? null)
+        : (currentFarm?.id ?? null);
+
+      let persistedAssistantId: string;
+      try {
+        const persisted = await persistedChat.appendAssistantMessage(replyContent, {
+          logAction: data.logAction ?? null,
+          logTargetFarmId: targetFarmId,
+        });
+        persistedAssistantId = persisted.id;
+      } catch (err) {
+        console.warn('Failed to persist assistant message:', err);
+        persistedAssistantId = (Date.now() + 1).toString();
+      }
+      const msgId = persistedAssistantId;
 
       const assistantMessage: ChatMessage = {
         id: msgId,
         role: 'assistant',
-        content: data.message || 'I apologize, but I could not generate a response.',
+        content: replyContent,
         actions: data.actions || [],
         logAction: data.logAction || null,
         // Auto-confirm bulk logs — skip the checkbox panel, go straight to progress bar
@@ -1026,6 +1580,9 @@ export function AIAssistantPage() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Read Eden's reply aloud if TTS is enabled (Phase G voice support).
+      speakText(assistantMessage.content);
 
       // Auto-execute bulk log immediately — no confirm button needed
       if (bulkActions.length > 0 && currentFarm) {
@@ -1099,6 +1656,42 @@ export function AIAssistantPage() {
     if (a.type === 'LOG_EXPENSE') return `${a.description} · ${(a.amount||0).toLocaleString()} ${cur}${dateLabel}`;
     if (a.type === 'LOG_WEIGHT') return `Weight "${a.flock_name}": ${a.avg_weight_kg} kg avg${dateLabel}`;
     if (a.type === 'LOG_FEED_USAGE') return `${a.bags_used} bag(s) of ${a.feed_type} used${dateLabel}`;
+    if (a.type === 'LOG_WATER_QUALITY') {
+      const pond = a.pond_name || a.flock_name;
+      return `Water quality "${pond}": DO ${a.dissolved_oxygen ?? '—'} mg/L, pH ${a.ph ?? '—'}, Temp ${a.temperature_c ?? '—'}°C${dateLabel}`;
+    }
+    if (a.type === 'LOG_POND_INSPECTION') {
+      const pond = a.pond_name || a.flock_name;
+      return `Pond inspection "${pond}": clarity ${a.water_clarity || '—'}, fish ${a.fish_behavior || '—'}${a.dead_fish_count ? `, ${a.dead_fish_count} dead` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_STOCKING') {
+      const pond = a.pond_name || a.flock_name;
+      return `Stocked ${(a.fingerling_count || 0).toLocaleString()} ${a.species || 'fish'} fingerlings into "${pond}"${dateLabel}`;
+    }
+    if (a.type === 'LOG_HARVEST') {
+      const pond = a.pond_name || a.flock_name;
+      return `Fish harvest "${pond}": ${a.total_weight_kg} kg${a.price_per_kg ? ` @ ${a.price_per_kg}/${cur}/kg` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_SAMPLING') {
+      const pond = a.pond_name || a.flock_name;
+      return `Sampling "${pond}": n=${a.sample_size || 10}, ABW ${a.abw_g || '—'} g${dateLabel}`;
+    }
+    if (a.type === 'LOG_FISH_LOSS') {
+      const pond = a.pond_name || a.flock_name;
+      return `${a.count} fish loss in "${pond}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_BREEDING') return `Breeding: ${a.doe_tag} × ${a.buck_tag}${a.mating_date ? ` on ${a.mating_date}` : ''}`;
+    if (a.type === 'LOG_KINDLING') return `Kindling: doe ${a.doe_tag} — ${a.kits_born_alive ?? 0} alive, ${a.kits_born_dead ?? 0} dead${dateLabel}`;
+    if (a.type === 'LOG_WEANING') return `Weaning: ${a.kits_weaned ?? 0} kits from doe ${a.doe_tag}${dateLabel}`;
+    if (a.type === 'REGISTER_RABBIT') return `Register rabbit: tag "${a.tag}" · ${a.sex}${a.breed ? ` · ${a.breed}` : ''}`;
+    if (a.type === 'LOG_RABBIT_LOSS') {
+      const rabbitry = a.rabbitry_name || a.flock_name;
+      return `${a.count} rabbit loss in "${rabbitry}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
+    }
+    if (a.type === 'LOG_RABBIT_HARVEST') {
+      const rabbitry = a.rabbitry_name || a.flock_name;
+      return `Rabbit harvest "${rabbitry}": ${a.count} rabbits${a.total_live_weight_kg ? `, ${a.total_live_weight_kg} kg live wt` : ''}${dateLabel}`;
+    }
     return 'Log data';
   };
 
@@ -1137,7 +1730,27 @@ export function AIAssistantPage() {
                 : 'Farm performance · Flock health · Diagnostics · Data import'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {allFarms && allFarms.length > 0 && (
+              <EdenFarmSelector
+                farms={allFarms}
+                selectedFarmId={crossFarm ? null : currentFarm?.id ?? null}
+                crossFarm={crossFarm}
+                onSelectFarm={(farmId) => {
+                  setCrossFarm(false);
+                  // Switching the farm scope reloads history via the hook;
+                  // we don't change the global currentFarm here — that's a
+                  // separate switch the user does via the farm switcher.
+                  // If the picked farm differs from currentFarm, the user
+                  // should switch via the top-level FarmSwitcherDropdown to
+                  // stay in sync. For now we just align the chat scope.
+                  if (currentFarm?.id !== farmId) {
+                    showToast('Switch farm in the top-left switcher to send messages on that farm.', 'info');
+                  }
+                }}
+                onSelectAllFarms={() => setCrossFarm(true)}
+              />
+            )}
             {usageInfo && (
               <div className={`text-xs px-2 py-1 rounded-full font-medium ${
                 usageInfo.used >= usageInfo.cap
@@ -1151,7 +1764,10 @@ export function AIAssistantPage() {
             )}
             {messages.length > 0 && (
               <button
-                onClick={() => setMessages([])}
+                onClick={async () => {
+                  await persistedChat.clear();
+                  setMessages([]);
+                }}
                 className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Clear Chat
@@ -1267,16 +1883,32 @@ export function AIAssistantPage() {
                             </p>
                           )}
                           <p className="text-xs font-medium text-gray-700 mb-1">Save this to your records?</p>
+                          {crossFarm && message.logAction.target_farm_id && (() => {
+                            const tFarm = allFarms.find(f => f.id === message.logAction!.target_farm_id);
+                            if (!tFarm) return null;
+                            const emoji = tFarm.farm_type === 'aquaculture' ? '🐠' : tFarm.farm_type === 'rabbits' ? '🐰' : '🐔';
+                            return (
+                              <div className="text-xs font-semibold text-agri-brown-700 bg-agri-gold-50 border border-agri-gold-200 rounded px-2 py-1.5 mb-2 flex items-center gap-1.5">
+                                <span>{emoji}</span><span>{tFarm.name}</span>
+                              </div>
+                            );
+                          })()}
                           <p className="text-xs text-gray-500 mb-2 bg-gray-50 rounded px-2 py-1">{summariseLogAction(message.logAction)}</p>
                           <div className="flex gap-2">
                             <button
                               onClick={() => confirmLog(message.id, message.logAction!)}
                               className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center gap-1"
                             >
-                              <CheckCircle className="w-3 h-3" /> Yes, save it
+                              <CheckCircle className="w-3 h-3" />
+                              {crossFarm && message.logAction.target_farm_id
+                                ? `Save to ${allFarms.find(f => f.id === message.logAction!.target_farm_id)?.name ?? 'farm'}`
+                                : 'Yes, save it'}
                             </button>
                             <button
-                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, logAction: undefined } : m))}
+                              onClick={() => {
+                                setMessages(prev => prev.map(m => m.id === message.id ? { ...m, logAction: undefined } : m));
+                                void persistedChat.setLogConfirmed(message.id, false);
+                              }}
                               className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium flex items-center gap-1"
                             >
                               <X className="w-3 h-3" /> No thanks
@@ -1669,18 +2301,54 @@ export function AIAssistantPage() {
               <Paperclip className="w-5 h-5" />
             </button>
 
-            {/* Mic button */}
+            {/* Mic button — records audio, ships to Whisper, drops text in input */}
             <button
               onClick={toggleVoice}
-              disabled={loading}
-              title={listening ? 'Stop listening' : 'Speak to Eden'}
+              disabled={loading || transcribing}
+              title={listening ? 'Stop listening' : transcribing ? 'Transcribing…' : `Speak to Eden (${voiceLang.toUpperCase()})`}
               className={`px-3 py-3 rounded-lg transition-colors flex items-center justify-center ${
                 listening
                   ? 'bg-red-100 text-red-600 animate-pulse'
-                  : 'bg-gray-100 text-gray-500 hover:bg-agri-gold-50 hover:text-agri-brown-600'
+                  : transcribing
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-gray-100 text-gray-500 hover:bg-agri-gold-50 hover:text-agri-brown-600'
               } disabled:opacity-40`}
             >
-              {listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              {transcribing
+                ? <Loader2 className="w-5 h-5 animate-spin" />
+                : listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+
+            {/* Voice language picker — Phase G. Drives Whisper input language
+                and TTS output voice. Pidgin/Hausa fall back to English voice. */}
+            <select
+              value={voiceLang}
+              onChange={e => handleVoiceLangChange(e.target.value as any)}
+              disabled={loading || listening || transcribing}
+              title="Voice language"
+              className="px-2 py-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium disabled:opacity-40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-agri-gold-500"
+            >
+              <option value="en">EN</option>
+              <option value="fr">FR</option>
+              <option value="sw">SW</option>
+              <option value="yo">YO</option>
+              <option value="ha">HA</option>
+              <option value="pidgin">Pidgin</option>
+            </select>
+
+            {/* TTS toggle — when on, Eden's text reply is read aloud */}
+            <button
+              type="button"
+              onClick={toggleTts}
+              disabled={loading}
+              title={ttsEnabled ? 'Mute Eden\'s replies' : 'Read Eden\'s replies aloud'}
+              className={`px-3 py-3 rounded-lg transition-colors flex items-center justify-center ${
+                ttsEnabled
+                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+              } disabled:opacity-40`}
+            >
+              {ttsEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
 
             <input

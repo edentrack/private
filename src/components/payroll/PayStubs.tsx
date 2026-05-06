@@ -4,7 +4,6 @@ import {
   Download,
   Eye,
   Loader2,
-  Calendar,
   Search,
   X,
   Clock,
@@ -12,8 +11,6 @@ import {
   Gift,
   MinusCircle,
   Printer,
-  Send,
-  Mail,
   Share2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface KPIData {
   totalExpenses: number;
@@ -12,6 +13,7 @@ interface KPIData {
 
 export function CompactKPICards({ farmId }: { farmId?: string }) {
   const { profile, currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
   const targetFarmId = farmId || currentFarm?.id;
   const [kpis, setKpis] = useState<KPIData>({
     totalExpenses: 0,
@@ -128,7 +130,7 @@ export function CompactKPICards({ farmId }: { farmId?: string }) {
 
       <div className="bg-white rounded-xl p-4 border border-gray-100 hover:border-gray-200 transition-all duration-200 animate-slide-up" style={{ animationDelay: '300ms' }}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Active Flocks</span>
+          <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">Active {farmSpecies.groupTermPlural}</span>
           <div className="p-1.5 bg-gray-50 rounded-lg">
             <Users className="w-4 h-4 text-gray-600" />
           </div>
