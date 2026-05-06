@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, Search, Filter, Download, User, Calendar, FileText, DollarSign, Syringe, AlertTriangle, Scale, TrendingUp, Package, ShoppingCart, Users, Clock } from 'lucide-react';
+import { Activity, Search, Filter, Download, User, Calendar, DollarSign, Syringe, AlertTriangle, Scale, TrendingUp, Package, ShoppingCart, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,7 +19,7 @@ interface ActivityLog {
 
 export function FarmActivityAudit() {
   const { t } = useTranslation();
-  const { currentFarm, profile } = useAuth();
+  const { currentFarm } = useAuth();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -73,9 +73,52 @@ export function FarmActivityAudit() {
       const { data, error } = await query;
       if (error) throw error;
 
+      // Also pull Eden's autonomous actions from eden_chat_messages — every
+      // [LOG] block Eden generated, with whether the user confirmed it.
+      // This is the audit trail required by Phase 8 #7.
+      const edenQuery = supabase
+        .from('eden_chat_messages')
+        .select('id, content, log_action, log_confirmed, log_target_farm_id, created_at, user_id')
+        .not('log_action', 'is', null)
+        .or(`farm_id.eq.${currentFarm.id},log_target_farm_id.eq.${currentFarm.id}`)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      const { data: edenRows } = await edenQuery;
+
+      const edenAsActivity: ActivityLog[] = (edenRows || []).map((row: {
+        id: string;
+        content: string;
+        log_action: { type?: string } | null;
+        log_confirmed: boolean | null;
+        log_target_farm_id: string | null;
+        created_at: string;
+        user_id: string | null;
+      }) => {
+        const t = row.log_action?.type ?? 'EDEN_ACTION';
+        const status = row.log_confirmed === true
+          ? '✓ confirmed'
+          : row.log_confirmed === false
+          ? '✗ declined'
+          : '⏳ proposed';
+        return {
+          id: `eden:${row.id}`,
+          user_id: row.user_id ?? '',
+          action: `Eden proposed ${t} (${status})`,
+          entity_type: 'eden_action',
+          entity_id: row.id,
+          details: { log_action: row.log_action, log_confirmed: row.log_confirmed, message: row.content?.slice(0, 200) },
+          created_at: row.created_at,
+          farm_id: row.log_target_farm_id ?? currentFarm.id,
+        };
+      });
+
+      const merged = [...(data || []), ...edenAsActivity].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
       // Enrich with user information
       const enrichedLogs = await Promise.all(
-        (data || []).map(async (log) => {
+        merged.map(async (log) => {
           let userName = null;
           let userEmail = null;
 
@@ -85,7 +128,7 @@ export function FarmActivityAudit() {
               .select('full_name, email')
               .eq('id', log.user_id)
               .single();
-            
+
             userName = userData?.full_name || null;
             userEmail = userData?.email || null;
           }

@@ -40,7 +40,10 @@ export type ModuleName =
   | 'breeding-events'
   | 'litters'
   | 'rabbit-registry'
-  | 'cooperatives';
+  | 'reports'
+  | 'cooperatives'
+  | 'credit-score'
+  | 'pond-planner';
 
 export interface ModuleVisibility {
   visible: boolean;
@@ -126,7 +129,9 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
     case 'cooperatives':
+    case 'pond-planner':
       return { visible: true };
 
     case 'smart-upload':
@@ -145,6 +150,9 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'forecast':
     case 'compare':
       return { visible: p.managers_can_view_analytics || p.managers_can_view_financials };
+
+    case 'credit-score':
+      return { visible: p.managers_can_view_financials };
 
     case 'analytics':
       return { visible: p.managers_can_view_analytics };
@@ -184,6 +192,8 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
+    case 'pond-planner':
       return { visible: true };
 
     case 'ai-assistant':
@@ -216,6 +226,7 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'audit':
     case 'billing':
     case 'cooperatives':
+    case 'credit-score':
       return { visible: false, reason: 'Not available for workers' };
 
     case 'settings':
@@ -257,7 +268,10 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
     case 'cooperatives':
+    case 'credit-score':
+    case 'pond-planner':
       return { visible: true };
 
     case 'smart-upload':
@@ -351,7 +365,7 @@ export function getVisibleModules(
     'insights', 'analytics', 'forecast', 'compare',
     'mortality', 'weight', 'payroll', 'team',
     'task-history', 'audit', 'smart-upload', 'marketplace', 'roadmap',
-    'settings', 'billing', 'cooperatives',
+    'settings', 'billing', 'cooperatives', 'credit-score', 'pond-planner',
   ];
   return all.filter(mod => canViewModule(role, mod, farmPermissions).visible);
 }

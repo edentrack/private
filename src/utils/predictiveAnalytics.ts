@@ -1,10 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
 
-interface TimeSeriesData {
-  date: string;
-  value: number;
-}
-
 interface Prediction {
   date: string;
   predicted: number;
@@ -22,12 +17,6 @@ interface AnomalyDetection {
 }
 
 export class PredictiveAnalytics {
-  private static simpleMovingAverage(data: number[], period: number): number {
-    if (data.length < period) return data[data.length - 1] || 0;
-    const slice = data.slice(-period);
-    return slice.reduce((sum, val) => sum + val, 0) / period;
-  }
-
   private static exponentialMovingAverage(data: number[], period: number): number {
     if (data.length === 0) return 0;
     if (data.length < period) return data[data.length - 1];

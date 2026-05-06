@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { farmLocalToUtcIso, getFarmTimeZone } from '../../utils/farmTime';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 interface Flock { id: string; name: string; }
 interface Member { user_id: string; full_name: string; role: string; }
@@ -18,6 +19,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: AddTaskModalProps) {
   const { user, currentFarm } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const farmTz = getFarmTimeZone(currentFarm);
 
   const [title, setTitle] = useState('');
@@ -61,7 +63,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
     try {
       if (repeat === 'once') {
         const scheduledTs = farmLocalToUtcIso({ dateISO: dueDate, timeHHMM: dueTime, farmTz });
-        await supabase.from('tasks').insert({
+        const taskPayload = {
           farm_id: currentFarm.id,
           flock_id: selectedFlockId || null,
           title_override: title.trim(),
@@ -72,7 +74,15 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
           assigned_to: assignedTo || null,
           status: 'pending',
           requires_input: false,
-        });
+        };
+        const { error: insertErr } = await supabase.from('tasks').insert(taskPayload);
+        if (insertErr) {
+          if (isNetworkError(insertErr)) {
+            await tryWrite('tasks', 'insert', taskPayload);
+          } else {
+            throw insertErr;
+          }
+        }
       } else {
         // Weekly recurring — save as a task_template with days_of_week
         const { data: tpl, error: tplErr } = await supabase.from('task_templates').insert({

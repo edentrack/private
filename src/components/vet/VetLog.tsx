@@ -3,6 +3,7 @@ import { Plus, Stethoscope, Calendar, User, Pill, AlertCircle, Trash2, Edit2, X,
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 interface VetLog {
   id: string;
@@ -37,6 +38,7 @@ const emptyForm = {
 
 export function VetLog() {
   const { currentFarm, profile } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const toast = useToast();
   const [logs, setLogs] = useState<VetLog[]>([]);
   const [flocks, setFlocks] = useState<Flock[]>([]);
@@ -122,8 +124,16 @@ export function VetLog() {
         toast.success('Vet log updated');
       } else {
         const { error } = await supabase.from('vet_logs').insert(payload);
-        if (error) throw error;
-        toast.success('Vet log saved');
+        if (error) {
+          if (isNetworkError(error)) {
+            await tryWrite('vet_logs', 'insert', payload);
+            toast.success('Vet log queued — will sync when online');
+          } else {
+            throw error;
+          }
+        } else {
+          toast.success('Vet log saved');
+        }
       }
       closeForm();
       loadLogs();

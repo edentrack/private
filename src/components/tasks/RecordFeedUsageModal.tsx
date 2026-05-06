@@ -3,6 +3,7 @@ import { X, Package, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { FeedStock } from '../../types/database';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
 interface RecordFeedUsageModalProps {
   flockId: string;
@@ -12,6 +13,7 @@ interface RecordFeedUsageModalProps {
 
 export function RecordFeedUsageModal({ flockId, onClose, onSuccess }: RecordFeedUsageModalProps) {
   const { user, currentFarm } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const [feedStocks, setFeedStocks] = useState<FeedStock[]>([]);
   const [selectedFeedType, setSelectedFeedType] = useState('');
   const [bagsUsed, setBagsUsed] = useState('');
@@ -68,18 +70,25 @@ export function RecordFeedUsageModal({ flockId, onClose, onSuccess }: RecordFeed
     try {
       const newStock = selectedFeed.current_stock_bags - bagsUsedNum;
 
+      const feedUpdate = {
+        current_stock_bags: newStock,
+        last_updated: new Date().toISOString(),
+      };
       const { error: updateError } = await supabase
         .from('feed_stock')
-        .update({
-          current_stock_bags: newStock,
-          last_updated: new Date().toISOString(),
-        })
+        .update(feedUpdate)
         .eq('id', selectedFeedType);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        if (isNetworkError(updateError)) {
+          await tryWrite('feed_stock', 'update', feedUpdate, selectedFeedType);
+        } else {
+          throw updateError;
+        }
+      }
 
       const now = new Date();
-      const { error: taskError } = await supabase.from('tasks').insert({
+      const taskPayload = {
         user_id: user.id,
         farm_id: currentFarm.id,
         flock_id: flockId,
@@ -91,9 +100,16 @@ export function RecordFeedUsageModal({ flockId, onClose, onSuccess }: RecordFeed
         completed: true,
         completed_at: now.toISOString(),
         created_by: user.id,
-      });
+      };
+      const { error: taskError } = await supabase.from('tasks').insert(taskPayload);
 
-      if (taskError) throw taskError;
+      if (taskError) {
+        if (isNetworkError(taskError)) {
+          await tryWrite('tasks', 'insert', taskPayload);
+        } else {
+          throw taskError;
+        }
+      }
 
       await supabase.from('activity_logs').insert({
         user_id: user.id,
