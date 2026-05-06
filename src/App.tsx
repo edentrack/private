@@ -80,6 +80,7 @@ const RabbitHarvestPage      = lazy1(() => import('./components/rabbits/RabbitHa
 const BreedingEventsPage     = lazy1(() => import('./components/rabbits/BreedingEventsPage'), 'BreedingEventsPage');
 const LittersPage            = lazy1(() => import('./components/rabbits/LittersPage'), 'LittersPage');
 const RabbitsRegistryPage    = lazy1(() => import('./components/rabbits/RabbitsRegistryPage'), 'RabbitsRegistryPage');
+const ReportsPage            = lazy1(() => import('./components/reports/ReportsPage'), 'ReportsPage');
 const CooperativesPage       = lazy1(() => import('./components/cooperatives/CooperativesPage'), 'CooperativesPage');
 const CooperativeDashboard   = lazy1(() => import('./components/cooperatives/CooperativeDashboard'), 'CooperativeDashboard');
 const CreditScorePage        = lazy1(() => import('./components/credit/CreditScorePage'), 'CreditScorePage');
@@ -394,6 +395,7 @@ function AppContent() {
       'breeding-events': '#/breeding-events',
       'litters': '#/litters',
       'rabbit-registry': '#/rabbit-registry',
+      'reports': '#/reports',
       'weight': '#/weight',
       'analytics': '#/analytics',
       'insights': '#/insights',
@@ -644,6 +646,10 @@ function AppContent() {
       }
       if (hash.includes('#/rabbit-registry')) {
         setCurrentView('rabbit-registry');
+        return;
+      }
+      if (hash.includes('#/reports')) {
+        setCurrentView('reports');
         return;
       }
       if (hash.includes('#/weight')) {
@@ -1126,6 +1132,8 @@ function AppContent() {
         return <LittersPage />;
       case 'rabbit-registry':
         return <RabbitsRegistryPage />;
+      case 'reports':
+        return <ReportsPage />;
       case 'vet-log':
         return (
           <RequireRole moduleId="vet-log" onUnauthorized={handleUnauthorized}>

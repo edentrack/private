@@ -5,8 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { buildCreditScore, CreditScoreResult } from '../../utils/creditScore';
 // creditworthinessPDF pulls in jsPDF + jspdf-autotable. Dynamic-imported in
-// handleDownload so the chunk only loads when the user clicks the button —
-// see Phase 3 of CLAUDE_CODE_AUTONOMOUS_ROADMAP.md.
+// handleDownload so the chunk only loads when the user clicks the button.
 
 const TIER_COLORS: Record<CreditScoreResult['tier'], { bg: string; ring: string; text: string }> = {
   excellent: { bg: 'bg-emerald-50', ring: 'ring-emerald-200', text: 'text-emerald-700' },

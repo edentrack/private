@@ -106,7 +106,10 @@ interface ChatMessage {
 }
 
 interface ChatRequest {
-  farm_id: string;
+  farm_id?: string;
+  /** Cross-farm mode: omit farm_id, pass all user farm IDs instead. */
+  cross_farm?: boolean;
+  cross_farm_farm_ids?: string[];
   messages: ChatMessage[];
   include_context?: boolean;
   /**
@@ -876,47 +879,60 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ChatRequest = await req.json();
-    const { farm_id, messages, include_context, model: requestedModel } = body;
+    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel } = body;
 
-    if (!farm_id || !messages || !Array.isArray(messages)) {
+    const isCrossFarm = cross_farm === true && Array.isArray(cross_farm_farm_ids) && cross_farm_farm_ids.length > 0;
+
+    if (!messages || !Array.isArray(messages)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request. Please try again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!isCrossFarm && !farm_id) {
       return new Response(
         JSON.stringify({ error: "Invalid request. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { data: membership } = await supabaseClient
-      .from("farm_members")
-      .select("role")
-      .eq("farm_id", farm_id)
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (!membership) {
-      // Allow super admins to access any farm (support mode / impersonation)
-      const { data: adminCheck } = await supabaseClient
-        .from("profiles")
-        .select("is_super_admin")
-        .eq("id", user.id)
+    if (!isCrossFarm) {
+      const { data: membership } = await supabaseClient
+        .from("farm_members")
+        .select("role")
+        .eq("farm_id", farm_id)
+        .eq("user_id", user.id)
+        .eq("is_active", true)
         .maybeSingle();
 
-      if (!adminCheck?.is_super_admin) {
-        return new Response(
-          JSON.stringify({ error: "You don't have access to this farm." }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (!membership) {
+        // Allow super admins to access any farm (support mode / impersonation)
+        const { data: adminCheck } = await supabaseClient
+          .from("profiles")
+          .select("is_super_admin")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!adminCheck?.is_super_admin) {
+          return new Response(
+            JSON.stringify({ error: "You don't have access to this farm." }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
 
     // ── Tier enforcement ──────────────────────────────────────────────
     // Use the farm owner's subscription tier so team members (managers, workers)
     // inherit the farm's plan rather than being capped at their own free tier.
-    const { data: farmOwnerData } = await supabaseClient
-      .from("farms")
-      .select("owner_id")
-      .eq("id", farm_id)
-      .maybeSingle();
+    // In cross-farm mode there's no single farm, so fall back to the user's own tier.
+    const { data: farmOwnerData } = isCrossFarm
+      ? { data: null }
+      : await supabaseClient
+          .from("farms")
+          .select("owner_id")
+          .eq("id", farm_id)
+          .maybeSingle();
 
     const ownerIdForTier = farmOwnerData?.owner_id || user.id;
 
@@ -981,28 +997,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Log this message (fire-and-forget)
-    supabaseClient.from("ai_message_counts").insert({ user_id: user.id, farm_id }).then(() => {});
+    // Log this message (fire-and-forget). farm_id is null in cross-farm mode.
+    supabaseClient.from("ai_message_counts").insert({ user_id: user.id, farm_id: farm_id ?? null }).then(() => {});
 
     // Fetch user's name and farm role server-side (cannot trust client-supplied role)
     const [profileRes, memberRes] = await Promise.all([
       supabaseClient.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-      supabaseClient.from("farm_members").select("role").eq("farm_id", farm_id).eq("user_id", user.id).eq("is_active", true).maybeSingle(),
+      isCrossFarm
+        ? Promise.resolve({ data: null })
+        : supabaseClient.from("farm_members").select("role").eq("farm_id", farm_id).eq("user_id", user.id).eq("is_active", true).maybeSingle(),
     ]);
     const userName = profileRes.data?.full_name?.split(" ")[0] || "";
-    // If not in farm_members they are the owner (solo account)
-    const callerRole: string = memberRes.data?.role || "owner";
+    const callerRole: string = (memberRes.data as any)?.role || "owner";
 
     let contextPrompt = "";
     let setupConfig: any = null;
     let farmType = "poultry";
     if (include_context !== false && caps.farmContext) {
       try {
-        const farmCtx = await getFarmContext(supabaseClient, farm_id);
-        contextPrompt = farmCtx.context;
-        setupConfig = farmCtx.setupConfig;
-        farmType = farmCtx.farmType;
-        console.log(`[ai-chat] farm_id=${farm_id} user=${user.id} farmType=${farmType} contextLen=${contextPrompt.length}`);
+        if (isCrossFarm && cross_farm_farm_ids && cross_farm_farm_ids.length > 0) {
+          // Fetch context for each farm and concatenate under per-farm headers.
+          const allContexts = await Promise.all(
+            cross_farm_farm_ids.map(fid => getFarmContext(supabaseClient, fid).catch(() => null))
+          );
+          const parts: string[] = [];
+          for (const ctx of allContexts) {
+            if (ctx) parts.push(ctx.context);
+          }
+          contextPrompt = parts.join("\n\n---\n\n");
+          // Use the first farm's setupConfig as a fallback; farmType mixed in cross-farm.
+          setupConfig = allContexts[0]?.setupConfig ?? null;
+          farmType = "mixed";
+          console.log(`[ai-chat] cross_farm user=${user.id} farms=${cross_farm_farm_ids.length} contextLen=${contextPrompt.length}`);
+        } else if (farm_id) {
+          const farmCtx = await getFarmContext(supabaseClient, farm_id);
+          contextPrompt = farmCtx.context;
+          setupConfig = farmCtx.setupConfig;
+          farmType = farmCtx.farmType;
+          console.log(`[ai-chat] farm_id=${farm_id} user=${user.id} farmType=${farmType} contextLen=${contextPrompt.length}`);
+        }
       } catch (e) {
         console.error("Error fetching farm context:", e);
       }
@@ -1027,7 +1060,9 @@ Deno.serve(async (req: Request) => {
         : `Owners have FULL access to all features and data.`
     );
 
-    const speciesNote = farmType === "aquaculture"
+    const speciesNote = farmType === "mixed"
+      ? `\n\n## CROSS-FARM MODE (ALL FARMS)\nYou are operating across ALL of this user's farms. Each farm's live data is in the context below, separated by dividers.\n\n**Reads:** You can compare metrics, answer "which farm is most profitable?", and surface trends across the portfolio.\n\n**Writes ([LOG] blocks):** You MUST ask which farm to log to before generating ANY [LOG] block if the user has not clearly specified. Include the farm name in your clarifying question. Once the user confirms a farm, generate the [LOG] block with a "target_farm_id" field set to that farm's id. The confirmation card shown to the user will display the destination farm prominently — always mention it in your reply too (e.g. "I'll log this to your fish farm — confirm below").\n\nApply species-appropriate knowledge per-farm based on each farm's type shown in its context header.`
+      : farmType === "aquaculture"
       ? `\n\n## THIS IS A FISH FARM (AQUACULTURE)\nYou are now advising a fish farmer. Replace all poultry language with aquaculture equivalents: pond/fish/fingerlings/stocking. For any mortality question, check water quality first — 80% of fish deaths are water-quality related.\n${FISH_KNOWLEDGE}`
       : farmType === "rabbits"
       ? `\n\n## THIS IS A RABBIT FARM (RABBITRY)\nYou are now advising a rabbit farmer. Use rabbit-specific terms: hutch, doe, buck, kit, weanling, grower, litter. Reference hutch hygiene, hay availability, Pasteurella, and GI stasis as the recurring issues. Do NOT use poultry or fish terms.\n${RABBIT_KNOWLEDGE}`
