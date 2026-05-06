@@ -239,10 +239,12 @@ async function triggerAlert(
     .select('user_id')
     .eq('farm_id', alert.farm_id);
 
-  if (members && members.length > 0) {
-    const rows = members.map((m: any) => ({
+  const userIds: string[] = (members || []).map((m: any) => m.user_id);
+
+  if (userIds.length > 0) {
+    const rows = userIds.map((user_id: string) => ({
       farm_id: alert.farm_id,
-      user_id: m.user_id,
+      user_id,
       title: 'Pond Alert',
       body: message,
       type: 'pond_alert',
@@ -250,6 +252,31 @@ async function triggerAlert(
       read: false,
     }));
     await supabase.from('notifications').insert(rows);
+
+    // Phase G: also fire a web push notification to every device the
+    // members have subscribed. The send-push-notification edge function
+    // handles VAPID signing, encryption, fanout per device, and
+    // expired-subscription cleanup. Best-effort — failure here doesn't
+    // block the in-app notification.
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/send-push-notification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({
+          user_ids: userIds,
+          title: 'Pond Alert',
+          body: message,
+          url: '/#/water-quality',
+          tag: `pond_alert_${alert.id}`,
+          category: 'pond_alert',
+        }),
+      });
+    } catch (err) {
+      console.error('Push notification fanout failed (non-fatal)', err);
+    }
   }
 
   await supabase
