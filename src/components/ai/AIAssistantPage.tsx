@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { EdenAvatarAnimated } from './EdenAvatarAnimated';
 import { EdenFarmSelector } from './EdenFarmSelector';
 import { EdenEmptyState } from './EdenEmptyState';
+import { EdenLogActionCard } from './EdenLogActionCard';
 import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
 import { useEdenChat, EdenChatScope, EdenChatMessage } from '../../hooks/useEdenChat';
 
@@ -1811,60 +1812,39 @@ export function AIAssistantPage() {
                     ) : null;
                   })()}
 
-                  {/* Single log confirm */}
-                  {message.logAction && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      {message.logConfirmed ? (
-                        <p className="text-xs text-green-600 flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" /> Saved to your farm records
-                        </p>
-                      ) : message.logSaving ? (
-                        <p className="text-xs text-blue-600 flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" /> Saving...
-                        </p>
-                      ) : (
-                        <div>
-                          {message.logError && (
-                            <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 mb-2 break-all">
-                              Save failed: {message.logError}
-                            </p>
-                          )}
-                          <p className="text-xs font-medium text-gray-700 mb-1">Save this to your records?</p>
-                          {crossFarm && message.logAction.target_farm_id && (() => {
-                            const tFarm = allFarms.find(f => f.id === message.logAction!.target_farm_id);
-                            if (!tFarm) return null;
-                            const emoji = tFarm.farm_type === 'aquaculture' ? '🐠' : tFarm.farm_type === 'rabbits' ? '🐰' : '🐔';
-                            return (
-                              <div className="text-xs font-semibold text-agri-brown-700 bg-agri-gold-50 border border-agri-gold-200 rounded px-2 py-1.5 mb-2 flex items-center gap-1.5">
-                                <span>{emoji}</span><span>{tFarm.name}</span>
-                              </div>
-                            );
-                          })()}
-                          <p className="text-xs text-gray-500 mb-2 bg-gray-50 rounded px-2 py-1">{summariseLogAction(message.logAction)}</p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => confirmLog(message.id, message.logAction!)}
-                              className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center gap-1"
-                            >
-                              <CheckCircle className="w-3 h-3" />
-                              {crossFarm && message.logAction.target_farm_id
-                                ? `Save to ${allFarms.find(f => f.id === message.logAction!.target_farm_id)?.name ?? 'farm'}`
-                                : 'Yes, save it'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setMessages(prev => prev.map(m => m.id === message.id ? { ...m, logAction: undefined } : m));
-                                void persistedChat.setLogConfirmed(message.id, false);
-                              }}
-                              className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium flex items-center gap-1"
-                            >
-                              <X className="w-3 h-3" /> No thanks
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Single log confirm — redesigned per Phase 2 PR 2:
+                      slim species-colored stripe + white fill + big confirm. */}
+                  {message.logAction && (() => {
+                    const targetFarmId = message.logAction.target_farm_id;
+                    const targetFarm = crossFarm && targetFarmId
+                      ? allFarms.find(f => f.id === targetFarmId)
+                      : null;
+                    const destSpecies = targetFarm?.farm_type ?? currentFarm?.farm_type ?? farmSpecies.id;
+                    const destName = targetFarm?.name ?? null;
+                    const cardStatus: 'pending' | 'saving' | 'saved' | 'error' =
+                      message.logConfirmed
+                        ? 'saved'
+                        : message.logSaving
+                        ? 'saving'
+                        : 'pending';
+                    return (
+                      <EdenLogActionCard
+                        destinationSpecies={destSpecies}
+                        destinationFarmName={destName}
+                        crossFarm={crossFarm}
+                        actionSummary={summariseLogAction(message.logAction)}
+                        status={cardStatus}
+                        errorMessage={message.logError ?? null}
+                        onConfirm={() => confirmLog(message.id, message.logAction!)}
+                        onCancel={() => {
+                          setMessages(prev =>
+                            prev.map(m => m.id === message.id ? { ...m, logAction: undefined } : m)
+                          );
+                          void persistedChat.setLogConfirmed(message.id, false);
+                        }}
+                      />
+                    );
+                  })()}
 
                   {/* Bulk log — auto-executes, shows progress then result */}
                   {message.bulkLogActions && message.bulkLogActions.length > 0 && (
