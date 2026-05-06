@@ -32,7 +32,7 @@ const STYLES = {
 };
 
 export function BroadcastBanner() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [banners, setBanners] = useState<Broadcast[]>([]);
 
   useEffect(() => {

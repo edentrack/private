@@ -106,7 +106,10 @@ interface ChatMessage {
 }
 
 interface ChatRequest {
-  farm_id: string;
+  farm_id?: string;
+  /** Cross-farm mode: omit farm_id, pass all user farm IDs instead. */
+  cross_farm?: boolean;
+  cross_farm_farm_ids?: string[];
   messages: ChatMessage[];
   include_context?: boolean;
   /**
@@ -541,6 +544,88 @@ Done! Feed level check task set for 8th May.
 
 feed_usage: { type: "LOG_FEED_USAGE", feed_type: string, bags_used: number, flock_name?: string }
 
+## SPECIES-AWARE ACTIONS — fish (aquaculture farms only)
+
+When farm_type is aquaculture, prefer these fish-specific actions over the generic poultry equivalents. Use pond_name (the user's pond/flock identifier) — the executor matches it against active flocks.
+
+water_quality: { type: "LOG_WATER_QUALITY", pond_name: string, dissolved_oxygen?: number, temperature_c?: number, ph?: number, ammonia_mgl?: number, nitrite_mgl?: number, notes?: string, log_date?: string }
+- All metric fields are optional — log whatever the farmer measured (most farmers only have a DO meter)
+- DO < 3 mg/L = emergency. If user reports DO < 3, after generating the LOG, urgently advise: "DO is critical — turn aerators on immediately, stop feeding, check fish for surface gasping."
+- pH outside 6.5–9 = alert. Optimal 6.5–8.5.
+- Ammonia > 0.5 mg/L = emergency for tilapia/catfish.
+- Temperature ranges: tilapia 26–32°C, catfish 24–30°C, clarias 25–32°C. Outside these, flag thermal stress.
+- log_date defaults to today; specify only if farmer mentions a different date
+
+pond_inspection: { type: "LOG_POND_INSPECTION", pond_name: string, water_clarity: "clear"|"murky"|"green"|"brown"|"black", fish_behavior: "normal"|"lethargic"|"gasping"|"erratic"|"feeding-vigorous", feeding_response: "vigorous"|"normal"|"slow"|"none", dead_fish_count?: number, notes?: string, log_date?: string }
+- water_clarity, fish_behavior, feeding_response are REQUIRED — ask if missing
+- Map farmer's words to enum values: "water turned green" → green, "fish at surface gulping" → gasping, "they didn't eat" → feeding_response: none
+- gasping + feeding_response: none = oxygen crisis — recommend immediate water quality check
+- green water = algae bloom developing — flag risk of overnight DO crash
+
+stocking: { type: "LOG_STOCKING", pond_name: string, fingerling_count: number, species: "tilapia"|"catfish"|"clarias"|"other", source?: string, cost_per_fingerling?: number, total_cost?: number, currency: string, stocked_at: string, notes?: string }
+- fingerling_count and stocked_at REQUIRED — ask if missing
+- species: detect from pond name or ask. Default to the species already on that pond if known
+- If both cost_per_fingerling AND total_cost given, prefer total_cost; if only cost_per_fingerling × fingerling_count, compute total_cost yourself
+- After saving, the pond's current fish count auto-increments by fingerling_count
+
+harvest: { type: "LOG_HARVEST", pond_name: string, total_weight_kg: number, price_per_kg?: number, total_amount?: number, buyer_name?: string, payment_status: "pending"|"paid", harvested_at: string, notes?: string, currency: string }
+- total_weight_kg and harvested_at REQUIRED
+- payment_status REQUIRED — always ask
+- Supports partial harvests — generate one LOG per harvest event, even multiple in same week
+- For partial harvest, the farmer should also report fish_count harvested via a follow-up LOG_FISH_LOSS so pond count stays accurate (partial harvest doesn't auto-decrement pond count yet)
+
+sampling: { type: "LOG_SAMPLING", pond_name: string, sample_size: number, abw_g: number, sampled_at: string, notes?: string }
+- sample_size = number of fish weighed (typically 5–10)
+- abw_g = average body weight in grams (the farmer's averaged value)
+- The executor will synthesize individual_weights_g as [abw, abw, ..., abw] — this is a known schema simplification for AI-driven sampling. Farmers using the UI form can enter individual weights.
+- Use this for fish — do NOT use LOG_WEIGHT (which is poultry-specific kg-based)
+- After 2+ samples on different dates, Eden's SGR pill auto-computes growth %
+
+fish_loss: { type: "LOG_FISH_LOSS", pond_name: string, count: number, cause?: string, notes?: string, log_date?: string }
+- Same backing table as LOG_MORTALITY; this alias forces fish-aware confirmation copy ("3 fish lost" not "3 deaths")
+- cause options for fish: "low_oxygen", "ammonia_spike", "nitrite_spike", "disease", "parasites", "predation", "stocking_stress", "temperature_shock", "water_quality", "unknown", "other"
+- If cause is low_oxygen or ammonia_spike, also urge an immediate LOG_WATER_QUALITY to capture the conditions for the record
+
+## SPECIES-AWARE ACTIONS — rabbits (rabbits farms only)
+
+When farm_type is rabbits, prefer these rabbit-specific actions. Use doe_tag/buck_tag for individual rabbits in the registry; use rabbitry_name (the flock name) for group operations.
+
+breeding: { type: "LOG_BREEDING", doe_tag: string, buck_tag: string, mating_date: string, notes?: string }
+- doe_tag, buck_tag, mating_date REQUIRED — ask for any missing
+- Auto-computes expected_kindling_date as mating_date + 31 days (rabbit gestation)
+- After saving, suggest: "I've also set a reminder for the expected kindling date — want me to schedule a nest box prep task for ~28 days?"
+
+kindling (litter): { type: "LOG_KINDLING", doe_tag: string, kits_born_alive: number, kits_born_dead?: number, kindling_date: string, breeding_event_hint?: string, notes?: string }
+- doe_tag, kits_born_alive, kindling_date REQUIRED
+- breeding_event_hint: short phrase (e.g. "April 1 mating") to help match an existing breeding_events row — the executor will fuzzy-match by doe_tag + closest mating_date within 35 days
+- After saving, suggest scheduling a weaning task at +28 days
+
+weaning: { type: "LOG_WEANING", doe_tag: string, kits_weaned: number, weaning_date: string, notes?: string }
+- Updates the most recent litter for this doe with kits_weaned + weaning_date
+- If multiple recent litters exist for this doe, ask which kindling date to update
+
+rabbit_register: { type: "REGISTER_RABBIT", tag: string, sex: "doe"|"buck", breed?: string, birth_date?: string, sire_tag?: string, dam_tag?: string, notes?: string }
+- tag REQUIRED, sex REQUIRED — ask if missing
+- Use only for breeders the farmer wants to track individually. Meat rabbits stay group-tracked under the rabbitry.
+
+rabbit_loss: { type: "LOG_RABBIT_LOSS", rabbitry_name: string, count: number, cause?: string, notes?: string, log_date?: string }
+- Same backing table as LOG_MORTALITY; this alias forces rabbit-aware confirmation ("2 rabbits died" not "2 deaths")
+- cause options for rabbits: "disease", "injury", "stress", "heat", "predation", "pasteurella", "coccidiosis", "unknown", "other"
+
+rabbit_harvest: { type: "LOG_RABBIT_HARVEST", rabbitry_name: string, count: number, total_live_weight_kg?: number, total_carcass_weight_kg?: number, buyer_name?: string, sale_price?: number, currency: string, harvest_date: string, notes?: string }
+- count and harvest_date REQUIRED
+- If both live and carcass weights given, dressing % = carcass / live × 100 — note this in your conversational reply
+- After saving, the rabbitry's current_count decrements by count
+
+## SPECIES ROUTING (CRITICAL)
+
+Before generating any LOG block, check the farm_type from context:
+- aquaculture → use the fish actions above. NEVER use LOG_WEIGHT (it's kg-based for birds), use LOG_SAMPLING. NEVER use LOG_BIRD_SALE, use LOG_HARVEST. NEVER say "birds" — say "fish". Use "pond" not "flock", "fingerlings" not "chicks".
+- rabbits → use the rabbit actions above. NEVER use LOG_WEIGHT for breeders unless explicitly tracking individual weight. NEVER use LOG_BIRD_SALE, use LOG_RABBIT_HARVEST. Say "rabbits" not "birds", "rabbitry" not "flock", "kits" not "chicks".
+- poultry (and unknown/null) → use the original poultry actions: LOG_MORTALITY, LOG_EGGS, LOG_BIRD_SALE, LOG_WEIGHT, etc.
+
+If you generate a poultry-specific action on an aquaculture or rabbit farm, the executor will reject it with a confusing error — get the species right.
+
 **Receipt / photo logging:**
 When the farmer sends a photo of a receipt or invoice and asks to log it:
 1. Extract all visible fields: buyer name, amounts, quantities, date, items
@@ -794,47 +879,60 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ChatRequest = await req.json();
-    const { farm_id, messages, include_context, model: requestedModel } = body;
+    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel } = body;
 
-    if (!farm_id || !messages || !Array.isArray(messages)) {
+    const isCrossFarm = cross_farm === true && Array.isArray(cross_farm_farm_ids) && cross_farm_farm_ids.length > 0;
+
+    if (!messages || !Array.isArray(messages)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request. Please try again." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!isCrossFarm && !farm_id) {
       return new Response(
         JSON.stringify({ error: "Invalid request. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { data: membership } = await supabaseClient
-      .from("farm_members")
-      .select("role")
-      .eq("farm_id", farm_id)
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (!membership) {
-      // Allow super admins to access any farm (support mode / impersonation)
-      const { data: adminCheck } = await supabaseClient
-        .from("profiles")
-        .select("is_super_admin")
-        .eq("id", user.id)
+    if (!isCrossFarm) {
+      const { data: membership } = await supabaseClient
+        .from("farm_members")
+        .select("role")
+        .eq("farm_id", farm_id)
+        .eq("user_id", user.id)
+        .eq("is_active", true)
         .maybeSingle();
 
-      if (!adminCheck?.is_super_admin) {
-        return new Response(
-          JSON.stringify({ error: "You don't have access to this farm." }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (!membership) {
+        // Allow super admins to access any farm (support mode / impersonation)
+        const { data: adminCheck } = await supabaseClient
+          .from("profiles")
+          .select("is_super_admin")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!adminCheck?.is_super_admin) {
+          return new Response(
+            JSON.stringify({ error: "You don't have access to this farm." }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
 
     // ── Tier enforcement ──────────────────────────────────────────────
     // Use the farm owner's subscription tier so team members (managers, workers)
     // inherit the farm's plan rather than being capped at their own free tier.
-    const { data: farmOwnerData } = await supabaseClient
-      .from("farms")
-      .select("owner_id")
-      .eq("id", farm_id)
-      .maybeSingle();
+    // In cross-farm mode there's no single farm, so fall back to the user's own tier.
+    const { data: farmOwnerData } = isCrossFarm
+      ? { data: null }
+      : await supabaseClient
+          .from("farms")
+          .select("owner_id")
+          .eq("id", farm_id)
+          .maybeSingle();
 
     const ownerIdForTier = farmOwnerData?.owner_id || user.id;
 
@@ -899,28 +997,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Log this message (fire-and-forget)
-    supabaseClient.from("ai_message_counts").insert({ user_id: user.id, farm_id }).then(() => {});
+    // Log this message (fire-and-forget). farm_id is null in cross-farm mode.
+    supabaseClient.from("ai_message_counts").insert({ user_id: user.id, farm_id: farm_id ?? null }).then(() => {});
 
     // Fetch user's name and farm role server-side (cannot trust client-supplied role)
     const [profileRes, memberRes] = await Promise.all([
       supabaseClient.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-      supabaseClient.from("farm_members").select("role").eq("farm_id", farm_id).eq("user_id", user.id).eq("is_active", true).maybeSingle(),
+      isCrossFarm
+        ? Promise.resolve({ data: null })
+        : supabaseClient.from("farm_members").select("role").eq("farm_id", farm_id).eq("user_id", user.id).eq("is_active", true).maybeSingle(),
     ]);
     const userName = profileRes.data?.full_name?.split(" ")[0] || "";
-    // If not in farm_members they are the owner (solo account)
-    const callerRole: string = memberRes.data?.role || "owner";
+    const callerRole: string = (memberRes.data as any)?.role || "owner";
 
     let contextPrompt = "";
     let setupConfig: any = null;
     let farmType = "poultry";
     if (include_context !== false && caps.farmContext) {
       try {
-        const farmCtx = await getFarmContext(supabaseClient, farm_id);
-        contextPrompt = farmCtx.context;
-        setupConfig = farmCtx.setupConfig;
-        farmType = farmCtx.farmType;
-        console.log(`[ai-chat] farm_id=${farm_id} user=${user.id} farmType=${farmType} contextLen=${contextPrompt.length}`);
+        if (isCrossFarm && cross_farm_farm_ids && cross_farm_farm_ids.length > 0) {
+          // Fetch context for each farm and concatenate under per-farm headers.
+          const allContexts = await Promise.all(
+            cross_farm_farm_ids.map(fid => getFarmContext(supabaseClient, fid).catch(() => null))
+          );
+          const parts: string[] = [];
+          for (const ctx of allContexts) {
+            if (ctx) parts.push(ctx.context);
+          }
+          contextPrompt = parts.join("\n\n---\n\n");
+          // Use the first farm's setupConfig as a fallback; farmType mixed in cross-farm.
+          setupConfig = allContexts[0]?.setupConfig ?? null;
+          farmType = "mixed";
+          console.log(`[ai-chat] cross_farm user=${user.id} farms=${cross_farm_farm_ids.length} contextLen=${contextPrompt.length}`);
+        } else if (farm_id) {
+          const farmCtx = await getFarmContext(supabaseClient, farm_id);
+          contextPrompt = farmCtx.context;
+          setupConfig = farmCtx.setupConfig;
+          farmType = farmCtx.farmType;
+          console.log(`[ai-chat] farm_id=${farm_id} user=${user.id} farmType=${farmType} contextLen=${contextPrompt.length}`);
+        }
       } catch (e) {
         console.error("Error fetching farm context:", e);
       }
@@ -945,7 +1060,9 @@ Deno.serve(async (req: Request) => {
         : `Owners have FULL access to all features and data.`
     );
 
-    const speciesNote = farmType === "aquaculture"
+    const speciesNote = farmType === "mixed"
+      ? `\n\n## CROSS-FARM MODE (ALL FARMS)\nYou are operating across ALL of this user's farms. Each farm's live data is in the context below, separated by dividers.\n\n**Reads:** You can compare metrics, answer "which farm is most profitable?", and surface trends across the portfolio.\n\n**Writes ([LOG] blocks):** You MUST ask which farm to log to before generating ANY [LOG] block if the user has not clearly specified. Include the farm name in your clarifying question. Once the user confirms a farm, generate the [LOG] block with a "target_farm_id" field set to that farm's id. The confirmation card shown to the user will display the destination farm prominently — always mention it in your reply too (e.g. "I'll log this to your fish farm — confirm below").\n\nApply species-appropriate knowledge per-farm based on each farm's type shown in its context header.`
+      : farmType === "aquaculture"
       ? `\n\n## THIS IS A FISH FARM (AQUACULTURE)\nYou are now advising a fish farmer. Replace all poultry language with aquaculture equivalents: pond/fish/fingerlings/stocking. For any mortality question, check water quality first — 80% of fish deaths are water-quality related.\n${FISH_KNOWLEDGE}`
       : farmType === "rabbits"
       ? `\n\n## THIS IS A RABBIT FARM (RABBITRY)\nYou are now advising a rabbit farmer. Use rabbit-specific terms: hutch, doe, buck, kit, weanling, grower, litter. Reference hutch hygiene, hay availability, Pasteurella, and GI stasis as the recurring issues. Do NOT use poultry or fish terms.\n${RABBIT_KNOWLEDGE}`

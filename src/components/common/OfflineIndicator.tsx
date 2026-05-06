@@ -4,18 +4,15 @@
  */
 
 import { useState, useEffect } from 'react';
-import { WifiOff, Wifi, RefreshCw, CheckCircle, AlertCircle, X } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { isOnline, getPendingOperationsCount } from '../../lib/offlineDB';
+import { WifiOff, RefreshCw, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { getPendingOperationsCount } from '../../lib/offlineDB';
 import { syncPendingOperations } from '../../lib/offlineSync';
 
 export function OfflineIndicator() {
-  const { t } = useTranslation();
   const [online, setOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     const updateStatus = () => {

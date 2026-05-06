@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Egg, Package, AlertTriangle, DollarSign, HelpCircle } from 'lucide-react';
+import { Egg, Package, AlertTriangle, HelpCircle } from 'lucide-react';
 import { WhyThisMatters } from '../common/WhyThisMatters';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
-import { formatEggsCompact } from '../../utils/eggFormatting';
 import { useTranslation } from 'react-i18next';
 import { calculateFCRForFarm, getFCRStatus } from '../../utils/fcrCalculation';
 import { useFarmType } from '../../hooks/useFarmType';
@@ -38,12 +37,12 @@ interface CoreKPISectionProps {
 
 export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionProps) {
   const { t } = useTranslation();
-  const { profile, currentFarm } = useAuth();
+  const { currentFarm } = useAuth();
   const { showEggs, showFCR } = useFarmType();
   const farmSpecies = useFarmSpecies();
   const [period, setPeriod] = useState<TimePeriod>('today');
   const [kpiData, setKpiData] = useState<KPIData | null>(null);
-  const [flocks, setFlocks] = useState<Flock[]>([]);
+  const [, setFlocks] = useState<Flock[]>([]);
   const [loading, setLoading] = useState(true);
   const [eggsPerTray, setEggsPerTray] = useState(30);
   const [showFCRTooltip, setShowFCRTooltip] = useState(false);

@@ -69,7 +69,7 @@ const getCategoryEmoji = (cat: string, species: SpeciesId = 'poultry'): string =
 
 export function ExpenseTracking() {
   const { t } = useTranslation();
-  const { user, profile, currentFarm, currentRole } = useAuth();
+  const { user, currentFarm, currentRole } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const { farmPermissions } = usePermissions();
   const farmSpecies = useFarmSpecies();
