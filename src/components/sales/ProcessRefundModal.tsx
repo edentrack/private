@@ -109,7 +109,7 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
               <p className="text-sm text-gray-500">Receipt #{receipt.receipt_number}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>

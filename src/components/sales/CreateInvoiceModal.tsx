@@ -113,7 +113,7 @@ export function CreateInvoiceModal({ customers, onClose, onCreated }: CreateInvo
             </div>
             <h2 className="text-xl font-bold text-gray-900">{t('sales.create_invoice')}</h2>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
