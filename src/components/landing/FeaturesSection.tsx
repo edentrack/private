@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp, Smartphone, Globe, Shield, Zap, Users, BarChart, Monitor } from 'lucide-react';
-import { CheckCircle2, DollarSign, Package, BarChart3, Calendar } from 'lucide-react';
+import { CheckCircle2, BarChart3 } from 'lucide-react';
 
 export default function FeaturesSection() {
   const mainFeatures = [

@@ -4,12 +4,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Bell, X, CheckCircle } from 'lucide-react';
-import { requestNotificationPermission, isNotificationSupported, isNotificationPermitted } from '../../lib/pushNotifications';
-import { useTranslation } from 'react-i18next';
+import { Bell, X } from 'lucide-react';
+import { requestNotificationPermission, isNotificationSupported } from '../../lib/pushNotifications';
 
 export function NotificationPermissionPrompt() {
-  const { t } = useTranslation();
   const [showPrompt, setShowPrompt] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
 

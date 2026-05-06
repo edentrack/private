@@ -123,7 +123,7 @@ function CrispChat() {
 
 function AppContent() {
   const { t } = useTranslation();
-  const { user, profile, loading, refreshSession, signOut, currentRole, currentFarm } = useAuth();
+  const { user, profile, loading, refreshSession, currentRole, currentFarm } = useAuth();
   const { isImpersonating } = useImpersonation();
   const [authRoute, setAuthRoute] = useState<'login' | 'signup' | 'forgot-password' | 'reset-password' | 'invite'>('login');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
@@ -133,7 +133,7 @@ function AppContent() {
   const [selectedCooperativeId, setSelectedCooperativeId] = useState<string | null>(null);
   const [pullToRefresh, setPullToRefresh] = useState({ isActive: false, distance: 0, isRefreshing: false });
   const [currentHash, setCurrentHash] = useState(window.location.hash);
-  const [showNoFarmMessage, setShowNoFarmMessage] = useState(false);
+  const [, setShowNoFarmMessage] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
   // Detect Flutterwave payment return (lands at origin with ?status=...&tx_ref=...&transaction_id=...)

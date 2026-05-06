@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, HelpCircle, ArrowRight, X, MessageCircle, ChevronRight, LayoutDashboard, CheckSquare, Package, DollarSign, Bird, Syringe, ShoppingCart, Users, Calendar } from 'lucide-react';
+import { Send, HelpCircle, ArrowRight, MessageCircle, ChevronRight, LayoutDashboard, CheckSquare, Package, DollarSign, Bird, Syringe, ShoppingCart, Users, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HelperAssistantProps {
