@@ -52,6 +52,7 @@ const EggCollectionsPage     = lazy1(() => import('./components/eggs/EggCollecti
 const AIAssistantPage        = lazy1(() => import('./components/ai/AIAssistantPage'), 'AIAssistantPage');
 const SmartUploadPage        = lazy1(() => import('./components/import/SmartUploadPage'), 'SmartUploadPage');
 const OnboardingWizard       = lazy1(() => import('./components/onboarding/OnboardingWizard'), 'OnboardingWizard');
+const OnboardingChoice       = lazy1(() => import('./components/onboarding/OnboardingChoice'), 'OnboardingChoice');
 const SubscribePage          = lazy1(() => import('./components/billing/SubscribePage'), 'SubscribePage');
 const ComparePage            = lazy1(() => import('./components/compare/ComparePage'), 'ComparePage');
 const MarketplacePage        = lazy1(() => import('./components/marketplace/MarketplacePage'), 'MarketplacePage');
@@ -937,8 +938,29 @@ function AppContent() {
     );
   }
 
-  // New users who haven't completed onboarding — show wizard before anything else
+  // Phase 6 onboarding routing — read profiles.onboarding_status:
+  //   not_started → ChoiceScreen (PR #ONBO-B)
+  //   chose_chat  → conversational flow (PR #ONBO-C; falls through to
+  //                 the wizard for now with a future hand-off, see below)
+  //   chose_form  → existing wizard (unchanged)
+  //   completed   → normal app
+  // Backward-compat: if onboarding_status is undefined (column not yet
+  // migrated on this DB) fall back to the legacy onboarding_completed
+  // boolean.
   if (user && !loading && profile && !profile.is_super_admin && !profile.onboarding_completed) {
+    const status = profile.onboarding_status;
+    if (status === 'not_started' || status === undefined) {
+      return (
+        <OnboardingChoice
+          onChose={async () => {
+            if (refreshSession) await refreshSession();
+          }}
+        />
+      );
+    }
+    // 'chose_chat' falls through to the wizard until PR #ONBO-C lands the
+    // dedicated conversational flow page. Once #ONBO-C ships, swap the
+    // branch to render <OnboardingChat /> here.
     return (
       <OnboardingWizard
         onComplete={async () => {
