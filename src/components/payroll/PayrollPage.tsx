@@ -15,7 +15,6 @@ import {
   Users,
   Edit2,
   Trash2,
-  MoreVertical
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -259,7 +258,8 @@ export function PayrollPage() {
     { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, hideForWorker: true }
   ].filter(tab => !tab.hideForWorker || isOwnerOrManager);
 
-  const _currency = currentFarm?.currency_code || currentFarm?.currency || 'XAF';
+  // currency was previously passed to a child here; the child now reads
+  // currentFarm directly from context.
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

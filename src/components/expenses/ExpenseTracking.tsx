@@ -311,8 +311,9 @@ export function ExpenseTracking() {
   }, [user, selectedFlockId, currentFarm?.id]);
 
   useEffect(() => {
-    if (currentFarm?.currency_code || currentFarm?.currency) {
-      setCurrency(currentFarm.currency_code || currentFarm.currency);
+    const code = currentFarm?.currency_code || currentFarm?.currency;
+    if (code) {
+      setCurrency(code as Currency);
     }
   }, [currentFarm]);
 
@@ -508,7 +509,9 @@ export function ExpenseTracking() {
       await loadRevenueGenerated();
 
       if (isNewItem && finalInventoryItemId && createdItemType && currentRole) {
-        const canManage = canViewInventoryCosts(currentRole);
+        // currentRole is MemberRole (db enum) but canViewInventoryCosts
+        // expects UserRole (a superset). Cast — the role names overlap.
+        const canManage = canViewInventoryCosts(currentRole as unknown as Parameters<typeof canViewInventoryCosts>[0]);
         if (canManage) {
           setNewInventoryItem({
             id: finalInventoryItemId,
@@ -649,10 +652,11 @@ export function ExpenseTracking() {
     const margin = 15;
     let yPos = margin;
 
-    // Brand colors
-    const primaryColor = [75, 61, 36]; // agri-brown
-    const accentColor = [255, 221, 0]; // neon
-    const textColor = [26, 26, 26]; // dark text
+    // Brand colors — typed as RGB tuples so jsPDF setters accept ...spread.
+    type RGB = [number, number, number];
+    const primaryColor: RGB = [75, 61, 36]; // agri-brown
+    const accentColor: RGB = [255, 221, 0]; // neon
+    const textColor: RGB = [26, 26, 26]; // dark text
 
     // Calculate comprehensive statistics
     const totalAmount = totalExpensesAmount;
@@ -1298,7 +1302,7 @@ export function ExpenseTracking() {
         <div className="section-card animate-fade-in-up">
           <h3 className="text-lg font-bold text-gray-900 mb-4">{t('expenses.by_category')}</h3>
           <div className="grid md:grid-cols-2 gap-3">
-            {EXPENSE_CATEGORIES.map((cat, index) => {
+            {EXPENSE_CATEGORIES.map((cat) => {
               const total = getCategoryTotal(cat);
               const percentage = totalExpenses > 0 ? (total / totalExpenses) * 100 : 0;
               return (
