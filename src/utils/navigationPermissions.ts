@@ -39,7 +39,8 @@ export type ModuleName =
   | 'rabbit-harvest'
   | 'breeding-events'
   | 'litters'
-  | 'rabbit-registry';
+  | 'rabbit-registry'
+  | 'reports';
 
 export interface ModuleVisibility {
   visible: boolean;
@@ -125,6 +126,7 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
       return { visible: true };
 
     case 'smart-upload':
@@ -182,6 +184,7 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
       return { visible: true };
 
     case 'ai-assistant':
@@ -254,6 +257,7 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
       return { visible: true };
 
     case 'smart-upload':

@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -117,6 +117,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'shifts', label: t('nav.shifts'), icon: Calendar },
       { id: 'team', label: t('nav.team'), icon: Users },
       { id: 'ai-assistant', label: t('nav.ai_assistant') || 'Eden AI', icon: Zap },
+      { id: 'reports', label: 'Reports', icon: FileText },
       { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },
     ];
 
