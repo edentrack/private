@@ -147,6 +147,8 @@ interface LogAction {
   total_carcass_weight_kg?: number;
   sale_price?: number;
   harvest_date?: string;
+  // Cross-farm mode: Eden includes this in [LOG] blocks to specify the target farm.
+  target_farm_id?: string;
 }
 
 interface ChatMessage {
@@ -883,10 +885,23 @@ export function AIAssistantPage() {
   };
 
   const confirmLog = async (messageId: string, logAction: LogAction) => {
-    if (!currentFarm) return;
+    // In cross-farm mode the action targets a specific farm via target_farm_id.
+    // In single-farm mode it always targets currentFarm.
+    const targetFarmId = crossFarm
+      ? (logAction.target_farm_id ?? null)
+      : (currentFarm?.id ?? null);
+
+    if (!targetFarmId) {
+      if (crossFarm) {
+        showToast('Eden did not specify which farm — re-ask and mention the farm name', 'error');
+      } else {
+        showToast('Please select a farm first', 'error');
+      }
+      return;
+    }
 
     // Duplicate detection for single logs
-    const dupeMsg = await checkForDuplicate(logAction, currentFarm.id);
+    const dupeMsg = await checkForDuplicate(logAction, targetFarmId);
     if (dupeMsg) {
       const ok = window.confirm(`⚠️ Possible duplicate detected:\n${dupeMsg}\n\nSave anyway?`);
       if (!ok) return;
@@ -897,7 +912,7 @@ export function AIAssistantPage() {
     const currency = logAction.currency || 'XAF';
 
     try {
-      await executeLogAction(logAction, currentFarm.id, currency);
+      await executeLogAction(logAction, targetFarmId, currency);
 
       // Only set logConfirmed AFTER the insert actually succeeded
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logSaving: false, logConfirmed: true } : m));
@@ -1726,13 +1741,26 @@ export function AIAssistantPage() {
                             </p>
                           )}
                           <p className="text-xs font-medium text-gray-700 mb-1">Save this to your records?</p>
+                          {crossFarm && message.logAction.target_farm_id && (() => {
+                            const tFarm = allFarms.find(f => f.id === message.logAction!.target_farm_id);
+                            if (!tFarm) return null;
+                            const emoji = tFarm.farm_type === 'aquaculture' ? '🐠' : tFarm.farm_type === 'rabbits' ? '🐰' : '🐔';
+                            return (
+                              <div className="text-xs font-semibold text-agri-brown-700 bg-agri-gold-50 border border-agri-gold-200 rounded px-2 py-1.5 mb-2 flex items-center gap-1.5">
+                                <span>{emoji}</span><span>{tFarm.name}</span>
+                              </div>
+                            );
+                          })()}
                           <p className="text-xs text-gray-500 mb-2 bg-gray-50 rounded px-2 py-1">{summariseLogAction(message.logAction)}</p>
                           <div className="flex gap-2">
                             <button
                               onClick={() => confirmLog(message.id, message.logAction!)}
                               className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center gap-1"
                             >
-                              <CheckCircle className="w-3 h-3" /> Yes, save it
+                              <CheckCircle className="w-3 h-3" />
+                              {crossFarm && message.logAction.target_farm_id
+                                ? `Save to ${allFarms.find(f => f.id === message.logAction!.target_farm_id)?.name ?? 'farm'}`
+                                : 'Yes, save it'}
                             </button>
                             <button
                               onClick={() => {
