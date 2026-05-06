@@ -32,7 +32,7 @@ export function getNavigationGroups(
     {
       id: 'money',
       label: 'MONEY',
-      items: items.filter(item => ['expenses', 'sales', 'inventory'].includes(item.id)),
+      items: items.filter(item => ['expenses', 'sales', 'inventory', 'credit-score'].includes(item.id)),
     },
     {
       id: 'team',
