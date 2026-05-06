@@ -243,7 +243,7 @@ function persistedToDisplay(row: EdenChatMessage): ChatMessage {
 }
 
 export function AIAssistantPage() {
-  const { currentFarm, user, allFarms } = useAuth();
+  const { currentFarm, user, allFarms, switchFarm } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const farmSpecies = useFarmSpecies();
@@ -1738,14 +1738,19 @@ export function AIAssistantPage() {
                 crossFarm={crossFarm}
                 onSelectFarm={(farmId) => {
                   setCrossFarm(false);
-                  // Switching the farm scope reloads history via the hook;
-                  // we don't change the global currentFarm here — that's a
-                  // separate switch the user does via the farm switcher.
-                  // If the picked farm differs from currentFarm, the user
-                  // should switch via the top-level FarmSwitcherDropdown to
-                  // stay in sync. For now we just align the chat scope.
+                  // Picking a specific farm in Eden's chat scope means the
+                  // user is mentally focused on that farm. Sync the global
+                  // tenant so the rest of the app (dashboard, flocks, tasks)
+                  // matches what Eden is talking about — otherwise they end
+                  // up with two farms in their head at once.
+                  // For "All my farms" (onSelectAllFarms) we leave the global
+                  // tenant alone — cross-farm scope is intentionally separate.
                   if (currentFarm?.id !== farmId) {
-                    showToast('Switch farm in the top-left switcher to send messages on that farm.', 'info');
+                    const target = allFarms?.find((f) => f.id === farmId);
+                    void switchFarm(farmId);
+                    if (target) {
+                      showToast(`Switched to ${target.name}`, 'success');
+                    }
                   }
                 }}
                 onSelectAllFarms={() => setCrossFarm(true)}
