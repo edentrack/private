@@ -932,11 +932,19 @@ export function InsightsPage() {
                 <span className="text-sm font-medium text-gray-700 capitalize">
                   {selectedFlock.type} {species.groupTerm}
                 </span>
-                {/* Production-type sub-label — hidden for aquaculture since neither
-                    "egg" nor "meat" applies in the same way. */}
-                {!isAquaFlock && (
+                {/* Production-type sub-label.
+                    Audit fix: previously fell through to "Egg production" on
+                    rabbit farms because the gate was only !isAquaFlock and
+                    "Egg" was the poultry default. Show the badge ONLY for
+                    poultry; let rabbits/fish own their description elsewhere. */}
+                {species.id === 'poultry' && (
                   <span className="text-xs text-gray-500">
                     {isBroilerFlock ? t('insights.meat_production') : t('insights.egg_production')}
+                  </span>
+                )}
+                {species.id === 'rabbits' && (
+                  <span className="text-xs text-gray-500">
+                    {flockKind === 'Breeder Rabbits' ? t('flocks.breeding') : t('flocks.meat_production')}
                   </span>
                 )}
               </div>
@@ -983,7 +991,9 @@ export function InsightsPage() {
                   </div>
                   <div className="bg-white/40 rounded-lg p-3">
                     <p className="text-xs text-gray-500">
-                      {isAquaFlock ? `Cost per ${species.animalTerm} Alive` : t('insights.cost_per_bird_alive')}
+                      {species.id === 'poultry'
+                        ? t('insights.cost_per_bird_alive')
+                        : `Cost per ${species.animalTerm} Alive`}
                     </p>
                     <p className="text-lg font-semibold text-gray-900">{metrics.costPerBird.toLocaleString()} {currencyCode}</p>
                   </div>
@@ -1008,14 +1018,14 @@ export function InsightsPage() {
                 </div>
                 <div className="bg-white/60 rounded-xl p-4">
                   <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                    {isAquaFlock ? `${species.animalTermPlural} Alive` : t('insights.birds_alive')}
+                    {species.id === 'poultry' ? t('insights.birds_alive') : `${species.animalTermPlural} Alive`}
                   </p>
                   <p className="text-2xl font-bold text-gray-900">{metrics.birdsAlive.toLocaleString()} / {metrics.initialCount.toLocaleString()}</p>
                   <p className="text-sm text-gray-500">({metrics.survivalRate}%)</p>
                 </div>
                 <div className="bg-white/60 rounded-xl p-4">
                   <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                    {isAquaFlock ? species.lossNounPlural : t('insights.mortality')}
+                    {species.id === 'poultry' ? t('insights.mortality') : species.lossNounPlural}
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {metrics.totalMortality} {isAquaFlock ? species.animalTermPlural.toLowerCase() : t('dashboard.birds')}

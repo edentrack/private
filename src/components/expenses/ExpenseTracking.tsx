@@ -13,26 +13,41 @@ import { recordInventoryIncrease } from '../../utils/inventoryMovements';
 import { canViewInventoryCosts } from '../../utils/permissions';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
 
-const getCategoryLabel = (cat: string, t: (key: string) => string): string => {
-  const categoryMap: Record<string, string> = {
+// Audit fix: the "chicks purchase" category is species-blind in the DB
+// (legacy schema). Display side, we relabel + re-emoji per species so a
+// rabbit farmer sees "Kit Purchase 🐰" and a fish farmer sees
+// "Fingerling Purchase 🐠" without changing the underlying value.
+type SpeciesId = 'poultry' | 'aquaculture' | 'rabbits';
+
+const getCategoryLabel = (cat: string, t: (key: string) => string, species: SpeciesId = 'poultry'): string => {
+  const baseMap: Record<string, string> = {
     'feed': t('expenses.categories.feed'),
     'medication': t('expenses.categories.medication'),
     'equipment': t('expenses.categories.equipment'),
     'labor': t('expenses.categories.labor'),
     'chicks purchase': t('expenses.categories.chicks_purchase'),
     'transport': t('expenses.categories.transport'),
-    'chicks transport': t('expenses.categories.transport'), // Legacy support - map old category to Transport
-    'other': t('expenses.categories.other')
+    'chicks transport': t('expenses.categories.transport'), // Legacy: maps old chicks-transport to Transport
+    'other': t('expenses.categories.other'),
   };
-  return categoryMap[cat] || cat;
+  const label = baseMap[cat] || cat;
+  // Override the chicks-purchase label per species so the DB value stays stable
+  // but the user sees the right noun.
+  if (cat === 'chicks purchase') {
+    if (species === 'rabbits') return 'Kit Purchase';
+    if (species === 'aquaculture') return 'Fingerling Purchase';
+    return label;
+  }
+  return label;
 };
 
-const getCategoryEmoji = (cat: string): string => {
+const getCategoryEmoji = (cat: string, species: SpeciesId = 'poultry'): string => {
   const emojiMap: Record<string, string> = {
     'feed': '🌾',
     'medication': '💊',
@@ -43,13 +58,20 @@ const getCategoryEmoji = (cat: string): string => {
     'transport': '🚛',
     'other': '📦',
   };
-  return emojiMap[(cat || '').toLowerCase()] || '📦';
+  const norm = (cat || '').toLowerCase();
+  if (norm === 'chicks purchase') {
+    if (species === 'rabbits') return '🐰';
+    if (species === 'aquaculture') return '🐠';
+  }
+  return emojiMap[norm] || '📦';
 };
 
 export function ExpenseTracking() {
   const { t } = useTranslation();
   const { user, profile, currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();
+  const farmSpecies = useFarmSpecies();
+  const speciesId: SpeciesId = farmSpecies.id;
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [flocks, setFlocks] = useState<Flock[]>([]);
@@ -755,7 +777,7 @@ export function ExpenseTracking() {
       const amount = expensesByCategory[catKey] || categoryTotals[catKey] || 0;
       const percentage = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(1) : '0.0';
       const recordCount = expenses.filter(e => e.category.toLowerCase() === catKey).length;
-      return [getCategoryLabel(cat, t), `${amount.toLocaleString()} ${currency}`, `${percentage}%`, recordCount.toString()];
+      return [getCategoryLabel(cat, t, speciesId), `${amount.toLocaleString()} ${currency}`, `${percentage}%`, recordCount.toString()];
     });
     categoryData.push(['TOTAL', `${totalAmount.toLocaleString()} ${currency}`, '100.0%', expenses.length.toString()]);
 
@@ -826,7 +848,7 @@ export function ExpenseTracking() {
 
       const monthTableData = monthExpenses.map(expense => {
         const date = new Date(expense.incurred_on || expense.date || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const category = getCategoryLabel(expense.category, t);
+        const category = getCategoryLabel(expense.category, t, speciesId);
         const description = (expense.description || '').substring(0, 30) + (expense.description && expense.description.length > 30 ? '...' : '');
         const amount = expense.amount?.toString() || '0';
         const flock = expense.flock_id ? getFlockName(expense.flock_id) : t('expenses.unassigned');
@@ -863,7 +885,7 @@ export function ExpenseTracking() {
 
     const topExpensesData = topExpenses.map((expense, index) => {
       const date = new Date(expense.incurred_on || expense.date || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const category = getCategoryLabel(expense.category, t);
+      const category = getCategoryLabel(expense.category, t, speciesId);
       const description = (expense.description || '').substring(0, 25) + (expense.description && expense.description.length > 25 ? '...' : '');
       const amount = expense.amount?.toString() || '0';
       const flock = expense.flock_id ? getFlockName(expense.flock_id) : t('expenses.unassigned');
@@ -1095,7 +1117,7 @@ export function ExpenseTracking() {
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
-                      {getCategoryLabel(cat, t)}
+                      {getCategoryLabel(cat, t, speciesId)}
                     </option>
                   ))}
                 </select>
@@ -1269,7 +1291,7 @@ export function ExpenseTracking() {
               return (
                 <div key={cat} className="p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-gray-900 text-sm">{getCategoryEmoji(cat)} {getCategoryLabel(cat, t)}</span>
+                    <span className="font-medium text-gray-900 text-sm">{getCategoryEmoji(cat, speciesId)} {getCategoryLabel(cat, t, speciesId)}</span>
                     <span className="text-sm font-semibold text-gray-900">
                       {convertAmount(total)} {currency}
                     </span>
@@ -1319,9 +1341,9 @@ export function ExpenseTracking() {
                   className="flex items-center justify-between gap-2"
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-base leading-none flex-shrink-0">{getCategoryEmoji(expense.category)}</span>
+                    <span className="text-base leading-none flex-shrink-0">{getCategoryEmoji(expense.category, speciesId)}</span>
                     <span className="font-medium text-gray-900 text-xs whitespace-nowrap">
-                      {getCategoryLabel(expense.category, t)}
+                      {getCategoryLabel(expense.category, t, speciesId)}
                     </span>
                     {(expense.kind === 'chicks_purchase' || expense.kind === 'chicks_transport') && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-gray-900 flex-shrink-0">

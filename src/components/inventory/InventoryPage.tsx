@@ -19,6 +19,7 @@ interface FeedItem {
   current_stock_bags: number;
   unit: string;
   last_updated: string | null;
+  created_at?: string | null;
 }
 
 interface OtherItem {
@@ -311,6 +312,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
           id,
           quantity,
           updated_at,
+          created_at,
           feed_type:feed_types(id, name, unit)
         `)
         .eq('farm_id', currentFarm.id)
@@ -327,6 +329,7 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
               current_stock_bags: Number(row.quantity) || 0,
               unit: (ft.unit as string) || 'bags',
               last_updated: (row.updated_at as string | null) ?? null,
+              created_at: (row.created_at as string | null) ?? null,
             } as FeedItem;
           })
           .filter((f): f is FeedItem => f !== null);
@@ -679,7 +682,18 @@ export function InventoryPage({ onNavigate }: InventoryPageProps) {
               // alarming first-time UX. Distinguish "Not stocked yet"
               // (never updated, 0) from "Out of stock" (was tracked, now 0)
               // from "Low stock" (under threshold but > 0).
-              const wasEverStocked = !!feed.last_updated;
+              //
+              // 2nd fix: the seeder sets `last_updated` on every default feed
+              // item at row creation time, so the original `wasEverStocked =
+              // !!feed.last_updated` heuristic flagged seeded items as "Out of
+              // stock" (red) instead of "Not stocked yet" (gray). Compare
+              // last_updated vs created_at — if they're equal/close, the row
+              // has only ever been the seed value and a real purchase event
+              // hasn't happened.
+              const lastUpdatedTs = feed.last_updated ? new Date(feed.last_updated).getTime() : 0;
+              const createdAtTs = (feed as any).created_at ? new Date((feed as any).created_at).getTime() : 0;
+              const everUpdatedAfterCreate = lastUpdatedTs > 0 && (createdAtTs === 0 || lastUpdatedTs - createdAtTs > 5000);
+              const wasEverStocked = everUpdatedAfterCreate;
               const isNotStockedYet = !wasEverStocked && currentStock === 0;
               const isOutOfStock = wasEverStocked && currentStock === 0;
               const isLowStock = !isNotStockedYet && !isOutOfStock && currentStock < lowStockThreshold;
