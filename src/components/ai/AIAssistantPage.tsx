@@ -7,7 +7,9 @@ import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { EdenAvatarAnimated } from './EdenAvatarAnimated';
+import { EdenFarmSelector } from './EdenFarmSelector';
 import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
+import { useEdenChat, EdenChatScope, EdenChatMessage } from '../../hooks/useEdenChat';
 
 interface ImageAttachment {
   data: string;       // base64 (no prefix)
@@ -214,36 +216,32 @@ const RABBIT_SUGGESTIONS = [
 ];
 
 
-const STORAGE_KEY = 'eden_chat_messages';
-const STORAGE_DATE_KEY = 'eden_chat_date';
-
-function loadTodayMessages(): ChatMessage[] {
-  try {
-    const savedDate = localStorage.getItem(STORAGE_DATE_KEY);
-    const today = new Date().toDateString();
-    if (savedDate !== today) {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.setItem(STORAGE_DATE_KEY, today);
-      return [];
-    }
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
-  } catch {
-    return [];
-  }
-}
-
-function saveTodayMessages(msgs: ChatMessage[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
-    localStorage.setItem(STORAGE_DATE_KEY, new Date().toDateString());
-  } catch {}
+/**
+ * Map a persisted Supabase row to the in-memory display shape. Persisted rows
+ * only carry log_action; richer fields (bulkLogActions, payRunAction, etc.)
+ * are derived at runtime from the edge-function response and are not stored.
+ *
+ * Pre-Phase-1 we cached chat in `localStorage` under `eden_chat_messages`
+ * keyed by date; that is now superseded by per-scope caching inside
+ * useEdenChat. The old key is left orphaned (auto-evicts as cache fills);
+ * if the page is opened on the day of upgrade users see no chat history,
+ * which is acceptable per the migration plan in EDEN_PER_FARM_CHAT.md.
+ */
+function persistedToDisplay(row: EdenChatMessage): ChatMessage {
+  const log = row.log_action as LogAction | null | undefined;
+  return {
+    id: row.id,
+    role: row.role,
+    content: row.content,
+    images: undefined,
+    logAction: log ?? undefined,
+    logConfirmed: row.log_confirmed ?? undefined,
+    timestamp: new Date(row.created_at),
+  };
 }
 
 export function AIAssistantPage() {
-  const { currentFarm, user } = useAuth();
+  const { currentFarm, user, allFarms } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const farmSpecies = useFarmSpecies();
@@ -252,7 +250,19 @@ export function AIAssistantPage() {
     : farmSpecies.id === 'rabbits'
     ? RABBIT_SUGGESTIONS
     : POULTRY_SUGGESTIONS;
-  const [messages, setMessages] = useState<ChatMessage[]>(() => loadTodayMessages());
+
+  // Phase 1 — per-farm chat persistence. The conversation scope is either a
+  // single farm OR "All my farms" (cross-farm mode). Cross-farm mode requires
+  // disambiguation on writes; see docs/EDEN_PER_FARM_CHAT.md.
+  const [crossFarm, setCrossFarm] = useState(false);
+  const scope: EdenChatScope = crossFarm
+    ? { mode: 'all' }
+    : { mode: 'farm', farmId: currentFarm?.id ?? '' };
+  const persistedChat = useEdenChat(user?.id ?? null, scope);
+
+  // The on-screen `messages` list mirrors persisted history but carries
+  // transient UI state (logSaving, bulkLogProgress) that does NOT go to DB.
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
@@ -265,9 +275,12 @@ export function AIAssistantPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
+  // Mirror persisted history into the display state when scope or DB rows
+  // change. Transient UI flags (logSaving, bulkLog progress) are dropped here
+  // — they're never useful after a reload anyway.
   useEffect(() => {
-    saveTodayMessages(messages);
-  }, [messages]);
+    setMessages(persistedChat.messages.map(persistedToDisplay));
+  }, [persistedChat.messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -888,6 +901,8 @@ export function AIAssistantPage() {
 
       // Only set logConfirmed AFTER the insert actually succeeded
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logSaving: false, logConfirmed: true } : m));
+      // Persist the confirmation flag (best-effort).
+      void persistedChat.setLogConfirmed(messageId, true);
 
       if (logAction.type === 'LOG_MORTALITY') {
         showToast(`Logged ${logAction.count} deaths in "${logAction.flock_name}"`, 'success');
@@ -1226,8 +1241,14 @@ export function AIAssistantPage() {
     const text = messageText || input.trim();
     if ((!text && pendingImages.length === 0 && !pendingFile) || loading) return;
 
-    if (!currentFarm) {
+    // In cross-farm mode there is no single currentFarm — that's the point.
+    // We still require the user to belong to at least one farm to send anything.
+    if (!crossFarm && !currentFarm) {
       showToast('Please select a farm first', 'error');
+      return;
+    }
+    if (crossFarm && (!allFarms || allFarms.length === 0)) {
+      showToast('No farms available for cross-farm mode.', 'error');
       return;
     }
 
@@ -1240,10 +1261,27 @@ export function AIAssistantPage() {
       : '';
     const fullText = (text || '') + fileBlock;
 
+    const userContent = text || (fileAttachment ? `Please import ${fileAttachment.name}` : '');
+
+    // Persist user message first. This is the source of truth — local state
+    // gets refreshed via the hook's effect.
+    let persistedUserId: string | null = null;
+    try {
+      const persisted = await persistedChat.appendUserMessage(userContent);
+      persistedUserId = persisted.id;
+    } catch (err: any) {
+      console.error('Failed to persist user message:', err);
+      showToast('Could not save your message. Please retry.', 'error');
+      return;
+    }
+
+    // Optimistically add to display state — the hook effect will replace
+    // this with the canonical row on next tick, but the UI needs the message
+    // visible immediately, with attachments which aren't persisted.
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: persistedUserId,
       role: 'user',
-      content: text || (fileAttachment ? `Please import ${fileAttachment.name}` : ''),
+      content: userContent,
       images: imgs.length > 0 ? imgs : undefined,
       attachedFile: fileAttachment ? { name: fileAttachment.name, rowCount: fileAttachment.rowCount } : undefined,
       timestamp: new Date(),
@@ -1279,7 +1317,20 @@ export function AIAssistantPage() {
         },
       ];
 
-      const body = JSON.stringify({ farm_id: currentFarm.id, messages: allMessages, include_context: true });
+      // Pick the right anchor farm. In cross-farm mode the edge function
+      // still needs ONE farm_id as the auth anchor (any farm the user
+      // belongs to works) and the full list of farms to fetch context for.
+      const anchorFarmId = currentFarm?.id ?? allFarms[0]?.id ?? '';
+      const requestBody: Record<string, unknown> = {
+        farm_id: anchorFarmId,
+        messages: allMessages,
+        include_context: true,
+      };
+      if (crossFarm && allFarms && allFarms.length > 0) {
+        requestBody.cross_farm = true;
+        requestBody.cross_farm_farm_ids = allFarms.map((f) => f.id);
+      }
+      const body = JSON.stringify(requestBody);
 
       const doFetch = () => {
         const ctrl = new AbortController();
@@ -1332,12 +1383,32 @@ export function AIAssistantPage() {
       }
 
       const bulkActions: LogAction[] = data.bulkLogActions || [];
-      const msgId = (Date.now() + 1).toString();
+
+      // Persist Eden's reply to Supabase. log_target_farm_id captures the
+      // destination farm in cross-farm mode (Eden may have asked for it
+      // before generating a [LOG]); falls back to the conversation's farm.
+      const replyContent = data.message || 'I apologize, but I could not generate a response.';
+      const targetFarmId = crossFarm
+        ? (data.logAction?.target_farm_id ?? null)
+        : (currentFarm?.id ?? null);
+
+      let persistedAssistantId: string;
+      try {
+        const persisted = await persistedChat.appendAssistantMessage(replyContent, {
+          logAction: data.logAction ?? null,
+          logTargetFarmId: targetFarmId,
+        });
+        persistedAssistantId = persisted.id;
+      } catch (err) {
+        console.warn('Failed to persist assistant message:', err);
+        persistedAssistantId = (Date.now() + 1).toString();
+      }
+      const msgId = persistedAssistantId;
 
       const assistantMessage: ChatMessage = {
         id: msgId,
         role: 'assistant',
-        content: data.message || 'I apologize, but I could not generate a response.',
+        content: replyContent,
         actions: data.actions || [],
         logAction: data.logAction || null,
         // Auto-confirm bulk logs — skip the checkbox panel, go straight to progress bar
@@ -1502,7 +1573,27 @@ export function AIAssistantPage() {
                 : 'Farm performance · Flock health · Diagnostics · Data import'}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {allFarms && allFarms.length > 0 && (
+              <EdenFarmSelector
+                farms={allFarms}
+                selectedFarmId={crossFarm ? null : currentFarm?.id ?? null}
+                crossFarm={crossFarm}
+                onSelectFarm={(farmId) => {
+                  setCrossFarm(false);
+                  // Switching the farm scope reloads history via the hook;
+                  // we don't change the global currentFarm here — that's a
+                  // separate switch the user does via the farm switcher.
+                  // If the picked farm differs from currentFarm, the user
+                  // should switch via the top-level FarmSwitcherDropdown to
+                  // stay in sync. For now we just align the chat scope.
+                  if (currentFarm?.id !== farmId) {
+                    showToast('Switch farm in the top-left switcher to send messages on that farm.', 'info');
+                  }
+                }}
+                onSelectAllFarms={() => setCrossFarm(true)}
+              />
+            )}
             {usageInfo && (
               <div className={`text-xs px-2 py-1 rounded-full font-medium ${
                 usageInfo.used >= usageInfo.cap
@@ -1516,7 +1607,10 @@ export function AIAssistantPage() {
             )}
             {messages.length > 0 && (
               <button
-                onClick={() => setMessages([])}
+                onClick={async () => {
+                  await persistedChat.clear();
+                  setMessages([]);
+                }}
                 className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Clear Chat
@@ -1641,7 +1735,10 @@ export function AIAssistantPage() {
                               <CheckCircle className="w-3 h-3" /> Yes, save it
                             </button>
                             <button
-                              onClick={() => setMessages(prev => prev.map(m => m.id === message.id ? { ...m, logAction: undefined } : m))}
+                              onClick={() => {
+                                setMessages(prev => prev.map(m => m.id === message.id ? { ...m, logAction: undefined } : m));
+                                void persistedChat.setLogConfirmed(message.id, false);
+                              }}
                               className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-xs font-medium flex items-center gap-1"
                             >
                               <X className="w-3 h-3" /> No thanks
