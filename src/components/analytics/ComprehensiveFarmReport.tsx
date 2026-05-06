@@ -6,7 +6,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { formatCurrency } from '../../utils/currency';
 import { formatEggsCompact } from '../../utils/eggFormatting';
-import { downloadPDFReport } from '../../utils/pdfGenerator';
+// pdfGenerator pulls in jsPDF + jspdf-autotable (~400 KB gzipped to ~130 KB).
+// Dynamic-imported below so this chunk only loads when the user actually
+// clicks Export to PDF — see Phase 3 of CLAUDE_CODE_AUTONOMOUS_ROADMAP.md.
 
 interface FarmStats {
   totalFlocks: number;
@@ -413,6 +415,7 @@ export function ComprehensiveFarmReport({
     };
 
     const filename = `${currentFarm.name || 'Farm'}_Report_${startDate}_to_${endDate}.pdf`;
+    const { downloadPDFReport } = await import('../../utils/pdfGenerator');
     downloadPDFReport(reportData, filename, currencyCode);
   }
 
