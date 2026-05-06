@@ -10,6 +10,7 @@ import { EdenAvatarAnimated } from './EdenAvatarAnimated';
 import { EdenFarmSelector } from './EdenFarmSelector';
 import { EdenEmptyState } from './EdenEmptyState';
 import { EdenLogActionCard } from './EdenLogActionCard';
+import { EdenStructuredResponse, parseStructuredResponse } from './EdenStructuredResponse';
 import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
 import { useEdenChat, EdenChatScope, EdenChatMessage } from '../../hooks/useEdenChat';
 
@@ -1797,7 +1798,7 @@ export function AIAssistantPage() {
                     </div>
                   )}
                   {message.content && (() => {
-                    const clean = message.content
+                    const stripped = message.content
                       .replace(/\[BULK_LOG\][\s\S]*?\[\/BULK_LOG\]/g, '')
                       .replace(/\[BULK_LOG\][\s\S]*/g, '')
                       .replace(/\[LOG\][\s\S]*?\[\/LOG\]/g, '')
@@ -1805,11 +1806,23 @@ export function AIAssistantPage() {
                       .replace(/\[CREATE_TASK\][\s\S]*?\[\/CREATE_TASK\]/g, '')
                       .replace(/\[CREATE_TASK\][\s\S]*/g, '')
                       .trim();
-                    return clean ? (
-                      <div className={`prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:font-semibold prose-hr:my-2 ${message.role === 'user' ? 'prose-invert' : ''}`}>
-                        <ReactMarkdown>{clean}</ReactMarkdown>
-                      </div>
-                    ) : null;
+                    // Phase 2 PR 3: pull out the optional <eden:structured>
+                    // block (renders as Key Finding / Next Steps / Data
+                    // cards) from Eden's reply.
+                    const { structured, cleanText } =
+                      message.role === 'assistant'
+                        ? parseStructuredResponse(stripped)
+                        : { structured: null, cleanText: stripped };
+                    return (
+                      <>
+                        {cleanText ? (
+                          <div className={`prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:my-2 prose-strong:font-semibold prose-hr:my-2 ${message.role === 'user' ? 'prose-invert' : ''}`}>
+                            <ReactMarkdown>{cleanText}</ReactMarkdown>
+                          </div>
+                        ) : null}
+                        {structured && <EdenStructuredResponse structured={structured} />}
+                      </>
+                    );
                   })()}
 
                   {/* Single log confirm — redesigned per Phase 2 PR 2:
