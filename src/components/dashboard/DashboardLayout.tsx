@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, Eye } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -103,6 +103,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'water-quality', label: 'Water Quality', icon: Droplets },
       { id: 'sampling', label: 'Weight Sampling', icon: Beaker },
       { id: 'stocking', label: 'Stocking', icon: Truck },
+      { id: 'pond-inspections', label: 'Pond Inspections', icon: Eye },
       { id: 'rabbit-harvest', label: 'Rabbit Harvest', icon: Scale },
       { id: 'breeding-events', label: 'Breeding', icon: Heart },
       { id: 'litters', label: 'Litters', icon: Baby },
@@ -123,7 +124,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // Items only relevant when eggs are tracked (layer/mixed farms)
     const eggOnlyItems = new Set(['sales', 'egg-records']);
     // Items only for aquaculture farms
-    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking']);
+    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking', 'pond-inspections']);
     // Items only for rabbit farms
     const rabbitsOnlyItems = new Set(['rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry']);
     // Items hidden for aquaculture farms — 'weight' is replaced by 'sampling' (Weight Sampling)

@@ -8,7 +8,7 @@ import { getFlockAgeDays } from '../../utils/flockAge';
 import { calculateSGR, formatSGR } from '../../utils/sgrAnalysis';
 import { calculateStockingDensity } from '../../utils/stockingDensity';
 import { calculateHarvestReadiness } from '../../utils/harvestReadiness';
-import type { FishSpeciesType } from '../../utils/fcrAquaculture';
+import { calculateFishFCR, formatFCR, type FishSpeciesType } from '../../utils/fcrAquaculture';
 
 interface AquaCycleWidgetProps {
   pond: Flock | null;
@@ -94,11 +94,17 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
     weekNumber: 0,
   });
   const [prevSample, setPrevSample] = useState<PreviousSampleData | null>(null);
+  // Phase B Step 10 wire-up: total feed used + biomass gained over the whole cycle
+  // for FCR pill. Pulled from feed_usage_logs (all aqua feed for this farm)
+  // attributed by bird-share — same simplification used in fcrCalculation.ts.
+  const [feedKg, setFeedKg] = useState<number>(0);
+  const [biomassGainedKg, setBiomassGainedKg] = useState<number>(0);
 
   useEffect(() => {
     if (pond) {
       calculateCycle();
       fetchLatestSample();
+      fetchFcrInputs();
     }
   }, [pond?.id]);
 
@@ -234,6 +240,65 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
       isOverdue,
       weekNumber: week,
     });
+  };
+
+  /**
+   * Phase B Step 10 wire-up: pull feed totals + first/last sample to drive
+   * the FCR pill. Same data shape as fcrCalculation.ts but scoped to a
+   * single pond.
+   *   feedKg = sum of feed_usage_logs.quantity_used for this farm in the
+   *            window, attributed to this pond by current_count share
+   *            (single-pond-farm = whole feed; multi-pond = proportional).
+   *   biomassGainedKg = (current_abw - first_sample_abw) * current_count / 1000
+   */
+  const fetchFcrInputs = async () => {
+    if (!pond || !currentFarm?.id) return;
+
+    // Window: cycle start (pond arrival_date) → today.
+    const startDate = String(pond.arrival_date).split('T')[0];
+
+    // Pull all aqua flocks on this farm to compute share.
+    const { data: aquaFlocks } = await supabase
+      .from('flocks')
+      .select('id, current_count, type')
+      .eq('farm_id', currentFarm.id)
+      .eq('status', 'active')
+      .in('type', ['Catfish', 'Tilapia', 'Clarias', 'Other Fish']);
+
+    const aquaTotalCount = (aquaFlocks || []).reduce(
+      (sum, f) => sum + (Number(f.current_count) || 0),
+      0,
+    );
+    const ourShare = aquaTotalCount > 0 ? (pond.current_count || 0) / aquaTotalCount : 0;
+
+    // Sum farm-level feed_usage_logs in the window. Approximate kg.
+    const { data: feedLogs } = await supabase
+      .from('feed_usage_logs')
+      .select('quantity_used')
+      .eq('farm_id', currentFarm.id)
+      .gte('created_at', `${startDate}T00:00:00`);
+    const totalFarmFeedKg = (feedLogs || []).reduce(
+      (sum, l) => sum + (Number(l.quantity_used) || 0),
+      0,
+    );
+    setFeedKg(totalFarmFeedKg * ourShare);
+
+    // Biomass gained: need first sample (initial weight) and last sample.
+    const { data: firstSample } = await supabase
+      .from('sampling_events')
+      .select('abw_g, sampled_at')
+      .eq('farm_id', currentFarm.id)
+      .eq('flock_id', pond.id)
+      .order('sampled_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (firstSample && sample.abwG && pond.current_count) {
+      const gainedG = sample.abwG - Number(firstSample.abw_g);
+      setBiomassGainedKg(Math.max(0, (gainedG * pond.current_count) / 1000));
+    } else {
+      setBiomassGainedKg(0);
+    }
   };
 
   if (!pond) {
@@ -405,7 +470,17 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
               })
             : null;
 
-          if (!sgr && !density && !harvest) return null;
+          // FCR — needs feed totals + biomass gained over the cycle.
+          const fcr =
+            feedKg > 0 && biomassGainedKg > 0
+              ? calculateFishFCR({
+                  feedKg,
+                  biomassGainedKg,
+                  species: speciesType,
+                })
+              : null;
+
+          if (!sgr && !density && !harvest && !fcr) return null;
 
           const colorClass = (c: 'green' | 'amber' | 'red' | 'gray'): string => {
             switch (c) {
@@ -444,6 +519,14 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
                   title={harvest.message}
                 >
                   {harvest.recommendation}
+                </span>
+              )}
+              {fcr && fcr.fcr !== null && (
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(fcr.color)}`}
+                  title={`Feed Conversion Ratio: ${formatFCR(fcr.fcr)} kg feed / kg gain — ${fcr.label}`}
+                >
+                  FCR {formatFCR(fcr.fcr)}
                 </span>
               )}
             </div>
