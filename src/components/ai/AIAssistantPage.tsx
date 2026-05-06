@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, Lightbulb, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet } from 'lucide-react';
+import { Send, Loader2, Lightbulb, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet, Volume2, VolumeX } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
@@ -188,12 +188,31 @@ export function AIAssistantPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
+  // Phase G voice support — Whisper-backed (better African-language coverage
+  // than browser SpeechRecognition). MediaRecorder captures audio; we stop
+  // when the user taps the mic again, then ship the blob to /transcribe-audio.
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const [transcribing, setTranscribing] = useState(false);
+  // Language picker for voice (Whisper hint + TTS voice). Persisted via localStorage.
+  const [voiceLang, setVoiceLang] = useState<'en' | 'fr' | 'sw' | 'yo' | 'ha' | 'pidgin'>(() => {
+    try {
+      const stored = localStorage.getItem('eden_voice_lang') as any;
+      if (['en', 'fr', 'sw', 'yo', 'ha', 'pidgin'].includes(stored)) return stored;
+    } catch {}
+    return 'en';
+  });
+  // TTS auto-play of Eden's replies. Defaults off so we don't surprise users.
+  const [ttsEnabled, setTtsEnabled] = useState(() => {
+    try { return localStorage.getItem('eden_tts_enabled') === 'true'; } catch { return false; }
+  });
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [usageInfo, setUsageInfo] = useState<{ used: number; cap: number; tier: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
+  // Phase G: replaced browser SpeechRecognition with MediaRecorder + Whisper.
+  // Recognition ref removed — see mediaRecorderRef above.
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -226,31 +245,151 @@ export function AIAssistantPage() {
   }, []);
 
 
-  const toggleVoice = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+  /**
+   * Phase G voice: record audio with MediaRecorder, then upload to our
+   * `transcribe-audio` edge function (which calls Whisper).
+   *
+   * Why not the browser's built-in SpeechRecognition? Because Whisper
+   * handles Hausa, Yoruba, Swahili, and Nigerian Pidgin meaningfully
+   * better than Chrome's SpeechRecognition (which has narrow language
+   * coverage and falls over for non-English speakers).
+   *
+   * Flow:
+   *   tap mic → start recording (mediaRecorder)
+   *   tap mic again → stop, upload, transcribe, drop into input box
+   *   user can edit before hitting Send
+   */
+  const toggleVoice = async () => {
+    if (transcribing) return;
+
+    if (listening) {
+      // Stop the current recording. The 'stop' handler runs the upload.
+      mediaRecorderRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
       showToast('Voice input not supported in this browser', 'error');
       return;
     }
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err: any) {
+      showToast(err?.name === 'NotAllowedError' ? 'Microphone permission denied' : 'Could not access microphone', 'error');
       return;
     }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setInput(transcript);
-      setListening(false);
+
+    // Pick a MIME type the browser actually supports. Chrome/Edge default
+    // to audio/webm;codecs=opus. Safari needs audio/mp4. Whisper handles both.
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+    const mimeType = candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    mediaRecorderRef.current = mediaRecorder;
+    audioChunksRef.current = [];
+
+    mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
     };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
-    recognitionRef.current = recognition;
-    recognition.start();
+    mediaRecorder.onstop = async () => {
+      // Free the mic immediately so the OS shows it's released.
+      stream.getTracks().forEach(t => t.stop());
+
+      const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+      audioChunksRef.current = [];
+      if (blob.size === 0) return;
+
+      setTranscribing(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', blob, mimeType.includes('mp4') ? 'audio.m4a' : 'audio.webm');
+        formData.append('language', voiceLang);
+
+        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+          body: formData,
+        });
+        if (error) throw error;
+        const text = (data as any)?.text;
+        if (text) {
+          // Append to existing input rather than overwriting — lets the user
+          // dictate in chunks.
+          setInput(prev => (prev ? `${prev.trim()} ${text}` : text));
+        } else {
+          showToast('Could not transcribe — try speaking closer to the mic', 'warning');
+        }
+      } catch (err: any) {
+        const msg = err?.message || 'Transcription failed';
+        if (msg.includes('not configured')) {
+          showToast('Voice transcription not yet configured — admin needs to set OPENAI_API_KEY', 'error');
+        } else {
+          showToast(msg, 'error');
+        }
+      } finally {
+        setTranscribing(false);
+      }
+    };
+
+    mediaRecorder.start();
     setListening(true);
+
+    // Safety auto-stop at 60 seconds. Whisper handles up to 25 MB; a 60s
+    // opus recording is ~500 KB — well under. Avoids hung mic sessions.
+    setTimeout(() => {
+      if (mediaRecorderRef.current === mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        setListening(false);
+      }
+    }, 60_000);
+  };
+
+  /**
+   * Browser TTS for Eden's replies. Falls back to a default voice when
+   * the requested language isn't available.
+   *
+   * Pidgin and Hausa rarely have native TTS voices in the browser — we
+   * fall back to the closest English voice. The user can disable TTS via
+   * the speaker toggle.
+   */
+  const speakText = (text: string) => {
+    if (!ttsEnabled || !text) return;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel(); // stop any in-flight speech
+      const utter = new SpeechSynthesisUtterance(text.replace(/[*#`_~]/g, '').slice(0, 4000));
+      // Map our voiceLang to a BCP-47 tag. Pidgin/Hausa have no widely-supported
+      // tag, so fall back to en.
+      const langMap: Record<string, string> = {
+        en: 'en-US',
+        fr: 'fr-FR',
+        sw: 'sw-KE',
+        yo: 'yo-NG',
+        ha: 'en-NG', // best fallback
+        pidgin: 'en-NG',
+      };
+      utter.lang = langMap[voiceLang] || 'en-US';
+      // Try to pick a matching voice if installed.
+      const voices = window.speechSynthesis.getVoices();
+      const pref = voices.find(v => v.lang === utter.lang) || voices.find(v => v.lang.startsWith(utter.lang.slice(0, 2)));
+      if (pref) utter.voice = pref;
+      utter.rate = 0.95;
+      window.speechSynthesis.speak(utter);
+    } catch {
+      // swallow — TTS is non-critical
+    }
+  };
+
+  const toggleTts = () => {
+    const next = !ttsEnabled;
+    setTtsEnabled(next);
+    try { localStorage.setItem('eden_tts_enabled', String(next)); } catch {}
+    if (!next && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+  };
+
+  const handleVoiceLangChange = (lang: typeof voiceLang) => {
+    setVoiceLang(lang);
+    try { localStorage.setItem('eden_voice_lang', lang); } catch {}
   };
 
   const addImages = async (files: FileList | null) => {
@@ -1027,6 +1166,9 @@ export function AIAssistantPage() {
 
       setMessages(prev => [...prev, assistantMessage]);
 
+      // Read Eden's reply aloud if TTS is enabled (Phase G voice support).
+      speakText(assistantMessage.content);
+
       // Auto-execute bulk log immediately — no confirm button needed
       if (bulkActions.length > 0 && currentFarm) {
         setTimeout(() => confirmBulkLog(msgId, bulkActions, bulkActions.map(() => true)), 50);
@@ -1669,18 +1811,54 @@ export function AIAssistantPage() {
               <Paperclip className="w-5 h-5" />
             </button>
 
-            {/* Mic button */}
+            {/* Mic button — records audio, ships to Whisper, drops text in input */}
             <button
               onClick={toggleVoice}
-              disabled={loading}
-              title={listening ? 'Stop listening' : 'Speak to Eden'}
+              disabled={loading || transcribing}
+              title={listening ? 'Stop listening' : transcribing ? 'Transcribing…' : `Speak to Eden (${voiceLang.toUpperCase()})`}
               className={`px-3 py-3 rounded-lg transition-colors flex items-center justify-center ${
                 listening
                   ? 'bg-red-100 text-red-600 animate-pulse'
-                  : 'bg-gray-100 text-gray-500 hover:bg-agri-gold-50 hover:text-agri-brown-600'
+                  : transcribing
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-gray-100 text-gray-500 hover:bg-agri-gold-50 hover:text-agri-brown-600'
               } disabled:opacity-40`}
             >
-              {listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              {transcribing
+                ? <Loader2 className="w-5 h-5 animate-spin" />
+                : listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+
+            {/* Voice language picker — Phase G. Drives Whisper input language
+                and TTS output voice. Pidgin/Hausa fall back to English voice. */}
+            <select
+              value={voiceLang}
+              onChange={e => handleVoiceLangChange(e.target.value as any)}
+              disabled={loading || listening || transcribing}
+              title="Voice language"
+              className="px-2 py-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium disabled:opacity-40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-agri-gold-500"
+            >
+              <option value="en">EN</option>
+              <option value="fr">FR</option>
+              <option value="sw">SW</option>
+              <option value="yo">YO</option>
+              <option value="ha">HA</option>
+              <option value="pidgin">Pidgin</option>
+            </select>
+
+            {/* TTS toggle — when on, Eden's text reply is read aloud */}
+            <button
+              type="button"
+              onClick={toggleTts}
+              disabled={loading}
+              title={ttsEnabled ? 'Mute Eden\'s replies' : 'Read Eden\'s replies aloud'}
+              className={`px-3 py-3 rounded-lg transition-colors flex items-center justify-center ${
+                ttsEnabled
+                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+              } disabled:opacity-40`}
+            >
+              {ttsEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
 
             <input
