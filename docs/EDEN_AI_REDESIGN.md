@@ -299,12 +299,12 @@ Each step is its own PR. Total estimate: 5–7 days of focused work.
 - 74/74 tests pass
 - Bundle stays at or below the size we hit after Phase 3
 
-## Open questions — RESOLVED (May 6, 2026)
+## Open questions for Greg
 
-These are no longer open. Implementation can proceed. Decisions locked in `docs/BRIEF_PHASE_2_EDEN_UI.md`.
+1. **Card styling.** Should structured cards use a slim accent stripe + white background (clean / minimal), OR full colored fill with a darker border (warmer / more present)? The mockups above are ambivalent — pick one.
+2. **Voice TTS reply.** Phase 5 has Eden replying via WhatsApp text. Should Eden also speak its reply aloud in-app (browser SpeechSynthesis API)? Pro: hands-free coaching. Con: noisy environments, language quality varies.
+3. **Suggestion chip generation.** Should chips be hardcoded per-species (today's behavior, just personalized header), OR should we ask Claude Haiku for 3 personalized chips on every empty-state load? Costs ~$0.0003 per page load.
+4. **Streaming on slow connections.** What's the fallback if SSE drops mid-response? Re-render the partial response with a "tap to retry" button, or just silently swap to non-streaming retry?
+5. **Avatar animation budget.** Subtle (CSS transitions, no JS) vs richer (Lottie, ~30 KB)? Subtle keeps bundle small.
 
-1. **Card styling** → **Slim accent stripe + white background.** Cleaner on mobile; reads at arm's length; doesn't fight the existing app's neutral palette.
-2. **Voice TTS reply** → **Optional, default OFF.** Noisy farm environments + variable language quality. Users opt in via Settings → Eden AI.
-3. **Suggestion chip generation** → **Haiku-personalized, 24h cache per (user, farm).** Cost amortizes to ~1 call/farm/day = ~$10/month at 1,000 farms. Worth it — chips are the empty-state hook.
-4. **Streaming fallback on slow connections** → **Silent retry as non-streaming once → if that also fails, manual "Tap to retry" button.** One auto-retry covers transient drops; a button covers persistent failures without making Eden look broken.
-5. **Avatar animation budget** → **Subtle — pure CSS transitions, no Lottie/JSON.** Keeps bundle small, runs on every Android the app supports.
+Greg's decisions on the above lock in before implementation begins.
