@@ -13,6 +13,7 @@ import { analyzeWeightCheck } from '../../utils/weightAnalysis';
 import { getSpeciesTerminology, getSpeciesByType, AnimalSpecies } from '../../utils/speciesModules';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { WeightProgressWidget } from '../dashboard/WeightProgressWidget';
+import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { FeedIntakeChart } from './FeedIntakeChart';
 import { WaterConsumptionChart } from './WaterConsumptionChart';
 
@@ -40,6 +41,7 @@ function calculateConfidenceLevel(sampleSize: number, flockSize: number): string
 export function WeightTracking({ flock: flockProp, onNavigate }: WeightTrackingProps) {
   const { t } = useTranslation();
   const { currentRole, user, currentFarm } = useAuth();
+  const { tryWrite, isNetworkError } = useOfflineWrite();
   const { farmPermissions } = usePermissions();
   const farmSpecies = useFarmSpecies();
   const canLogWeight = canPerformAction(currentRole, 'create', 'weight', farmPermissions);
@@ -118,7 +120,7 @@ export function WeightTracking({ flock: flockProp, onNavigate }: WeightTrackingP
 
       const results = await analyzeWeightCheck(weights, flock, previousData, supabase);
 
-      const { error } = await supabase.from('weight_logs').insert({
+      const weightPayload = {
         flock_id: flock.id,
         farm_id: flock.farm_id,
         date: checkDate,
@@ -134,9 +136,16 @@ export function WeightTracking({ flock: flockProp, onNavigate }: WeightTrackingP
         daily_gain: results.dailyGain,
         market_ready: results.marketStatus?.includes('READY') || false,
         recorded_by: user?.id,
-      });
+      };
+      const { error } = await supabase.from('weight_logs').insert(weightPayload);
 
-      if (error) throw error;
+      if (error) {
+        if (isNetworkError(error)) {
+          await tryWrite('weight_logs', 'insert', weightPayload);
+        } else {
+          throw error;
+        }
+      }
 
       setAnalysisResults(results);
       setView('results');
