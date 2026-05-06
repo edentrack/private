@@ -1788,6 +1788,8 @@ export function AIAssistantPage() {
             <p className="text-gray-600 mb-6 max-w-md text-sm">
               {farmSpecies.id === 'aquaculture'
                 ? 'Your pond advisor. Ask about water quality, fish health, FCR, feeding — or attach a CSV file to import historical data.'
+                : farmSpecies.id === 'rabbits'
+                ? "Your rabbitry advisor. Ask about hutch health, breeding, kits, weaning, feed conversion — or attach a CSV file and I'll import your historical data."
                 : "Your farm advisor. Ask about flock health, performance, expenses — or attach a CSV file and I'll import your historical data."}
             </p>
 

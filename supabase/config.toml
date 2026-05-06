@@ -375,6 +375,19 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# ─── Per-function settings ───────────────────────────────────────────────
+# Webhooks called by external providers (Meta WhatsApp, Stripe) MUST set
+# verify_jwt = false because the provider has no Supabase JWT to send.
+# Without this, Supabase's gateway returns 403 Forbidden before our handler
+# ever runs — and the function appears completely broken from the outside.
+# Auth still happens INSIDE the function (HMAC signature for both providers).
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
