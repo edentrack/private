@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, Building2, Award } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, Building2, Award, CalendarDays } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -105,6 +105,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'stocking', label: 'Stocking', icon: Truck },
       { id: 'fish-health', label: 'Fish Health', icon: AlertTriangle },
       { id: 'pond-inspections', label: 'Pond Inspections', icon: Eye },
+      { id: 'pond-planner', label: 'Pond Planner', icon: CalendarDays },
       { id: 'rabbit-harvest', label: 'Rabbit Harvest', icon: Scale },
       { id: 'breeding-events', label: 'Breeding', icon: Heart },
       { id: 'litters', label: 'Litters', icon: Baby },

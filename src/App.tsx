@@ -83,6 +83,7 @@ const RabbitsRegistryPage    = lazy1(() => import('./components/rabbits/RabbitsR
 const CooperativesPage       = lazy1(() => import('./components/cooperatives/CooperativesPage'), 'CooperativesPage');
 const CooperativeDashboard   = lazy1(() => import('./components/cooperatives/CooperativeDashboard'), 'CooperativeDashboard');
 const CreditScorePage        = lazy1(() => import('./components/credit/CreditScorePage'), 'CreditScorePage');
+const PondCyclePlanningPage  = lazy1(() => import('./components/aquaculture/planning/PondCyclePlanningPage'), 'PondCyclePlanningPage');
 
 function CrispChat() {
   const { profile, user } = useAuth();
@@ -411,6 +412,7 @@ function AppContent() {
       'my-work': '#/my-work',
       'cooperatives': '#/cooperatives',
       'credit-score': '#/credit-score',
+      'pond-planner': '#/pond-planner',
     };
 
     const hash = hashMap[view] ?? `#/${view}`;
@@ -713,6 +715,10 @@ function AppContent() {
       }
       if (hash.includes('#/credit-score') || hash.includes('#/creditworthiness')) {
         setCurrentView('credit-score');
+        return;
+      }
+      if (hash.includes('#/pond-planner') || hash.includes('#/pond-planning')) {
+        setCurrentView('pond-planner');
         return;
       }
       if (hash.includes('#/dashboard')) {
@@ -1226,6 +1232,12 @@ function AppContent() {
         return (
           <RequireRole moduleId="credit-score" onUnauthorized={handleUnauthorized}>
             <CreditScorePage />
+          </RequireRole>
+        );
+      case 'pond-planner':
+        return (
+          <RequireRole moduleId="pond-planner" onUnauthorized={handleUnauthorized}>
+            <PondCyclePlanningPage />
           </RequireRole>
         );
       // case 'roadmap': // Disabled for now
