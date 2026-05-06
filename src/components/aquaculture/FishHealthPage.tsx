@@ -45,6 +45,20 @@ interface DiagnosisResult {
   reasoning: string;
 }
 
+interface DiagnosisResponse {
+  diagnoses: DiagnosisResult[];
+  /** Sonnet sets this true when it's not confident enough to commit. UI uses
+   *  this OR a top-confidence < 0.7 to surface the Opus expert-review button. */
+  uncertain?: boolean;
+  /** Which model produced this set of diagnoses. Tracked so the UI can show
+   *  'Sonnet' vs 'Opus expert review' next to each pane. */
+  model?: 'sonnet' | 'opus';
+}
+
+const MODEL_SONNET_ID = 'claude-sonnet-4-6';
+const MODEL_OPUS_ID = 'claude-opus-4-6';
+const EXPERT_REVIEW_CONFIDENCE_THRESHOLD = 0.7;
+
 export function FishHealthPage() {
   const { currentFarm, user, profile } = useAuth();
   const toast = useToast();
@@ -58,7 +72,9 @@ export function FishHealthPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [diagnosing, setDiagnosing] = useState(false);
-  const [diagnoses, setDiagnoses] = useState<DiagnosisResult[]>([]);
+  const [sonnetResult, setSonnetResult] = useState<DiagnosisResponse | null>(null);
+  const [opusResult, setOpusResult] = useState<DiagnosisResponse | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   const [diagnosisError, setDiagnosisError] = useState<string | null>(null);
   const [flocks, setFlocks] = useState<AquaFlock[]>([]);
   const [diagnoseFlockId, setDiagnoseFlockId] = useState<string>('');
@@ -100,8 +116,104 @@ export function FishHealthPage() {
     }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
-    setDiagnoses([]);
+    setSonnetResult(null);
+    setOpusResult(null);
     setDiagnosisError(null);
+  };
+
+  /**
+   * Convert the picked file to base64 for the edge function payload.
+   * Memoised at runtime — runs once per photo rather than once per Sonnet/Opus call.
+   */
+  const fileToBase64 = (file: File): Promise<{ base64: string; mediaType: string }> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result);
+        const base64 = dataUrl.split(',')[1];
+        resolve({ base64, mediaType: file.type || 'image/jpeg' });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  /**
+   * Build the diagnosis prompt. Schema is identical for Sonnet and Opus —
+   * only the requested rigour in the body differs (Opus is asked to
+   * differentiate look-alikes more aggressively).
+   */
+  const buildPrompt = (modelTier: 'sonnet' | 'opus', speciesContext: string): string => {
+    const opusGuidance =
+      modelTier === 'opus'
+        ? 'You are providing an EXPERT REVIEW after the first model returned uncertain or low-confidence results. Be more rigorous: differentiate visually similar diseases (e.g., columnaris vs. saprolegnia, MAS vs. nitrite poisoning) using subtle cues; if you genuinely cannot tell, return an empty array and set "uncertain": true with a short "uncertaintyReason".'
+        : 'Triage this case for a smallholder fish farmer. If you are not confident, set "uncertain": true rather than guessing.';
+    return [
+      `I'm a fish farmer. Please look at this photo and tell me what disease or condition the fish most likely has.`,
+      `Species: ${speciesContext}.`,
+      extraNotes ? `Extra observations: ${extraNotes}` : '',
+      '',
+      opusGuidance,
+      '',
+      'Respond ONLY with valid JSON in this exact shape:',
+      '{',
+      '  "diagnoses": [ { "diseaseId": "<one of: ' +
+        FISH_DISEASES.map(d => d.id).join(', ') +
+        '>", "confidence": 0.0-1.0, "reasoning": "1-2 sentence explanation" } ],',
+      '  "uncertain": true | false,',
+      '  "uncertaintyReason": "optional short string when uncertain=true"',
+      '}',
+      'Up to 3 diagnoses, ranked by confidence. If unsure, return an empty diagnoses array and set uncertain=true.',
+    ].join('\n');
+  };
+
+  /**
+   * Invoke the ai-chat edge function with an explicit model override.
+   * Returns the parsed DiagnosisResponse, or throws with a user-facing error.
+   */
+  const callDiseaseModel = async (
+    modelId: string,
+    base64: string,
+    mediaType: string,
+    speciesContext: string,
+    modelTier: 'sonnet' | 'opus',
+  ): Promise<DiagnosisResponse> => {
+    const promptText = buildPrompt(modelTier, speciesContext);
+    const { data, error } = await supabase.functions.invoke('ai-chat', {
+      body: {
+        farmId: currentFarm!.id,
+        userId: user!.id,
+        // The ai-chat edge function whitelists this; non-whitelisted values
+        // are silently ignored and selectModel() picks instead.
+        model: modelId,
+        messages: [
+          {
+            role: 'user',
+            content: promptText,
+            images: [{ base64, mediaType }],
+          },
+        ],
+        mode: 'disease-diagnosis',
+      },
+    });
+    if (error) throw new Error(error.message || 'Eden AI call failed');
+
+    const text =
+      (data?.reply as string) ||
+      (data?.content as string) ||
+      (typeof data === 'string' ? data : '');
+    const match = text.match(/\{[\s\S]*"diagnoses"[\s\S]*\}/);
+    if (!match) {
+      throw new Error('Could not parse a structured diagnosis from the model response');
+    }
+    const parsed = JSON.parse(match[0]) as DiagnosisResponse;
+    const valid = (parsed.diagnoses || [])
+      .filter(d => FISH_DISEASES.some(disease => disease.id === d.diseaseId))
+      .slice(0, 3);
+    return {
+      diagnoses: valid,
+      uncertain: !!parsed.uncertain,
+      model: modelTier,
+    };
   };
 
   const handleDiagnose = async () => {
@@ -109,81 +221,27 @@ export function FishHealthPage() {
       toast.error('Please pick a photo first');
       return;
     }
-
     setDiagnosing(true);
     setDiagnosisError(null);
-    setDiagnoses([]);
+    setSonnetResult(null);
+    setOpusResult(null);
 
     try {
-      // Convert image to base64 for the edge function
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = reject;
-        reader.readAsDataURL(imageFile);
-      });
-      const base64 = dataUrl.split(',')[1];
-      const mediaType = imageFile.type || 'image/jpeg';
-
+      const { base64, mediaType } = await fileToBase64(imageFile);
       const flock = flocks.find(f => f.id === diagnoseFlockId);
       const speciesContext = flock ? flock.type : 'fish';
-      const promptText = [
-        `I'm a fish farmer. Please look at this photo and tell me what disease or condition the fish most likely has.`,
-        `Species: ${speciesContext}.`,
-        extraNotes ? `Extra observations: ${extraNotes}` : '',
-        '',
-        'Respond ONLY with valid JSON in this exact shape:',
-        '{ "diagnoses": [ { "diseaseId": "<one of: ' +
-          FISH_DISEASES.map(d => d.id).join(', ') +
-          '>", "confidence": 0.0-1.0, "reasoning": "1-2 sentence explanation" } ] }',
-        'Up to 3 diagnoses, ranked by confidence. If unsure, return an empty array.',
-      ].join('\n');
-
-      // Call the ai-chat edge function (vision-capable).
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          farmId: currentFarm.id,
-          userId: user.id,
-          messages: [
-            {
-              role: 'user',
-              content: promptText,
-              images: [
-                {
-                  base64,
-                  mediaType,
-                },
-              ],
-            },
-          ],
-          mode: 'disease-diagnosis',
-        },
-      });
-
-      if (error) throw error;
-
-      // Extract JSON from the response (Eden often wraps in prose).
-      const text =
-        (data?.reply as string) ||
-        (data?.content as string) ||
-        (typeof data === 'string' ? data : '');
-      const match = text.match(/\{[\s\S]*"diagnoses"[\s\S]*\}/);
-      if (!match) {
+      const result = await callDiseaseModel(MODEL_SONNET_ID, base64, mediaType, speciesContext, 'sonnet');
+      if (result.diagnoses.length === 0 && result.uncertain) {
+        setSonnetResult(result);
         setDiagnosisError(
-          'Eden could not parse the photo confidently. Try a clearer photo or check the disease library below.',
+          'Eden was uncertain after looking at the photo. Click "Get expert review" to escalate to the high-tier model, or browse the disease library below.',
         );
-        return;
-      }
-      const parsed = JSON.parse(match[0]) as { diagnoses: DiagnosisResult[] };
-      const valid = (parsed.diagnoses || [])
-        .filter(d => FISH_DISEASES.some(disease => disease.id === d.diseaseId))
-        .slice(0, 3);
-      if (valid.length === 0) {
+      } else if (result.diagnoses.length === 0) {
         setDiagnosisError(
           'Eden could not match the photo to any known disease. Browse the library below for likely candidates and consult a vet.',
         );
       } else {
-        setDiagnoses(valid);
+        setSonnetResult(result);
       }
     } catch (err: any) {
       console.error('Diagnosis error', err);
@@ -191,6 +249,38 @@ export function FishHealthPage() {
     } finally {
       setDiagnosing(false);
     }
+  };
+
+  const handleExpertReview = async () => {
+    if (!imageFile || !user || !currentFarm?.id) return;
+    setReviewing(true);
+    setDiagnosisError(null);
+
+    try {
+      const { base64, mediaType } = await fileToBase64(imageFile);
+      const flock = flocks.find(f => f.id === diagnoseFlockId);
+      const speciesContext = flock ? flock.type : 'fish';
+      const result = await callDiseaseModel(MODEL_OPUS_ID, base64, mediaType, speciesContext, 'opus');
+      setOpusResult(result);
+    } catch (err: any) {
+      console.error('Expert review error', err);
+      setDiagnosisError(err?.message || 'Failed to get expert review from Eden AI');
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  /**
+   * Decide whether to show the "Get expert review" button.
+   * Yes if Sonnet returned uncertain=true OR top diagnosis confidence < 70%
+   * AND Opus hasn't been called yet AND we're not currently reviewing.
+   */
+  const shouldShowExpertReviewCta = (): boolean => {
+    if (!sonnetResult || opusResult || reviewing) return false;
+    if (sonnetResult.uncertain) return true;
+    const top = sonnetResult.diagnoses[0];
+    if (top && top.confidence < EXPERT_REVIEW_CONFIDENCE_THRESHOLD) return true;
+    return false;
   };
 
   const renderDiseaseCard = (d: FishDisease) => (
@@ -355,7 +445,8 @@ export function FishHealthPage() {
                   onClick={() => {
                     setImageFile(null);
                     setImagePreview(null);
-                    setDiagnoses([]);
+                    setSonnetResult(null);
+                    setOpusResult(null);
                   }}
                   className="absolute top-1 right-1 p-1 bg-white/90 rounded-full hover:bg-white"
                 >
@@ -387,35 +478,57 @@ export function FishHealthPage() {
             )}
           </div>
 
-          {diagnoses.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-gray-700">Eden's ranked diagnoses</h2>
-              {diagnoses.map((d, i) => {
-                const disease = FISH_DISEASES.find(x => x.id === d.diseaseId);
-                if (!disease) return null;
-                return (
-                  <div key={d.diseaseId} className="bg-white border border-gray-200 rounded-2xl p-4">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-400">#{i + 1}</span>
-                        <h3 className="font-semibold text-gray-900">{disease.name}</h3>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide ${SEVERITY_COLOR[disease.severity]}`}>
-                          {disease.severity}
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono text-gray-600">{Math.round(d.confidence * 100)}%</span>
-                    </div>
-                    <p className="text-xs text-gray-700 italic mb-2">{d.reasoning}</p>
-                    <button
-                      type="button"
-                      onClick={() => setOpenDisease(disease)}
-                      className="text-xs text-[#3D5F42] font-medium hover:underline"
-                    >
-                      View full treatment plan →
-                    </button>
-                  </div>
-                );
-              })}
+          {sonnetResult && sonnetResult.diagnoses.length > 0 && (
+            <DiagnosisPane
+              title="Eden's ranked diagnoses"
+              modelLabel="Sonnet"
+              result={sonnetResult}
+              onOpenDisease={setOpenDisease}
+            />
+          )}
+
+          {/* "Get expert review" button — only when Sonnet was uncertain or
+              top confidence < 70%, AND Opus hasn't been called yet. Escalates
+              to claude-opus-4-6 for a second look. */}
+          {shouldShowExpertReviewCta() && (
+            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <Search className="w-4 h-4 text-purple-700" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-purple-900">Want a second opinion?</p>
+                <p className="text-xs text-purple-800 mt-0.5">
+                  {sonnetResult?.uncertain
+                    ? 'Eden was uncertain. The expert-tier model can take a closer look — it is slower but better at differentiating visually similar diseases.'
+                    : `The top diagnosis is below ${Math.round(EXPERT_REVIEW_CONFIDENCE_THRESHOLD * 100)}% confidence. The expert-tier model can re-examine the photo with more rigour.`}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleExpertReview}
+                  disabled={reviewing || profile?.subscription_tier === 'free'}
+                  className="mt-2 px-3 py-1.5 text-xs font-medium bg-purple-700 text-white rounded-lg hover:bg-purple-800 disabled:opacity-60 inline-flex items-center gap-1.5"
+                  title={profile?.subscription_tier === 'free' ? 'Expert review requires the Grower plan' : ''}
+                >
+                  <Search className="w-3 h-3" />
+                  {reviewing ? 'Asking expert model…' : 'Get expert review'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {opusResult && opusResult.diagnoses.length > 0 && (
+            <DiagnosisPane
+              title="Expert review (Opus)"
+              modelLabel="Opus"
+              accent="purple"
+              result={opusResult}
+              onOpenDisease={setOpenDisease}
+            />
+          )}
+
+          {opusResult && opusResult.diagnoses.length === 0 && opusResult.uncertain && (
+            <div className="bg-purple-50 border border-purple-200 text-purple-900 text-xs p-3 rounded-lg">
+              The expert model was also uncertain. Browse the disease library below for likely candidates and consult a fish-health professional before treating.
             </div>
           )}
         </div>
@@ -455,6 +568,62 @@ export function FishHealthPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DiagnosisPane({
+  title,
+  modelLabel,
+  result,
+  onOpenDisease,
+  accent,
+}: {
+  title: string;
+  modelLabel: string;
+  result: DiagnosisResponse;
+  onOpenDisease: (d: FishDisease) => void;
+  accent?: 'purple';
+}) {
+  const headerClass = accent === 'purple' ? 'text-purple-700' : 'text-gray-700';
+  const cardClass =
+    accent === 'purple'
+      ? 'bg-white border border-purple-200 rounded-2xl p-4'
+      : 'bg-white border border-gray-200 rounded-2xl p-4';
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <h2 className={`text-sm font-semibold ${headerClass}`}>{title}</h2>
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono uppercase tracking-wide">
+          {modelLabel}
+        </span>
+      </div>
+      {result.diagnoses.map((d, i) => {
+        const disease = FISH_DISEASES.find(x => x.id === d.diseaseId);
+        if (!disease) return null;
+        return (
+          <div key={`${modelLabel}-${d.diseaseId}`} className={cardClass}>
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-gray-400">#{i + 1}</span>
+                <h3 className="font-semibold text-gray-900">{disease.name}</h3>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide ${SEVERITY_COLOR[disease.severity]}`}>
+                  {disease.severity}
+                </span>
+              </div>
+              <span className="text-xs font-mono text-gray-600">{Math.round(d.confidence * 100)}%</span>
+            </div>
+            <p className="text-xs text-gray-700 italic mb-2">{d.reasoning}</p>
+            <button
+              type="button"
+              onClick={() => onOpenDisease(disease)}
+              className="text-xs text-[#3D5F42] font-medium hover:underline"
+            >
+              View full treatment plan →
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }
