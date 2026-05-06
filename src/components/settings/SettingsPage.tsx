@@ -15,6 +15,7 @@ import { FarmLocationSettings } from './FarmLocationSettings';
 import { TeamContactsSettings } from './TeamContactsSettings';
 import { FlockTargetsSettings } from './FlockTargetsSettings';
 import { DailyReportSettings } from './DailyReportSettings';
+import { WhatsAppDailyReportSettings } from './WhatsAppDailyReportSettings';
 import { ReferralSection } from './ReferralSection';
 import { FarmJoinCodeSection } from './FarmJoinCodeSection';
 import { AIPermissionsSection } from './AIPermissionsSection';
@@ -660,9 +661,14 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             </div>
           )}
 
+          {/* WhatsApp daily report — available to any farm member because each
+              user opts in with their OWN phone number. The sub-row is RLS-
+              scoped to the user, so a manager can't enrol someone else. */}
+          <WhatsAppDailyReportSettings />
+
           {!isOwner && (
             <div className="p-8 text-center text-gray-400 text-sm">
-              Team settings are only available to farm owners.
+              Other team settings are only available to farm owners.
             </div>
           )}
         </div>
