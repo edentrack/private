@@ -2,18 +2,34 @@ name: CI
 
 # Gate every PR on typecheck + tests + build.
 #
-# Note on TypeScript: the codebase has 358 pre-existing errors in
-# pdfGenerator/predictiveAnalytics/reportGenerator/weightAnalysis (tracked
-# separately). We DO NOT fail on absolute count — instead we compare PR
-# branch error count against `main`'s and fail only if the PR introduces
-# new errors. Once the backlog is paid down, switch to `tsc --noEmit`
-# directly with no count comparison.
+# TypeScript gates (in order of strictness):
+#
+# 1. CRITICAL-PATH ZERO-ERROR GATE (hardest)
+#    Files in src/utils/(pdfGenerator|reportGenerator|creditworthinessPDF)
+#    and src/components/(expenses|sales|payroll)/ MUST have ZERO TS errors,
+#    no exceptions, regardless of total budget. Real bugs in financial
+#    code paths are unacceptable.
+#
+# 2. TOTAL BUDGET GATE (medium)
+#    The whole codebase has a hard budget of TS_BUDGET errors. The
+#    intent is to ratchet this down over time as cleanup PRs land.
+#    Bumping the number requires a Brief #4-style cleanup PR.
+#
+# 3. NO-NEW-ERRORS GATE (softest, kept for back-compat)
+#    PR branch error count must be ≤ main's. Catches drift between
+#    cleanup PRs.
 
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
+
+env:
+  # Total TS error budget — the cap below which the whole codebase must
+  # stay. Set to current baseline + small headroom; bump down when a
+  # cleanup PR lands.
+  TS_BUDGET: '180'
 
 jobs:
   test:
@@ -87,3 +103,50 @@ jobs:
             exit 1
           fi
           echo "OK — PR errors ($PR) ≤ main errors ($MAIN)"
+
+  typecheck-budget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Total error budget gate
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.app.json 2>&1 | tee /tmp/tsc.log > /dev/null
+          COUNT=$(grep -cE "^src/.*: error TS" /tmp/tsc.log || echo 0)
+          echo "Total TS errors: $COUNT (budget: $TS_BUDGET)"
+          if [ "$COUNT" -gt "$TS_BUDGET" ]; then
+            echo "::error::TS error count $COUNT exceeds budget of $TS_BUDGET. Reduce errors before merging or, with reviewer approval, raise TS_BUDGET in .github/workflows/ci.yml after a Brief #4-style cleanup PR."
+            exit 1
+          fi
+          echo "OK — within budget."
+
+  typecheck-critical-path:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Critical-path zero-error gate
+        # Files in financial-report path (pdfGenerator/reportGenerator/
+        # creditworthinessPDF) and money-handling components (expenses/
+        # sales/payroll/) MUST have zero TS errors. No tolerance.
+        run: |
+          set +e
+          npx tsc --noEmit -p tsconfig.app.json 2>&1 | tee /tmp/tsc.log > /dev/null
+          CRIT=$(grep -E "^src/(utils/(pdfGenerator|reportGenerator|creditworthinessPDF)\.ts|components/(expenses|sales|payroll)/)" /tmp/tsc.log | grep -c "error TS" || echo 0)
+          if [ "$CRIT" -gt 0 ]; then
+            echo "::error::$CRIT TS error(s) in critical-path files. The financial-report code path must stay at zero TS errors."
+            grep -E "^src/(utils/(pdfGenerator|reportGenerator|creditworthinessPDF)\.ts|components/(expenses|sales|payroll)/)" /tmp/tsc.log | grep "error TS" | head -20
+            exit 1
+          fi
+          echo "OK — critical path has zero TS errors."
