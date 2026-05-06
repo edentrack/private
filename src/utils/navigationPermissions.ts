@@ -40,6 +40,7 @@ export type ModuleName =
   | 'breeding-events'
   | 'litters'
   | 'rabbit-registry'
+  | 'reports'
   | 'cooperatives'
   | 'credit-score'
   | 'pond-planner';
@@ -128,6 +129,7 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
     case 'cooperatives':
     case 'pond-planner':
       return { visible: true };
@@ -190,6 +192,7 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
     case 'pond-planner':
       return { visible: true };
 
@@ -265,6 +268,7 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
+    case 'reports':
     case 'cooperatives':
     case 'credit-score':
     case 'pond-planner':

@@ -22,7 +22,7 @@ export function getNavigationGroups(
     {
       id: 'analytics',
       label: 'ANALYTICS',
-      items: items.filter(item => ['insights'].includes(item.id)),
+      items: items.filter(item => ['insights', 'reports'].includes(item.id)),
     },
     {
       id: 'health',
