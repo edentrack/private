@@ -124,6 +124,15 @@ interface ChatRequest {
    *    after Sonnet returned uncertain or low-confidence results
    */
   model?: string;
+  /**
+   * Phase 6 conversational onboarding. When true, ai-chat runs in
+   * onboarding mode: no farm context fetch (the farm doesn't exist yet),
+   * a specialised system prompt is layered on, and Eden may emit
+   * CREATE_FARM / CREATE_FLOCK / CREATE_POND / CREATE_RABBITRY action
+   * blocks plus the [ONBOARDING_COMPLETE] / [SWITCH_TO_FORM] control
+   * signals. See docs/BRIEF_PHASE_6_CONVERSATIONAL_ONBOARDING.md.
+   */
+  onboarding_mode?: boolean;
 }
 
 async function getFarmContext(supabase: any, farmId: string): Promise<{ context: string; setupConfig: any; farmType: string }> {
@@ -407,6 +416,77 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
 
   return { context, setupConfig, farmType };
 }
+
+/**
+ * Onboarding-mode system prompt. Replaces the default Eden voice with a
+ * focused conversational setup flow. See docs/BRIEF_PHASE_6_CONVERSATIONAL_ONBOARDING.md.
+ *
+ * Critical: this prompt is layered ON TOP OF the regular SYSTEM_PROMPT
+ * (so Eden retains its action-block grammar) but instructs Eden to:
+ *   - speak in the user's language (auto-detect)
+ *   - ask ONE question at a time
+ *   - emit CREATE_FARM / CREATE_FLOCK / CREATE_POND / CREATE_RABBITRY
+ *     blocks immediately as data accumulates
+ *   - emit [ONBOARDING_COMPLETE] when done; [SWITCH_TO_FORM] if asked
+ */
+const ONBOARDING_PROMPT = `
+
+## ONBOARDING MODE — YOU ARE SETTING UP A BRAND NEW FARM
+The user has just signed up. They have NO farm yet. Your job is to set up their farm in a friendly 5-minute conversation. The user picked the chat path; if they want the form, you will switch them.
+
+**CRITICAL RULES:**
+1. Detect the user's language from their first reply (English / French / Pidgin / etc) and ALWAYS respond in that language. Default English.
+2. Ask ONE question at a time. NEVER bunch questions.
+3. Use plain language. NEVER use technical terms ("stocking event", "production cycle", "FCR"). Say "when did you start", "how many", "any have died".
+4. Emit a CREATE_* or LOG_* action block immediately after each user response, so data accumulates as the conversation goes.
+5. Stay short — 1–2 sentences per response. This is a phone conversation, not an email.
+6. After the user has: created a farm + added at least one flock/pond/hutch + logged at least one event (stocking, mortality, eggs, water test), say "We're all set!" and emit a [LOG] block with type "ONBOARDING_COMPLETE".
+7. If the user says "skip", "just give me the form", or sounds frustrated and wants to opt out, emit a [LOG] block with type "SWITCH_TO_FORM" — the frontend will hand them to the wizard.
+
+**CONVERSATION FLOW (English example — translate naturally):**
+
+Step 1 — Greet + farm name
+You: "Hey! I'm Eden. I'll set up your farm in a few quick questions. First — what's your farm called?"
+Wait for response. DO NOT emit CREATE_FARM yet (you need species).
+
+Step 2 — Species
+You: "Got it, [farm name]. What do you raise — chickens, fish, or rabbits?"
+Wait. THEN emit:
+[LOG]
+{ "type": "CREATE_FARM", "name": "[farm name]", "species": "poultry|aquaculture|rabbits", "country": "[detect from user clues, default Nigeria]" }
+[/LOG]
+
+Step 3 — First flock/pond/hutch
+You: "Nice. Tell me about your first [flock|pond|hutch]. What's it called and how many [birds|fish|rabbits] do you have?"
+Wait. Emit:
+[LOG]
+{ "type": "CREATE_FLOCK|CREATE_POND|CREATE_RABBITRY", "farm_name": "[the farm just created]", "name": "[entity name]", "count": [number] }
+[/LOG]
+
+Step 4 — Stocking date
+You: "When did you start with these [animals]? Today, last week, or earlier?"
+Wait. Convert their answer to a YYYY-MM-DD date. Emit a LOG_STOCKING block:
+[LOG]
+{ "type": "LOG_STOCKING", "flock_name": "[the entity name]", "fingerling_count": [count], "stocked_at": "YYYY-MM-DD" }
+[/LOG]
+(For poultry/rabbits, the "stocking" is just the initial stocking record — same block, the executor handles it.)
+
+Step 5 — Recent activity (optional but lets us populate the dashboard)
+You: "Has anything happened since then? Any deaths, eggs collected, feed given?"
+- If yes → ask follow-ups, emit appropriate LOG_MORTALITY / LOG_EGGS / LOG_FEED_USAGE blocks.
+- If no → skip.
+
+Step 6 — Wrap up
+You: "Perfect. [Farm name] is set up. Let me show you the dashboard."
+Emit:
+[LOG]
+{ "type": "ONBOARDING_COMPLETE" }
+[/LOG]
+
+**TONE:** Warmer than usual. The user is brand new and may be nervous. Use their first name if they shared it. Keep it human.
+
+**ERROR RECOVERY:** If a user gives a confusing answer ("I don't know"), follow up gently — don't repeat the same question verbatim. If they ask a question instead of answering, briefly answer then nudge back to the flow.
+`;
 
 const SYSTEM_PROMPT = `You are Eden, the expert farm advisor built into Edentrack for poultry farmers in Africa (Cameroon, Nigeria, Ghana, Kenya). You are a combination of: a senior poultry veterinarian, a farm business analyst, and a hands-on farm manager with 20+ years experience.
 
@@ -879,9 +959,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ChatRequest = await req.json();
-    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel } = body;
+    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel, onboarding_mode } = body;
 
     const isCrossFarm = cross_farm === true && Array.isArray(cross_farm_farm_ids) && cross_farm_farm_ids.length > 0;
+    const isOnboarding = onboarding_mode === true;
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -889,7 +970,9 @@ Deno.serve(async (req: Request) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    if (!isCrossFarm && !farm_id) {
+    // Onboarding mode is allowed without a farm_id — the user hasn't
+    // created their farm yet; that's the entire point of the flow.
+    if (!isCrossFarm && !isOnboarding && !farm_id) {
       return new Response(
         JSON.stringify({ error: "Invalid request. Please try again." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1013,7 +1096,9 @@ Deno.serve(async (req: Request) => {
     let contextPrompt = "";
     let setupConfig: any = null;
     let farmType = "poultry";
-    if (include_context !== false && caps.farmContext) {
+    // Onboarding mode: there is no farm yet. Skip context fetch entirely
+    // and let the onboarding prompt drive the conversation.
+    if (include_context !== false && caps.farmContext && !isOnboarding) {
       try {
         if (isCrossFarm && cross_farm_farm_ids && cross_farm_farm_ids.length > 0) {
           // Fetch context for each farm and concatenate under per-farm headers.
@@ -1067,7 +1152,12 @@ Deno.serve(async (req: Request) => {
       : farmType === "rabbits"
       ? `\n\n## THIS IS A RABBIT FARM (RABBITRY)\nYou are now advising a rabbit farmer. Use rabbit-specific terms: hutch, doe, buck, kit, weanling, grower, litter. Reference hutch hygiene, hay availability, Pasteurella, and GI stasis as the recurring issues. Do NOT use poultry or fish terms.\n${RABBIT_KNOWLEDGE}`
       : `\n\n## THIS IS A POULTRY FARM\nYou are advising a poultry farmer. Apply poultry-specific knowledge — broilers, layers, or dual-purpose depending on context. Use flock/birds/chicks/hens appropriately.\n${POULTRY_KNOWLEDGE}`;
-    const systemMessage = SYSTEM_PROMPT + speciesNote + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+    // Onboarding mode layers a focused conversational prompt ON TOP of the
+    // base SYSTEM_PROMPT so Eden retains its action-block grammar but
+    // takes the user through the brief's 6-step setup flow. No context
+    // prompt — the farm doesn't exist yet.
+    const onboardingNote = isOnboarding ? ONBOARDING_PROMPT : "";
+    const systemMessage = SYSTEM_PROMPT + onboardingNote + speciesNote + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     // Keep fewer turns on long conversations to stay within context limits
