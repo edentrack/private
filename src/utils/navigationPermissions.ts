@@ -35,6 +35,7 @@ export type ModuleName =
   | 'stocking'
   | 'sampling'
   | 'fish-health'
+  | 'pond-inspections'
   | 'rabbit-harvest'
   | 'breeding-events'
   | 'litters'

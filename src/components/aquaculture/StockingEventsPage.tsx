@@ -12,6 +12,13 @@ interface AquaFlock {
   current_count: number;
 }
 
+interface FingerlingSource {
+  id: string;
+  hatchery_name: string;
+  trust_score?: number;
+  avg_survival_pct?: number;
+}
+
 const AQUA_TYPES = ['Catfish', 'Tilapia', 'Clarias', 'Other Fish'];
 
 function formatCurrency(amount: number, code: string) {
@@ -59,11 +66,29 @@ export function StockingEventsPage() {
   const [formTotalCost, setFormTotalCost] = useState('');
   const [formNotes, setFormNotes] = useState('');
 
+  const [knownSources, setKnownSources] = useState<FingerlingSource[]>([]);
+
   useEffect(() => {
     if (!currentFarm?.id) return;
     loadFlocks();
     loadEvents();
+    loadKnownSources();
   }, [currentFarm?.id]);
+
+  const loadKnownSources = async () => {
+    // Phase B Step 25: power the source picker with the fingerling_sources
+    // directory so farmers see "trust score / avg survival" for each
+    // hatchery they've used before. Falls back silently if the migration
+    // hasn't been applied yet (older deployments).
+    const { data, error } = await supabase
+      .from('fingerling_sources')
+      .select('id, hatchery_name, trust_score, avg_survival_pct')
+      .eq('farm_id', currentFarm!.id)
+      .order('hatchery_name');
+    if (!error && data) {
+      setKnownSources(data as FingerlingSource[]);
+    }
+  };
 
   const loadFlocks = async () => {
     const { data } = await supabase
@@ -151,13 +176,40 @@ export function StockingEventsPage() {
     const totalCost = computedTotal ?? manualTotal;
 
     setSubmitting(true);
+
+    // Phase B Step 25: upsert the hatchery into fingerling_sources first so
+    // future stocking events can pick it from the datalist + accumulate
+    // trust score over time. Failure is non-fatal — we still write the
+    // stocking event with the legacy free-text `source` field.
+    let fingerling_source_id: string | null = null;
+    const trimmedSource = (formSource || '').trim();
+    if (trimmedSource) {
+      const existing = knownSources.find(
+        s => s.hatchery_name.toLowerCase() === trimmedSource.toLowerCase(),
+      );
+      if (existing) {
+        fingerling_source_id = existing.id;
+      } else {
+        const { data: newSource } = await supabase
+          .from('fingerling_sources')
+          .insert({
+            farm_id: currentFarm!.id,
+            hatchery_name: trimmedSource,
+          })
+          .select('id')
+          .single();
+        if (newSource) fingerling_source_id = (newSource as any).id;
+      }
+    }
+
     const { error: insertError } = await supabase.from('stocking_events').insert({
       farm_id: currentFarm!.id,
       flock_id: formFlockId,
       stocked_at: formDate,
       species: formSpecies,
       fingerling_count: count,
-      source: formSource || null,
+      source: trimmedSource || null,
+      fingerling_source_id,
       cost_per_fingerling: costPer,
       total_cost: totalCost,
       notes: formNotes || null,
@@ -296,15 +348,27 @@ export function StockingEventsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                <Truck className="inline w-3 h-3 mr-1" />Source <span className="text-gray-400 font-normal">optional</span>
+                <Truck className="inline w-3 h-3 mr-1" />Hatchery / Source <span className="text-gray-400 font-normal">optional</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. Hatchery name, supplier"
+                list="fingerling-sources-list"
+                placeholder="Type a name or pick a previous hatchery"
                 value={formSource}
                 onChange={e => setFormSource(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
+              {/* Datalist drives suggestions from previously-used hatcheries
+                  (the fingerling_sources table). Picking a known one wires
+                  the stocking event to that source via fingerling_source_id
+                  on save. */}
+              <datalist id="fingerling-sources-list">
+                {knownSources.map(s => (
+                  <option key={s.id} value={s.hatchery_name}>
+                    {s.avg_survival_pct ? `${s.avg_survival_pct.toFixed(0)}% survival` : 'no history yet'}
+                  </option>
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
