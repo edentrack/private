@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { EdenAvatarAnimated } from './EdenAvatarAnimated';
-import { EdenFarmSelector } from './EdenFarmSelector';
+import { EdenHeader } from './EdenHeader';
 import { EdenEmptyState } from './EdenEmptyState';
 import { EdenLogActionCard } from './EdenLogActionCard';
 import { EdenStructuredResponse, parseStructuredResponse } from './EdenStructuredResponse';
@@ -1806,70 +1806,27 @@ export function AIAssistantPage() {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
-      <div data-tour="ai-header" className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
-        <div className="flex items-center gap-3">
-          <EdenAvatarAnimated size="md" />
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-agri-brown-700">Eden</h1>
-            <p className="text-sm text-gray-500">
-              {farmSpecies.id === 'aquaculture'
-                ? 'Pond health · Water quality · FCR · Diagnostics · Data import'
-                : farmSpecies.id === 'rabbits'
-                ? 'Hutch health · Feed · Growth tracking · Diagnostics · Data import'
-                : 'Farm performance · Flock health · Diagnostics · Data import'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {allFarms && allFarms.length > 0 && (
-              <EdenFarmSelector
-                farms={allFarms}
-                selectedFarmId={crossFarm ? null : currentFarm?.id ?? null}
-                crossFarm={crossFarm}
-                onSelectFarm={(farmId) => {
-                  setCrossFarm(false);
-                  // Picking a specific farm in Eden's chat scope means the
-                  // user is mentally focused on that farm. Sync the global
-                  // tenant so the rest of the app (dashboard, flocks, tasks)
-                  // matches what Eden is talking about — otherwise they end
-                  // up with two farms in their head at once.
-                  // For "All my farms" (onSelectAllFarms) we leave the global
-                  // tenant alone — cross-farm scope is intentionally separate.
-                  if (currentFarm?.id !== farmId) {
-                    const target = allFarms?.find((f) => f.id === farmId);
-                    void switchFarm(farmId);
-                    if (target) {
-                      showToast(`Switched to ${target.name}`, 'success');
-                    }
-                  }
-                }}
-                onSelectAllFarms={() => setCrossFarm(true)}
-              />
-            )}
-            {usageInfo && (
-              <div className={`text-xs px-2 py-1 rounded-full font-medium ${
-                usageInfo.used >= usageInfo.cap
-                  ? 'bg-red-100 text-red-700'
-                  : usageInfo.used >= usageInfo.cap * 0.8
-                  ? 'bg-amber-100 text-amber-700'
-                  : 'bg-gray-100 text-gray-500'
-              }`}>
-                {usageInfo.tier === 'free' ? `${usageInfo.used}/${usageInfo.cap} today` : `${usageInfo.used}/${usageInfo.cap === 99999 ? '∞' : usageInfo.cap} this month`}
-              </div>
-            )}
-            {messages.length > 0 && (
-              <button
-                onClick={async () => {
-                  await persistedChat.clear();
-                  setMessages([]);
-                }}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Clear Chat
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <EdenHeader
+        speciesId={farmSpecies.id}
+        allFarms={allFarms ?? []}
+        currentFarmId={currentFarm?.id ?? null}
+        crossFarm={crossFarm}
+        usageInfo={usageInfo}
+        showClear={messages.length > 0}
+        onClear={async () => {
+          await persistedChat.clear();
+          setMessages([]);
+        }}
+        onSelectFarm={(farmId) => {
+          setCrossFarm(false);
+          if (currentFarm?.id !== farmId) {
+            const target = allFarms?.find((f) => f.id === farmId);
+            void switchFarm(farmId);
+            if (target) showToast(`Switched to ${target.name}`, 'success');
+          }
+        }}
+        onSelectAllFarms={() => setCrossFarm(true)}
+      />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
