@@ -12,6 +12,16 @@
  *   const data = await assembleFarmReport({ farmId, startDate, endDate, supabase });
  *   await downloadFarmReportPDF(data);
  *   await downloadFarmReportCSVs(data);
+ *
+ * PERF NOTE (May 2026): the previous version had an O(N) fanout — for each
+ * flock it issued 6 separate REST calls (mortality, expenses, egg sales,
+ * bird sales, revenue, feed), in addition to 8 farm-wide queries. With 5
+ * flocks that meant 38 round-trips, and browsers throttle concurrent
+ * connections per host (~6), so 30-day reports timed out past 5 minutes.
+ *
+ * The current version fires ONE query per table for the whole farm in
+ * the date window, then buckets-by-flock in memory. That's a fixed 9-10
+ * round-trips regardless of how many flocks the farm has.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -75,127 +85,87 @@ export interface FarmReportData {
   totalBiomassHarvestedKg: number;
 }
 
+/**
+ * Internal helper: bucket rows by `flock_id` and sum a numeric column.
+ * Returns a Map<flockId, total>. Rows missing flock_id (farm-level) are
+ * placed under the 'null' key — callers can ignore that bucket.
+ */
+function sumByFlockId<T extends { flock_id?: string | null }>(
+  rows: T[] | null | undefined,
+  pickAmount: (row: T) => number,
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const r of rows || []) {
+    const k = r.flock_id || '';
+    if (!k) continue;
+    out.set(k, (out.get(k) || 0) + (Number(pickAmount(r)) || 0));
+  }
+  return out;
+}
+
 export async function assembleFarmReport(input: FarmReportInput): Promise<FarmReportData> {
   const { farmId, startDate, endDate, supabase } = input;
 
-  // Header from the farms table
-  const { data: farmData } = await supabase
-    .from('farms')
-    .select('name, farm_type, country, currency_code')
-    .eq('id', farmId)
-    .single();
+  // PHASE 1: header + flock list. Both are cheap; do them in parallel.
+  const [farmResp, flocksResp] = await Promise.all([
+    supabase
+      .from('farms')
+      .select('name, farm_type, country, currency_code')
+      .eq('id', farmId)
+      .single(),
+    supabase
+      .from('flocks')
+      .select('id, name, type, initial_count, current_count, arrival_date, status')
+      .eq('farm_id', farmId),
+  ]);
+  const farmData = farmResp.data;
+  const allFlocks = (flocksResp.data || []) as any[];
 
-  // Flocks (active + archived in window)
-  const { data: flocks } = await supabase
-    .from('flocks')
-    .select('id, name, type, initial_count, current_count, arrival_date, status')
-    .eq('farm_id', farmId);
-  const allFlocks = (flocks || []) as any[];
+  // PHASE 2: every event-table query, fired once for the whole farm.
+  // Each query carries `flock_id` so we can bucket per-flock in memory
+  // without a second round-trip. `harvest_records` is wrapped because
+  // poultry/rabbits farms don't have the table populated; we don't want
+  // a single missing aquaculture table to fail the whole report.
+  const harvestPromise = supabase
+    .from('harvest_records')
+    .select('biomass_kg')
+    .eq('farm_id', farmId)
+    .gte('harvest_date', startDate)
+    .lte('harvest_date', endDate)
+    .then(r => r, () => ({ data: null }));
 
-  // Per-flock KPIs run in parallel
-  const flockSummaries = await Promise.all(
-    allFlocks.map(async (f): Promise<FarmReportFlockSummary> => {
-      const [mortalityRes, expRes, eggSalesRes, birdSalesRes, revenueRes, feedRes] = await Promise.all([
-        supabase
-          .from('mortality_logs')
-          .select('count')
-          .eq('farm_id', farmId)
-          .eq('flock_id', f.id)
-          .gte('event_date', startDate)
-          .lte('event_date', endDate),
-        supabase
-          .from('expenses')
-          .select('amount')
-          .eq('farm_id', farmId)
-          .eq('flock_id', f.id)
-          .gte('incurred_on', startDate)
-          .lte('incurred_on', endDate),
-        supabase
-          .from('egg_sales')
-          .select('total_amount')
-          .eq('farm_id', farmId)
-          .eq('flock_id', f.id)
-          .gte('sale_date', startDate)
-          .lte('sale_date', endDate),
-        supabase
-          .from('bird_sales')
-          .select('total_amount')
-          .eq('farm_id', farmId)
-          .eq('flock_id', f.id)
-          .gte('sale_date', startDate)
-          .lte('sale_date', endDate),
-        supabase
-          .from('revenues')
-          .select('amount')
-          .eq('farm_id', farmId)
-          .eq('flock_id', f.id)
-          .gte('revenue_date', startDate)
-          .lte('revenue_date', endDate),
-        supabase
-          .from('feed_givings')
-          .select('quantity_given')
-          .eq('farm_id', farmId)
-          .eq('flock_id', f.id)
-          .gte('given_at', `${startDate}T00:00:00`)
-          .lte('given_at', `${endDate}T23:59:59`),
-      ]);
-
-      const mortalityCount = (mortalityRes.data || []).reduce((s, r: any) => s + (r.count || 0), 0);
-      const expensesTotal = (expRes.data || []).reduce((s, r: any) => s + Number(r.amount || 0), 0);
-      const revenueTotal =
-        (eggSalesRes.data || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0) +
-        (birdSalesRes.data || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0) +
-        (revenueRes.data || []).reduce((s, r: any) => s + Number(r.amount || 0), 0);
-      const feedKgUsed = (feedRes.data || []).reduce((s, r: any) => s + Number(r.quantity_given || 0), 0);
-
-      const ageMs = Date.now() - new Date(f.arrival_date).getTime();
-      const ageWeeks = Math.max(0, Math.floor(ageMs / (7 * 86_400_000)));
-      const initialCount = Number(f.initial_count) || 0;
-      const survivalRate = initialCount > 0
-        ? Math.max(0, Math.min(100, ((initialCount - mortalityCount) / initialCount) * 100))
-        : 0;
-
-      return {
-        id: f.id,
-        name: f.name,
-        type: f.type,
-        initialCount,
-        currentCount: Number(f.current_count) || 0,
-        arrivalDate: f.arrival_date,
-        ageWeeks,
-        mortalityCount,
-        survivalRate,
-        feedKgUsed,
-        expensesTotal,
-        revenueTotal,
-        netProfit: revenueTotal - expensesTotal,
-      };
-    }),
-  );
-
-  // Top-level expenses + revenue + categories
-  const [expensesRes, revenuesRes, eggSalesRes, birdSalesRes, mortalityRes, vaccinationsRes, feedRes, eggCollRes] = await Promise.all([
+  const [
+    expensesRes,
+    revenuesRes,
+    eggSalesRes,
+    birdSalesRes,
+    mortalityRes,
+    vaccinationsRes,
+    feedRes,
+    eggCollRes,
+    harvestRes,
+  ] = await Promise.all([
     supabase
       .from('expenses')
-      .select('amount, category')
+      .select('amount, category, flock_id')
       .eq('farm_id', farmId)
       .gte('incurred_on', startDate)
       .lte('incurred_on', endDate),
     supabase
       .from('revenues')
-      .select('amount, source_type')
+      .select('amount, source_type, flock_id')
       .eq('farm_id', farmId)
       .gte('revenue_date', startDate)
       .lte('revenue_date', endDate),
     supabase
       .from('egg_sales')
-      .select('total_amount, total_eggs')
+      .select('total_amount, total_eggs, flock_id')
       .eq('farm_id', farmId)
       .gte('sale_date', startDate)
       .lte('sale_date', endDate),
     supabase
       .from('bird_sales')
-      .select('total_amount')
+      .select('total_amount, flock_id')
       .eq('farm_id', farmId)
       .gte('sale_date', startDate)
       .lte('sale_date', endDate),
@@ -215,7 +185,7 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
       .lte('administered_date', endDate),
     supabase
       .from('feed_givings')
-      .select('quantity_given, feed_type_id')
+      .select('quantity_given, feed_type_id, flock_id')
       .eq('farm_id', farmId)
       .gte('given_at', `${startDate}T00:00:00`)
       .lte('given_at', `${endDate}T23:59:59`),
@@ -225,8 +195,52 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
       .eq('farm_id', farmId)
       .gte('collected_on', startDate)
       .lte('collected_on', endDate),
+    harvestPromise,
   ]);
 
+  // PHASE 3: bucket-by-flock so the per-flock summary doesn't need its own
+  // round-trips.
+  const expensesByFlock = sumByFlockId<any>(expensesRes.data, r => r.amount);
+  const revenuesByFlock = sumByFlockId<any>(revenuesRes.data, r => r.amount);
+  const eggSalesByFlock = sumByFlockId<any>(eggSalesRes.data, r => r.total_amount);
+  const birdSalesByFlock = sumByFlockId<any>(birdSalesRes.data, r => r.total_amount);
+  const feedByFlock = sumByFlockId<any>(feedRes.data, r => r.quantity_given);
+  const mortalityByFlock = sumByFlockId<any>(mortalityRes.data, r => r.count);
+
+  const flockSummaries: FarmReportFlockSummary[] = allFlocks.map(f => {
+    const mortalityCount = mortalityByFlock.get(f.id) || 0;
+    const expensesTotal = expensesByFlock.get(f.id) || 0;
+    const revenueTotal =
+      (eggSalesByFlock.get(f.id) || 0) +
+      (birdSalesByFlock.get(f.id) || 0) +
+      (revenuesByFlock.get(f.id) || 0);
+    const feedKgUsed = feedByFlock.get(f.id) || 0;
+
+    const ageMs = Date.now() - new Date(f.arrival_date).getTime();
+    const ageWeeks = Math.max(0, Math.floor(ageMs / (7 * 86_400_000)));
+    const initialCount = Number(f.initial_count) || 0;
+    const survivalRate = initialCount > 0
+      ? Math.max(0, Math.min(100, ((initialCount - mortalityCount) / initialCount) * 100))
+      : 0;
+
+    return {
+      id: f.id,
+      name: f.name,
+      type: f.type,
+      initialCount,
+      currentCount: Number(f.current_count) || 0,
+      arrivalDate: f.arrival_date,
+      ageWeeks,
+      mortalityCount,
+      survivalRate,
+      feedKgUsed,
+      expensesTotal,
+      revenueTotal,
+      netProfit: revenueTotal - expensesTotal,
+    };
+  });
+
+  // PHASE 4: top-level totals + category aggregations.
   const totalExpenses = (expensesRes.data || []).reduce((s, r: any) => s + Number(r.amount || 0), 0);
   const totalEggSales = (eggSalesRes.data || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
   const totalBirdSales = (birdSalesRes.data || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
@@ -234,7 +248,6 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
   const totalRevenue = totalEggSales + totalBirdSales + totalOtherRevenue;
   const netProfit = totalRevenue - totalExpenses;
 
-  // Aggregate by category / source
   const expensesByCategoryMap = new Map<string, number>();
   for (const e of expensesRes.data || []) {
     const cat = (e as any).category || 'other';
@@ -252,13 +265,13 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
     .map(r => ({ ...r, percent: totalRevenue > 0 ? (r.amount / totalRevenue) * 100 : 0 }))
     .filter(r => r.amount > 0);
 
-  // Mortality events with flock name lookup
+  // Mortality + vaccination events, with flock-name lookup.
   const flockNameById = new Map(allFlocks.map(f => [f.id, f.name]));
   const mortalityEvents = (mortalityRes.data || []).map((m: any) => ({
     flockName: flockNameById.get(m.flock_id) || 'Unknown',
     date: m.event_date,
     count: Number(m.count) || 0,
-    cause: m.cause || '—',
+    cause: m.cause || '-',
   }));
 
   const vaccinations = (vaccinationsRes.data || []).map((v: any) => ({
@@ -275,22 +288,15 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
     .filter(f => f.status === 'active')
     .reduce((s, f) => s + (Number(f.current_count) || 0), 0);
 
-  // Aquaculture biomass — read from harvest_records when available
-  let totalBiomassHarvestedKg = 0;
-  try {
-    const { data: harvestRows } = await supabase
-      .from('harvest_records')
-      .select('biomass_kg')
-      .eq('farm_id', farmId)
-      .gte('harvest_date', startDate)
-      .lte('harvest_date', endDate);
-    totalBiomassHarvestedKg = (harvestRows || []).reduce((s, r: any) => s + Number(r.biomass_kg || 0), 0);
-  } catch { /* table may not exist; safe to skip */ }
+  const totalBiomassHarvestedKg = ((harvestRes as any)?.data || []).reduce(
+    (s: number, r: any) => s + Number(r.biomass_kg || 0),
+    0,
+  );
 
   return {
     farmName: (farmData as any)?.name || 'Farm',
     farmType: (farmData as any)?.farm_type || 'poultry',
-    country: (farmData as any)?.country || '—',
+    country: (farmData as any)?.country || '-',
     currency: (farmData as any)?.currency_code || 'XAF',
     startDate,
     endDate,
@@ -308,7 +314,7 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
     vaccinations,
     mortalityEvents,
     totalFeedKg,
-    feedByType: [], // future — would need join to feed_types names
+    feedByType: [], // future: would need a join to feed_types names
     totalEggsCollected,
     totalEggsSold,
     totalBiomassHarvestedKg,
