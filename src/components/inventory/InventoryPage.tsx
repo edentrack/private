@@ -312,8 +312,7 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
           id,
           quantity,
           updated_at,
-          created_at,
-          feed_type:feed_types(id, name, unit)
+          feed_type:feed_types(id, name, unit, created_at)
         `)
         .eq('farm_id', currentFarm.id)
         .order('feed_type(name)');
@@ -329,7 +328,7 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
               current_stock_bags: Number(row.quantity) || 0,
               unit: (ft.unit as string) || 'bags',
               last_updated: (row.updated_at as string | null) ?? null,
-              created_at: (row.created_at as string | null) ?? null,
+              created_at: ((ft as any).created_at as string | null) ?? (row.updated_at as string | null) ?? null,
             } as FeedItem;
           })
           .filter((f): f is FeedItem => f !== null);
