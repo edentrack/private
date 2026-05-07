@@ -16,12 +16,23 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
   const { t } = useTranslation();
   const { user, profile, currentFarm } = useAuth();
   const isAquaculture = (currentFarm as any)?.farm_type === 'aquaculture';
+  const isRabbitry = (currentFarm as any)?.farm_type === 'rabbits';
   const [arrivalDate, setArrivalDate] = useState(flock.arrival_date);
   const [initialCount, setInitialCount] = useState(flock.initial_count);
   const [purchasePricePerBird, setPurchasePricePerBird] = useState(flock.purchase_price_per_bird?.toString() || '');
   const [purchaseTransportCost, setPurchaseTransportCost] = useState(flock.purchase_transport_cost?.toString() || '');
+  // BUG-010 fix: species/type was previously locked at creation. Now editable.
+  const [type, setType] = useState<string>(flock.type || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // The set of valid types depends on the farm species. Keep these in sync
+  // with the CreateFlockModal options so existing data stays consistent.
+  const typeOptions: string[] = isAquaculture
+    ? ['Tilapia', 'Catfish', 'Salmon', 'Trout', 'Carp', 'Shrimp', 'Other']
+    : isRabbitry
+    ? ['Meat Rabbit', 'Breeder Rabbit', 'Other']
+    : ['Broiler', 'Layer', 'Cockerel', 'Turkey', 'Duck', 'Other'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +50,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
           initial_count: initialCount,
           purchase_price_per_bird: purchasePriceNum,
           purchase_transport_cost: transportCostNum,
+          type: type || flock.type,
         })
         .eq('id', flock.id);
 
@@ -93,6 +105,30 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
             </div>
 
             <div className="space-y-4">
+              <div>
+                <label htmlFor="flockType" className="block text-sm font-medium text-gray-700 mb-2">
+                  {isAquaculture ? 'Fish type' : isRabbitry ? 'Rabbit type' : 'Bird type'}
+                </label>
+                <select
+                  id="flockType"
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all text-sm"
+                >
+                  {!typeOptions.includes(flock.type || '') && flock.type && (
+                    <option value={flock.type}>{flock.type}</option>
+                  )}
+                  {typeOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Fixes the wrong-species-at-onboarding case (e.g. tilapia farms created as catfish).
+                </p>
+              </div>
+
               <div>
                 <label htmlFor="arrivalDate" className="block text-sm font-medium text-gray-700 mb-2">
                   {isAquaculture ? 'Stocking Date' : 'Arrival Date'}

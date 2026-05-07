@@ -126,6 +126,22 @@ export function MyFarmsSection() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
                     placeholder="Location (optional)"
                   />
+                  {/*
+                    BUG-029 transparency: species is locked at the farm level
+                    because the data model branches on it (flocks vs ponds vs
+                    rabbitries, different inventory categories, different
+                    health surfaces). If the farm was created with the wrong
+                    species, the right move is delete + recreate. The
+                    individual flock/pond's *type* is editable separately
+                    (see EditFlockModal) — that handles the much more common
+                    "tilapia farm got created with type Catfish" case.
+                  */}
+                  <p className="text-[11px] text-gray-500 italic px-1">
+                    Species ({farm.farm_type}) is locked. To change species,
+                    delete this farm and create a new one — or edit individual
+                    flocks/ponds via their pencil icon to fix wrong fish/bird
+                    type.
+                  </p>
                   <div className="flex gap-2">
                     <button onClick={() => setEditingId(null)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50">
                       <X className="w-3 h-3" /> Cancel

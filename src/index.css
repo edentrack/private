@@ -181,37 +181,53 @@
   /* ---------------------------------------------------------------------
    * Crisp launcher overrides
    *
-   * Crisp's launcher button is a fixed-position iframe outside our React
-   * tree. We can't restyle the iframe internals (they're in a separate
-   * document) but we CAN style the iframe element + its container to:
-   *   - sit in the right spot (avoid overlapping bottom-nav on mobile)
-   *   - take a friendlier rounded-square shape via mask
-   *   - drop a subtle yellow halo so it matches the brand without us
-   *     having to repaint the launcher pixels themselves
+   * Crisp's launcher is rendered as an iframe in a wrapper div. We can't
+   * style the inside of the iframe (different document) but we CAN style
+   * the wrapper, position it, and drop a halo behind it.
    *
    * The launcher's actual fill colour is set in the Crisp dashboard at
-   * https://app.crisp.chat — change "Theme color" there to #ffdd00 once
-   * and every visitor sees the brand colour. We style the surrounding
-   * iframe here so it feels like part of EdenTrack.
+   * https://app.crisp.chat — Settings → Website → Theme color. Set it to
+   * #ffdd00 once and every visitor sees the brand yellow. We can't change
+   * that fill from CSS.
    * ----------------------------------------------------------------- */
-  .crisp-client .cc-1brb1 .cc-7doi[data-position-reverse="false"] {
-    /* Anchor in the bottom-right with breathing room from the nav bar */
-    bottom: 90px !important;
-    right: 16px !important;
+
+  /* Lift the launcher above the mobile bottom nav (~64-72px tall). */
+  .crisp-client {
+    --crisp-launcher-bottom: 90px;
   }
-  /* Newer Crisp markup (iframe-based launcher) */
-  iframe[name^="crisp-"][title*="Chat" i],
-  iframe[id^="crisp-chatbox"] {
-    /* Subtle yellow halo so the bubble feels like it belongs here */
-    box-shadow: 0 6px 18px rgba(255, 221, 0, 0.30) !important;
-    border-radius: 18px !important;
-  }
-  /* Mobile: keep the launcher above the bottom nav */
   @media (max-width: 640px) {
-    iframe[name^="crisp-"][title*="Chat" i],
-    iframe[id^="crisp-chatbox"] {
-      bottom: 78px !important;
+    .crisp-client {
+      --crisp-launcher-bottom: 78px;
     }
+  }
+
+  /* All known Crisp launcher containers across markup versions. The yellow
+     halo is rendered by `filter: drop-shadow` because the launcher iframe
+     ignores `box-shadow` rendered by the host page on some browsers — we
+     paint the shadow on the wrapper element instead, which sits behind the
+     iframe and gives the bubble a matching glow. */
+  .crisp-client .cc-1brb1,
+  .crisp-client .cc-1brb1 .cc-1m606,
+  .crisp-client .cc-1brb1 .cc-1m606 .cc-7doi,
+  .crisp-client .cc-kxkl,
+  .crisp-client .cc-1ada,
+  #crisp-chatbox > div > a,
+  #crisp-chatbox > div {
+    bottom: var(--crisp-launcher-bottom, 90px) !important;
+    right: 16px !important;
+    filter: drop-shadow(0 0 0 rgba(255, 221, 0, 0.0))
+            drop-shadow(0 8px 22px rgba(255, 221, 0, 0.55)) !important;
+  }
+
+  /* The launcher iframe itself. Some Crisp builds expose this directly. */
+  iframe[id^="crisp-chatbox"],
+  iframe[name^="crisp-chatbox"],
+  iframe[title*="Crisp" i],
+  iframe[title*="chat" i][src*="crisp.chat"] {
+    bottom: var(--crisp-launcher-bottom, 90px) !important;
+    box-shadow: 0 0 0 4px rgba(255, 221, 0, 0.55),
+                0 12px 28px rgba(255, 221, 0, 0.35) !important;
+    border-radius: 50% !important;
   }
 
   .badge-outline {

@@ -77,7 +77,7 @@ function fallbackChipsForSpecies(farmType: string): ChipsResponse["chips"] {
 async function fetchLightContext(supabase: any, farmId: string) {
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10);
   const [farmRes, flockRes, mortRes, salesRes, expRes, taskRes] = await Promise.all([
-    supabase.from("farms").select("name, farm_type, location").eq("id", farmId).single(),
+    supabase.from("farms").select("name, farm_type, location, currency, currency_code").eq("id", farmId).single(),
     supabase
       .from("flocks")
       .select("id, name, type, current_count, status, start_date")
@@ -133,11 +133,17 @@ function buildPrompt(ctx: Awaited<ReturnType<typeof fetchLightContext>>, ownerFi
     (t: any) => t.status === "overdue" || (t.due_date && new Date(t.due_date) < new Date())
   ).length;
 
+  // BUG-021: chips were defaulting to "$219.5K expenses" even when the farm
+  // currency was CFA. Pass the farm's currency code through so Haiku doesn't
+  // emit the dollar glyph.
+  const currencyCode = (ctx.farm as any)?.currency_code || (ctx.farm as any)?.currency || "USD";
+
   return `You are Eden, an AI farm advisor. Generate exactly 3 short suggestion chips for ${ownerFirstName}'s empty-state screen.
 
 Farm: ${ctx.farm?.name ?? "(unnamed)"} — ${farmType}
+Currency: ${currencyCode} (always use this exact currency code in any monetary chip — NEVER "$" or "USD" unless that is the farm currency)
 Active units: ${flocksLine}
-Last 7 days: ${mortalitySum} losses, ${revenueSum} revenue, ${expensesSum} expenses
+Last 7 days: ${mortalitySum} losses, ${revenueSum} ${currencyCode} revenue, ${expensesSum} ${currencyCode} expenses
 Pending tasks: ${ctx.pendingTasks.length} (${overdueCount} overdue)
 
 Return ONLY a JSON array of 3 objects with shape { "icon": "<single emoji>", "label": "<≤8 words, ends with ? or imperative>" }. The chips should:

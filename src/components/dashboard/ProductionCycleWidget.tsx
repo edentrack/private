@@ -621,7 +621,10 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
         <div className="mb-3">
           <p className="text-sm font-medium text-gray-700 mb-2">{t('dashboard.key_milestones')}</p>
           <div className="space-y-2">
-            {milestones.slice(0, 4).map((milestone, idx) => (
+            {/* BUG-023 fix: was slice(0, 4) which lopped off the terminal
+                phase. Layer flocks have 5 phases (Chick → Grower → Pullet →
+                Pre-lay → Laying); aquaculture has 5 too. Show them all. */}
+            {milestones.slice(0, 5).map((milestone, idx) => (
               <div
                 key={idx}
                 className={`flex items-center gap-2 text-sm ${

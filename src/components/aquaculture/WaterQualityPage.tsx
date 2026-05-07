@@ -408,6 +408,20 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                         ))}
                       </div>
                     )}
+                    {/* BUG-011: marginal statuses (e.g. NH3 0.35, NO2 0.8)
+                        previously emitted no on-card alert because we only
+                        rendered emergencies. Show them in amber so users see
+                        the warning before it escalates. */}
+                    {wqSummary.marginals.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {wqSummary.marginals.map((msg, i) => (
+                          <p key={`m-${i}`} className="text-xs text-amber-700 flex items-start gap-1">
+                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            {msg}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

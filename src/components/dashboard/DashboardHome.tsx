@@ -539,7 +539,17 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
       <div className="animate-fade-in-up flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-1">
-            {getGreeting()}, {profile?.full_name?.split(' ')[0]}
+            {(() => {
+              // BUG-009: profile?.full_name was sometimes auto-set to the email
+              // prefix during signup, so we'd greet a real "John" with "Good
+              // morning, john_at_example_com". Take the first word, but fall
+              // back to no-name if it looks like a stray local-part.
+              const raw = (profile?.full_name || '').trim();
+              const first = raw.split(/\s+/)[0] || '';
+              const looksLikeEmailLocal = /[._-]/.test(first) && /\d/.test(first);
+              const display = first && !looksLikeEmailLocal ? first : '';
+              return display ? `${getGreeting()}, ${display}` : getGreeting();
+            })()}
           </h1>
           <p className="text-gray-500">{t('dashboard.farm_overview')}</p>
         </div>

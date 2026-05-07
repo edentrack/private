@@ -16,6 +16,7 @@ import { ReceiptsList } from './ReceiptsList';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 type TimePeriod = 'all' | 'year' | 'month' | 'week' | 'day' | 'custom';
 
@@ -48,6 +49,11 @@ export function SalesManagement() {
   const { t } = useTranslation();
   const { profile, currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();
+  const species = useFarmSpecies();
+  // Aquaculture & rabbit farms shouldn't see "Sell Birds" — relabel and
+  // hide the egg-sale tab where it makes no sense.
+  const showEggsTab = species.id === 'poultry';
+  const sellTabLabel = `Sell ${species.animalTermPlural}`;
   const [activeTab, setActiveTab] = useState<'record' | 'history' | 'customers' | 'invoices'>('record');
   const [historySubTab, setHistorySubTab] = useState<'birds' | 'eggs' | 'receipts'>('eggs');
   const [saleType, setSaleType] = useState<'bird' | 'egg'>('bird');
@@ -121,7 +127,10 @@ export function SalesManagement() {
 
       let birdSalesQuery = supabase
         .from('bird_sales')
-        .select('birds_sold, total_amount, flock_id, payment_status, flocks(type)')
+        // BUG-019 fix: customer_name was missing from this select, which made
+        // the Total Customers KPI undercount because the informal-customers
+        // dedupe set on line below couldn't see any bird-sale buyers.
+        .select('birds_sold, total_amount, flock_id, payment_status, customer_name, customer_phone, flocks(type)')
         .eq('farm_id', currentFarm.id);
 
       if (dateRange.start) {
@@ -503,19 +512,21 @@ export function SalesManagement() {
                     }`}
                   >
                     <Bird className="w-4 h-4 inline-block mr-2" />
-                    {t('sales.sell_birds')}
+                    {sellTabLabel}
                   </button>
-                  <button
-                    onClick={() => setSaleType('egg')}
-                    className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors ${
-                      saleType === 'egg'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <Egg className="w-4 h-4 inline-block mr-2" />
-                    {t('sales.sell_eggs')}
-                  </button>
+                  {showEggsTab && (
+                    <button
+                      onClick={() => setSaleType('egg')}
+                      className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors ${
+                        saleType === 'egg'
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <Egg className="w-4 h-4 inline-block mr-2" />
+                      {t('sales.sell_eggs')}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -557,19 +568,21 @@ export function SalesManagement() {
                     }`}
                   >
                     <Bird className="w-4 h-4 inline-block mr-2" />
-                    {t('sales.bird_sales')}
+                    {`${species.animalTermPlural} sales`}
                   </button>
-                  <button
-                    onClick={() => setHistorySubTab('eggs')}
-                    className={`px-4 py-2 font-medium transition-colors ${
-                      historySubTab === 'eggs'
-                        ? 'text-amber-600 border-b-2 border-amber-500'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <Egg className="w-4 h-4 inline-block mr-2" />
-                    {t('sales.egg_sales')}
-                  </button>
+                  {showEggsTab && (
+                    <button
+                      onClick={() => setHistorySubTab('eggs')}
+                      className={`px-4 py-2 font-medium transition-colors ${
+                        historySubTab === 'eggs'
+                          ? 'text-amber-600 border-b-2 border-amber-500'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      <Egg className="w-4 h-4 inline-block mr-2" />
+                      {t('sales.egg_sales')}
+                    </button>
+                  )}
                   <button
                     onClick={() => setHistorySubTab('receipts')}
                     className={`px-4 py-2 font-medium transition-colors ${

@@ -3,6 +3,7 @@ import { FileText, Download, DollarSign, Users, TrendingUp, Calendar, ChevronRig
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { getFlockAgeDays } from '../../utils/flockAge';
 import { Flock, Expense, MortalityLog, EggCollection } from '../../types/database';
 import { useFlockSpecies, useFarmSpecies } from '../../hooks/useSpecies';
 import { pluralize } from '../../utils/pluralize';
@@ -330,9 +331,10 @@ export function InsightsPage() {
     const latestWeight = weightLogs.length > 0 ? weightLogs[0].average_weight : 0;
     const avgWeight = latestWeight || 0;
 
-    const arrivalDate = new Date(selectedFlock.arrival_date || selectedFlock.start_date);
-    const now = new Date();
-    const ageDays = Math.max(1, Math.floor((now.getTime() - arrivalDate.getTime()) / (1000 * 60 * 60 * 24)));
+    // BUG-027 fix: use the shared helper so age_at_arrival_days is honoured.
+    // Without this offset, point-of-lay pullets bought at 18 weeks read as
+    // "Week 1" until they're literally chicks again.
+    const ageDays = Math.max(1, getFlockAgeDays(selectedFlock as any));
     const ageWeeks = Math.max(1, Math.floor(ageDays / 7) + 1);
 
     const initialCount = selectedFlock.initial_count || 0;

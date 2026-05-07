@@ -636,6 +636,7 @@
     "equipment": "Equipment",
     "supplies": "Supplies",
     "add": "Add",
+    "add_new_item_category": "Add",
     "stock": "Stock",
     "last_updated": "Last updated",
     "no_feed_stock": "No feed stock recorded yet",

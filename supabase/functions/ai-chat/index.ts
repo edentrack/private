@@ -1246,6 +1246,25 @@ Deno.serve(async (req: Request) => {
       ? "" // paid tier — no restrictions needed
       : `\n\n## FREE PLAN LIMITS (enforce silently — no lectures)\nThis user is on the FREE plan (10 messages/day). They have full access to their farm data and can:\n- Ask anything about their farm (production, mortality, stock, health)\n- Log eggs collected, mortality, feed usage, weight checks via Eden AI\n- Get disease advice and farm recommendations\n\nThey CANNOT do the following via Eden AI (these require Grower plan):\n- Log egg sales, bird sales, expenses, or purchases → if they ask, say: "Recording [X] requires the **Grower plan**. Upgrade at edentrack.app to unlock financial tracking, unlimited messages, photo diagnosis, and CSV import."\n- Run payroll or pay workers → same upgrade message\n- Bulk CSV import → say "CSV bulk import is a Grower feature. Upgrade at edentrack.app."\n- Photo/image disease diagnosis → already blocked at the API level\n\nNever be preachy or repeat the upgrade pitch more than once per topic. If they ask about a paid feature, explain it warmly once and move on.`;
 
+    // BUG-031 fix: Eden previously told users "no upgrade needed, create a
+    // new rabbits farm" when they were already at the plan's farm cap.
+    // Now we count their owned farms + look up the cap, and inject both into
+    // the prompt so Eden's instructions match what the UI will actually
+    // permit.
+    const FARM_CAP_BY_TIER: Record<string, number> = {
+      free: 1, pro: 2, grower: 2, enterprise: 3, farmboss: 3, industry: 999,
+    };
+    const farmCap = FARM_CAP_BY_TIER[tier] || 1;
+    const { count: ownedFarmCount } = await supabaseClient
+      .from("farms")
+      .select("id", { count: "exact", head: true })
+      .eq("owner_id", ownerIdForTier);
+    const farmsUsed = ownedFarmCount ?? 0;
+    const atFarmCap = farmsUsed >= farmCap;
+    const farmCapNote = `\n\n## PLAN FARM CAP (current state — read this before suggesting "create a new farm")\nThis user owns **${farmsUsed} of ${farmCap}** farms allowed on the **${tier}** plan.\n${atFarmCap
+      ? `They are AT THE LIMIT. If they ask about adding another species (e.g. "I want to add rabbits"), do NOT say "create a new farm" without first acknowledging the cap. Tell them they need to: (a) upgrade to a higher plan, (b) delete one of their existing empty farms, or (c) reuse an existing farm if compatible. Only after that should you walk through the species setup.`
+      : `They have ${farmCap - farmsUsed} farm slot${(farmCap - farmsUsed) === 1 ? "" : "s"} available. They CAN create a new farm directly via Settings → My Farms → Add a new farm.`}`;
+
     // First-message greeting instruction injected when context is available
     const greetingNote = contextPrompt && !contextPrompt.includes("No flocks recorded")
       ? `\n\n## FIRST MESSAGE RULE\nWhen the user sends a greeting (hi, hello, hey, good morning, etc.) and farm data is in context above, NEVER ask setup questions. Instead: greet ${userName ? userName : "the farmer"} by name, give a 2-sentence status of the farm right now (flocks, birds alive, any overdue tasks or low stock alerts), and ask ONE actionable question based on the live data.`
@@ -1280,7 +1299,7 @@ Deno.serve(async (req: Request) => {
     const todayBanner = `\n\n## TODAY'S DATE\nReal-world today is ${todayISO}. Whenever the user says "today", "now", or doesn't specify a date, use ${todayISO}. NEVER guess or default to your training-cutoff date.\n`;
     const systemMessage = isOnboarding
       ? ONBOARDING_SYSTEM_PROMPT + todayBanner
-      : SYSTEM_PROMPT + speciesNote + tierNote + roleNote + greetingNote + todayBanner + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+      : SYSTEM_PROMPT + speciesNote + tierNote + farmCapNote + roleNote + greetingNote + todayBanner + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     // Keep fewer turns on long conversations to stay within context limits

@@ -1079,12 +1079,26 @@ export function AIAssistantPage() {
       if (!targetFarmIdLocal) throw new Error('Could not find the farm to add to');
       const entityName = (logAction.name || logAction.flock_name || '').trim();
       if (!entityName) throw new Error('Name required');
+      // BUG-008 / BUG-033: don't hardcode Catfish — respect what Eden said.
+      // Same fish_type / bird_type fields the onboarding flow uses.
+      const normalizeFish = (s: string): string => {
+        const k = s.toLowerCase();
+        if (k.includes('tilapia')) return 'Tilapia';
+        if (k.includes('catfish') || k.includes('clarias')) return 'Catfish';
+        if (k.includes('salmon')) return 'Salmon';
+        if (k.includes('trout')) return 'Trout';
+        if (k.includes('carp')) return 'Carp';
+        if (k.includes('shrimp') || k.includes('prawn')) return 'Shrimp';
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      };
+      const fishType: string | undefined = (logAction as any).fish_type;
+      const birdType: string | undefined = (logAction as any).bird_type;
       const flockType =
         logAction.type === 'CREATE_POND'
-          ? 'Catfish'
+          ? (fishType ? normalizeFish(fishType) : 'Catfish')
           : logAction.type === 'CREATE_RABBITRY'
           ? 'Rabbitry'
-          : (logAction.current_phase === 'layer' ? 'Layer' : 'Broiler');
+          : (birdType || (logAction.current_phase === 'layer' ? 'Layer' : 'Broiler'));
       const initialCount = Number(logAction.count) || 0;
       const stockedDate = logAction.stocked_date || recordDate;
       const { error: fErr } = await supabase.from('flocks').insert({

@@ -159,6 +159,52 @@ function CrispChat() {
     return () => window.clearInterval(id);
   }, [route]);
 
+  // Yellow-halo painter. CSS alone can't reach into the Crisp iframe and
+  // some Crisp builds put the launcher in a sibling sandbox. We paint a
+  // div *behind* the launcher with the brand yellow halo so it visually
+  // belongs to EdenTrack regardless of what Crisp ships in their iframe.
+  // The Crisp dashboard's "Theme color" still controls the fill — change
+  // it there to #ffdd00 for the full brand match.
+  useEffect(() => {
+    const ensureHalo = () => {
+      const launcher = document.querySelector(
+        'iframe[id^="crisp-chatbox"], iframe[name^="crisp-chatbox"], #crisp-chatbox > div',
+      ) as HTMLElement | null;
+      if (!launcher) return;
+      let halo = document.getElementById('eden-crisp-halo') as HTMLDivElement | null;
+      if (!halo) {
+        halo = document.createElement('div');
+        halo.id = 'eden-crisp-halo';
+        Object.assign(halo.style, {
+          position: 'fixed',
+          width: '74px',
+          height: '74px',
+          borderRadius: '50%',
+          background:
+            'radial-gradient(closest-side, rgba(255,221,0,0.55), rgba(255,221,0,0.18) 65%, rgba(255,221,0,0) 100%)',
+          pointerEvents: 'none',
+          zIndex: '2147483640', // just below Crisp's launcher
+          transition: 'opacity 200ms ease',
+        } as CSSStyleDeclaration);
+        document.body.appendChild(halo);
+      }
+      // Position relative to the launcher every frame so it tracks layout.
+      const r = launcher.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      halo.style.left = `${cx - 37}px`;
+      halo.style.top = `${cy - 37}px`;
+      halo.style.opacity = CRISP_ALLOWED_ROUTES.has(route) ? '1' : '0';
+    };
+    const id = window.setInterval(ensureHalo, 400);
+    ensureHalo();
+    return () => {
+      window.clearInterval(id);
+      const h = document.getElementById('eden-crisp-halo');
+      if (h) h.style.opacity = '0';
+    };
+  }, [route]);
+
   useEffect(() => {
     const crisp = (window as any).$crisp;
     if (!crisp || !profile) return;

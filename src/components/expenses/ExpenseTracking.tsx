@@ -15,6 +15,7 @@ import { canViewInventoryCosts } from '../../utils/permissions';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { parseLocalDate, formatLocalDate, todayLocalISO } from '../../utils/dateUtils';
 // jsPDF + jspdf-autotable are pulled in dynamically inside handleExport so
 // that 'pdf' chunk doesn't load on every Expenses page visit. See Phase 3
 // of CLAUDE_CODE_AUTONOMOUS_ROADMAP.md.
@@ -83,7 +84,7 @@ export function ExpenseTracking() {
   const [category, setCategory] = useState<ExpenseCategory>('other');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(todayLocalISO());
   const [currency, setCurrency] = useState<Currency>('XAF');
   const [selectedExpenseFlock, setSelectedExpenseFlock] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -585,7 +586,7 @@ export function ExpenseTracking() {
     if (period === 'month') start.setDate(start.getDate() - 29);
 
     const filtered = period === 'all' ? expenses : expenses.filter(e => {
-      const d = new Date((e.incurred_on || (e as any).date || '').toString());
+      const d = parseLocalDate((e.incurred_on || (e as any).date || '').toString());
       return d >= start && d <= now;
     });
 
@@ -680,7 +681,7 @@ export function ExpenseTracking() {
       expensesByFlock[flockName].count++;
       expensesByFlock[flockName].total += Number(expense.amount || 0);
       
-      const expenseDate = new Date(expense.incurred_on || expense.date || '');
+      const expenseDate = parseLocalDate(expense.incurred_on || expense.date || '');
       const monthKey = expenseDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
       if (!expensesByMonth[monthKey]) {
         expensesByMonth[monthKey] = { total: 0, expenses: [] };
@@ -705,12 +706,12 @@ export function ExpenseTracking() {
     
     // Find date range
     const sortedExpenses = [...expenses].sort((a, b) => {
-      const dateA = new Date(a.incurred_on || a.date || '').getTime();
-      const dateB = new Date(b.incurred_on || b.date || '').getTime();
+      const dateA = parseLocalDate(a.incurred_on || a.date || '').getTime();
+      const dateB = parseLocalDate(b.incurred_on || b.date || '').getTime();
       return dateA - dateB;
     });
     const firstDate = sortedExpenses.length > 0 
-      ? new Date(sortedExpenses[0].incurred_on || sortedExpenses[0].date || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      ? formatLocalDate(sortedExpenses[0].incurred_on || sortedExpenses[0].date || '')
       : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     // Use current date as end date to show the report period correctly
     const lastDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -864,7 +865,7 @@ export function ExpenseTracking() {
       });
 
       const monthTableData = monthExpenses.map(expense => {
-        const date = new Date(expense.incurred_on || expense.date || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const date = formatLocalDate(expense.incurred_on || expense.date || '', { month: 'short', day: 'numeric' });
         const category = getCategoryLabel(expense.category, t, speciesId);
         const description = (expense.description || '').substring(0, 30) + (expense.description && expense.description.length > 30 ? '...' : '');
         const amount = expense.amount?.toString() || '0';
@@ -1368,7 +1369,7 @@ export function ExpenseTracking() {
                       </span>
                     )}
                     <span className="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">
-                      {new Date(expenseDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {formatLocalDate(expenseDate, { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -1390,7 +1391,7 @@ export function ExpenseTracking() {
                     )}
                     <div className="flex items-center gap-2 text-[10px] text-gray-500">
                       <Calendar className="w-3 h-3" />
-                      {new Date(expenseDate).toLocaleDateString()}
+                      {formatLocalDate(expenseDate, undefined)}
                       {expense.paid_from_profit && (
                         <span className="px-1.5 py-0.5 bg-green-100 rounded text-[9px] font-medium text-green-700">
                           From revenue

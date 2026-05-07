@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { CustomerLookup } from '../customers/CustomerLookup';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface RecordBirdSaleModalProps {
   flock?: Flock | null;
@@ -17,6 +18,11 @@ interface RecordBirdSaleModalProps {
 export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = false }: RecordBirdSaleModalProps) {
   const { t } = useTranslation();
   const { user, currentFarm, profile } = useAuth();
+  // Species-aware terminology — "Birds" on a tilapia pond looks broken.
+  const species = useFarmSpecies();
+  const animalTerm = species.animalTerm;
+  const animalTermPlural = species.animalTermPlural;
+  const animalTermPluralLower = animalTermPlural.toLowerCase();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState(flock?.id || '');
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
@@ -98,12 +104,12 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
     }
 
     if (numBirdsSold <= 0) {
-      setError(t('sales.please_enter_valid_birds'));
+      setError(`Please enter a valid number of ${animalTermPluralLower}`);
       return;
     }
 
     if (numBirdsSold > birdsAvailable) {
-      setError(`Cannot sell more birds than available (${birdsAvailable})`);
+      setError(`Cannot sell more ${animalTermPluralLower} than available (${birdsAvailable})`);
       return;
     }
 
@@ -177,6 +183,21 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
 
       if (insertError) throw insertError;
 
+      // BUG-020 fix: decrement the flock's current_count on every successful
+      // sale. Without this the pond/flock UI keeps reporting the original
+      // headcount forever and harvest readiness goes haywire.
+      if (selectedFlockId && numBirdsSold > 0) {
+        const remaining = Math.max(0, (selectedFlock?.current_count || 0) - numBirdsSold);
+        const { error: countError } = await supabase
+          .from('flocks')
+          .update({ current_count: remaining })
+          .eq('id', selectedFlockId);
+        if (countError) {
+          // Non-fatal — sale was recorded; flag for diagnostics.
+          console.error('Sale recorded but failed to update flock count:', countError);
+        }
+      }
+
       setLastSaleDetails({
         farmName: currentFarm?.name || 'My Farm',
         flockName: selectedFlock?.name,
@@ -208,13 +229,13 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
     if (!lastSaleDetails) return;
 
     const receiptContent = `
-      BIRD SALE RECEIPT
+      ${animalTermPlural.toUpperCase()} SALE RECEIPT
       Farm: ${lastSaleDetails.farmName}
-      ${lastSaleDetails.flockName ? `Flock: ${lastSaleDetails.flockName}` : ''}
+      ${lastSaleDetails.flockName ? `Group: ${lastSaleDetails.flockName}` : ''}
       Date: ${lastSaleDetails.saleDate}
 
-      Birds Sold: ${lastSaleDetails.birdsSold}
-      ${lastSaleDetails.saleMethod === 'per_bird' ? `Price per Bird: ${lastSaleDetails.pricePerBird.toLocaleString()} ${lastSaleDetails.currency}` : ''}
+      ${animalTermPlural} Sold: ${lastSaleDetails.birdsSold}
+      ${lastSaleDetails.saleMethod === 'per_bird' ? `Price per ${animalTerm}: ${lastSaleDetails.pricePerBird.toLocaleString()} ${lastSaleDetails.currency}` : ''}
       ${lastSaleDetails.saleMethod === 'per_kg' ? `Price per Kg: ${lastSaleDetails.pricePerKg?.toLocaleString()} ${lastSaleDetails.currency}\nTotal Weight: ${lastSaleDetails.totalWeightKg} kg` : ''}
       ${lastSaleDetails.saleMethod === 'lump_sum' ? 'Sold as Lump Sum' : ''}
 
@@ -240,7 +261,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
   const handleSendReceipt = () => {
     if (!lastSaleDetails) return;
 
-    const message = `*BIRD SALE RECEIPT*\n\nFarm: ${lastSaleDetails.farmName}\n${lastSaleDetails.flockName ? `Flock: ${lastSaleDetails.flockName}\n` : ''}Date: ${lastSaleDetails.saleDate}\n\nBirds Sold: ${lastSaleDetails.birdsSold}\n${lastSaleDetails.saleMethod === 'per_bird' ? `Price per Bird: ${lastSaleDetails.pricePerBird.toLocaleString()} ${lastSaleDetails.currency}` : ''}${lastSaleDetails.saleMethod === 'per_kg' ? `\nPrice per Kg: ${lastSaleDetails.pricePerKg?.toLocaleString()} ${lastSaleDetails.currency}\nTotal Weight: ${lastSaleDetails.totalWeightKg} kg` : ''}${lastSaleDetails.saleMethod === 'lump_sum' ? '\nSold as Lump Sum' : ''}\n\nTotal Amount: ${lastSaleDetails.totalAmount.toLocaleString()} ${lastSaleDetails.currency}\nPayment Status: ${lastSaleDetails.paymentStatus}${lastSaleDetails.paymentStatus === 'partial' ? `\nAmount Paid: ${lastSaleDetails.amountPaid.toLocaleString()} ${lastSaleDetails.currency}` : ''}\n\n${lastSaleDetails.customerName ? `Customer: ${lastSaleDetails.customerName}` : ''}${lastSaleDetails.customerPhone ? `\nPhone: ${lastSaleDetails.customerPhone}` : ''}${lastSaleDetails.notes ? `\nNotes: ${lastSaleDetails.notes}` : ''}`;
+    const message = `*${animalTermPlural.toUpperCase()} SALE RECEIPT*\n\nFarm: ${lastSaleDetails.farmName}\n${lastSaleDetails.flockName ? `Group: ${lastSaleDetails.flockName}\n` : ''}Date: ${lastSaleDetails.saleDate}\n\n${animalTermPlural} Sold: ${lastSaleDetails.birdsSold}\n${lastSaleDetails.saleMethod === 'per_bird' ? `Price per ${animalTerm}: ${lastSaleDetails.pricePerBird.toLocaleString()} ${lastSaleDetails.currency}` : ''}${lastSaleDetails.saleMethod === 'per_kg' ? `\nPrice per Kg: ${lastSaleDetails.pricePerKg?.toLocaleString()} ${lastSaleDetails.currency}\nTotal Weight: ${lastSaleDetails.totalWeightKg} kg` : ''}${lastSaleDetails.saleMethod === 'lump_sum' ? '\nSold as Lump Sum' : ''}\n\nTotal Amount: ${lastSaleDetails.totalAmount.toLocaleString()} ${lastSaleDetails.currency}\nPayment Status: ${lastSaleDetails.paymentStatus}${lastSaleDetails.paymentStatus === 'partial' ? `\nAmount Paid: ${lastSaleDetails.amountPaid.toLocaleString()} ${lastSaleDetails.currency}` : ''}\n\n${lastSaleDetails.customerName ? `Customer: ${lastSaleDetails.customerName}` : ''}${lastSaleDetails.customerPhone ? `\nPhone: ${lastSaleDetails.customerPhone}` : ''}${lastSaleDetails.notes ? `\nNotes: ${lastSaleDetails.notes}` : ''}`;
     shareViaWhatsApp(message);
   };
 
@@ -249,7 +270,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
       <div className="text-6xl mb-4">✅</div>
       <h3 className="text-2xl font-bold mb-2">Sale Recorded!</h3>
       <p className="text-gray-600 mb-8">
-        {lastSaleDetails.birdsSold} birds sold for {lastSaleDetails.totalAmount.toLocaleString()} {lastSaleDetails.currency}
+        {lastSaleDetails.birdsSold} {animalTermPluralLower} sold for {lastSaleDetails.totalAmount.toLocaleString()} {lastSaleDetails.currency}
       </p>
 
       <div className="max-w-md mx-auto space-y-3">
@@ -309,7 +330,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
               <option value="">{t('sales.select_flock')}</option>
               {flocks.map(f => (
                 <option key={f.id} value={f.id}>
-                  {f.name} ({t('sales.available_birds', { count: f.current_count })}) - {f.type}
+                  {f.name} ({`Available: ${f.current_count.toLocaleString()} ${animalTermPluralLower}`}) - {f.type}
                 </option>
               ))}
             </select>
@@ -340,7 +361,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.birds_sold')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{`${animalTermPlural} Sold`}</label>
               <input
                 type="number"
                 value={birdsSold}
@@ -390,7 +411,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
 
           {saleMethod === 'per_bird' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.price_per_bird')} ({currency})</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{`Price per ${animalTerm}`} ({currency})</label>
               <input
                 type="number"
                 value={pricePerBird}
@@ -560,12 +581,12 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
             <h4 className="font-semibold text-gray-900 mb-3">{t('sales.sale_summary')}</h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">{t('sales.birds_sold')}</span>
+                <span className="text-gray-600">{`${animalTermPlural} Sold`}</span>
                 <span className="font-medium text-gray-900">{numBirdsSold || 0}</span>
               </div>
               {saleMethod !== 'lump_sum' && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">{t('sales.price_per_bird_summary')}</span>
+                  <span className="text-gray-600">{`Price per ${animalTerm}`}</span>
                   <span className="font-medium text-gray-900">
                     {pricePerBirdCalculated.toLocaleString()} {currency}
                   </span>

@@ -1172,8 +1172,25 @@ export function TodayTasksWidget({ onAddTask, selectedFlockId }: TodayTasksWidge
             </div>
 
             {intervalTimesToShow.length === 0 ? (
-              <div className="text-xs text-gray-500">
-                No egg intervals configured yet. Owner/manager: open <span className="font-semibold">Task Settings</span> and set exact times for <span className="font-semibold">'Daily Egg Collection'</span>.
+              <div className="text-xs text-gray-500 space-y-2">
+                <p>
+                  No egg-collection intervals configured. You can either set exact
+                  times in <span className="font-semibold">Task Settings</span> for
+                  scheduled collection, or just record today's eggs in one shot
+                  below.
+                </p>
+                {/* BUG-025 fix: ad-hoc single-day entry path so first-time
+                    layer-flock owners aren't blocked behind the interval setup
+                    just to log "I collected 200 eggs today". */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.hash = '#/eggs';
+                  }}
+                  className="w-full py-2 text-xs font-medium text-[#3D5F42] border border-[#3D5F42] rounded-lg hover:bg-[#3D5F42]/5 transition-colors"
+                >
+                  Record today's eggs (one entry)
+                </button>
               </div>
             ) : (
               <div className="space-y-2">
