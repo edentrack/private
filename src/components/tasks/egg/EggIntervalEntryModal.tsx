@@ -50,7 +50,7 @@ export function EggIntervalEntryModal({
   const farmTz = useMemo(() => getFarmTimeZone(currentFarm), [currentFarm]);
 
   const todayISO = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const isPastDateAtOpen = collectionDate !== todayISO;
+  const _isPastDateAtOpen = collectionDate !== todayISO;
   const initialSyncSafe = useMemo(() => {
     return initialSyncToInventory;
   }, [initialSyncToInventory]);
@@ -89,7 +89,7 @@ export function EggIntervalEntryModal({
     setSizes(initialSizes);
     setNotes(initialSizes.notes || '');
     setLooseDrafts({});
-    setSyncToInventory((prev) => {
+    setSyncToInventory((_prev) => {
       // If editing an existing task, respect the stored initial sync.
       // If creating new, keep the initial safety default for past dates.
       return initialSyncSafe && canSyncToInventory;

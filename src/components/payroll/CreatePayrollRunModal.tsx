@@ -51,7 +51,7 @@ export function CreatePayrollRunModal({ onClose, onSuccess }: CreatePayrollRunMo
 
   const [payrollRunId, setPayrollRunId] = useState<string | null>(null);
   const [payrollItems, setPayrollItems] = useState<PayrollItem[]>([]);
-  const [totalAmount, setTotalAmount] = useState(0);
+  const [, setTotalAmount] = useState(0);
 
   const handleGeneratePreview = async () => {
     if (!currentFarm?.id) return;

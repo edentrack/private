@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, ArrowRight, ArrowLeft, CheckCircle, Play } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft, Play } from 'lucide-react';
 
 const STORAGE_KEY = 'onboarding_tour_completed';
 

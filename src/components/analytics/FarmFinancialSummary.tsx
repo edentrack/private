@@ -10,7 +10,7 @@ interface FarmFinancialData {
   flockCount: number;
 }
 
-export function FarmFinancialSummary({ compact = false, farm }: { compact?: boolean; farm?: any } = {}) {
+export function FarmFinancialSummary({ compact: _compact = false, farm }: { compact?: boolean; farm?: any } = {}) {
   const { profile, currentFarm } = useAuth();
   const targetFarm = farm || currentFarm;
   const [financials, setFinancials] = useState<FarmFinancialData>({

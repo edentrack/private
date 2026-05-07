@@ -12,7 +12,7 @@ const iconFor = (type: string) => {
 };
 
 export function NotificationsPage() {
-  const { user, currentFarm } = useAuth();
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 

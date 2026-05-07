@@ -123,7 +123,7 @@ export function TasksPage2() {
   const [loading, setLoading] = useState(true);
   const [dismissingOverdue, setDismissingOverdue] = useState(false);
   const [tasks, setTasks] = useState<TaskWithMetadata[]>([]);
-  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [, setTemplates] = useState<TaskTemplate[]>([]);
   const DAILY_TASKS_PAGE_SIZE = 8;
   const [visibleDailyTaskCount, setVisibleDailyTaskCount] = useState(DAILY_TASKS_PAGE_SIZE);
 
@@ -218,7 +218,7 @@ export function TasksPage2() {
     }
   };
 
-  const toggleTemplate = async (templateId: string, nextEnabled: boolean) => {
+  const _toggleTemplate = async (templateId: string, nextEnabled: boolean) => {
     if (!currentFarm?.id) return;
     await supabase
       .from('task_templates')

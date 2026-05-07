@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Send, Plus, Calendar, Users, Building2 } from 'lucide-react';
+import { ArrowLeft, Send, Plus, Calendar, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
 

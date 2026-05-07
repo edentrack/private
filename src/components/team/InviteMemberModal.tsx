@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Mail, Shield, Loader2, AlertCircle, CheckCircle, Copy, ExternalLink } from 'lucide-react';
+import { X, Mail, Shield, Loader2, AlertCircle, CheckCircle, Copy } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { MemberRole } from '../../types/database';
 import { useTranslation } from 'react-i18next';;

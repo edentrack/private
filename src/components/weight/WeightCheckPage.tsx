@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
@@ -20,9 +20,9 @@ export function WeightCheckPage({ flock, onBack }: WeightCheckPageProps) {
   const { user } = useAuth();
   const [view, setView] = useState<'input' | 'results' | 'history'>('input');
   const [analysisResults, setAnalysisResults] = useState<any>(null);
-  const [saving, setSaving] = useState(false);
+  const [, setSaving] = useState(false);
 
-  const recommendedSampleSize = getRecommendedSampleSize(flock.current_count || 0);
+  const _recommendedSampleSize = getRecommendedSampleSize(flock.current_count || 0);
 
   const handleCalculate = async (weights: number[], checkDate: string) => {
     if (!flock) return;

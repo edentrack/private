@@ -42,10 +42,10 @@ function getTierStyle(tier: string | undefined | null): TierStyle {
 
 export function DashboardLayout({ children, currentView, onNavigate }: DashboardLayoutProps) {
   const { t } = useTranslation();
-  const { profile, signOut, user, currentRole, currentFarm, switchFarm } = useAuth();
+  const { profile, signOut, user, currentRole, currentFarm: _currentFarm, switchFarm } = useAuth();
   const { farmPermissions } = usePermissions();
   const { simpleMode } = useSimpleMode();
-  const { showEggs, showFCR, showHarvest, isAquaculture, loading: farmTypeLoading } = useFarmType();
+  const { showEggs, showFCR: _showFCR, showHarvest: _showHarvest, isAquaculture, loading: farmTypeLoading } = useFarmType();
   const farmSpecies = useFarmSpecies();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [desktopMoreMenuOpen, setDesktopMoreMenuOpen] = useState(false);

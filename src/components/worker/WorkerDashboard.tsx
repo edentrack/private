@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, AlertCircle, ListChecks, Calendar, Egg } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, ListChecks, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Task, Flock } from '../../types/database';
@@ -19,7 +19,7 @@ interface WorkerShift {
   status: string;
 }
 
-export function WorkerDashboard({ onNavigate }: WorkerDashboardProps) {
+export function WorkerDashboard({ onNavigate: _onNavigate }: WorkerDashboardProps) {
   const { user, currentFarm, currentRole } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [flocks, setFlocks] = useState<Flock[]>([]);

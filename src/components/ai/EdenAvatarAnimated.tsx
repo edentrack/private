@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from "react";
 
 interface EdenAvatarAnimatedProps {
   size?: 'sm' | 'md' | 'lg';
@@ -7,7 +7,8 @@ interface EdenAvatarAnimatedProps {
 
 export function EdenAvatarAnimated({ size = 'sm' }: EdenAvatarAnimatedProps) {
   const dim = size === 'lg' ? 64 : size === 'md' ? 36 : 22;
-  const id = useRef(`eden-${Math.random().toString(36).slice(2)}`).current;
+  // useRef'd id was previously used to scope <defs> gradient ids; current
+  // SVG uses inline fills so we don't need the id at all.
 
   useEffect(() => {
     const styleId = 'eden-cartoon-keyframes';

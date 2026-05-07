@@ -13,12 +13,12 @@ interface EditExpenseModalProps {
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
 
-const capitalizeCategory = (cat: string): string => {
+const _capitalizeCategory = (cat: string): string => {
   return cat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 };
 
 export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpenseModalProps) {
-  const { user, profile, currentFarm } = useAuth();
+  const { user, currentFarm } = useAuth();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
   const [amount, setAmount] = useState(expense.amount.toString());

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Shield, Smartphone, DollarSign, Package, BarChart3, Calendar } from 'lucide-react';
 
 export default function AboutSection() {

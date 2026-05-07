@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LogCollectionModal } from './LogCollectionModal';
 import { LogSaleModal } from './LogSaleModal';
 import { calculateEggInventory, EggInventoryData } from '../../utils/eggInventory';
-import { formatCurrency } from '../../utils/currency';
 import { formatEggsCompact } from '../../utils/eggFormatting';
 
 interface EggInventoryProps {

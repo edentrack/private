@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Scale, Download, Trash2, Edit2, X, Target, AlertCircle } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Scale, Download, Trash2, Edit2, X, Target } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { Flock } from '../../types/database';
 import { useTranslation } from 'react-i18next';

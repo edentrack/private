@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Edit2, X, Clock, Plus, Trash2, ChevronDown } from 'lucide-react';
+import { Settings, Edit2, X, Clock, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -260,7 +260,7 @@ export function CompactTaskSettings({ onClose }: Props) {
 
 function EditTemplateModal({
   template,
-  farmId,
+  _farmId,
   onSave,
   onClose
 }: {

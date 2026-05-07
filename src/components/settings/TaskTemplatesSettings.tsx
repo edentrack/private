@@ -18,7 +18,7 @@ export function TaskTemplatesSettings() {
   const { currentFarm } = useAuth();
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [, _setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTemplate, setNewTemplate] = useState({
     title: '',

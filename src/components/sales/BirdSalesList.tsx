@@ -150,7 +150,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
       </div>
 
       <div className="space-y-2">
-        {sales.map((sale, index) => (
+        {sales.map((sale, _index) => (
           <div
             key={sale.id}
             className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors"

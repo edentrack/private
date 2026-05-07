@@ -33,7 +33,7 @@ export function TeamManagement() {
 
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<MemberRole>('worker');
-  const [addingMember, setAddingMember] = useState(false);
+  const [, setAddingMember] = useState(false);
   const [addMemberError, setAddMemberError] = useState<string | null>(null);
   const [addMemberSuccess, setAddMemberSuccess] = useState<string | null>(null);
   const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
@@ -274,7 +274,7 @@ export function TeamManagement() {
     }
   };
 
-  const handleAddMember = async (e: React.FormEvent) => {
+  const _handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!currentFarm?.id || !isOwner) return;

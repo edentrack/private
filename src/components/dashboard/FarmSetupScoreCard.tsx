@@ -52,7 +52,7 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
       const [
         workersRes, workersWithPayRes, configRes,
         expensesRes, eggCollRes, mortalityRes,
-        tasksRes, feedRes, salesRes,
+        tasksRes, feedRes, _salesRes,
       ] = await Promise.all([
         // 2. Workers added
         supabase.from('farm_workers').select('id').eq('farm_id', currentFarm.id).eq('is_active', true).limit(1),

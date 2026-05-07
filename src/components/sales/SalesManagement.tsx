@@ -15,7 +15,6 @@ import { RecordEggSale } from '../eggs/RecordEggSale';
 import { ReceiptsList } from './ReceiptsList';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
-import { formatEggsCompact } from '../../utils/eggFormatting';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 
 type TimePeriod = 'all' | 'year' | 'month' | 'week' | 'day' | 'custom';
@@ -55,13 +54,13 @@ export function SalesManagement() {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [eggsPerTray, setEggsPerTray] = useState(30);
+  const [, setEggsPerTray] = useState(30);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
-  const [flocks, setFlocks] = useState<Flock[]>([]);
+  const [, setFlocks] = useState<Flock[]>([]);
   const [birdSalesRefreshTrigger, setBirdSalesRefreshTrigger] = useState(0);
   const [eggSalesRefreshTrigger, setEggSalesRefreshTrigger] = useState(0);
-  const [receiptsRefreshTrigger, setReceiptsRefreshTrigger] = useState(0);
+  const [receiptsRefreshTrigger] = useState(0);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
   const [loading, setLoading] = useState(true);

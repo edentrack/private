@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Scale, TrendingUp, Plus } from 'lucide-react';
+import { Scale, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';;

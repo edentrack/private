@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Save, Building2, DollarSign, ArrowLeft, Egg, Globe, MapPin, Shield, TrendingUp, Users, Package, ListChecks, AlertTriangle, RefreshCw, CheckCircle, HelpCircle, LayoutDashboard, Bot } from 'lucide-react';
+import { Save, Building2, DollarSign, ArrowLeft, Egg, Globe, MapPin, Shield, TrendingUp, Users, Package, ListChecks, AlertTriangle, RefreshCw, CheckCircle, HelpCircle, LayoutDashboard } from 'lucide-react';
 import { resetTour } from '../onboarding/OnboardingTour';
 import { useSimpleMode } from '../../contexts/SimpleModeContext';
 import { getDeadLetterCount } from '../../lib/offlineDB';
