@@ -205,7 +205,7 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
           </div>
           <div className="space-y-4">
             {[
-              { icon: Zap, label: 'Free forever on Starter — no card needed' },
+              { icon: Zap, label: 'Free forever on Starter. No card needed' },
               { icon: Brain, label: 'Eden AI helps you log and diagnose from day one' },
               { icon: Wifi, label: 'Works offline on any smartphone' },
               { icon: CheckCircle, label: 'Set up your farm in under 60 seconds' },
@@ -258,8 +258,8 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
             {joiningFarmName
               ? `You'll be added to ${joiningFarmName} as a worker`
               : isJoiningFarm
-              ? "You've been invited — create your account to join the farm instantly"
-              : 'Get started — your farm will be ready the moment you verify your email'}
+              ? "You've been invited. Create your account to join the farm instantly"
+              : 'Get started. Your farm will be ready the moment you verify your email'}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

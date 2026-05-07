@@ -20,7 +20,7 @@
     "show_more": "Voir plus",
     "show_less": "Voir moins",
     "back_to_top": "Retour en haut",
-    "date_range_separator": " – ",
+    "date_range_separator": " au ",
     "dashboard": "Tableau de bord",
     "flocks": "Troupeaux",
     "expenses": "Dépenses",
@@ -677,7 +677,7 @@
     "archive_confirmation": "Êtes-vous sûr de vouloir archiver ce troupeau ?",
     "archive_description": "Cela déplacera le troupeau vers les archives et il n'apparaîtra plus dans les listes actives",
     "no_flocks_yet": "Pas encore de troupeaux",
-    "no_flocks_worker_message": "Pas encore de troupeaux. Votre responsable en ajoutera bientôt — revenez vérifier.",
+    "no_flocks_worker_message": "Pas encore de troupeaux. Votre responsable en ajoutera bientôt. Revenez vérifier.",
     "no_flocks_owner_message": "Votre ferme est vide. Créez votre premier troupeau pour commencer à suivre les tâches quotidiennes, la consommation d'aliments, les dossiers de santé et les ventes. Cela prend 2 minutes."
   },
   "compare": {
@@ -1022,7 +1022,7 @@
     "confirm": "Confirmer",
     "no_vaccinations_yet": "Aucune vaccination prévue",
     "no_vaccinations_owner_message": "Protégez votre troupeau des maladies. Planifiez et enregistrez les vaccinations pour garder vos oiseaux en bonne santé et suivre les dates d'immunité.",
-    "no_vaccinations_worker_message": "Aucune vaccination prévue pour l'instant. Votre responsable ajoutera les dossiers de vaccination — vérifiez régulièrement."
+    "no_vaccinations_worker_message": "Aucune vaccination prévue pour l'instant. Votre responsable ajoutera les dossiers de vaccination. Vérifiez régulièrement."
   },
   "expenses": {
     "title": "Suivi des Dépenses",
@@ -1979,12 +1979,12 @@
     },
     "chat": {
       "header_title": "Configuration de votre ferme",
-      "header_subtitle": "Parlez à Eden — environ 5 minutes",
-      "skip_button": "Passer — utiliser le formulaire",
+      "header_subtitle": "Parlez à Eden, environ 5 minutes",
+      "skip_button": "Utiliser le formulaire",
       "thinking": "Eden réfléchit…",
-      "wrapping_up": "Finalisation — direction le tableau de bord…",
+      "wrapping_up": "Finalisation. Direction le tableau de bord…",
       "input_placeholder": "Tapez votre réponse…",
-      "first_message": "Salut ! Je suis Eden. Je vais configurer votre ferme en quelques questions rapides. D'abord — comment s'appelle votre ferme ?",
+      "first_message": "Salut ! Je suis Eden. Je vais configurer votre ferme en quelques questions rapides. D'abord, comment s'appelle votre ferme ?",
       "complete_toast": "🎉 Bienvenue sur EdenTrack !",
       "save_failed": "Impossible d'enregistrer votre progression"
     },

@@ -132,7 +132,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
                 'Expense recording',
                 'Task management',
                 'WhatsApp daily share',
-                'Eden AI — 10 questions/day',
+                'Eden AI. 10 questions/day',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
                   <Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -183,7 +183,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
                 'Up to 5 active flocks',
                 'Full analytics & KPIs',
                 'Automated daily email report',
-                'Eden AI — 200 messages/month',
+                'Eden AI. 200 messages/month',
                 'Financial logging via Eden AI',
                 'Smart document import (CSV)',
                 '2 team members',
@@ -229,7 +229,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
                 'Unlimited flocks',
                 'Unlimited team members',
                 'Everything in Grower',
-                'Eden AI — 1,000 messages/month',
+                'Eden AI. 1,000 messages/month',
                 'Photo disease diagnosis (10/mo)',
                 'Payroll management',
                 'Priority support',
@@ -273,7 +273,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               {[
                 'Everything in Farm Boss',
                 'Multiple farm accounts',
-                'Eden AI — unlimited messages',
+                'Eden AI. Unlimited messages',
                 'Unlimited photo diagnosis',
                 'Dedicated account manager',
                 'Custom onboarding & training',

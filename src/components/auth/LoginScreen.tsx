@@ -80,7 +80,7 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
               <span style={{ color: '#ffdd00' }}>like a professional</span>
             </h2>
             <p className="text-gray-400 text-lg leading-relaxed max-w-sm">
-              Everything you need to manage your farm — poultry, fish or rabbits — in one app that works even without internet.
+              Everything you need to manage your farm. Poultry, fish or rabbits. In one app that works even without internet.
             </p>
           </div>
 
@@ -88,7 +88,7 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
             {[
               'Track flocks, ponds, hutches and expenses',
               'Eden AI diagnoses health and logs data',
-              'Offline-first — works with no signal',
+              'Offline-first, works with no signal',
               'Weekly email reports, auto-generated',
             ].map(item => (
               <li key={item} className="flex items-center gap-3 text-sm text-gray-300">

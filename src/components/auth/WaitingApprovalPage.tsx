@@ -51,7 +51,7 @@ export function WaitingApprovalPage() {
           </h1>
 
           <p className="text-gray-600 mb-6 leading-relaxed">
-            We sent a verification link to your email address. Click it to activate your account instantly — no waiting, no manual review.
+            We sent a verification link to your email address. Click it to activate your account instantly. No waiting, no manual review.
           </p>
 
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
@@ -75,7 +75,7 @@ export function WaitingApprovalPage() {
               className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
             >
               <RefreshCw className="w-4 h-4" />
-              I've verified — open my dashboard
+              I've verified. Open my dashboard
             </button>
 
             {resendStatus === 'sent' ? (
