@@ -1,13 +1,36 @@
 import { ModuleName } from './navigationPermissions';
 import { LucideIcon } from 'lucide-react';
 
+/**
+ * Navigation grouping — May 2026 rewrite per Greg's brief.
+ *
+ * Both mobile (More menu) and desktop (sidebar) consume this. The five
+ * group buckets match the conceptual order a farmer thinks about their
+ * day:
+ *
+ *   PRODUCTION   what the animals are doing       (eggs, mortality, weight, vaccines, harvest, breeding...)
+ *   MONEY        cash flowing in and out          (expenses, sales, credit score)
+ *   OPERATIONS   day-to-day running of the farm   (inventory, pond planner, shifts)
+ *   INSIGHTS     reading the numbers              (insights, reports)
+ *   ACCOUNT      who can do what                  (team, settings)
+ *
+ * Cooperatives was removed from nav in May 2026 per Greg's request. The
+ * routes still respond at /cooperatives if accessed directly, and the
+ * `src/components/cooperatives/` directory + DB tables are intact. If
+ * cooperatives stays out of nav for >3 months, schedule a follow-up to
+ * delete the directory + migrations.
+ */
+
 export interface NavigationItem {
   id: ModuleName;
   label: string;
   icon: LucideIcon;
+  /** Optional red dot badge — currently used for the dead-letter queue
+   *  count on the Settings entry. */
+  badge?: number;
 }
 
-export type NavigationGroupId = 'analytics' | 'health' | 'money' | 'team' | 'other';
+export type NavigationGroupId = 'production' | 'money' | 'operations' | 'insights' | 'account';
 
 export interface NavigationGroup {
   id: NavigationGroupId;
@@ -15,57 +38,76 @@ export interface NavigationGroup {
   items: NavigationItem[];
 }
 
-export function getNavigationGroups(
-  items: NavigationItem[]
-): NavigationGroup[] {
-  const groups: NavigationGroup[] = [
-    {
-      id: 'analytics',
-      label: 'ANALYTICS',
-      items: items.filter(item => ['insights', 'reports'].includes(item.id)),
-    },
-    {
-      id: 'health',
-      label: 'HEALTH',
-      items: items.filter(item => ['vaccinations', 'mortality', 'weight', 'harvest', 'water-quality', 'sampling', 'stocking', 'fish-health', 'pond-inspections', 'pond-planner', 'rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry'].includes(item.id)),
-    },
-    {
-      id: 'money',
-      label: 'MONEY',
-      items: items.filter(item => ['expenses', 'sales', 'inventory', 'credit-score'].includes(item.id)),
-    },
-    {
-      id: 'team',
-      label: 'TEAM & OPS',
-      items: items.filter(item => ['team', 'shifts', 'cooperatives'].includes(item.id)),
-    },
-    {
-      id: 'other',
-      label: 'OTHER',
-      items: items.filter(item => ['settings'].includes(item.id)),
-    },
-  ];
+/**
+ * Membership map. Each module ID belongs to exactly one group. Items
+ * not present here will not show up in any grouped view, so any new
+ * module must be added.
+ */
+const GROUP_MEMBERSHIP: Record<NavigationGroupId, ReadonlyArray<ModuleName>> = {
+  production: [
+    // Poultry-specific
+    'egg-records',
+    'vaccinations',
+    // Cross-species
+    'mortality',
+    'weight',
+    // Aquaculture-specific
+    'harvest',
+    'water-quality',
+    'sampling',
+    'stocking',
+    'fish-health',
+    'pond-inspections',
+    // Rabbits-specific
+    'rabbit-harvest',
+    'breeding-events',
+    'litters',
+    'rabbit-registry',
+  ],
+  money: ['expenses', 'sales', 'credit-score'],
+  operations: ['inventory', 'pond-planner', 'shifts'],
+  insights: ['insights', 'reports'],
+  account: ['team', 'settings'],
+};
 
-  // Filter out groups with no items
-  return groups.filter(group => group.items.length > 0);
+const GROUP_ORDER: ReadonlyArray<{ id: NavigationGroupId; label: string }> = [
+  { id: 'production', label: 'PRODUCTION' },
+  { id: 'money', label: 'MONEY' },
+  { id: 'operations', label: 'OPERATIONS' },
+  { id: 'insights', label: 'INSIGHTS' },
+  { id: 'account', label: 'ACCOUNT' },
+];
+
+export function getNavigationGroups(items: NavigationItem[]): NavigationGroup[] {
+  return GROUP_ORDER
+    .map(({ id, label }) => ({
+      id,
+      label,
+      items: items.filter(item => GROUP_MEMBERSHIP[id].includes(item.id)),
+    }))
+    .filter(group => group.items.length > 0);
 }
+
+const ALL_GROUP_IDS: ReadonlyArray<NavigationGroupId> = GROUP_ORDER.map(g => g.id);
+const DEFAULT_EXPANDED = new Set<NavigationGroupId>(ALL_GROUP_IDS);
 
 // Get expanded state from localStorage
 export function getExpandedGroups(): Set<NavigationGroupId> {
-  if (typeof window === 'undefined') return new Set(['core', 'production', 'financial', 'operations', 'tools', 'other']);
-  
+  if (typeof window === 'undefined') return new Set(DEFAULT_EXPANDED);
+
   const saved = localStorage.getItem('navGroupsExpanded');
   if (saved) {
     try {
       const parsed = JSON.parse(saved) as NavigationGroupId[];
-      return new Set(parsed);
+      // Filter out any legacy group IDs from before the May 2026 rewrite.
+      return new Set(parsed.filter((g): g is NavigationGroupId => ALL_GROUP_IDS.includes(g)));
     } catch {
-      return new Set(['analytics', 'health', 'money', 'team', 'other']);
+      return new Set(DEFAULT_EXPANDED);
     }
   }
 
   // Default: all expanded
-  return new Set(['analytics', 'health', 'money', 'team', 'other']);
+  return new Set(DEFAULT_EXPANDED);
 }
 
 // Save expanded state to localStorage

@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText, Building2, Award, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText, Award, CalendarDays } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -119,7 +119,10 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'weight', label: isAquaculture ? 'Weight & FCR' : t('nav.weight'), icon: Scale },
       { id: 'shifts', label: t('nav.shifts'), icon: Calendar },
       { id: 'team', label: t('nav.team'), icon: Users },
-      { id: 'cooperatives', label: 'Cooperatives', icon: Building2 },
+      // Cooperatives nav entry removed May 2026 per Greg's request. Routes
+      // still respond at /cooperatives if accessed directly. Delete the
+      // directory + migrations if this stays out of nav for >3 months.
+      // { id: 'cooperatives', label: 'Cooperatives', icon: Building2 },
       { id: 'ai-assistant', label: t('nav.ai_assistant') || 'Eden AI', icon: Zap },
       { id: 'reports', label: 'Reports', icon: FileText },
       { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },
@@ -181,7 +184,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   };
 
   const expandAll = () => {
-    const all = new Set<NavigationGroupId>(['analytics', 'health', 'money', 'team', 'other']);
+    const all = new Set<NavigationGroupId>(['production', 'money', 'operations', 'insights', 'account']);
     setExpandedGroups(all);
     saveExpandedGroups(all);
   };
@@ -559,30 +562,62 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                     onClick={() => setMobileMoreMenuOpen(false)}
                   />
                   <div className="absolute right-0 mt-2 w-56 sm:w-64 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 animate-scale-in max-h-[70vh] overflow-y-auto">
-                    {mobileOtherItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = currentView === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            handleNavigate(item.id);
-                            setMobileMoreMenuOpen(false);
-                          }}
-                          className={`w-full px-4 py-3 text-left text-sm flex items-center gap-3 transition-colors ${
-                            isActive
-                              ? 'text-gray-900 bg-neon-500/10 font-medium'
-                              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4 flex-shrink-0" />
-                          <span className="flex-1">{item.label}</span>
-                          {item.badge ? (
-                            <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">!</span>
-                          ) : null}
-                        </button>
+                    {/* Group the More menu by section so the list is scannable.
+                        Falls back to a flat list if grouping returns nothing
+                        (e.g. a role with no permissions on any grouped item). */}
+                    {(() => {
+                      const mobileGroups = getNavigationGroups(mobileOtherItems as any);
+                      const groupedIds = new Set(
+                        mobileGroups.flatMap(g => g.items.map(i => i.id)),
                       );
-                    })}
+                      const ungrouped = mobileOtherItems.filter(i => !groupedIds.has(i.id));
+
+                      const renderItem = (item: typeof mobileOtherItems[number]) => {
+                        const Icon = item.icon;
+                        const isActive = currentView === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              handleNavigate(item.id);
+                              setMobileMoreMenuOpen(false);
+                            }}
+                            className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                              isActive
+                                ? 'text-gray-900 bg-neon-500/10 font-medium'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 flex-shrink-0" />
+                            <span className="flex-1">{item.label}</span>
+                            {item.badge ? (
+                              <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">!</span>
+                            ) : null}
+                          </button>
+                        );
+                      };
+
+                      return (
+                        <>
+                          {mobileGroups.map((group, idx) => (
+                            <div key={group.id} className={idx > 0 ? 'mt-1' : ''}>
+                              <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wide text-gray-400 font-semibold">
+                                {group.label}
+                              </div>
+                              {group.items.map(renderItem)}
+                            </div>
+                          ))}
+                          {ungrouped.length > 0 && (
+                            <div className="mt-1">
+                              <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wide text-gray-400 font-semibold">
+                                OTHER
+                              </div>
+                              {ungrouped.map(renderItem)}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </>
               )}
