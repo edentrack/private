@@ -149,6 +149,20 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
     if (action.type === 'CREATE_FARM') {
       const farmName = (action.name || '').trim();
       if (!farmName) return { pill: null, complete: false, switchToForm: false };
+      // Idempotency: if a farm with this name already exists for this owner,
+      // skip the insert. Eden sometimes re-emits CREATE_FARM in a later
+      // turn (catching up a missed previous emission), which would
+      // otherwise create a duplicate.
+      const { data: existing } = await supabase
+        .from('farms')
+        .select('id, name')
+        .ilike('name', farmName)
+        .eq('owner_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        return { pill: null, complete: false, switchToForm: false };
+      }
       const { data: newFarm, error } = await supabase
         .from('farms')
         .insert({
@@ -194,6 +208,20 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         .maybeSingle();
       if (!farm) {
         return { pill: `❌ Couldn't find farm "${farmName}"`, complete: false, switchToForm: false };
+      }
+      // Idempotency: if a flock with this name already exists in this farm,
+      // skip insert. Eden sometimes emits CREATE_FLOCK in a follow-up turn
+      // alongside LOG_STOCKING, which used to produce duplicate flocks
+      // ("Total Birds 200" on a farm where the user only said 100).
+      const { data: existingFlock } = await supabase
+        .from('flocks')
+        .select('id')
+        .eq('farm_id', farm.id)
+        .ilike('name', entityName)
+        .limit(1)
+        .maybeSingle();
+      if (existingFlock) {
+        return { pill: null, complete: false, switchToForm: false };
       }
       const flockType =
         action.type === 'CREATE_POND'
