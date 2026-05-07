@@ -7,14 +7,14 @@ export default function FeaturesSection() {
     {
       icon: TrendingUp,
       title: 'Three species, one app',
-      description: 'Layers, broilers, tilapia, catfish, meat rabbits, breeders — same shell, species-aware features.',
+      description: 'Layers, broilers, tilapia, catfish, meat rabbits, breeders. Same shell, species-aware features.',
       color: 'text-neon-600',
       bgColor: 'bg-neon-100',
     },
     {
       icon: Zap,
       title: 'Eden AI on every screen',
-      description: 'Ask about feeding rates, water-quality emergencies, harvest timing — answers grounded in your real farm data.',
+      description: 'Ask about feeding rates, water-quality emergencies, harvest timing. Answers grounded in your real farm data.',
       color: 'text-agri-brown-600',
       bgColor: 'bg-agri-brown-100',
     },
@@ -42,15 +42,15 @@ export default function FeaturesSection() {
     {
       icon: Shield,
       title: 'Roles for the whole team',
-      description: 'Owner, manager, worker, viewer — each sees what they need, nothing they shouldn’t.',
+      description: 'Owner, manager, worker, viewer. Each sees what they need, nothing they shouldn’t.',
       color: 'text-agri-brown-600',
       bgColor: 'bg-agri-brown-100',
     },
   ];
 
   const trackFeatures = [
-    { text: 'Multi-species tracking', subtext: 'Flocks, ponds, and rabbitries — pick your species, the app adapts every label, KPI, and task list.' },
-    { text: 'Daily tasks, weekly trends', subtext: 'Log feeding, water DO, mortality, weights — Edentrack rolls them into the metrics that matter.' },
+    { text: 'Multi-species tracking', subtext: 'Flocks, ponds, and rabbitries. Pick your species, the app adapts every label, KPI, and task list.' },
+    { text: 'Daily tasks, weekly trends', subtext: 'Log feeding, water DO, mortality, weights. Edentrack rolls them into the metrics that matter.' },
     { text: 'Sales and expenses', subtext: 'Per-flock revenue, per-pond costs, per-rabbitry margins. Profit and loss without the spreadsheet.' },
     { text: 'Feed and inventory', subtext: 'Auto-deduct as you log daily tasks. Per-species feeding rates and starter/grower/finisher schedules built in.' },
     { text: 'Weights and growth', subtext: 'Bird weight checks for poultry, individual fish sampling with ABW and SGR, weanling growth curves for rabbits.' },

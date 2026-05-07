@@ -845,7 +845,7 @@ export default function LandingPage() {
                 </div>
                 <h2 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">Your farm advisor that actually does things</h2>
                 <p className="text-gray-600 leading-relaxed mb-6">
-                  Eden doesn't just answer questions — it acts. Tell it what happened on the farm and it logs the data for you. Send it a receipt photo and it imports the expense.
+                  Eden doesn't just answer questions. It acts. Tell it what happened on the farm and it logs the data for you. Send it a receipt photo and it imports the expense.
                 </p>
                 <ul className="space-y-3">
                   {[
