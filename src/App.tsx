@@ -53,6 +53,7 @@ const AIAssistantPage        = lazy1(() => import('./components/ai/AIAssistantPa
 const SmartUploadPage        = lazy1(() => import('./components/import/SmartUploadPage'), 'SmartUploadPage');
 const OnboardingWizard       = lazy1(() => import('./components/onboarding/OnboardingWizard'), 'OnboardingWizard');
 const OnboardingChoice       = lazy1(() => import('./components/onboarding/OnboardingChoice'), 'OnboardingChoice');
+const OnboardingChat         = lazy1(() => import('./components/onboarding/OnboardingChat'), 'OnboardingChat');
 const SubscribePage          = lazy1(() => import('./components/billing/SubscribePage'), 'SubscribePage');
 const ComparePage            = lazy1(() => import('./components/compare/ComparePage'), 'ComparePage');
 const MarketplacePage        = lazy1(() => import('./components/marketplace/MarketplacePage'), 'MarketplacePage');
@@ -958,9 +959,19 @@ function AppContent() {
         />
       );
     }
-    // 'chose_chat' falls through to the wizard until PR #ONBO-C lands the
-    // dedicated conversational flow page. Once #ONBO-C ships, swap the
-    // branch to render <OnboardingChat /> here.
+    if (status === 'chose_chat') {
+      return (
+        <OnboardingChat
+          onComplete={async () => {
+            if (refreshSession) await refreshSession();
+          }}
+          onSwitchToForm={async () => {
+            if (refreshSession) await refreshSession();
+          }}
+        />
+      );
+    }
+    // 'chose_form' (and any other state) → existing wizard.
     return (
       <OnboardingWizard
         onComplete={async () => {
