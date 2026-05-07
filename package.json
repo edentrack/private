@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck:budget": "bash scripts/ts-budget.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy": "vercel --prod",
