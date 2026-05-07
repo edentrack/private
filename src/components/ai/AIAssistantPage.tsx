@@ -13,6 +13,7 @@ import { EdenLogActionCard } from './EdenLogActionCard';
 import { EdenStructuredResponse, parseStructuredResponse } from './EdenStructuredResponse';
 import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
 import { useEdenChat, EdenChatScope, EdenChatMessage } from '../../hooks/useEdenChat';
+import { sortActionsByDependency } from '../../utils/actionDependencyOrder';
 
 interface ImageAttachment {
   data: string;       // base64 (no prefix)
@@ -1262,7 +1263,11 @@ export function AIAssistantPage() {
   const confirmBulkLog = async (messageId: string, actions: LogAction[], selected: boolean[]) => {
     if (!currentFarm) return;
 
-    const selectedActions = actions.filter((_, i) => selected[i]);
+    // BUG-033: re-sort so prerequisites fire before dependents (e.g.
+    // CREATE_RABBITRY → REGISTER_RABBIT → LOG_KINDLING → LOG_RABBIT_LOSS).
+    // Eden's emission order isn't always dependency-correct — this layer
+    // makes the executor robust to whatever order the model produces.
+    const selectedActions = sortActionsByDependency(actions.filter((_, i) => selected[i]));
     if (selectedActions.length === 0) return;
 
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, bulkLogConfirmed: true, bulkLogProgress: { done: 0, total: selectedActions.length } } : m));
