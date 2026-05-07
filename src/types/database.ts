@@ -511,6 +511,10 @@ export interface Customer {
   notes: string | null;
   total_purchases: number;
   outstanding_balance: number;
+  /** Aggregate maintained by trigger: count of bird_sales + egg_sales rows. */
+  order_count: number;
+  /** Aggregate maintained by trigger: most recent sale_date across both tables. */
+  last_purchase_at: string | null;
   created_at: string;
   updated_at: string;
 }

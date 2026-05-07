@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface VetLog {
   id: string;
@@ -26,7 +27,7 @@ interface Flock {
 }
 
 const emptyForm = {
-  visit_date: new Date().toISOString().split('T')[0],
+  visit_date: todayLocal(),
   flock_id: '',
   vet_name: '',
   diagnosis: '',

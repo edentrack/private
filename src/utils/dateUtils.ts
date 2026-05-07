@@ -35,11 +35,21 @@ export function formatLocalDate(
   return d.toLocaleDateString(locale, options);
 }
 
-/** Today as YYYY-MM-DD in the user's local timezone. */
-export function todayLocalISO(): string {
+/**
+ * Today as YYYY-MM-DD in the user's local timezone.
+ *
+ * Canonical helper. Use this for *every* "default today" form value that
+ * gets persisted to a DATE column. Direct `new Date().toISOString()` calls
+ * use UTC, which rolls forward by ~5 hours of the day for UTC+1 farms in
+ * West Africa — log an expense at 21:00 WAT and it saves as tomorrow.
+ */
+export function todayLocal(): string {
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
+
+/** @deprecated alias for {@link todayLocal} — keep until callers migrated. */
+export const todayLocalISO = todayLocal;

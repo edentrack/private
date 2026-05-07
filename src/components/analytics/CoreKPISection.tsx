@@ -7,6 +7,7 @@ import { Flock } from '../../types/database';
 import { useTranslation } from 'react-i18next';
 import { calculateFCRForFarm, getFCRStatus } from '../../utils/fcrCalculation';
 import { isLayingHen } from '../../utils/flockAge';
+import { computeLayRate, formatLayRateExplainer } from '../../utils/layRate';
 import { useFarmType } from '../../hooks/useFarmType';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 
@@ -15,6 +16,12 @@ type TimePeriod = 'today' | 'week' | 'month';
 interface KPIData {
   layRate: number;
   layRateTrend: number;
+  /** Hens that went into the lay-rate denominator (only POL+ layers). */
+  layRateLayingHenCount: number;
+  /** Distinct collection dates that contributed to the lay rate. */
+  layRateDaysWithData: number;
+  /** Pre-formatted explainer copy for the tooltip (e.g. "Across 300 hens past point-of-lay, over 5 collection days."). */
+  layRateExplainer: string;
   eggsCollected: number;
   eggsSold: number;
   eggsInStock: number;
@@ -185,7 +192,14 @@ export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionPro
       const totalExpenses = (expenses || []).reduce((sum, e) => sum + (e.amount || 0), 0);
 
       const days = period === 'today' ? 1 : period === 'week' ? 7 : 30;
-      const layRate = totalLayerBirds > 0 ? (eggsCollected / (totalLayerBirds * days)) * 100 : 0;
+      // Use the shared computeLayRate helper (covered by tests). The
+      // previous inline math counted pullets in the denominator and
+      // divided by calendar days even when no eggs were logged on those
+      // days — both bugs are now impossible because the helper filters
+      // via isLayingHen() and uses distinct collection-date count.
+      const layRateResult = computeLayRate(layerFlocks as any, (collections || []) as any, eggsPerTray);
+      const layRate = layRateResult.ratePct;
+      const layRateExplainer = formatLayRateExplainer(layRateResult);
 
       const { data: prevCollections } = await supabase
         .from('egg_collections')
@@ -194,14 +208,7 @@ export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionPro
         .gte('collected_on', new Date(new Date(start).getTime() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
         .lt('collected_on', start);
 
-      const prevEggsCollected = (prevCollections || []).reduce((sum: number, c: any) => {
-        const trays = Number(c.trays || 0);
-        const broken = Number(c.broken || 0);
-        const total = Number(c.total_eggs ?? 0);
-        if (total > 0) return sum + total;
-        return sum + Math.max(0, trays * eggsPerTray - broken);
-      }, 0);
-      const prevLayRate = totalLayerBirds > 0 ? (prevEggsCollected / (totalLayerBirds * days)) * 100 : 0;
+      const prevLayRate = computeLayRate(layerFlocks as any, (prevCollections || []) as any, eggsPerTray).ratePct;
 
       // Calculate FCR for broiler flocks
       const fcrResult = await calculateFCRForFarm(currentFarm.id, start, end);
@@ -209,6 +216,9 @@ export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionPro
       setKpiData({
         layRate,
         layRateTrend: layRate - prevLayRate,
+        layRateLayingHenCount: layRateResult.layingHenCount,
+        layRateDaysWithData: layRateResult.daysWithData,
+        layRateExplainer,
         eggsCollected,
         eggsSold,
         eggsInStock,
@@ -280,17 +290,26 @@ export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionPro
 
       <div className={`grid grid-cols-1 gap-2 auto-rows-fr ${showEggs && showFCR ? 'sm:grid-cols-4' : showEggs || showFCR ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {showEggs && (
-        <div className="bg-gradient-to-br from-neon-50 to-neon-100 rounded-xl p-2.5 h-[118px] border border-neon-200">
+        <div
+          className="bg-gradient-to-br from-neon-50 to-neon-100 rounded-xl p-2.5 h-[118px] border border-neon-200 cursor-help"
+          title={kpiData.layRateExplainer}
+          aria-label={`Lay rate ${kpiData.layRate.toFixed(1)}%. ${kpiData.layRateExplainer}`}
+        >
           <div className="flex items-center gap-2 mb-2">
             <div className="w-6 h-6 bg-neon-500 rounded-lg flex items-center justify-center">
               <Egg className="w-3 h-3 text-gray-900" />
             </div>
             <h3 className="text-sm font-semibold text-gray-900">{t('dashboard.lay_rate')}</h3>
+            <HelpCircle className="w-3 h-3 text-gray-400 flex-shrink-0" />
           </div>
           <div className="mb-1">
             <span className="text-lg font-bold text-gray-900">{kpiData.layRate.toFixed(1)}%</span>
           </div>
-          <p className="text-xs text-gray-600">{t('dashboard.eggs_produced_per_bird')}</p>
+          <p className="text-[11px] text-gray-600 leading-tight line-clamp-2">
+            {kpiData.layRateLayingHenCount > 0 && kpiData.layRateDaysWithData > 0
+              ? `${kpiData.layRateLayingHenCount.toLocaleString()} hens · ${kpiData.layRateDaysWithData} day${kpiData.layRateDaysWithData === 1 ? '' : 's'} of data`
+              : t('dashboard.eggs_produced_per_bird')}
+          </p>
         </div>
         )}
 

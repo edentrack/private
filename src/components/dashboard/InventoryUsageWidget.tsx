@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface FeedItem {
   id: string;
@@ -52,7 +53,7 @@ export function InventoryUsageWidget() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
-  const [usageDate, setUsageDate] = useState(new Date().toISOString().split('T')[0]);
+  const [usageDate, setUsageDate] = useState(todayLocal());
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hiddenItems, setHiddenItems] = useState<Set<string>>(new Set());

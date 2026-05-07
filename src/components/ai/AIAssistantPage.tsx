@@ -689,6 +689,18 @@ export function AIAssistantPage() {
       if (birdSaleErr) throw new Error(`Bird sale save failed: ${birdSaleErr.message}`);
       if (!birdSaleData?.length) throw new Error('Bird sale not saved — possible permission issue.');
 
+      // BUG-020: decrement the flock/pond's current_count to match the sold
+      // amount, same as the manual sale modal does. Without this, every
+      // Eden-driven sale leaves the count inflated and the dashboard
+      // reports stale stock.
+      if (birdsSold > 0 && flock?.id) {
+        const remaining = Math.max(0, (flock.current_count || 0) - birdsSold);
+        await supabase
+          .from('flocks')
+          .update({ current_count: remaining })
+          .eq('id', flock.id);
+      }
+
     } else if (logAction.type === 'LOG_PURCHASE') {
       const invCat = logAction.inventory_category!;
       const expenseCat = invCat === 'feed' ? 'feed' : invCat === 'Medication' ? 'medication' : invCat === 'Equipment' ? 'equipment' : 'other';

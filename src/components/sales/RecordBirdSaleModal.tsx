@@ -7,6 +7,7 @@ import { Flock } from '../../types/database';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { CustomerLookup } from '../customers/CustomerLookup';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface RecordBirdSaleModalProps {
   flock?: Flock | null;
@@ -25,7 +26,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
   const animalTermPluralLower = animalTermPlural.toLowerCase();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState(flock?.id || '');
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [saleDate, setSaleDate] = useState(todayLocal());
   const [birdsSold, setBirdsSold] = useState('');
   const [saleMethod, setSaleMethod] = useState<'per_bird' | 'per_kg' | 'lump_sum'>('per_bird');
   const [pricePerBird, setPricePerBird] = useState('2500');
