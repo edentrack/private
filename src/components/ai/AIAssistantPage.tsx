@@ -284,7 +284,11 @@ export function AIAssistantPage() {
   const [pendingFile, setPendingFile] = useState<PendingFile | null>(null);
   const [usageInfo, setUsageInfo] = useState<{ used: number; cap: number; tier: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Switched from HTMLInputElement to HTMLTextAreaElement in May 2026
+  // so long messages wrap inside the bar instead of horizontally scrolling
+  // off-screen on a 360-390px Android viewport. Auto-grow logic lives on
+  // onChange below.
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   // Phase G: replaced browser SpeechRecognition with MediaRecorder + Whisper.
   // Recognition ref removed — see mediaRecorderRef above.
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1585,6 +1589,12 @@ export function AIAssistantPage() {
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    // Reset textarea height so it collapses back to 1 row after send.
+    // The auto-grow onChange handler only fires on user input, not on
+    // programmatic value clears, so we have to reset manually here.
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+    }
     setPendingImages([]);
     setPendingFile(null);
     setLoading(true);
@@ -2333,7 +2343,15 @@ export function AIAssistantPage() {
             </div>
           )}
 
-          <div className="flex gap-2">
+          {/*
+            Eden input bar — May 2026 mobile rewrite.
+            • Row uses flex-wrap as a defensive measure if anyone adds an
+              element later that pushes the row past viewport width.
+            • Language picker + mute toggle are hidden below 640px (`sm:`)
+              and live in the attach menu instead, keeping the on-screen
+              row to: [+] [mic] [textarea] [Send] on phones.
+          */}
+          <div className="flex gap-2 items-end flex-wrap sm:flex-nowrap">
             {/* Hidden file inputs */}
             <input
               ref={fileInputRef}
@@ -2351,7 +2369,7 @@ export function AIAssistantPage() {
               onChange={e => { const f = e.target.files?.[0]; if (f) addFile(f); e.target.value = ''; }}
             />
 
-            {/* Attach menu: camera + file under one "+" button */}
+            {/* Attach menu: camera + file + voice language under one "+" button */}
             <div className="relative" ref={attachMenuRef}>
               <button
                 onClick={() => setAttachMenuOpen(v => !v)}
@@ -2367,7 +2385,7 @@ export function AIAssistantPage() {
               </button>
 
               {attachMenuOpen && (
-                <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden min-w-[160px] z-20">
+                <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden min-w-[200px] z-20">
                   <button
                     onClick={() => { setAttachMenuOpen(false); fileInputRef.current?.click(); }}
                     disabled={pendingImages.length >= 3}
@@ -2384,6 +2402,29 @@ export function AIAssistantPage() {
                     <Paperclip className="w-4 h-4 flex-shrink-0" />
                     CSV / Spreadsheet
                   </button>
+
+                  {/* Voice language picker — surfaced here for mobile because
+                      the inline <select> in the input row is hidden below 640px.
+                      Desktop users see both; the duplicate is harmless because
+                      both call the same setter. */}
+                  <div className="border-t border-gray-100 px-4 pt-3 pb-1 text-[10px] uppercase tracking-wide text-gray-400 font-semibold">
+                    Voice language
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 px-3 pb-3">
+                    {(['en', 'fr', 'sw', 'yo', 'ha', 'pidgin'] as const).map(code => (
+                      <button
+                        key={code}
+                        onClick={() => { handleVoiceLangChange(code as any); setAttachMenuOpen(false); }}
+                        className={`px-2 py-1.5 text-xs rounded-md font-medium transition-colors ${
+                          voiceLang === code
+                            ? 'bg-agri-gold-100 text-agri-brown-700'
+                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {code === 'pidgin' ? 'Pidgin' : code.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -2406,14 +2447,15 @@ export function AIAssistantPage() {
                 : listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
 
-            {/* Voice language picker — Phase G. Drives Whisper input language
-                and TTS output voice. Pidgin/Hausa fall back to English voice. */}
+            {/* Voice language picker — desktop only. Phones get the same
+                picker inside the attach (+) menu above, so the input row
+                stays compact at 360px viewports. */}
             <select
               value={voiceLang}
               onChange={e => handleVoiceLangChange(e.target.value as any)}
               disabled={loading || listening || transcribing}
               title="Voice language"
-              className="px-2 py-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium disabled:opacity-40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-agri-gold-500"
+              className="hidden sm:block px-2 py-3 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 text-xs font-medium disabled:opacity-40 cursor-pointer focus:outline-none focus:ring-2 focus:ring-agri-gold-500"
             >
               <option value="en">EN</option>
               <option value="fr">FR</option>
@@ -2423,13 +2465,16 @@ export function AIAssistantPage() {
               <option value="pidgin">Pidgin</option>
             </select>
 
-            {/* TTS toggle — when on, Eden's text reply is read aloud */}
+            {/* TTS toggle — desktop only. Mobile users access mute via
+                Settings → Eden AI tab if they need it; in practice TTS is
+                rarely toggled, so the row real estate is better spent on
+                the textarea. */}
             <button
               type="button"
               onClick={toggleTts}
               disabled={loading}
               title={ttsEnabled ? 'Mute Eden\'s replies' : 'Read Eden\'s replies aloud'}
-              className={`px-3 py-3 rounded-lg transition-colors flex items-center justify-center ${
+              className={`hidden sm:flex px-3 py-3 rounded-lg transition-colors items-center justify-center ${
                 ttsEnabled
                   ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                   : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -2438,16 +2483,28 @@ export function AIAssistantPage() {
               {ttsEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
 
-            <input
+            {/* Auto-growing textarea — May 2026 mobile rewrite.
+                Was a single-line <input> that scrolled horizontally on
+                long messages, off-screen on phones. Now grows from 1 row
+                to ~4 rows (max 160px), then internal scroll. Enter sends,
+                Shift+Enter inserts a newline (handleKeyPress handles
+                that). resize-none disables the manual drag handle. */}
+            <textarea
               ref={inputRef}
-              type="text"
+              rows={1}
               inputMode="text"
               enterKeyHint="send"
               autoComplete="off"
               autoCorrect="on"
               spellCheck
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Auto-grow: collapse first so the box can shrink, then
+                // expand to scrollHeight (capped at 160px = ~4 rows).
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+              }}
               onKeyDown={handleKeyPress}
               placeholder={
                 listening ? 'Listening...'
@@ -2455,7 +2512,8 @@ export function AIAssistantPage() {
                 : pendingImages.length > 0 ? 'Describe what you see, or just hit Send…'
                 : 'Ask anything, log data, or attach a file…'
               }
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-gold-500 focus:border-transparent outline-none"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-gold-500 focus:border-transparent outline-none resize-none leading-snug"
+              style={{ minHeight: '48px', maxHeight: '160px' }}
               disabled={loading}
             />
             <button
