@@ -12,13 +12,21 @@
  *    taps an input — the unwanted zoom-in is the single biggest
  *    mobile-form annoyance and this one rule kills it everywhere.
  *
+ *    NOTE on the !important: Tailwind utility classes (text-xs, text-[11px],
+ *    etc.) live in @layer utilities, which has higher specificity than
+ *    @layer base by Tailwind's layer ordering. Without !important, any
+ *    input that has a Tailwind text size class wins the cascade and the
+ *    iOS zoom-in returns. !important here is the safety net — individual
+ *    form controls cannot opt out, which is exactly what we want for
+ *    mobile-form correctness.
+ *
  * 2. The .touch-target utility enforces ≥44×44 hit areas on icon-only
  *    buttons. Add it to any bare-icon button without disturbing the
  *    visible size — increases hit area via padding only.
  */
 @layer base {
   input, select, textarea {
-    font-size: 16px;
+    font-size: 16px !important;
   }
 }
 
