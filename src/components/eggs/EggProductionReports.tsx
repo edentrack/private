@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { formatEggsCompact } from '../../utils/eggFormatting';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface EggCollection {
   id: string;
@@ -32,7 +33,7 @@ export function EggProductionReports({ flockId }: EggProductionReportsProps) {
     date.setDate(date.getDate() - 7);
     return date.toISOString().split('T')[0];
   });
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(todayLocal());
   const [collections, setCollections] = useState<EggCollection[]>([]);
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);

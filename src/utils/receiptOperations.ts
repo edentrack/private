@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { ProductType, ReceiptItem } from '../types/database';
+import { todayLocal } from './dateUtils';
 
 interface CreateReceiptData {
   farmId: string;
@@ -340,7 +341,7 @@ export async function processRefund(data: ProcessRefundData): Promise<ReceiptRes
       amount: -data.refundAmount,
       currency: profile?.currency_preference || 'CFA',
       description: `Refund: ${data.refundReason} (Receipt #${receipt.receipt_number})`,
-      revenue_date: new Date().toISOString().split('T')[0],
+      revenue_date: todayLocal(),
     });
 
     if (data.restoreInventory) {

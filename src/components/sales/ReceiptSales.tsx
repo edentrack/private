@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { Flock, ProductType } from '../../types/database';
 import { createReceipt, calculateAvailableEggStock } from '../../utils/receiptOperations';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface ReceiptItem {
   productType: ProductType;
@@ -22,7 +23,7 @@ export function ReceiptSales({ onReceiptCreated }: ReceiptSalesProps) {
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlock, setSelectedFlock] = useState<string>('');
   const [customerName, setCustomerName] = useState('');
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [saleDate, setSaleDate] = useState(todayLocal());
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<ReceiptItem[]>([

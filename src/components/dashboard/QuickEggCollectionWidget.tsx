@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { ConfirmEggCollectionModal } from '../eggs/ConfirmEggCollectionModal';
 import { getFarmTodayISO, getFarmTimeZone } from '../../utils/farmTime';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface Flock {
   id: string;
@@ -40,7 +41,7 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
   const [traysBySize, setTraysBySize] = useState({ small: '', medium: '', large: '', jumbo: '' });
   const [looseBySize, setLooseBySize] = useState({ small: '', medium: '', large: '', jumbo: '' });
   const [selectedFlockId, setSelectedFlockId] = useState('');
-  const [collectionDate, setCollectionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [collectionDate, setCollectionDate] = useState(todayLocal());
   const [intervalTrackingActive, setIntervalTrackingActive] = useState(false);
   const [intervalSourceTaskSupported, setIntervalSourceTaskSupported] = useState<'unknown' | 'supported' | 'unsupported'>('unknown');
   const [intervalAutoTotals, setIntervalAutoTotals] = useState({

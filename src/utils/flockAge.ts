@@ -26,6 +26,11 @@ function parseLocalDate(s: string): Date {
 /**
  * Days since the animals were "born/hatched/stocked at week 0", inclusive
  * of any age they had at arrival. Returns 0 if no arrival date.
+ *
+ * Uses Math.round on the millisecond diff so DST transitions (a 23-hour or
+ * 25-hour day in countries with daylight saving) don't off-by-one the
+ * count. Without round() a flock with arrival_date = 126 days ago could
+ * read as 125 days old when crossing a spring-forward boundary.
  */
 export function getFlockAgeDays(flock: FlockLike | null | undefined): number {
   if (!flock) return 0;
@@ -35,7 +40,7 @@ export function getFlockAgeDays(flock: FlockLike | null | undefined): number {
   arrival.setHours(0, 0, 0, 0);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const sinceArrival = Math.max(0, Math.floor((now.getTime() - arrival.getTime()) / 86_400_000));
+  const sinceArrival = Math.max(0, Math.round((now.getTime() - arrival.getTime()) / 86_400_000));
   const offset = Math.max(0, flock.age_at_arrival_days ?? 0);
   return sinceArrival + offset;
 }

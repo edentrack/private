@@ -7,6 +7,7 @@ import { FlockType } from '../../types/database';
 import { upsertChickExpenses } from '../../utils/flockExpenses';
 import { AnimalSpecies, getTypesForSpecies, getSpeciesTerminology } from '../../utils/speciesModules';
 import { getMaxBirdsPerFlock, exceedsBirdLimit, getMaxFlocks } from '../../utils/planGating';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface CreateFlockModalProps {
   onClose: () => void;
@@ -26,8 +27,8 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
 
   const [name, setName] = useState('');
   const [type, setType] = useState<FlockType | null>(null);
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [arrivalDate, setArrivalDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(todayLocal());
+  const [arrivalDate, setArrivalDate] = useState(todayLocal());
   const [initialCount, setInitialCount] = useState('');
   const [currentCount, setCurrentCount] = useState('');
   const [purchasePricePerBird, setPurchasePricePerBird] = useState('');

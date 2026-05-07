@@ -35,3 +35,4 @@ supabase/.temp/
 .env
 .vercel
 .env*.local
+edentrack-video-pipeline/

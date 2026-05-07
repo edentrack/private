@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';;
 import { Customer } from '../../types/database';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface CreateInvoiceModalProps {
   customers: Customer[];
@@ -21,7 +22,7 @@ export function CreateInvoiceModal({ customers, onClose, onCreated }: CreateInvo
   const { t } = useTranslation();
   const { user, profile, currentFarm } = useAuth();
   const [customerId, setCustomerId] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invoiceDate, setInvoiceDate] = useState(todayLocal());
   const [dueDate, setDueDate] = useState('');
   const [items, setItems] = useState<InvoiceItem[]>([
     { description: '', quantity: 1, unit_price: 0 },
