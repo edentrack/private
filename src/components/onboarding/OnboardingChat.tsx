@@ -27,6 +27,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { EdenAvatarAnimated } from '../ai/EdenAvatarAnimated';
 import { trackEvent } from '../../utils/analytics';
+import { sortActionsByDependency } from '../../utils/actionDependencyOrder';
 
 interface Msg {
   role: 'user' | 'assistant';
@@ -441,7 +442,12 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       const pills: string[] = [];
       let shouldComplete = false;
       let shouldSwitch = false;
-      for (const action of actions) {
+      // BUG-033: dependency-order the batch before executing. Onboarding
+      // doesn't usually emit complex chains, but rabbit setup ("create
+      // rabbitry + register doe + log kindling") hit the bug too. Same
+      // helper as the AIAssistantPage bulk executor uses.
+      const orderedActions = sortActionsByDependency(actions);
+      for (const action of orderedActions) {
         const result = await executeAction(action);
         if (result.pill) pills.push(result.pill);
         if (result.complete) shouldComplete = true;

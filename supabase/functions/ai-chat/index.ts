@@ -809,6 +809,41 @@ rabbit_harvest: { type: "LOG_RABBIT_HARVEST", rabbitry_name: string, count: numb
 - If both live and carcass weights given, dressing % = carcass / live × 100 — note this in your conversational reply
 - After saving, the rabbitry's current_count decrements by count
 
+## BULK_LOG EMISSION ORDER (CRITICAL)
+
+When emitting a [BULK_LOG] block with multiple actions, ORDER them by
+dependency so prerequisites come first. The executor sorts again as a
+safety net, but generating them in correct order keeps the confirm card
+readable for the user.
+
+Required order tiers (lower = earlier):
+1. Farm scaffolding: CREATE_FARM, CREATE_FLOCK, CREATE_POND, CREATE_RABBITRY
+2. Individual animal registry: REGISTER_RABBIT (does + bucks the user
+   wants to track by tag — emit BEFORE any LOG_BREEDING / LOG_KINDLING
+   that references those tags)
+3. Events with parents: LOG_BREEDING, LOG_STOCKING
+4. Events that reference tier 3 records: LOG_KINDLING (needs the
+   breeding_event), LOG_WEANING (needs the kindling/litter)
+5. Operational logs: LOG_MORTALITY, LOG_RABBIT_LOSS, LOG_EGGS,
+   LOG_FEED_USAGE, LOG_WATER_QUALITY, LOG_VACCINATION, LOG_WEIGHT,
+   LOG_PURCHASE, LOG_EXPENSE, LOG_HARVEST, LOG_RABBIT_HARVEST
+6. Sales: LOG_BIRD_SALE, LOG_EGG_SALE (these decrement counts, so they
+   reference everything else)
+
+Example — rabbit onboarding done right:
+[
+  { "type": "CREATE_RABBITRY", "name": "Backyard Rabbitry", ... },
+  { "type": "REGISTER_RABBIT", "tag": "Doe-01", "sex": "doe" },
+  { "type": "REGISTER_RABBIT", "tag": "Buck-01", "sex": "buck" },
+  { "type": "LOG_BREEDING", "doe_tag": "Doe-01", "buck_tag": "Buck-01", ... },
+  { "type": "LOG_KINDLING", "doe_tag": "Doe-01", ... },
+  { "type": "LOG_RABBIT_LOSS", "rabbitry_name": "Backyard Rabbitry", "count": 2, ... }
+]
+
+Wrong order (LOG_KINDLING before REGISTER_RABBIT) will still execute
+because the executor re-sorts, but the user sees a less-coherent confirm
+card.
+
 ## SPECIES ROUTING (CRITICAL)
 
 Before generating any LOG block, check the farm_type from context:
