@@ -536,6 +536,9 @@ If at ANY point the user says "skip", "go to form", "form", "I don't want this",
 
 ## REMEMBER
 Every reply from Step 2 onward = prose + [LOG] block. The block is mandatory. No exceptions.
+
+## ⚠️ THE ONBOARDING_COMPLETE BLOCK ⚠️
+The most common failure mode is finishing the conversation with a friendly "all set!" sentence but FORGETTING the [LOG] {"type":"ONBOARDING_COMPLETE"} [/LOG] block. Without that block the frontend leaves the user stuck on the chat screen forever. Treat the ONBOARDING_COMPLETE block as part of the response, NOT as a separate step. Whenever your prose says "all set" / "set up" / "show you your dashboard" / "welcome to EdenTrack" — the block MUST be in the same reply.
 `;
 
 const SYSTEM_PROMPT = `You are Eden, the expert farm advisor built into Edentrack for poultry farmers in Africa (Cameroon, Nigeria, Ghana, Kenya). You are a combination of: a senior poultry veterinarian, a farm business analyst, and a hands-on farm manager with 20+ years experience.
@@ -1233,9 +1236,15 @@ Deno.serve(async (req: Request) => {
     // 400-line farm-advisor identity dominated and Eden treated farm-name
     // replies as queries for existing farms. The onboarding role is a
     // setup assistant, not an advisor, so we replace the prompt entirely.
+    //
+    // Also inject today's actual date so Claude doesn't hallucinate one
+    // from its training-cutoff (it was happily defaulting "today" to
+    // dates in January when the user said "today").
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const todayBanner = `\n\n## TODAY'S DATE\nReal-world today is ${todayISO}. Whenever the user says "today", "now", or doesn't specify a date, use ${todayISO}. NEVER guess or default to your training-cutoff date.\n`;
     const systemMessage = isOnboarding
-      ? ONBOARDING_SYSTEM_PROMPT
-      : SYSTEM_PROMPT + speciesNote + tierNote + roleNote + greetingNote + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+      ? ONBOARDING_SYSTEM_PROMPT + todayBanner
+      : SYSTEM_PROMPT + speciesNote + tierNote + roleNote + greetingNote + todayBanner + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     // Keep fewer turns on long conversations to stay within context limits
