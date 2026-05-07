@@ -37,7 +37,10 @@ interface LogAction {
     | 'LOG_HARVEST' | 'LOG_SAMPLING' | 'LOG_FISH_LOSS'
     // Rabbit — Eden as operator
     | 'LOG_BREEDING' | 'LOG_KINDLING' | 'LOG_WEANING'
-    | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST';
+    | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST'
+    // Phase 6 onboarding — Eden creates the farm itself
+    | 'CREATE_FARM' | 'CREATE_FLOCK' | 'CREATE_POND' | 'CREATE_RABBITRY'
+    | 'ONBOARDING_COMPLETE' | 'SWITCH_TO_FORM';
   log_date?: string;  // universal ISO date override for bulk imports
   // Common
   flock_name?: string;
@@ -108,9 +111,11 @@ interface LogAction {
   fish_behavior?: 'normal' | 'lethargic' | 'gasping' | 'erratic' | 'feeding-vigorous';
   feeding_response?: 'vigorous' | 'normal' | 'slow' | 'none';
   dead_fish_count?: number;
-  // LOG_STOCKING
+  // LOG_STOCKING (fish species at row level) OR CREATE_FARM (top-level
+  // farm species). We accept both unions on the same field — the executor
+  // disambiguates by `type`.
   fingerling_count?: number;
-  species?: 'tilapia' | 'catfish' | 'clarias' | 'other';
+  species?: 'tilapia' | 'catfish' | 'clarias' | 'other' | 'poultry' | 'aquaculture' | 'rabbits';
   source?: string;
   cost_per_fingerling?: number;
   total_cost?: number;
@@ -152,6 +157,25 @@ interface LogAction {
   harvest_date?: string;
   // Cross-farm mode: Eden includes this in [LOG] blocks to specify the target farm.
   target_farm_id?: string;
+
+  // ─── Phase 6 onboarding — Eden creates the farm itself ──────────────
+  // CREATE_FARM uses `name` for the farm name. Subsequent CREATE_FLOCK /
+  // CREATE_POND / CREATE_RABBITRY reference back via `farm_name`. Fields
+  // `breed`, `count`, `species` already declared above; this block adds
+  // only the fields that don't yet exist.
+  country?: string;
+  currency_code?: string;
+  location?: string;
+  farm_name?: string;
+  name?: string;
+  stocked_date?: string;
+  current_phase?: 'chick' | 'grower' | 'layer' | 'broiler';
+  // CREATE_POND
+  area_sqm?: number;
+  depth_m?: number;
+  water_source?: string;
+  // CREATE_RABBITRY
+  capacity?: number;
 }
 
 interface ChatMessage {
@@ -988,6 +1012,102 @@ export function AIAssistantPage() {
       if (!rhrData?.length) throw new Error('Rabbit harvest not saved — possible permission issue.');
       if (harvestCount > 0) {
         await supabase.from('flocks').update({ current_count: Math.max(0, (flock.current_count || 0) - harvestCount) }).eq('id', flock.id).eq('farm_id', farmId);
+      }
+
+    // ─── Phase 6 onboarding actions ────────────────────────────────────
+    // CREATE_FARM creates a new farm AND adds the current user as owner
+    // in farm_members. The farmId argument is ignored — we don't have one
+    // yet. Subsequent CREATE_FLOCK/POND/RABBITRY rely on farm_name to
+    // resolve back to the just-created farm.
+    } else if (logAction.type === 'CREATE_FARM') {
+      if (!user?.id) throw new Error('Not signed in');
+      const farmName = (logAction.name || logAction.farm_name || '').trim();
+      if (!farmName) throw new Error('Farm name required');
+      const species = logAction.species || 'poultry';
+      const { data: newFarm, error: cfErr } = await supabase
+        .from('farms')
+        .insert({
+          name: farmName,
+          owner_id: user.id,
+          farm_type: species,
+          country: logAction.country || null,
+          location: logAction.location || null,
+          currency_code: logAction.currency_code || logAction.currency || null,
+        })
+        .select('id, name, farm_type')
+        .single();
+      if (cfErr || !newFarm) throw new Error(`Create farm failed: ${cfErr?.message || 'unknown'}`);
+      // Add the user as owner — table may have a trigger; this is defensive.
+      await supabase
+        .from('farm_members')
+        .insert({ farm_id: newFarm.id, user_id: user.id, role: 'owner' })
+        .then(({ error }) => {
+          if (error && !/duplicate|already/i.test(error.message)) {
+            console.warn('farm_members insert warning:', error.message);
+          }
+        });
+
+    // CREATE_FLOCK / CREATE_POND / CREATE_RABBITRY — all insert into
+    // `flocks` with the species-appropriate `type`. Resolves the parent
+    // farm by name from the just-created CREATE_FARM in this session.
+    } else if (
+      logAction.type === 'CREATE_FLOCK' ||
+      logAction.type === 'CREATE_POND' ||
+      logAction.type === 'CREATE_RABBITRY'
+    ) {
+      const targetFarmName = (logAction.farm_name || '').trim();
+      let targetFarmIdLocal = farmId;
+      if (targetFarmName) {
+        const { data: foundFarm } = await supabase
+          .from('farms')
+          .select('id, owner_id')
+          .ilike('name', targetFarmName)
+          .eq('owner_id', user?.id ?? '')
+          .limit(1)
+          .maybeSingle();
+        if (foundFarm) targetFarmIdLocal = foundFarm.id;
+      }
+      if (!targetFarmIdLocal) throw new Error('Could not find the farm to add to');
+      const entityName = (logAction.name || logAction.flock_name || '').trim();
+      if (!entityName) throw new Error('Name required');
+      const flockType =
+        logAction.type === 'CREATE_POND'
+          ? 'Catfish'
+          : logAction.type === 'CREATE_RABBITRY'
+          ? 'Rabbitry'
+          : (logAction.current_phase === 'layer' ? 'Layer' : 'Broiler');
+      const initialCount = Number(logAction.count) || 0;
+      const stockedDate = logAction.stocked_date || recordDate;
+      const { error: fErr } = await supabase.from('flocks').insert({
+        farm_id: targetFarmIdLocal,
+        user_id: user?.id ?? null,
+        name: entityName,
+        type: flockType,
+        breed: logAction.breed || null,
+        initial_count: initialCount,
+        current_count: initialCount,
+        start_date: stockedDate,
+        arrival_date: stockedDate,
+        status: 'active',
+      });
+      if (fErr) throw new Error(`Create ${logAction.type.replace('CREATE_', '').toLowerCase()} failed: ${fErr.message}`);
+
+    // ONBOARDING_COMPLETE / SWITCH_TO_FORM are control signals — the
+    // confirmLog wrapper handles UI state, here we just flip the
+    // profiles.onboarding_status accordingly.
+    } else if (logAction.type === 'ONBOARDING_COMPLETE') {
+      if (user?.id) {
+        await supabase
+          .from('profiles')
+          .update({ onboarding_status: 'completed', onboarding_completed: true })
+          .eq('id', user.id);
+      }
+    } else if (logAction.type === 'SWITCH_TO_FORM') {
+      if (user?.id) {
+        await supabase
+          .from('profiles')
+          .update({ onboarding_status: 'chose_form' })
+          .eq('id', user.id);
       }
     }
   };

@@ -130,6 +130,12 @@ export interface Profile {
   approved_by?: string | null;
   approved_at?: string | null;
   onboarding_completed?: boolean;
+  /**
+   * Phase 6 conversational-onboarding state machine. The boolean above is
+   * legacy-compat; this column is the source of truth for the post-auth
+   * routing decision. See docs/BRIEF_PHASE_6_CONVERSATIONAL_ONBOARDING.md.
+   */
+  onboarding_status?: 'not_started' | 'chose_chat' | 'chose_form' | 'completed';
   primary_goal?: string | null;
   preferred_language?: string;
   farm_name?: string | null;
