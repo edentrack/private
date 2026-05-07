@@ -299,12 +299,18 @@ Each step is its own PR. Total estimate: 5–7 days of focused work.
 - 74/74 tests pass
 - Bundle stays at or below the size we hit after Phase 3
 
-## Open questions — RESOLVED (May 6, 2026)
+## Decisions (Greg, May 2026)
 
-These are no longer open. Implementation can proceed. Decisions locked in `docs/BRIEF_PHASE_2_EDEN_UI.md`.
+These lock in for implementation. Update the doc rather than re-litigating in PRs.
 
-1. **Card styling** → **Slim accent stripe + white background.** Cleaner on mobile; reads at arm's length; doesn't fight the existing app's neutral palette.
-2. **Voice TTS reply** → **Optional, default OFF.** Noisy farm environments + variable language quality. Users opt in via Settings → Eden AI.
-3. **Suggestion chip generation** → **Haiku-personalized, 24h cache per (user, farm).** Cost amortizes to ~1 call/farm/day = ~$10/month at 1,000 farms. Worth it — chips are the empty-state hook.
-4. **Streaming fallback on slow connections** → **Silent retry as non-streaming once → if that also fails, manual "Tap to retry" button.** One auto-retry covers transient drops; a button covers persistent failures without making Eden look broken.
-5. **Avatar animation budget** → **Subtle — pure CSS transitions, no Lottie/JSON.** Keeps bundle small, runs on every Android the app supports.
+1. **Card styling — slim accent stripe + white fill.** Clean and minimal. The 4–6 px colored stripe at the top (or left edge) carries the species/severity color; the body stays white with `text-gray-900`. Confirmation cards get a slightly thicker stripe and a colored shadow to read as the hero element.
+
+2. **Voice TTS reply — optional, default-off.** Setting lives in the Eden header overflow menu (the `[⋯]`). When on, Eden's reply text is also spoken via `window.speechSynthesis` using the user's locale-matched voice. When off (default), no audio. The previous Whisper integration in PR #13 already handles voice *input*; this is the *output* side, intentionally quiet by default.
+
+3. **Suggestion chip generation — Haiku, 24h cache.** On empty-state load, ask Claude Haiku (claude-haiku-4-5) for 3 personalized chips based on the farm's recent activity. Cache the result keyed on `(farm_id, day-bucket)` for 24h in `localStorage` so repeat visits within the day don't re-bill. If the Haiku call fails or is rate-limited, fall back to today's hardcoded species-specific suggestions. Cost target: ~$0.0003 per first visit per day per farm.
+
+4. **Streaming fallback — silent retry + manual retry button.** When SSE drops mid-response, the client silently retries once (non-streaming) within ~2s. If the retry also fails, show an inline "Tap to retry" button on the partial message. The user is never left staring at a cut-off response without a clear next step.
+
+5. **Avatar animation budget — CSS only.** No Lottie, no extra JS. The avatar pulses (`animation: eden-pulse 1.4s infinite`) while waiting; eyes are SVG paths animated via `<animate>` or transform. Keeps the bundle slim and the animation performant on low-end Android.
+
+These five decisions are the foundation for the implementation PRs that follow.
