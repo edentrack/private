@@ -107,17 +107,17 @@ export function InventoryLinkSection({
     if (!searchTerm) return items;
 
     return items.filter(item => {
-      const name = inventoryType === 'feed'
-        ? (item as FeedStock).name || (item as any).feed_type
-        : (item as OtherInventory).name || (item as any).item_name;
+      // FeedStock / OtherInventory schemas have feed_type / item_name as
+      // the user-facing label; some legacy rows also carry a .name field.
+      const anyItem = item as unknown as Record<string, unknown>;
+      const name = String(anyItem.name ?? (inventoryType === 'feed' ? anyItem.feed_type : anyItem.item_name) ?? '');
       return name.toLowerCase().includes(searchTerm.toLowerCase());
     });
   };
 
   const getItemName = (item: FeedStock | OtherInventory) => {
-    return inventoryType === 'feed'
-      ? (item as FeedStock).name || (item as any).feed_type
-      : (item as OtherInventory).name || (item as any).item_name;
+    const anyItem = item as unknown as Record<string, unknown>;
+    return String(anyItem.name ?? (inventoryType === 'feed' ? anyItem.feed_type : anyItem.item_name) ?? '');
   };
 
   return (

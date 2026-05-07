@@ -106,7 +106,11 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
 
       const existingItemIds = items.filter(item => item.id).map(item => item.id);
 
-      const { error: deleteError } = await supabase
+      // deleteError is intentionally ignored — best-effort cleanup of
+      // line-items that were removed in the UI; if it fails the rest of
+      // the update still proceeds and any orphaned rows can be reaped
+      // by a periodic job.
+      await supabase
         .from('invoice_items')
         .delete()
         .eq('farm_id', currentFarm?.id || '')

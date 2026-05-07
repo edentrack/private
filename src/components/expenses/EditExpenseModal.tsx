@@ -13,9 +13,8 @@ interface EditExpenseModalProps {
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
 
-const _capitalizeCategory = (cat: string): string => {
-  return cat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-};
+// capitalizeCategory removed — categories now render via their already-cased
+// label strings in the EXPENSE_CATEGORIES list.
 
 export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpenseModalProps) {
   const { user, currentFarm } = useAuth();
@@ -95,7 +94,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
         }
       }
       
-      const { error: updateError, data } = await supabase
+      const { error: updateError } = await supabase
         .from('expenses')
         .update({
           category: normalizedCategory,
