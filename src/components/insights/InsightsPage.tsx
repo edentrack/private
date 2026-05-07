@@ -370,9 +370,17 @@ export function InsightsPage() {
       if (total > 0) return sum + total;
       return sum + Math.max(0, Number(c.trays || 0) * eggsPerTray - Number(c.broken || 0));
     }, 0);
-    const days7 = Math.max(1, recent7Collections.length > 0
-      ? Math.round((now7.getTime() - sevenDaysAgo.getTime()) / (1000 * 60 * 60 * 24))
-      : ageDays);
+    // Use the number of distinct collection DAYS, not the 7-calendar-day
+    // window. Otherwise a farm logging 5 days out of 7 reads as 5/7 of its
+    // real rate — e.g. 65% real shows as 46% just because they hadn't logged
+    // today's collection yet. Group by date so morning + evening collections
+    // for the same date count as one day.
+    const distinctDays7 = new Set(
+      recent7Collections
+        .map((c: any) => String(c.collected_on || c.collection_date || '').slice(0, 10))
+        .filter((d: string) => Boolean(d)),
+    );
+    const days7 = Math.max(1, distinctDays7.size || ageDays);
     const dailyAvgEggs7 = recent7Collections.length > 0 ? eggs7 / days7 : (ageDays > 0 ? totalEggs / ageDays : 0);
     const productionRateCurrent = isLayerFlock && birdsAlive > 0
       ? ((dailyAvgEggs7 / birdsAlive) * 100).toFixed(1)
