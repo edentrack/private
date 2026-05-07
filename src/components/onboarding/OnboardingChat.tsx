@@ -402,6 +402,30 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       }
       const actions = [...serverActions, ...inlineActions];
 
+      // Heuristic fallback: even after multiple prompt-strengthening passes,
+      // Claude occasionally finishes the conversation with prose like
+      // "all set up — let me show you your dashboard" but skips the
+      // ONBOARDING_COMPLETE [LOG] block. If we detect the completion
+      // language AND we already have the minimum farm setup (a farm
+      // exists for this user), synthesize the action client-side so the
+      // user isn't stranded on the chat screen forever.
+      const hasCompletionPhrasing =
+        /\b(all set|all set up|ready when you are|welcome to edentrack|show you (your |the )?dashboard|let'?s? (head|go) to|let me show you|all done|setup complete|set\s?up\s?complete)\b/i.test(
+          replyText
+        );
+      const alreadyHasComplete = actions.some((a) => a.type === 'ONBOARDING_COMPLETE');
+      if (hasCompletionPhrasing && !alreadyHasComplete && user) {
+        const { data: anyFarm } = await supabase
+          .from('farms')
+          .select('id')
+          .eq('owner_id', user.id)
+          .limit(1)
+          .maybeSingle();
+        if (anyFarm) {
+          actions.push({ type: 'ONBOARDING_COMPLETE' } as Action);
+        }
+      }
+
       const pills: string[] = [];
       let shouldComplete = false;
       let shouldSwitch = false;
