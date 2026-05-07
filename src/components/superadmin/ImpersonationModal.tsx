@@ -171,7 +171,7 @@ export function ImpersonationModal({
 
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                 <p className="text-xs text-orange-800">
-                  You will enter read-only support mode. This session will be logged for audit purposes.
+                  You will enter support mode. You can edit data on the user's behalf to help resolve their issue. This session is logged for audit purposes.
                 </p>
               </div>
 

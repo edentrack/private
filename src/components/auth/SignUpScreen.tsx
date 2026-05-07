@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Eye, EyeOff, ArrowRight, Check, Zap, Brain, Wifi, Building2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Eye, EyeOff, ArrowRight, Check, Zap, Brain, Wifi, Building2, Wheat, Fish, Rabbit } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_COUNTRIES } from '../../utils/currency';
+import type { FarmKind } from '../../types/database';
 
 interface SignUpScreenProps {
   onToggle: () => void;
@@ -18,6 +19,12 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
   const [fullName, setFullName] = useState('');
   const [farmName, setFarmName] = useState('');
   const [country, setCountry] = useState('Nigeria');
+  // CRITICAL: previously the signup form had no species selector — every fresh
+  // farm defaulted to poultry regardless of name, which silently locked fish +
+  // rabbit segments out of the product entirely (Settings has no farm-type
+  // changer either, so users couldn't escape the default through any UI).
+  // Three options up front. Picked species writes farm_type at farm creation.
+  const [farmType, setFarmType] = useState<FarmKind>('poultry');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -127,6 +134,7 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
         if (farmName.trim()) {
           localStorage.setItem('pending_farm_name', farmName.trim());
           localStorage.setItem('pending_farm_country', country);
+          localStorage.setItem('pending_farm_type', farmType);
         }
         // If user arrived via a plan CTA (e.g. #/signup?plan=grower), persist it so
         // App.tsx can redirect them straight to the subscribe page after first login.
@@ -140,6 +148,7 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
     } catch (err: any) {
       localStorage.removeItem('pending_farm_name');
       localStorage.removeItem('pending_farm_country');
+      localStorage.removeItem('pending_farm_type');
       if (err.message?.includes('already registered') || err.message?.includes('User already registered') || err.message?.toLowerCase().includes('already exists')) {
         setError('An account with this email already exists. Sign in instead, or use "Forgot password?" on the sign-in page to reset your password.');
       } else if (err.message?.includes('invalid email')) {
@@ -191,7 +200,7 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
               <span style={{ color: '#ffdd00' }}>to smarter farming</span>
             </h2>
             <p className="text-gray-400 text-lg leading-relaxed max-w-sm">
-              Join farmers worldwide who use Edentrack to run their poultry operations like a professional.
+              Join farmers worldwide who use Edentrack to run their poultry, fish and rabbit operations like a professional.
             </p>
           </div>
           <div className="space-y-4">
@@ -320,6 +329,47 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
+                </div>
+
+                {/*
+                 * Farm type — three-way species picker.
+                 * Without this field every fresh signup defaulted to poultry,
+                 * silently locking aquaculture and rabbitry segments out of
+                 * the product. The picked value flows through localStorage to
+                 * the post-signup farm-creation in App.tsx, which writes it
+                 * to farms.farm_type.
+                 */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    What do you raise? <span className="text-red-400">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: 'poultry', label: 'Poultry', sub: 'Chickens', Icon: Wheat },
+                      { id: 'aquaculture', label: 'Fish', sub: 'Tilapia, catfish', Icon: Fish },
+                      { id: 'rabbits', label: 'Rabbits', sub: 'Meat / breeders', Icon: Rabbit },
+                    ] as const).map(({ id, label, sub, Icon }) => {
+                      const active = farmType === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setFarmType(id)}
+                          disabled={loading || !!success}
+                          aria-pressed={active}
+                          className={`flex flex-col items-center justify-center gap-1 px-2 py-3 rounded-xl border-2 transition-all disabled:opacity-50 ${
+                            active
+                              ? 'border-amber-400 bg-amber-50 text-gray-900'
+                              : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 ${active ? 'text-amber-600' : 'text-gray-500'}`} />
+                          <span className="text-sm font-semibold">{label}</span>
+                          <span className="text-[11px] text-gray-500">{sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </>
             )}

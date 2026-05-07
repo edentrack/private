@@ -51,6 +51,11 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const [farm, setFarm] = useState<Farm | null>(null);
   const [farmName, setFarmName] = useState('');
   const [country, setCountry] = useState('Cameroon');
+  // Farm type — three-way species switch. Previously this had no UI surface
+  // anywhere in the app, so a farm created as poultry could never become
+  // anything else without a database write. Settings → Farm Information is
+  // the right home for it (matches Section 16.1 of the stress-test guide).
+  const [farmType, setFarmType] = useState<'poultry' | 'aquaculture' | 'rabbits'>('poultry');
   const [currencyCode, setCurrencyCode] = useState('XAF');
   const [isCustomCurrency, setIsCustomCurrency] = useState(false);
   const [customCurrencyCode, setCustomCurrencyCode] = useState('');
@@ -86,6 +91,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
         setFarmName(farmData.name ?? '');
         const farmCountry = farmData.country || 'Cameroon';
         setCountry(farmCountry);
+        const ft = (farmData as any).farm_type;
+        setFarmType(ft === 'aquaculture' || ft === 'rabbits' ? ft : 'poultry');
         const rawCode = farmData.currency_code || farmData.currency || 'XAF';
         // Audit fix: the DB sometimes stores legacy aliases like "CFA"
         // alongside a country whose ISO code is "XAF" or "XOF". Normalising
@@ -208,6 +215,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             name: farmName,
             country: isCustomCurrency ? 'Other / Custom' : country,
             currency_code: finalCurrencyCode,
+            farm_type: farmType,
             eggs_per_tray: eggsPerTrayNum,
             cost_per_egg_override: costPerEggOverrideNum,
             feed_unit: feedUnit,
@@ -331,6 +339,49 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                     ))}
                     <option value="Other / Custom">Other / Custom</option>
                   </select>
+                </div>
+
+                {/*
+                 * Farm type — three-way species switch. Changing this swaps
+                 * the entire navigation, terminology, and Eden's species-aware
+                 * advisor mode. Existing flocks/ponds/hutches are NOT deleted
+                 * (only the UI presentation changes), but cross-species data
+                 * may not be meaningful in the new view. Save warns the user.
+                 */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Farm type
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: 'poultry', label: 'Poultry', sub: 'Chickens' },
+                      { id: 'aquaculture', label: 'Fish', sub: 'Tilapia / catfish' },
+                      { id: 'rabbits', label: 'Rabbits', sub: 'Meat / breeders' },
+                    ] as const).map(({ id, label, sub }) => {
+                      const active = farmType === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setFarmType(id)}
+                          aria-pressed={active}
+                          className={`flex flex-col items-start px-3 py-2 rounded-xl border-2 text-left transition-all ${
+                            active
+                              ? 'border-amber-400 bg-amber-50 text-gray-900'
+                              : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                          }`}
+                        >
+                          <span className="text-sm font-semibold">{label}</span>
+                          <span className="text-[11px] text-gray-500">{sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {farm && (farm as any).farm_type && (farm as any).farm_type !== farmType && (
+                    <p className="text-[11px] text-amber-700 mt-1.5">
+                      Changing farm type swaps your entire navigation and terminology. Existing data is preserved but may not be meaningful in the new view.
+                    </p>
+                  )}
                 </div>
 
                 {isCustomCurrency && (

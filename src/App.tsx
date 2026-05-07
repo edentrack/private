@@ -193,8 +193,18 @@ function AppContent() {
     const pendingFarmName = localStorage.getItem('pending_farm_name');
     if (!pendingFarmName) return;
     const pendingCountry = localStorage.getItem('pending_farm_country') || 'Nigeria';
+    // Read the species the user picked at signup. Default to 'poultry' for any
+    // legacy localStorage state from before the species selector landed, so we
+    // don't crash existing in-flight signups during the rollout. Going forward
+    // every new signup writes this key explicitly.
+    const pendingFarmTypeRaw = localStorage.getItem('pending_farm_type');
+    const pendingFarmType: 'poultry' | 'aquaculture' | 'rabbits' =
+      pendingFarmTypeRaw === 'aquaculture' || pendingFarmTypeRaw === 'rabbits'
+        ? pendingFarmTypeRaw
+        : 'poultry';
     localStorage.removeItem('pending_farm_name');
     localStorage.removeItem('pending_farm_country');
+    localStorage.removeItem('pending_farm_type');
 
     import('./lib/supabaseClient').then(async ({ supabase }) => {
       // Don't create if already has a farm membership
@@ -214,7 +224,7 @@ function AppContent() {
 
       const { data: farm, error: farmError } = await supabase
         .from('farms')
-        .insert({ name: pendingFarmName, owner_id: user.id, country: pendingCountry, currency_code: currencyCode })
+        .insert({ name: pendingFarmName, owner_id: user.id, country: pendingCountry, currency_code: currencyCode, farm_type: pendingFarmType })
         .select('id')
         .single();
       if (farmError || !farm) {

@@ -80,13 +80,13 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
               <span style={{ color: '#ffdd00' }}>like a professional</span>
             </h2>
             <p className="text-gray-400 text-lg leading-relaxed max-w-sm">
-              Everything you need to manage your poultry farm — in one app that works even without internet.
+              Everything you need to manage your farm — poultry, fish or rabbits — in one app that works even without internet.
             </p>
           </div>
 
           <ul className="space-y-4">
             {[
-              'Track flocks, eggs, feed and expenses',
+              'Track flocks, ponds, hutches and expenses',
               'Eden AI diagnoses health and logs data',
               'Offline-first — works with no signal',
               'Weekly email reports, auto-generated',
@@ -103,7 +103,7 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
 
         {/* Bottom */}
         <div className="relative">
-          <p className="text-xs text-gray-600">Trusted by poultry farmers worldwide.</p>
+          <p className="text-xs text-gray-600">Trusted by farmers worldwide.</p>
         </div>
       </div>
 
