@@ -58,3 +58,26 @@ export function getFlockAge(flock: FlockLike | null | undefined): { weeks: numbe
   const days = total % 7;
   return { weeks, days };
 }
+
+/**
+ * Point of lay: layer hens typically start producing around week 18 (126 days).
+ * Used to exclude pullets/growers from the lay-rate denominator on the
+ * dashboard and weekly report.
+ */
+export const POINT_OF_LAY_DAYS = 126;
+
+/**
+ * Returns true if the flock is a Layer that's old enough to actually be laying.
+ * Includes the `age_at_arrival_days` offset so point-of-lay pullets bought at
+ * 18+ weeks are counted from day 0.
+ */
+export function isLayingHen(
+  flock: (FlockLike & { type?: string | null; purpose?: string | null }) | null | undefined,
+): boolean {
+  if (!flock) return false;
+  const t = String(flock.type || '').toLowerCase();
+  const p = String(flock.purpose || '').toLowerCase();
+  const isLayerKind = t === 'layer' || p === 'layer' || p === 'layers';
+  if (!isLayerKind) return false;
+  return getFlockAgeDays(flock) >= POINT_OF_LAY_DAYS;
+}

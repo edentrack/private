@@ -264,10 +264,38 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
       } else {
         const latest = weights.filter((w: any) => w.flock_id === f.id)[0];
         const latestWeight = latest ? `${latest.average_weight}kg avg (${latest.date})` : "no weight records";
-        const latestEggs = eggs.filter((e: any) => e.flock_id === f.id).slice(0, 3);
-        const layingRate = latestEggs.length && f.current_count
-          ? `laying rate ~${((latestEggs.reduce((s: number, e: any) => s + (e.total_eggs || 0), 0) / latestEggs.length / f.current_count) * 100).toFixed(0)}%`
-          : "";
+        // Only quote a laying rate if the flock is old enough to actually be
+        // laying (>= 18 weeks). For mixed flocks a Layer-typed pen of pullets
+        // would otherwise pull the rate down 2-3×. Group eggs by date so
+        // multiple collections in the same day are summed before dividing —
+        // a morning + evening collection is one day, not two.
+        const arrivalStr = (f as any).arrival_date || (f as any).start_date || (f as any).created_at;
+        const ageOffset = Number((f as any).age_at_arrival_days || 0);
+        let isLaying = false;
+        if (arrivalStr) {
+          const arrival = new Date(String(arrivalStr));
+          const ageDays = Math.max(0, Math.floor((Date.now() - arrival.getTime()) / 86_400_000)) + ageOffset;
+          const t = String(f.type || "").toLowerCase();
+          isLaying = (t === "layer") && ageDays >= 126;
+        }
+        let layingRate = "";
+        if (isLaying && f.current_count) {
+          const flockEggs = eggs.filter((e: any) => e.flock_id === f.id);
+          const byDay: Record<string, number> = {};
+          flockEggs.forEach((e: any) => {
+            const d = String(e.collection_date || "").slice(0, 10);
+            if (!d) return;
+            byDay[d] = (byDay[d] || 0) + (Number(e.total_eggs) || 0);
+          });
+          const recentDays = Object.keys(byDay).sort().slice(-7); // last 7 days max
+          if (recentDays.length > 0) {
+            const eggsPerDay = recentDays.reduce((s, d) => s + byDay[d], 0) / recentDays.length;
+            const rate = (eggsPerDay / f.current_count) * 100;
+            layingRate = `laying rate ~${rate.toFixed(0)}% / hen / day (avg of last ${recentDays.length} day${recentDays.length === 1 ? "" : "s"})`;
+          }
+        } else if (!isLaying && String(f.type || "").toLowerCase() === "layer") {
+          layingRate = "not yet laying (pre-POL)";
+        }
         context += `- **${f.name}** [${f.status}]: ${f.type || "unknown"}, ${f.current_count ?? "?"}/${f.initial_count || "?"} birds, ${dayAge}, mortality all-time: ${fMortality} birds (${mortalityRate}%), weight: ${latestWeight}${layingRate ? ", " + layingRate : ""}\n`;
       }
     });

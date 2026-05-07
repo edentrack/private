@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { isLayingHen } from './flockAge';
 
 interface ReportData {
   farmName: string;
@@ -287,11 +288,14 @@ function formatDailyReport(data: ReportData): string {
         }
       }
 
-      if ((flock.type?.toLowerCase() === 'layer' || flock.purpose === 'layers') && eggsToday > 0) {
+      if (isLayingHen(flock) && eggsToday > 0) {
+        // BUG-026 FIX: there was a stray "/7" here that made today's rate look
+        // 7× too low — real 65% / hen / day showed up as ~9%. eggsToday is a
+        // single-day figure, so it's just (eggs / hens) × 100.
         const productionRate = flock.current_count > 0
-          ? ((eggsToday / flock.current_count * 100) / 7).toFixed(1)
+          ? ((eggsToday / flock.current_count) * 100).toFixed(1)
           : '0.0';
-        lines.push(`  → Eggs: ${eggsToday.toLocaleString()} collected (avg ${productionRate}%/day production rate)`);
+        lines.push(`  → Eggs: ${eggsToday.toLocaleString()} collected today (${productionRate}% / hen)`);
       }
 
       // 2. FCR + days-to-sale for broilers
@@ -715,24 +719,35 @@ function formatDailyReport(data: ReportData): string {
   }
 
   // Production Metrics
-  const layerFlocks = flocks.filter(f => f.type?.toLowerCase() === 'layer' || f.purpose === 'layers');
+  // Only count birds that are actually old enough to lay (>= 18 weeks).
+  // Counting pullets/growers in a Layer-typed flock makes the rate look 2-3×
+  // worse than reality.
+  const layerFlocks = flocks.filter(f => isLayingHen(f));
   const broilerFlocks = flocks.filter(f => f.type?.toLowerCase() === 'broiler' || f.purpose === 'broilers');
-  
+
   if (layerFlocks.length > 0 || broilerFlocks.length > 0) {
     lines.push('📈 PRODUCTION METRICS');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+
     if (layerFlocks.length > 0) {
       const totalLayerBirds = layerFlocks.reduce((sum, f) => sum + (f.current_count || 0), 0);
       const totalEggsCollected = eggCollections.reduce((sum, c) => sum + (c.total_eggs || (c.trays || 0) * 30), 0);
+      // The weekly report covers ~7 days of collections; divide by the actual
+      // number of unique collection days so the rate stays % per hen per day.
+      const uniqueDays = new Set(
+        eggCollections
+          .map((c) => (c.collected_on || c.collection_date || '').toString().slice(0, 10))
+          .filter(Boolean),
+      ).size;
+      const days = Math.max(1, uniqueDays);
       const productionRate = totalLayerBirds > 0
-        ? ((totalEggsCollected / totalLayerBirds) * 100).toFixed(1)
+        ? ((totalEggsCollected / (totalLayerBirds * days)) * 100).toFixed(1)
         : '0.0';
 
       lines.push(`🥚 Layer Production:`);
-      lines.push(`  → Total Layer Birds: ${totalLayerBirds.toLocaleString()}`);
-      lines.push(`  → Eggs Collected: ${totalEggsCollected.toLocaleString()} (${(totalEggsCollected / 30).toFixed(1)} trays)`);
-      lines.push(`  → Production Rate: ${productionRate}%`);
+      lines.push(`  → Total Layer Birds (laying age): ${totalLayerBirds.toLocaleString()}`);
+      lines.push(`  → Eggs Collected: ${totalEggsCollected.toLocaleString()} (${(totalEggsCollected / 30).toFixed(1)} trays) over ${days} day${days === 1 ? '' : 's'}`);
+      lines.push(`  → Production Rate: ${productionRate}% / hen / day`);
     }
     
     if (broilerFlocks.length > 0) {

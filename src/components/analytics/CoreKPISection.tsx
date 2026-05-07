@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
 import { useTranslation } from 'react-i18next';
 import { calculateFCRForFarm, getFCRStatus } from '../../utils/fcrCalculation';
+import { isLayingHen } from '../../utils/flockAge';
 import { useFarmType } from '../../hooks/useFarmType';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 
@@ -97,7 +98,11 @@ export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionPro
       const activeFlocks = flocksData || [];
       setFlocks(activeFlocks);
 
-      const layerFlocks = activeFlocks.filter((f) => f.type === 'Layer');
+      // Lay rate denominator must only include hens that are actually old enough
+      // to be laying (>= 18 weeks / point of lay). Counting pullets, growers, or
+      // chicks here cratered the rate by 2-3× — e.g. a real 65% rate showed as
+      // 22% when the flock had 200 layers + 400 pullets in the same farm.
+      const layerFlocks = activeFlocks.filter((f) => isLayingHen(f));
       const totalLayerBirds = layerFlocks.reduce((sum, f) => sum + f.current_count, 0);
 
       const { data: collections } = await supabase
