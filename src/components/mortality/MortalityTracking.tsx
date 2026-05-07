@@ -280,7 +280,7 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
               disabled={loading || count === 0}
               className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-medium hover:bg-[#2F4A34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : `Save ${species.lossNoun}`}
+              {loading ? 'Saving…' : `Record ${species.lossNoun}`}
             </button>
           )}
         </div>

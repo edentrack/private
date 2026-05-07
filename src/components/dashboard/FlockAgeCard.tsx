@@ -3,6 +3,7 @@ import { AlertTriangle, Calendar, Bird, ArrowUpRight } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface FlockAgeCardProps {
   flockId: string | null;
@@ -12,6 +13,7 @@ interface FlockAgeCardProps {
 
 export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCardProps) {
   const { currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
   const [flock, setFlock] = useState<Flock | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -138,7 +140,7 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
 
         <div className="flex items-center gap-2 text-sm text-gray-700">
           <Bird className="w-4 h-4" />
-          <span>{flock.current_count.toLocaleString()} birds</span>
+          <span>{flock.current_count.toLocaleString()} {farmSpecies.animalTermPlural.toLowerCase()}</span>
           <span className="text-gray-400">|</span>
           <span className="capitalize">{flock.type}</span>
         </div>

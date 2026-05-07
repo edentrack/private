@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { todayLocal } from '../../utils/dateUtils';
 
 interface LogMortalityModalProps {
   flock?: Flock | null;
@@ -22,10 +23,6 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
   const groupTerm = species.groupTerm.toLowerCase();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const [currentFlock, setCurrentFlock] = useState<Flock | null>(flock || null);
-  const todayLocal = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
   const [date, setDate] = useState(todayLocal());
   const [count, setCount] = useState('');
   const [reason, setReason] = useState(species.lossReasons[0] ?? 'Disease');
@@ -175,7 +172,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
             <div className="p-2 bg-red-50 rounded-xl">
               <AlertTriangle className="w-6 h-6 text-red-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">{isAquaculture ? 'Record Fish Loss' : 'Log Mortality'}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{`Record ${species.lossNoun}`}</h2>
           </div>
           <button
             onClick={onClose}
@@ -194,7 +191,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {isAquaculture ? 'Pond' : 'Flock'}
+              {groupTerm.charAt(0).toUpperCase() + groupTerm.slice(1)}
             </label>
             <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-900 font-medium">
               {currentFlock.name}
@@ -221,7 +218,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
           <div>
             <label htmlFor="count" className="block text-sm font-medium text-gray-700 mb-2">
-              {isAquaculture ? 'Number of Fish Lost' : 'Number of Dead Birds'}
+              {`Number of ${species.animalTermPlural} Lost`}
             </label>
             <input
               id="count"
@@ -280,7 +277,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
               disabled={loading}
               className="flex-1 bg-red-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving...' : (isAquaculture ? 'Record Loss' : 'Log Mortality')}
+              {loading ? 'Saving…' : `Record ${species.lossNoun}`}
             </button>
           </div>
         </form>

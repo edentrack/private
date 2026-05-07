@@ -3,6 +3,7 @@ import { Bird, Calendar, User, ChevronDown, ChevronUp, Scale } from 'lucide-reac
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface BirdSale {
   id: string;
@@ -34,6 +35,8 @@ interface BirdSalesListProps {
 
 export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
   const { currentFarm, currentRole, profile } = useAuth();
+  const farmSpecies = useFarmSpecies();
+  const animalTermPlural = farmSpecies.animalTermPlural.toLowerCase();
   const [sales, setSales] = useState<BirdSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSale, setExpandedSale] = useState<string | null>(null);
@@ -165,7 +168,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{sale.birds_sold} birds</span>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{sale.birds_sold} {animalTermPlural}</span>
                     {getSaleTypeBadge(sale.sale_type)}
                     {getPaymentStatusBadge(sale.payment_status)}
                   </div>
