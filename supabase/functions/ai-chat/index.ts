@@ -41,6 +41,7 @@ const ALLOWED_MODEL_OVERRIDES = new Set([MODEL_HAIKU, MODEL_SONNET, MODEL_OPUS])
 const MAX_REQUESTS_PER_MINUTE = 15;
 
 import { FISH_KNOWLEDGE, POULTRY_KNOWLEDGE, RABBIT_KNOWLEDGE } from './knowledge-inline.ts';
+import { buildPlanAwarenessNote, getFarmCap } from '../_shared/planAwareness.ts';
 
 function selectModel(messages: ChatMessage[]): string {
   const last = messages[messages.length - 1];
@@ -1248,22 +1249,23 @@ Deno.serve(async (req: Request) => {
 
     // BUG-031 fix: Eden previously told users "no upgrade needed, create a
     // new rabbits farm" when they were already at the plan's farm cap.
-    // Now we count their owned farms + look up the cap, and inject both into
-    // the prompt so Eden's instructions match what the UI will actually
-    // permit.
-    const FARM_CAP_BY_TIER: Record<string, number> = {
-      free: 1, pro: 2, grower: 2, enterprise: 3, farmboss: 3, industry: 999,
-    };
-    const farmCap = FARM_CAP_BY_TIER[tier] || 1;
+    // Now we look up the user's farm count + cap and inject the result
+    // into the prompt via the shared `buildPlanAwarenessNote` helper
+    // (covered by vitest tests). Edge function and tests share one
+    // source of truth so the prompt output can't drift.
+    const farmCap = getFarmCap(tier);
     const { count: ownedFarmCount } = await supabaseClient
       .from("farms")
       .select("id", { count: "exact", head: true })
       .eq("owner_id", ownerIdForTier);
     const farmsUsed = ownedFarmCount ?? 0;
-    const atFarmCap = farmsUsed >= farmCap;
-    const farmCapNote = `\n\n## PLAN FARM CAP (current state — read this before suggesting "create a new farm")\nThis user owns **${farmsUsed} of ${farmCap}** farms allowed on the **${tier}** plan.\n${atFarmCap
-      ? `They are AT THE LIMIT. If they ask about adding another species (e.g. "I want to add rabbits"), do NOT say "create a new farm" without first acknowledging the cap. Tell them they need to: (a) upgrade to a higher plan, (b) delete one of their existing empty farms, or (c) reuse an existing farm if compatible. Only after that should you walk through the species setup.`
-      : `They have ${farmCap - farmsUsed} farm slot${(farmCap - farmsUsed) === 1 ? "" : "s"} available. They CAN create a new farm directly via Settings → My Farms → Add a new farm.`}`;
+    const farmCapNote = buildPlanAwarenessNote({
+      tier,
+      farmsUsed,
+      farmCap,
+      edenMsgsUsed: usedCount ?? null,
+      edenMsgsCap: countLimit ?? null,
+    });
 
     // First-message greeting instruction injected when context is available
     const greetingNote = contextPrompt && !contextPrompt.includes("No flocks recorded")
