@@ -495,6 +495,14 @@ Excellent — 100 birds in Coop A. When did you start with these chickens — to
 \`\`\`
 Use "CREATE_FLOCK" for poultry, "CREATE_POND" for aquaculture, "CREATE_RABBITRY" for rabbits.
 
+For aquaculture, ALWAYS include the fish type the user mentioned. Example for tilapia:
+\`\`\`
+[LOG]
+{ "type": "CREATE_POND", "farm_name": "Riverside Tilapia Farm", "name": "Pond 1", "count": 500, "fish_type": "Tilapia" }
+[/LOG]
+\`\`\`
+Common fish types: Tilapia, Catfish, Salmon, Trout, Carp, Shrimp. Use exactly what the user said. For poultry, include "bird_type" (Broiler, Layer, Cockerel, Turkey, Duck) when known.
+
 ### Step 4 — Stocking date
 After they say when (today / last week / "May 1"), convert to YYYY-MM-DD and emit a LOG_STOCKING block. Example:
 \`\`\`

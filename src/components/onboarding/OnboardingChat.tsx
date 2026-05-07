@@ -55,6 +55,8 @@ interface Action {
   // CREATE_FLOCK / POND / RABBITRY
   farm_name?: string;
   count?: number;
+  fish_type?: string;
+  bird_type?: string;
   // LOG_STOCKING
   flock_name?: string;
   fingerling_count?: number;
@@ -223,12 +225,22 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       if (existingFlock) {
         return { pill: null, complete: false, switchToForm: false };
       }
+      const normalizeFish = (s: string): string => {
+        const k = s.toLowerCase();
+        if (k.includes('tilapia')) return 'Tilapia';
+        if (k.includes('catfish')) return 'Catfish';
+        if (k.includes('salmon')) return 'Salmon';
+        if (k.includes('trout')) return 'Trout';
+        if (k.includes('carp')) return 'Carp';
+        if (k.includes('shrimp') || k.includes('prawn')) return 'Shrimp';
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      };
       const flockType =
         action.type === 'CREATE_POND'
-          ? 'Catfish'
+          ? (action.fish_type ? normalizeFish(action.fish_type) : 'Catfish')
           : action.type === 'CREATE_RABBITRY'
           ? 'Rabbitry'
-          : 'Broiler';
+          : action.bird_type || 'Broiler';
       const initialCount = Number(action.count) || 0;
       const today = new Date().toISOString().slice(0, 10);
       const { error } = await supabase.from('flocks').insert({
