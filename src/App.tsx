@@ -88,8 +88,37 @@ const CooperativeDashboard   = lazy1(() => import('./components/cooperatives/Coo
 const CreditScorePage        = lazy1(() => import('./components/credit/CreditScorePage'), 'CreditScorePage');
 const PondCyclePlanningPage  = lazy1(() => import('./components/aquaculture/planning/PondCyclePlanningPage'), 'PondCyclePlanningPage');
 
+/**
+ * Routes where the Crisp support launcher is allowed to render.
+ * Everywhere else we hide the bubble — the user explicitly asked for this:
+ * the Crisp button followed them through every page including data-entry
+ * forms, which was visually noisy. Dashboard and Settings are the natural
+ * places to ask for help; the rest of the app is for getting work done.
+ */
+const CRISP_ALLOWED_ROUTES = new Set([
+  'dashboard',
+  'settings',
+  'profile', // settings sub-route
+]);
+
+function getCrispRoute(): string {
+  // Hash routes look like "#/dashboard", "#/settings?tab=my-farms", etc.
+  const hash = window.location.hash || '';
+  const route = hash.replace(/^#\//, '').split(/[?#]/)[0] || 'dashboard';
+  return route;
+}
+
 function CrispChat() {
   const { profile, user } = useAuth();
+  const [route, setRoute] = useState<string>(getCrispRoute());
+
+  // Track hash changes so the bubble visibility follows the route.
+  useEffect(() => {
+    const onHashChange = () => setRoute(getCrispRoute());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
   useEffect(() => {
     const id = import.meta.env.VITE_CRISP_WEBSITE_ID;
     if (!id) return;
@@ -108,6 +137,27 @@ function CrispChat() {
       }
     };
   }, []);
+
+  // Show/hide the launcher based on the current route. Crisp's API:
+  //   ['do', 'chat:show'] mounts the launcher
+  //   ['do', 'chat:hide'] removes it
+  // We poll briefly until $crisp is ready since Crisp's script loads async.
+  useEffect(() => {
+    const apply = () => {
+      const crisp = (window as any).$crisp;
+      if (!crisp || typeof crisp.push !== 'function') return false;
+      const allowed = CRISP_ALLOWED_ROUTES.has(route);
+      crisp.push(['do', allowed ? 'chat:show' : 'chat:hide']);
+      return true;
+    };
+    if (apply()) return;
+    // Retry until the script loads (gives up after ~5s).
+    let tries = 0;
+    const id = window.setInterval(() => {
+      if (apply() || ++tries > 25) window.clearInterval(id);
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [route]);
 
   useEffect(() => {
     const crisp = (window as any).$crisp;

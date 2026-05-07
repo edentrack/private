@@ -178,6 +178,42 @@
            bg-neon-500 text-gray-900;
   }
 
+  /* ---------------------------------------------------------------------
+   * Crisp launcher overrides
+   *
+   * Crisp's launcher button is a fixed-position iframe outside our React
+   * tree. We can't restyle the iframe internals (they're in a separate
+   * document) but we CAN style the iframe element + its container to:
+   *   - sit in the right spot (avoid overlapping bottom-nav on mobile)
+   *   - take a friendlier rounded-square shape via mask
+   *   - drop a subtle yellow halo so it matches the brand without us
+   *     having to repaint the launcher pixels themselves
+   *
+   * The launcher's actual fill colour is set in the Crisp dashboard at
+   * https://app.crisp.chat — change "Theme color" there to #ffdd00 once
+   * and every visitor sees the brand colour. We style the surrounding
+   * iframe here so it feels like part of EdenTrack.
+   * ----------------------------------------------------------------- */
+  .crisp-client .cc-1brb1 .cc-7doi[data-position-reverse="false"] {
+    /* Anchor in the bottom-right with breathing room from the nav bar */
+    bottom: 90px !important;
+    right: 16px !important;
+  }
+  /* Newer Crisp markup (iframe-based launcher) */
+  iframe[name^="crisp-"][title*="Chat" i],
+  iframe[id^="crisp-chatbox"] {
+    /* Subtle yellow halo so the bubble feels like it belongs here */
+    box-shadow: 0 6px 18px rgba(255, 221, 0, 0.30) !important;
+    border-radius: 18px !important;
+  }
+  /* Mobile: keep the launcher above the bottom nav */
+  @media (max-width: 640px) {
+    iframe[name^="crisp-"][title*="Chat" i],
+    iframe[id^="crisp-chatbox"] {
+      bottom: 78px !important;
+    }
+  }
+
   .badge-outline {
     @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
            border border-gray-300 text-gray-600 bg-white;
