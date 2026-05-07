@@ -121,7 +121,7 @@ export function CompactTaskSettings({ onClose }: Props) {
             </select>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 rounded-lg touch-target"
             >
               <X className="w-5 h-5 text-gray-500" />
             </button>

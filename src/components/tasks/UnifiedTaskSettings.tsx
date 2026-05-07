@@ -401,7 +401,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
               <Plus className="w-4 h-4" />
               Add Task
             </button>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
               <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
@@ -756,7 +756,7 @@ function EditTemplateModal({ template, farmTz, onClose, onSave, onAutoSave }: Ed
       <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h3 className="text-lg font-bold text-gray-900">Edit Task Template</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>

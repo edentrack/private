@@ -334,7 +334,7 @@ export function NotificationCenter() {
                 <button onClick={handleRefresh} disabled={refreshing} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" title="Refresh">
                   <RefreshCw className={`w-4 h-4 text-gray-500 ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
-                <button onClick={() => setShowPanel(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                <button onClick={() => setShowPanel(false)} className="p-1.5 hover:bg-gray-100 rounded-lg touch-target">
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>

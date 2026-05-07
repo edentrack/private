@@ -4,6 +4,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Phase 3 mobile UX (#MOB-B):
+ *
+ * 1. Prevent iOS auto-zoom on focus by ensuring all form controls render at
+ *    ≥16px. Below 16px, mobile Safari zooms the viewport when the user
+ *    taps an input — the unwanted zoom-in is the single biggest
+ *    mobile-form annoyance and this one rule kills it everywhere.
+ *
+ * 2. The .touch-target utility enforces ≥44×44 hit areas on icon-only
+ *    buttons. Add it to any bare-icon button without disturbing the
+ *    visible size — increases hit area via padding only.
+ */
+@layer base {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
+@layer utilities {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 @layer base {
   :root {
     --neon-yellow: #ffdd00;

@@ -555,7 +555,7 @@ export function FishHealthPage() {
                   <p className="text-xs italic text-gray-500">{openDisease.scientificName}</p>
                 )}
               </div>
-              <button onClick={() => setOpenDisease(null)} className="p-1 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => setOpenDisease(null)} className="p-1 hover:bg-gray-100 rounded-lg touch-target">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>

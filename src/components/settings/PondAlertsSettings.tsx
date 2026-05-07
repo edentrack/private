@@ -193,7 +193,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg touch-target">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         )}
