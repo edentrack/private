@@ -13,6 +13,7 @@ import { ChickenIcon } from '../icons/ChickenIcon';
 import { NotificationCenter } from '../notifications/NotificationCenter';
 import { canViewModule, ModuleName } from '../../utils/navigationPermissions';
 import HelpModal from '../help/HelpModal';
+import { useVisualViewport } from '../../hooks/useVisualViewport';
 import { LogoIcon } from '../common/Logo';
 import { getNavigationGroups, getExpandedGroups, saveExpandedGroups, NavigationGroupId } from '../../utils/navigationGroups';
 import { OfflineIndicator } from '../common/OfflineIndicator';
@@ -229,11 +230,12 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   }, []);
 
   const isAIView = currentView === 'ai-assistant';
+  const { height: vpHeight } = useVisualViewport();
 
   return (
     <div
       className={isAIView ? 'flex flex-col overflow-hidden bg-[#F5F0E8]' : 'min-h-screen bg-[#F5F0E8]'}
-      style={{ background: 'linear-gradient(135deg, #f5f0e8 0%, #ebe4d8 50%, #f0e9dd 100%)', ...(isAIView ? { height: '100dvh' } : {}) }}
+      style={{ background: 'linear-gradient(135deg, #f5f0e8 0%, #ebe4d8 50%, #f0e9dd 100%)', ...(isAIView ? { height: `${vpHeight}px` } : {}) }}
     >
       <OfflineIndicator />
       <nav className="sticky top-0 z-40 glass-light border-b border-white/20" style={isOffline ? { marginTop: '40px' } : undefined}>

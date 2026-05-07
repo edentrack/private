@@ -300,13 +300,22 @@ export function AIAssistantPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Scroll to bottom when mobile keyboard opens so input stays visible
+  // Scroll to bottom whenever the visual viewport shrinks (keyboard opens on iOS/Android)
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const onResize = () => messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
-    vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
+    const onViewportChange = () => {
+      // Small delay lets the browser finish repositioning before we scroll
+      requestAnimationFrame(() =>
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
+      );
+    };
+    vv.addEventListener('resize', onViewportChange);
+    vv.addEventListener('scroll', onViewportChange);
+    return () => {
+      vv.removeEventListener('resize', onViewportChange);
+      vv.removeEventListener('scroll', onViewportChange);
+    };
   }, []);
 
   // Auto-send prefill message from setup score card or other navigation triggers
@@ -1829,7 +1838,7 @@ export function AIAssistantPage() {
       />
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
         {messages.length === 0 ? (
           <EdenEmptyState
             ownerFirstName={(profile?.full_name || user?.email || 'there').split(/[\s@]/)[0]}
