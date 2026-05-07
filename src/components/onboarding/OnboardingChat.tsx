@@ -358,7 +358,21 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       }
       const data = await resp.json();
       const replyText: string = data.message || '';
-      const actions = parseLogBlocks(replyText);
+      // The ai-chat edge function strips [LOG]…[/LOG] blocks from
+      // data.message and returns them as data.logAction (single) or
+      // data.bulkLogActions (multiple). Parse the message AS WELL for
+      // belt-and-braces (handles older deploys), then merge.
+      const inlineActions = parseLogBlocks(replyText);
+      const serverActions: Action[] = [];
+      if (data.logAction && typeof data.logAction === 'object') {
+        serverActions.push(data.logAction as Action);
+      }
+      if (Array.isArray(data.bulkLogActions)) {
+        for (const a of data.bulkLogActions) {
+          if (a && typeof a === 'object') serverActions.push(a as Action);
+        }
+      }
+      const actions = [...serverActions, ...inlineActions];
 
       const pills: string[] = [];
       let shouldComplete = false;
