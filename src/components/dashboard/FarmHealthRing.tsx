@@ -9,7 +9,15 @@ interface FarmHealthRingProps {
   showLabel?: boolean;
 }
 
-async function computeHealthScore(farmId: string): Promise<number> {
+/**
+ * BUG-083: brand-new farms with zero logged events showed "22% INACTIVE"
+ * — confusing as a first impression. We now return a `setup` mode flag
+ * so the UI can render "Setup mode" instead of a misleading percentage
+ * + scary red label.
+ */
+type HealthScoreResult = { mode: 'score'; score: number } | { mode: 'setup' };
+
+async function computeHealthScore(farmId: string): Promise<HealthScoreResult> {
   const today = new Date().toISOString().split('T')[0];
 
   const { data: flockData } = await supabase
@@ -21,6 +29,12 @@ async function computeHealthScore(farmId: string): Promise<number> {
     .limit(1);
 
   const flock = flockData?.[0] || null;
+  // BUG-083: bail out early for completely empty farms. The user
+  // doesn't need a score yet — they need a hint that they're in setup
+  // mode and adding their first flock will unlock the rest.
+  if (!flock) {
+    return { mode: 'setup' };
+  }
   const flockStart = flock?.start_date || '2000-01-01';
 
   const [
@@ -69,14 +83,14 @@ async function computeHealthScore(farmId: string): Promise<number> {
   // "Abandoned" penalty: if no recent activity (14 days), reduce score by up to 30%
   const hasRecentActivity = (get(recentActivityRes).data?.length || 0) > 0;
   if (!hasRecentActivity && flock) {
-    return Math.max(10, Math.round(baseScore * 0.7));
+    return { mode: 'score', score: Math.max(10, Math.round(baseScore * 0.7)) };
   }
-  return baseScore;
+  return { mode: 'score', score: baseScore };
 }
 
 export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLabel = false }: FarmHealthRingProps) {
   const { currentFarm, currentRole } = useAuth();
-  const [score, setScore] = useState<number | null>(null);
+  const [result, setResult] = useState<HealthScoreResult | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -86,17 +100,27 @@ export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLab
     const cacheKey = `fh_score_${currentFarm.id}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
-      setScore(Number(cached));
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object' && 'mode' in parsed) {
+          setResult(parsed as HealthScoreResult);
+        } else if (typeof parsed === 'number') {
+          // Backwards-compat: old cache stored just the number.
+          setResult({ mode: 'score', score: parsed });
+        }
+      } catch {
+        // Corrupt cache — fall through to recompute.
+      }
     }
 
     // Recompute every 5 minutes max
     const lastFetch = Number(sessionStorage.getItem(`${cacheKey}_ts`) || 0);
     if (Date.now() - lastFetch < 5 * 60 * 1000 && cached) return;
 
-    computeHealthScore(currentFarm.id).then(s => {
-      setScore(s);
+    computeHealthScore(currentFarm.id).then(r => {
+      setResult(r);
       try {
-        sessionStorage.setItem(cacheKey, String(s));
+        sessionStorage.setItem(cacheKey, JSON.stringify(r));
         sessionStorage.setItem(`${cacheKey}_ts`, String(Date.now()));
       } catch {}
     });
@@ -105,34 +129,41 @@ export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLab
   }, [currentFarm?.id, currentRole]);
 
   // No ring for workers/viewers, or while loading
-  if (score === null || (currentRole !== 'owner' && currentRole !== 'manager')) {
+  if (result === null || (currentRole !== 'owner' && currentRole !== 'manager')) {
     return <>{children}</>;
   }
 
   const strokeW = 2.5;
   const radius = (size - strokeW) / 2;
   const circumference = 2 * Math.PI * radius;
+
+  // BUG-083: empty farms render "Setup mode" with a neutral grey ring at
+  // 0% rather than a panicky "22% INACTIVE" red label.
+  const isSetup = result.mode === 'setup';
+  const score = isSetup ? 0 : result.score;
   const dash = (score / 100) * circumference;
   const gap = circumference - dash;
 
-  const color =
-    score >= 80 ? '#22c55e' :
-    score >= 50 ? '#f59e0b' :
-    score >= 25 ? '#ef4444' :
-                  '#94a3b8'; // grey = abandoned
+  const color = isSetup
+    ? '#94a3b8' // neutral grey
+    : score >= 80 ? '#22c55e'
+    : score >= 50 ? '#f59e0b'
+    : score >= 25 ? '#ef4444'
+    : '#94a3b8'; // grey = abandoned
 
-  const label = score >= 80 ? 'Healthy' : score >= 50 ? 'Fair' : score >= 25 ? 'At risk' : 'Inactive';
+  const label = isSetup
+    ? 'Setup mode'
+    : score >= 80 ? 'Healthy'
+    : score >= 50 ? 'Fair'
+    : score >= 25 ? 'At risk'
+    : 'Inactive';
 
-  // Audit fix: "22% INACTIVE" was cryptic on first encounter — there was no
-  // tooltip explaining what the score measures or how to raise it. Provide
-  // a single, human-readable tooltip on every hoverable surface (the ring
-  // wrapper, the score number, and the label text) so the meaning is
-  // discoverable without clicking through.
-  const helpText =
-    `Farm Health: ${score}% — ${label}.\n` +
-    `Combines farm setup completeness (workers added, prices set, feed tracked) ` +
-    `with operational health (mortality rate, overdue tasks, recent activity). ` +
-    `Add data daily to raise the score.`;
+  const helpText = isSetup
+    ? 'Farm Health is in Setup mode while you add your first flock/pond/rabbitry. Once you log your first event, the ring will start scoring you on operational health.'
+    : `Farm Health: ${score}% — ${label}.\n` +
+      `Combines farm setup completeness (workers added, prices set, feed tracked) ` +
+      `with operational health (mortality rate, overdue tasks, recent activity). ` +
+      `Add data daily to raise the score.`;
 
   return (
     <div className="flex flex-col items-center gap-0.5">
@@ -188,9 +219,11 @@ export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLab
       </div>
       {showLabel && (
         <div style={{ textAlign: 'center', lineHeight: 1.1, cursor: 'help' }} title={helpText}>
-          <div style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: '0.01em' }}>
-            {score}%
-          </div>
+          {!isSetup && (
+            <div style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: '0.01em' }}>
+              {score}%
+            </div>
+          )}
           <div style={{ fontSize: 9, color, opacity: 0.75, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
             {label}
           </div>

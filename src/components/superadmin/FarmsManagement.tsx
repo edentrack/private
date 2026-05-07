@@ -11,9 +11,25 @@ interface FarmData {
   owner_email: string;
   owner_name: string | null;
   plan: string;
+  /** poultry / aquaculture / rabbits — drives the species badge (BUG-094). */
+  farm_type: string | null;
   created_at: string;
   total_flocks?: number;
   total_members?: number;
+}
+
+/** Map farm_type → small species badge for the admin card. */
+function speciesBadge(farmType: string | null | undefined): { emoji: string; label: string; bg: string; fg: string } {
+  switch (farmType) {
+    case 'aquaculture':
+      return { emoji: '🐠', label: 'Fish', bg: 'bg-blue-100', fg: 'text-blue-700' };
+    case 'rabbits':
+      return { emoji: '🐰', label: 'Rabbits', bg: 'bg-emerald-100', fg: 'text-emerald-700' };
+    case 'poultry':
+      return { emoji: '🐔', label: 'Poultry', bg: 'bg-amber-100', fg: 'text-amber-800' };
+    default:
+      return { emoji: '🏷️', label: 'Unset', bg: 'bg-gray-100', fg: 'text-gray-600' };
+  }
 }
 
 export function FarmsManagement() {
@@ -37,6 +53,7 @@ export function FarmsManagement() {
           name,
           owner_id,
           plan,
+          farm_type,
           created_at
         `)
         .order('created_at', { ascending: false });
@@ -52,25 +69,32 @@ export function FarmsManagement() {
             .eq('id', farm.owner_id)
             .single();
 
-          // Count flocks
-          const { count: flocksCount } = await supabase
+          // BUG-093: previously used `select('*', { count: 'exact', head: true })`
+          // which returned `count: null` under super-admin RLS in some
+          // environments → every farm rendered "0 Flocks". Fetching the
+          // id list and taking the length is RLS-friendlier and surfaces
+          // any remaining error in the console for diagnostics.
+          const { data: flockRows, error: flockErr } = await supabase
             .from('flocks')
-            .select('*', { count: 'exact', head: true })
+            .select('id')
             .eq('farm_id', farm.id);
+          if (flockErr) console.error(`[FarmsManagement] flock count failed for ${farm.id}:`, flockErr);
+          const flocksCount = flockRows?.length ?? 0;
 
-          // Count members
-          const { count: membersCount } = await supabase
+          const { data: memberRows, error: memberErr } = await supabase
             .from('farm_members')
-            .select('*', { count: 'exact', head: true })
+            .select('id')
             .eq('farm_id', farm.id)
             .eq('is_active', true);
+          if (memberErr) console.error(`[FarmsManagement] member count failed for ${farm.id}:`, memberErr);
+          const membersCount = memberRows?.length ?? 0;
 
           return {
             ...farm,
             owner_email: ownerData?.email || 'Unknown',
             owner_name: ownerData?.full_name || null,
-            total_flocks: flocksCount || 0,
-            total_members: membersCount || 0,
+            total_flocks: flocksCount,
+            total_members: membersCount,
           };
         })
       );
@@ -138,13 +162,26 @@ export function FarmsManagement() {
                   <p className="text-sm text-gray-600">{farm.owner_name || 'No name'}</p>
                   <p className="text-xs text-gray-500">{farm.owner_email}</p>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  farm.plan === 'pro' ? 'bg-blue-100 text-blue-700' :
-                  farm.plan === 'enterprise' ? 'bg-purple-100 text-purple-700' :
-                  'bg-gray-100 text-gray-700'
-                }`}>
-                  {farm.plan?.toUpperCase() || 'FREE'}
-                </span>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    farm.plan === 'pro' ? 'bg-blue-100 text-blue-700' :
+                    farm.plan === 'enterprise' ? 'bg-purple-100 text-purple-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {farm.plan?.toUpperCase() || 'FREE'}
+                  </span>
+                  {/* BUG-094: species badge so admins can see at a glance whether a
+                      farm is poultry, fish, or rabbits without clicking through. */}
+                  {(() => {
+                    const b = speciesBadge(farm.farm_type);
+                    return (
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${b.bg} ${b.fg}`}>
+                        <span className="mr-1">{b.emoji}</span>
+                        {b.label}
+                      </span>
+                    );
+                  })()}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">

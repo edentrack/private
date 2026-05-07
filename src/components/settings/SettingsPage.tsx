@@ -476,7 +476,13 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                         {effectiveCurrency} — {getCurrencySymbol(effectiveCurrency)}
                       </p>
                     </div>
-                    {rateAsFloat > 0 && (
+                    {/*
+                      BUG-088: when effectiveCurrency === 'USD' the line read
+                      "1 USD = 655.96 USD" which is self-referential nonsense.
+                      For USD farms there's no cross-rate to show — hide the
+                      block entirely.
+                    */}
+                    {rateAsFloat > 0 && effectiveCurrency.toUpperCase() !== 'USD' && (
                       <div className="text-right">
                         <p className="text-xs text-gray-500 mb-0.5">Exchange rate</p>
                         <p className="text-sm font-semibold text-gray-900">
