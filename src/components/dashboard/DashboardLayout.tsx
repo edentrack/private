@@ -132,8 +132,12 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     const simpleModeHidden = new Set(['vet-log', 'shifts']);
     // Items only relevant when eggs are tracked (layer/mixed farms)
     const eggOnlyItems = new Set(['sales', 'egg-records']);
-    // Items only for aquaculture farms
-    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking', 'fish-health', 'pond-inspections']);
+    // Items only for aquaculture farms. `pond-planner` was missing from
+    // this set pre-May-2026 — the pre-existing flat menu hid it at the
+    // bottom so nobody noticed, but the post-grouping mobile More menu
+    // surfaced it in the Operations section on poultry farms. Greg
+    // caught it on his iPhone.
+    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking', 'fish-health', 'pond-inspections', 'pond-planner']);
     // Items only for rabbit farms
     const rabbitsOnlyItems = new Set(['rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry']);
     // Items hidden for aquaculture farms — 'weight' is replaced by 'sampling' (Weight Sampling)
