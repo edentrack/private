@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet, Volume2, VolumeX } from 'lucide-react';
+import { Send, Loader2, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet, Volume2, VolumeX, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
@@ -288,6 +288,8 @@ export function AIAssistantPage() {
   // Recognition ref removed — see mediaRecorderRef above.
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
 
   // Mirror persisted history into the display state when scope or DB rows
   // change. Transient UI flags (logSaving, bulkLog progress) are dropped here
@@ -299,6 +301,17 @@ export function AIAssistantPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (!attachMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setAttachMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [attachMenuOpen]);
 
   // Scroll to bottom whenever the visual viewport shrinks (keyboard opens on iOS/Android)
   useEffect(() => {
@@ -2321,25 +2334,42 @@ export function AIAssistantPage() {
               onChange={e => { const f = e.target.files?.[0]; if (f) addFile(f); e.target.value = ''; }}
             />
 
-            {/* Camera/photo button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading || pendingImages.length >= 3}
-              title="Attach photo (bird, droppings, lesion, receipt)"
-              className="px-3 py-3 rounded-lg bg-gray-100 text-gray-500 hover:bg-agri-gold-50 hover:text-agri-brown-600 disabled:opacity-40 transition-colors flex items-center justify-center"
-            >
-              <Camera className="w-5 h-5" />
-            </button>
+            {/* Attach menu: camera + file under one "+" button */}
+            <div className="relative" ref={attachMenuRef}>
+              <button
+                onClick={() => setAttachMenuOpen(v => !v)}
+                disabled={loading}
+                title="Attach photo or file"
+                className={`px-3 py-3 rounded-lg transition-colors flex items-center justify-center ${
+                  attachMenuOpen
+                    ? 'bg-agri-gold-100 text-agri-brown-700'
+                    : 'bg-gray-100 text-gray-500 hover:bg-agri-gold-50 hover:text-agri-brown-600'
+                } disabled:opacity-40`}
+              >
+                <Plus className="w-5 h-5" />
+              </button>
 
-            {/* CSV/file import button */}
-            <button
-              onClick={() => csvInputRef.current?.click()}
-              disabled={loading || !!pendingFile}
-              title="Attach CSV/spreadsheet for bulk import"
-              className="px-3 py-3 rounded-lg bg-gray-100 text-gray-500 hover:bg-green-50 hover:text-green-700 disabled:opacity-40 transition-colors flex items-center justify-center"
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
+              {attachMenuOpen && (
+                <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden min-w-[160px] z-20">
+                  <button
+                    onClick={() => { setAttachMenuOpen(false); fileInputRef.current?.click(); }}
+                    disabled={pendingImages.length >= 3}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-agri-gold-50 hover:text-agri-brown-700 disabled:opacity-40 transition-colors"
+                  >
+                    <Camera className="w-4 h-4 flex-shrink-0" />
+                    Photo / Image
+                  </button>
+                  <button
+                    onClick={() => { setAttachMenuOpen(false); csvInputRef.current?.click(); }}
+                    disabled={!!pendingFile}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 disabled:opacity-40 transition-colors border-t border-gray-100"
+                  >
+                    <Paperclip className="w-4 h-4 flex-shrink-0" />
+                    CSV / Spreadsheet
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Mic button — records audio, ships to Whisper, drops text in input */}
             <button
