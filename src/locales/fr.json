@@ -1967,6 +1967,27 @@
     "next_day": "Lendemain"
   },
   "onboarding": {
+    "choice": {
+      "welcome": "Bienvenue sur EdenTrack",
+      "question": "Comment souhaitez-vous configurer votre ferme ?",
+      "chat_label": "Discuter avec Eden",
+      "chat_recommended": "Recommandé",
+      "chat_description": "Parlez-moi de votre ferme avec vos propres mots. Je m'occupe de tout. Environ 5 minutes.",
+      "form_label": "Remplir un formulaire",
+      "form_description": "Assistant de configuration étape par étape. 7 étapes courtes.",
+      "switch_note": "Vous pouvez changer à tout moment."
+    },
+    "chat": {
+      "header_title": "Configuration de votre ferme",
+      "header_subtitle": "Parlez à Eden — environ 5 minutes",
+      "skip_button": "Passer — utiliser le formulaire",
+      "thinking": "Eden réfléchit…",
+      "wrapping_up": "Finalisation — direction le tableau de bord…",
+      "input_placeholder": "Tapez votre réponse…",
+      "first_message": "Salut ! Je suis Eden. Je vais configurer votre ferme en quelques questions rapides. D'abord — comment s'appelle votre ferme ?",
+      "complete_toast": "🎉 Bienvenue sur EdenTrack !",
+      "save_failed": "Impossible d'enregistrer votre progression"
+    },
     "welcome": "Bienvenue sur Edentrack !",
     "where_located": "Où se trouve votre ferme ?",
     "select_country": "Sélectionner le Pays",

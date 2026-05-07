@@ -1818,6 +1818,27 @@
     "record": "Record Mortality"
   },
   "onboarding": {
+    "choice": {
+      "welcome": "Welcome to EdenTrack",
+      "question": "How would you like to set up your farm?",
+      "chat_label": "Chat with Eden",
+      "chat_recommended": "Recommended",
+      "chat_description": "Tell me about your farm in your own words. I'll set everything up. About 5 minutes.",
+      "form_label": "Fill out a form",
+      "form_description": "Step-by-step setup wizard. 7 short steps.",
+      "switch_note": "Either way, you can switch later."
+    },
+    "chat": {
+      "header_title": "Setting up your farm",
+      "header_subtitle": "Talk to Eden — about 5 minutes",
+      "skip_button": "Skip — go to form",
+      "thinking": "Eden is thinking…",
+      "wrapping_up": "Wrapping up — heading to your dashboard…",
+      "input_placeholder": "Type your reply…",
+      "first_message": "Hey! I'm Eden. I'll set up your farm in a few quick questions. First — what's your farm called?",
+      "complete_toast": "🎉 Welcome to EdenTrack!",
+      "save_failed": "Could not save your progress"
+    },
     "welcome": "Welcome to Edentrack!",
     "where_located": "Where is your farm located?",
     "select_country": "Select Country",

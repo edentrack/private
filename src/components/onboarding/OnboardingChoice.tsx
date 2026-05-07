@@ -16,9 +16,11 @@
 
 import { useState } from 'react';
 import { MessageCircle, ClipboardList, Loader2, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { trackEvent } from '../../utils/analytics';
 
 interface Props {
   onChose: () => void;
@@ -27,7 +29,14 @@ interface Props {
 export function OnboardingChoice({ onChose }: Props) {
   const { user, refreshSession } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [pending, setPending] = useState<null | 'chat' | 'form'>(null);
+
+  // Fire the "shown" event once on mount.
+  useState(() => {
+    trackEvent('onboarding_choice_shown', { user_id: user?.id ?? null });
+    return null;
+  });
 
   const choose = async (choice: 'chat' | 'form') => {
     if (!user || pending) return;
@@ -41,6 +50,9 @@ export function OnboardingChoice({ onChose }: Props) {
       setPending(null);
       return;
     }
+    trackEvent(choice === 'chat' ? 'onboarding_chat_started' : 'onboarding_form_started', {
+      user_id: user.id,
+    });
     if (refreshSession) {
       await refreshSession();
     }
@@ -54,8 +66,8 @@ export function OnboardingChoice({ onChose }: Props) {
           <div className="inline-block text-4xl mb-3" aria-hidden>
             🌾
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to EdenTrack</h1>
-          <p className="text-gray-600 text-sm">How would you like to set up your farm?</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('onboarding.choice.welcome')}</h1>
+          <p className="text-gray-600 text-sm">{t('onboarding.choice.question')}</p>
         </div>
 
         <div className="space-y-3">
@@ -73,14 +85,12 @@ export function OnboardingChoice({ onChose }: Props) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-base font-semibold text-gray-900">Chat with Eden</h2>
+                <h2 className="text-base font-semibold text-gray-900">{t('onboarding.choice.chat_label')}</h2>
                 <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
-                  Recommended
+                  {t('onboarding.choice.chat_recommended')}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">
-                Tell me about your farm in your own words. I'll set everything up. About 5 minutes.
-              </p>
+              <p className="text-sm text-gray-600">{t('onboarding.choice.chat_description')}</p>
             </div>
           </button>
 
@@ -97,15 +107,15 @@ export function OnboardingChoice({ onChose }: Props) {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-semibold text-gray-900 mb-1">Fill out a form</h2>
-              <p className="text-sm text-gray-600">Step-by-step setup wizard. 7 short steps.</p>
+              <h2 className="text-base font-semibold text-gray-900 mb-1">{t('onboarding.choice.form_label')}</h2>
+              <p className="text-sm text-gray-600">{t('onboarding.choice.form_description')}</p>
             </div>
           </button>
         </div>
 
         <p className="text-center text-xs text-gray-500 mt-6 flex items-center justify-center gap-1">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-          Either way, you can switch later.
+          {t('onboarding.choice.switch_note')}
         </p>
       </div>
     </div>
