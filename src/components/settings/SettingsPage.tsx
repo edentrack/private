@@ -384,6 +384,30 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                   )}
                 </div>
 
+                {/*
+                 * Issue #101: dedicated Save button at the bottom of the
+                 * Farm Information block. Without this, the Farm-type
+                 * picker required users to scroll past Currency Settings
+                 * and other sub-blocks to find the global "Save Settings"
+                 * button — confusing UX, and the picker felt like it
+                 * never actually saved.
+                 *
+                 * Calls the same handleSave() the global button uses, so
+                 * persistence semantics are identical.
+                 */}
+                {isOwner && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neon-500 text-gray-900 text-sm font-semibold hover:bg-neon-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {saving ? (t('settings.saving') || 'Saving…') : 'Save Farm Information'}
+                    </button>
+                  </div>
+                )}
+
                 {isCustomCurrency && (
                   <div className="space-y-3 border-t border-gray-200 pt-3">
                     <div className="bg-blue-50 text-blue-700 text-xs px-3 py-2 rounded-lg">

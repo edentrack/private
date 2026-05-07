@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
 import { upsertChickExpenses } from '../../utils/flockExpenses';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface EditFlockModalProps {
   flock: Flock;
@@ -15,24 +16,29 @@ interface EditFlockModalProps {
 export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProps) {
   const { t } = useTranslation();
   const { user, profile, currentFarm } = useAuth();
-  const isAquaculture = (currentFarm as any)?.farm_type === 'aquaculture';
-  const isRabbitry = (currentFarm as any)?.farm_type === 'rabbits';
+  const farmSpecies = useFarmSpecies();
+  // Heading + label vocab vary per species so the modal feels native to
+  // each farm type (Edit Pond / Edit Flock / Edit Hutch).
+  const headingLabel =
+    farmSpecies.id === 'aquaculture' ? 'Edit Pond' :
+    farmSpecies.id === 'rabbits' ? 'Edit Hutch' : 'Edit Flock';
+  const arrivalLabel =
+    farmSpecies.id === 'aquaculture' ? 'Stocking Date' :
+    farmSpecies.id === 'rabbits' ? 'Stock-in Date' : 'Arrival Date';
+  const countLabel =
+    farmSpecies.id === 'aquaculture' ? 'Fingerlings Stocked' :
+    farmSpecies.id === 'rabbits' ? `${farmSpecies.animalTermPlural} Stocked` :
+    t('flocks.initial_count');
+  const pricePerLabel =
+    farmSpecies.id === 'aquaculture' ? 'Price per fingerling' :
+    farmSpecies.id === 'rabbits' ? `Price per ${farmSpecies.animalTerm.toLowerCase()}` :
+    t('flocks.price_per_bird');
   const [arrivalDate, setArrivalDate] = useState(flock.arrival_date);
   const [initialCount, setInitialCount] = useState(flock.initial_count);
   const [purchasePricePerBird, setPurchasePricePerBird] = useState(flock.purchase_price_per_bird?.toString() || '');
   const [purchaseTransportCost, setPurchaseTransportCost] = useState(flock.purchase_transport_cost?.toString() || '');
-  // BUG-010 fix: species/type was previously locked at creation. Now editable.
-  const [type, setType] = useState<string>(flock.type || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // The set of valid types depends on the farm species. Keep these in sync
-  // with the CreateFlockModal options so existing data stays consistent.
-  const typeOptions: string[] = isAquaculture
-    ? ['Tilapia', 'Catfish', 'Salmon', 'Trout', 'Carp', 'Shrimp', 'Other']
-    : isRabbitry
-    ? ['Meat Rabbit', 'Breeder Rabbit', 'Other']
-    : ['Broiler', 'Layer', 'Cockerel', 'Turkey', 'Duck', 'Other'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +56,6 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
           initial_count: initialCount,
           purchase_price_per_bird: purchasePriceNum,
           purchase_transport_cost: transportCostNum,
-          type: type || flock.type,
         })
         .eq('id', flock.id);
 
@@ -83,7 +88,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl max-w-md w-full p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">{isAquaculture ? 'Edit Pond' : 'Edit Flock'}</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{headingLabel}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -102,36 +107,26 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
           <div>
             <div className="text-sm text-gray-600 mb-4">
               Editing: <span className="font-semibold text-gray-900">{flock.name}</span>
+              {flock.type && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-gray-100 text-gray-700">
+                  {flock.type}
+                </span>
+              )}
             </div>
+
+            {/*
+              Brief option (b): species/type changes are intentionally OFF
+              this quick-edit modal. They live on the per-flock detail page
+              (see "Edit type / breed" affordance there). Keeping that
+              boundary makes this modal a non-destructive cosmetic editor.
+              The wrong-species-at-onboarding case is now fixable from the
+              detail page, so users still have a path.
+            */}
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="flockType" className="block text-sm font-medium text-gray-700 mb-2">
-                  {isAquaculture ? 'Fish type' : isRabbitry ? 'Rabbit type' : 'Bird type'}
-                </label>
-                <select
-                  id="flockType"
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all text-sm"
-                >
-                  {!typeOptions.includes(flock.type || '') && flock.type && (
-                    <option value={flock.type}>{flock.type}</option>
-                  )}
-                  {typeOptions.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  Fixes the wrong-species-at-onboarding case (e.g. tilapia farms created as catfish).
-                </p>
-              </div>
-
-              <div>
                 <label htmlFor="arrivalDate" className="block text-sm font-medium text-gray-700 mb-2">
-                  {isAquaculture ? 'Stocking Date' : 'Arrival Date'}
+                  {arrivalLabel}
                 </label>
                 <input
                   id="arrivalDate"
@@ -145,7 +140,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
 
               <div>
                 <label htmlFor="initialCount" className="block text-sm font-medium text-gray-700 mb-2">
-                  {isAquaculture ? 'Fingerlings Stocked' : t('flocks.initial_count')}
+                  {countLabel}
                 </label>
                 <input
                   id="initialCount"
@@ -160,7 +155,7 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
 
               <div>
                 <label htmlFor="purchasePricePerBird" className="block text-sm font-medium text-gray-700 mb-2">
-                  {isAquaculture ? 'Price per fingerling' : t('flocks.price_per_bird')}
+                  {pricePerLabel}
                 </label>
                 <input
                   id="purchasePricePerBird"
