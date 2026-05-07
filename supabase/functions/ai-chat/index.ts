@@ -1001,7 +1001,10 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (!isCrossFarm) {
+    // Onboarding mode skips the membership check — the user has no farm
+    // yet and that's the point. Cross-farm mode also skips because the
+    // request scope is the user, not a single farm.
+    if (!isCrossFarm && !isOnboarding) {
       const { data: membership } = await supabaseClient
         .from("farm_members")
         .select("role")
@@ -1030,8 +1033,9 @@ Deno.serve(async (req: Request) => {
     // ── Tier enforcement ──────────────────────────────────────────────
     // Use the farm owner's subscription tier so team members (managers, workers)
     // inherit the farm's plan rather than being capped at their own free tier.
-    // In cross-farm mode there's no single farm, so fall back to the user's own tier.
-    const { data: farmOwnerData } = isCrossFarm
+    // In cross-farm mode and onboarding mode there's no single farm, so fall
+    // back to the user's own tier.
+    const { data: farmOwnerData } = (isCrossFarm || isOnboarding)
       ? { data: null }
       : await supabaseClient
           .from("farms")
@@ -1108,7 +1112,7 @@ Deno.serve(async (req: Request) => {
     // Fetch user's name and farm role server-side (cannot trust client-supplied role)
     const [profileRes, memberRes] = await Promise.all([
       supabaseClient.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
-      isCrossFarm
+      (isCrossFarm || isOnboarding)
         ? Promise.resolve({ data: null })
         : supabaseClient.from("farm_members").select("role").eq("farm_id", farm_id).eq("user_id", user.id).eq("is_active", true).maybeSingle(),
     ]);
