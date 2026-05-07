@@ -740,19 +740,37 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
 
 
       {/*
-        Gate on profile.subscription_tier (the per-user billing source of
-        truth), NOT farm.plan (a legacy per-farm column that's never synced
-        to billing). Pre-fix this gate was reading farm.plan = 'basic' for
-        Farm Boss users (subscription_tier='enterprise'), which hid the KPI
-        block on the paid mid-tier.
+        KPI / DailySummary gates — May 2026 fix.
+        Two separate problems converged here:
+
+        1. The gate read from `farm.plan` (the local fetched farm row),
+           which is a per-FARM legacy column never synced to billing.
+           Billing actually writes to `profile.subscription_tier`.
+           Switched to read from profile.subscription_tier.
+
+        2. The local `farm` state is populated by a `setFarm(farmData)`
+           call after `.from('farms').select('*').eq('id', X).single()`,
+           and that query was returning 406/PGRST116 ("0 rows") on prod
+           for at least one test account because of a divergent RLS
+           policy on `farms` — child tables like flocks/tasks grant the
+           user access, but the parent farms row was hidden. Result:
+           `farm` stayed null, the `farm && ...` short-circuit hid the
+           KPI block.
+
+           We can't fix the RLS divergence in this PR (separate follow-up
+           tracked via spawn_task). But we don't need the local `farm`
+           state for the gate — `currentFarm` from AuthContext is enough
+           to confirm a farm is selected, and `profile.subscription_tier`
+           is the billing source of truth. So drop the `farm` requirement
+           and use `currentFarm` instead.
       */}
-      {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'kpis') && (
+      {currentRole && currentFarm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'kpis') && (
         <div data-tour="kpi-section">
           <CoreKPISection refreshTrigger={eggRefreshTrigger} onNavigate={onNavigate} />
         </div>
       )}
 
-      {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'daily_summary') && (
+      {currentRole && currentFarm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'daily_summary') && (
         <div>
           <DailySummaryCard refreshTrigger={eggRefreshTrigger} />
         </div>
