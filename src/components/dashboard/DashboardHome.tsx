@@ -739,13 +739,20 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
       </div>
 
 
-      {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(farm.plan, 'kpis') && (
+      {/*
+        Gate on profile.subscription_tier (the per-user billing source of
+        truth), NOT farm.plan (a legacy per-farm column that's never synced
+        to billing). Pre-fix this gate was reading farm.plan = 'basic' for
+        Farm Boss users (subscription_tier='enterprise'), which hid the KPI
+        block on the paid mid-tier.
+      */}
+      {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'kpis') && (
         <div data-tour="kpi-section">
           <CoreKPISection refreshTrigger={eggRefreshTrigger} onNavigate={onNavigate} />
         </div>
       )}
 
-      {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(farm.plan, 'daily_summary') && (
+      {currentRole && farm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'daily_summary') && (
         <div>
           <DailySummaryCard refreshTrigger={eggRefreshTrigger} />
         </div>
