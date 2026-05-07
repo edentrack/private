@@ -343,7 +343,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
                 <span className="font-medium text-gray-900">{selectedFlock.name}</span>
               </div>
               <p className="text-sm text-gray-600">
-                {`Available: ${birdsAvailable.toLocaleString()} ${animalTermPluralLower}`}
+                {t('sales.available_birds', { count: birdsAvailable })}
               </p>
             </div>
           )}
@@ -375,7 +375,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
               {numBirdsSold > 0 && (
                 <p className={`text-sm mt-1 ${birdsRemaining < 0 ? 'text-red-600' : 'text-gray-500'}`}>
                   {birdsRemaining >= 0
-                    ? `${birdsRemaining.toLocaleString()} ${animalTermPluralLower} will remain after this sale`
+                    ? t('sales.birds_will_remain', { count: birdsRemaining })
                     : t('sales.exceeds_available')}
                 </p>
               )}
@@ -643,8 +643,8 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
       <div className="bg-white rounded-2xl border border-gray-200">
         {!showSuccess && (
           <div className="border-b border-gray-100 px-6 py-4">
-            <h2 className="text-xl font-bold text-gray-900">{`Record ${animalTerm} Sale`}</h2>
-            <p className="text-sm text-gray-500">{`Track ${animalTermPluralLower} sales from your ${animalTermPluralLower === 'fish' ? 'pond' : animalTermPluralLower === 'rabbits' ? 'rabbitry' : 'flock'}`}</p>
+            <h2 className="text-xl font-bold text-gray-900">{t('sales.record_bird_sale')}</h2>
+            <p className="text-sm text-gray-500">{t('sales.track_bird_sales')}</p>
           </div>
         )}
         {content}
