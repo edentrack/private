@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface AddFeedTypeModalProps {
   onClose: () => void;
@@ -10,6 +11,8 @@ interface AddFeedTypeModalProps {
 
 export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('bags');
   const [initialStock, setInitialStock] = useState('');
@@ -22,13 +25,13 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
     if (!currentFarm?.id) return;
 
     if (!name.trim()) {
-      setError('Please enter a feed type name');
+      setError(isFr ? "Veuillez saisir un nom de type d'aliment" : 'Please enter a feed type name');
       return;
     }
 
     const stockNum = parseFloat(initialStock);
     if (!initialStock || isNaN(stockNum) || stockNum <= 0) {
-      setError('Please enter a valid initial stock quantity (greater than 0)');
+      setError(isFr ? 'Veuillez saisir une quantité de stock initial valide (supérieure à 0)' : 'Please enter a valid initial stock quantity (greater than 0)');
       return;
     }
 
@@ -63,7 +66,7 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
 
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add feed type');
+      setError(err instanceof Error ? err.message : (isFr ? "Échec de l'ajout du type d'aliment" : 'Failed to add feed type'));
     } finally {
       setLoading(false);
     }
@@ -73,7 +76,7 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl max-w-md w-full p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Add Feed Type</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{isFr ? "Ajouter un type d'aliment" : 'Add Feed Type'}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -91,7 +94,7 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
 
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-              Feed Type Name <span className="text-red-500">*</span>
+              {isFr ? "Nom du type d'aliment" : 'Feed Type Name'} <span className="text-red-500">*</span>
             </label>
             <input
               id="name"
@@ -99,14 +102,14 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all"
-              placeholder="e.g., Layer Mash 50kg"
+              placeholder={isFr ? 'ex. Aliment pondeuse 50 kg' : 'e.g., Layer Mash 50kg'}
               required
             />
           </div>
 
           <div>
             <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-2">
-              Unit
+              {isFr ? 'Unité' : 'Unit'}
             </label>
             <select
               id="unit"
@@ -114,16 +117,16 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
               onChange={(e) => setUnit(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all"
             >
-              <option value="bags">Bags</option>
-              <option value="kg">Kilograms (kg)</option>
-              <option value="tonnes">Tonnes</option>
-              <option value="sacks">Sacks</option>
+              <option value="bags">{isFr ? 'Sacs' : 'Bags'}</option>
+              <option value="kg">{isFr ? 'Kilogrammes (kg)' : 'Kilograms (kg)'}</option>
+              <option value="tonnes">{isFr ? 'Tonnes' : 'Tonnes'}</option>
+              <option value="sacks">{isFr ? 'Sacs (sacks)' : 'Sacks'}</option>
             </select>
           </div>
 
           <div>
             <label htmlFor="initialStock" className="block text-sm font-medium text-gray-700 mb-2">
-              Initial Stock <span className="text-red-500">*</span>
+              {isFr ? 'Stock initial' : 'Initial Stock'} <span className="text-red-500">*</span>
             </label>
             <input
               id="initialStock"
@@ -137,13 +140,13 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Enter the initial quantity in {unit}
+              {isFr ? `Saisissez la quantité initiale en ${unit}` : `Enter the initial quantity in ${unit}`}
             </p>
           </div>
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
+              {isFr ? 'Notes (Optionnel)' : 'Notes (Optional)'}
             </label>
             <textarea
               id="notes"
@@ -151,7 +154,7 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all resize-none"
-              placeholder="Additional information about this feed type..."
+              placeholder={isFr ? "Informations supplémentaires sur ce type d'aliment..." : 'Additional information about this feed type...'}
             />
           </div>
 
@@ -161,14 +164,14 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
               onClick={onClose}
               className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 px-6 py-3 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2d4632] transition-colors font-medium disabled:opacity-50"
             >
-              {loading ? 'Adding...' : 'Add Feed Type'}
+              {loading ? (isFr ? 'Ajout...' : 'Adding...') : (isFr ? "Ajouter le type d'aliment" : 'Add Feed Type')}
             </button>
           </div>
         </form>

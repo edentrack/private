@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Archive, DollarSign, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Flock } from '../../types/database';
 
 interface ArchiveFlockModalProps {
@@ -12,9 +13,13 @@ interface ArchiveFlockModalProps {
 
 export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockModalProps) {
   const { user, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const isAquaculture = (currentFarm as any)?.farm_type === 'aquaculture';
   const groupTerm = isAquaculture ? 'Pond' : 'Flock';
+  const groupTermLowerFr = isAquaculture ? 'étang' : 'troupeau';
   const animalTerm = isAquaculture ? 'fish' : 'birds';
+  const animalTermFr = isAquaculture ? 'poissons' : 'oiseaux';
   const [action, setAction] = useState<'sold' | 'deceased' | 'archived'>('archived');
   const [salePrice, setSalePrice] = useState('');
   const [buyerInfo, setBuyerInfo] = useState('');
@@ -70,7 +75,9 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
       onArchived();
     } catch (err) {
       console.error('Error archiving flock:', err);
-      setError(err instanceof Error ? err.message : `Failed to archive ${groupTerm.toLowerCase()}. Please try again.`);
+      setError(err instanceof Error ? err.message : (isFr
+        ? `Échec de l'archivage du ${groupTermLowerFr}. Veuillez réessayer.`
+        : `Failed to archive ${groupTerm.toLowerCase()}. Please try again.`));
       setLoading(false);
     }
   };
@@ -84,7 +91,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
               <Archive className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Archive {groupTerm}</h2>
+              <h2 className="text-xl font-bold text-gray-900">{isFr ? `Archiver le ${groupTermLowerFr}` : `Archive ${groupTerm}`}</h2>
               <p className="text-sm text-gray-500">{flock.name}</p>
             </div>
           </div>
@@ -101,9 +108,11 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
             <div className="flex gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-900">Archive {groupTerm}</p>
+                <p className="text-sm font-medium text-amber-900">{isFr ? `Archiver le ${groupTermLowerFr}` : `Archive ${groupTerm}`}</p>
                 <p className="text-sm text-amber-700 mt-1">
-                  This will remove the {groupTerm.toLowerCase()} from your active list. You can choose to keep or delete all records.
+                  {isFr
+                    ? `Cela retirera le ${groupTermLowerFr} de votre liste active. Vous pouvez choisir de conserver ou de supprimer tous les enregistrements.`
+                    : `This will remove the ${groupTerm.toLowerCase()} from your active list. You can choose to keep or delete all records.`}
                 </p>
               </div>
             </div>
@@ -111,7 +120,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              What happened to the {groupTerm.toLowerCase()}?
+              {isFr ? `Qu'est-il arrivé au ${groupTermLowerFr} ?` : `What happened to the ${groupTerm.toLowerCase()}?`}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
@@ -126,7 +135,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
                 <DollarSign className={`w-6 h-6 mx-auto mb-2 ${
                   action === 'sold' ? 'text-[#3D5F42]' : 'text-gray-400'
                 }`} />
-                <div className="font-medium text-sm">Sold</div>
+                <div className="font-medium text-sm">{isFr ? 'Vendu' : 'Sold'}</div>
               </button>
               <button
                 type="button"
@@ -140,7 +149,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
                 <AlertTriangle className={`w-6 h-6 mx-auto mb-2 ${
                   action === 'deceased' ? 'text-red-600' : 'text-gray-400'
                 }`} />
-                <div className="font-medium text-sm">Deceased</div>
+                <div className="font-medium text-sm">{isFr ? 'Décédé' : 'Deceased'}</div>
               </button>
               <button
                 type="button"
@@ -154,7 +163,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
                 <Archive className={`w-6 h-6 mx-auto mb-2 ${
                   action === 'archived' ? 'text-gray-600' : 'text-gray-400'
                 }`} />
-                <div className="font-medium text-sm">Other</div>
+                <div className="font-medium text-sm">{isFr ? 'Autre' : 'Other'}</div>
               </button>
             </div>
           </div>
@@ -163,7 +172,7 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
             <div className="space-y-4 bg-green-50 rounded-xl p-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sale Price
+                  {isFr ? 'Prix de vente' : 'Sale Price'}
                 </label>
                 <input
                   type="number"
@@ -176,13 +185,13 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Buyer Information
+                  {isFr ? 'Informations sur l\'acheteur' : 'Buyer Information'}
                 </label>
                 <input
                   type="text"
                   value={buyerInfo}
                   onChange={(e) => setBuyerInfo(e.target.value)}
-                  placeholder="Buyer name or company"
+                  placeholder={isFr ? 'Nom de l\'acheteur ou entreprise' : 'Buyer name or company'}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
                 />
               </div>
@@ -191,12 +200,14 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
+              {isFr ? 'Notes' : 'Notes'}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={`Add any additional details about archiving this ${groupTerm.toLowerCase()}...`}
+              placeholder={isFr
+                ? `Ajoutez des détails supplémentaires sur l'archivage de ce ${groupTermLowerFr}...`
+                : `Add any additional details about archiving this ${groupTerm.toLowerCase()}...`}
               rows={4}
               className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
             />
@@ -211,10 +222,11 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
                 className="mt-1 w-5 h-5 text-[#3D5F42] rounded focus:ring-[#3D5F42]"
               />
               <div>
-                <div className="font-medium text-gray-900">Keep Historical Records</div>
+                <div className="font-medium text-gray-900">{isFr ? 'Conserver les enregistrements historiques' : 'Keep Historical Records'}</div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Maintain all data for this {groupTerm.toLowerCase()} (expenses, tasks, {isAquaculture ? 'water quality, harvest' : 'mortality'}, etc.) for future reference.
-                  If unchecked, all {groupTerm.toLowerCase()} data will be permanently deleted.
+                  {isFr
+                    ? `Conservez toutes les données de ce ${groupTermLowerFr} (dépenses, tâches, ${isAquaculture ? 'qualité de l\'eau, récolte' : 'mortalité'}, etc.) pour référence future. Si décoché, toutes les données du ${groupTermLowerFr} seront définitivement supprimées.`
+                    : `Maintain all data for this ${groupTerm.toLowerCase()} (expenses, tasks, ${isAquaculture ? 'water quality, harvest' : 'mortality'}, etc.) for future reference. If unchecked, all ${groupTerm.toLowerCase()} data will be permanently deleted.`}
                 </div>
               </div>
             </label>
@@ -222,11 +234,11 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
 
           <div className="bg-blue-50 rounded-xl p-4">
             <div className="text-sm text-blue-800">
-              <strong>Final Count:</strong> {flock.current_count} {animalTerm}
+              <strong>{isFr ? 'Nombre final :' : 'Final Count:'}</strong> {flock.current_count} {isFr ? animalTermFr : animalTerm}
             </div>
             {action === 'sold' && salePrice && (
               <div className="text-sm text-blue-800 mt-2">
-                <strong>Price per {isAquaculture ? 'kg / fish' : 'bird'}:</strong> {(parseFloat(salePrice) / flock.current_count).toFixed(2)}
+                <strong>{isFr ? `Prix par ${isAquaculture ? 'kg / poisson' : 'oiseau'} :` : `Price per ${isAquaculture ? 'kg / fish' : 'bird'}:`}</strong> {(parseFloat(salePrice) / flock.current_count).toFixed(2)}
               </div>
             )}
           </div>
@@ -243,14 +255,18 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
               onClick={onClose}
               className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 bg-orange-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Archiving...' : keepRecords ? `Archive ${groupTerm}` : `Delete ${groupTerm}`}
+              {loading
+                ? (isFr ? 'Archivage...' : 'Archiving...')
+                : keepRecords
+                  ? (isFr ? `Archiver le ${groupTermLowerFr}` : `Archive ${groupTerm}`)
+                  : (isFr ? `Supprimer le ${groupTermLowerFr}` : `Delete ${groupTerm}`)}
             </button>
           </div>
         </form>

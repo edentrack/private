@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, FileText, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Customer, SalesInvoice } from '../../types/database';
 
 interface EditInvoiceModalProps {
@@ -20,6 +21,8 @@ interface InvoiceItem {
 
 export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: EditInvoiceModalProps) {
   const { profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [customerId, setCustomerId] = useState(invoice.customer_id || '');
   const [invoiceDate, setInvoiceDate] = useState(invoice.invoice_date.split('T')[0]);
   const [dueDate, setDueDate] = useState(invoice.due_date?.split('T')[0] || '');
@@ -149,7 +152,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
 
       onUpdated();
     } catch (err: any) {
-      setError(err.message || 'Failed to update invoice');
+      setError(err.message || (isFr ? 'Échec de la mise à jour de la facture' : 'Failed to update invoice'));
     } finally {
       setSaving(false);
     }
@@ -159,7 +162,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white rounded-3xl p-8">
-          <div className="text-gray-500">Loading invoice...</div>
+          <div className="text-gray-500">{isFr ? 'Chargement de la facture...' : 'Loading invoice...'}</div>
         </div>
       </div>
     );
@@ -174,7 +177,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Edit Invoice</h2>
+              <h2 className="text-xl font-bold text-gray-900">{isFr ? 'Modifier la facture' : 'Edit Invoice'}</h2>
               <p className="text-sm text-gray-500">#{invoice.invoice_number}</p>
             </div>
           </div>
@@ -186,13 +189,13 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Customer</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Client' : 'Customer'}</label>
               <select
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
               >
-                <option value="">Walk-in Customer</option>
+                <option value="">{isFr ? 'Client de passage' : 'Walk-in Customer'}</option>
                 {customers.map((customer) => (
                   <option key={customer.id} value={customer.id}>
                     {customer.name}
@@ -202,24 +205,24 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Statut' : 'Status'}</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
               >
-                <option value="draft">Draft</option>
-                <option value="sent">Sent</option>
-                <option value="paid">Paid</option>
-                <option value="overdue">Overdue</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="draft">{isFr ? 'Brouillon' : 'Draft'}</option>
+                <option value="sent">{isFr ? 'Envoyée' : 'Sent'}</option>
+                <option value="paid">{isFr ? 'Payée' : 'Paid'}</option>
+                <option value="overdue">{isFr ? 'En retard' : 'Overdue'}</option>
+                <option value="cancelled">{isFr ? 'Annulée' : 'Cancelled'}</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Date de la facture' : 'Invoice Date'}</label>
               <input
                 type="date"
                 required
@@ -230,7 +233,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Date d\'échéance' : 'Due Date'}</label>
               <input
                 type="date"
                 value={dueDate}
@@ -243,7 +246,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
           {status === 'paid' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-green-50 p-4 rounded-xl">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Amount Paid</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Montant payé' : 'Amount Paid'}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -253,12 +256,12 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Mode de paiement' : 'Payment Method'}</label>
                 <input
                   type="text"
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  placeholder="Cash, Card, Transfer..."
+                  placeholder={isFr ? 'Espèces, carte, virement...' : 'Cash, Card, Transfer...'}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
                 />
               </div>
@@ -267,14 +270,14 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
 
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-gray-700">Items</label>
+              <label className="block text-sm font-medium text-gray-700">{isFr ? 'Articles' : 'Items'}</label>
               <button
                 type="button"
                 onClick={addItem}
                 className="text-sm text-[#3D5F42] hover:text-[#2F4A34] font-medium inline-flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
-                Add Item
+                {isFr ? 'Ajouter un article' : 'Add Item'}
               </button>
             </div>
             <div className="space-y-3">
@@ -283,7 +286,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
                   <input
                     type="text"
                     required
-                    placeholder="Description"
+                    placeholder={isFr ? 'Description' : 'Description'}
                     value={item.description}
                     onChange={(e) => updateItem(index, 'description', e.target.value)}
                     className="sm:col-span-6 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
@@ -293,7 +296,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
                     required
                     min="0"
                     step="0.01"
-                    placeholder="Qty"
+                    placeholder={isFr ? 'Qté' : 'Qty'}
                     value={item.quantity}
                     onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value))}
                     className="sm:col-span-2 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
@@ -303,7 +306,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
                     required
                     min="0"
                     step="0.01"
-                    placeholder="Price"
+                    placeholder={isFr ? 'Prix' : 'Price'}
                     value={item.unit_price}
                     onChange={(e) => updateItem(index, 'unit_price', parseFloat(e.target.value))}
                     className="sm:col-span-3 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
@@ -322,7 +325,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Notes' : 'Notes'}</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -333,7 +336,7 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
 
           <div className="bg-gray-50 rounded-xl p-4">
             <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-gray-700">Total</span>
+              <span className="text-lg font-medium text-gray-700">{isFr ? 'Total' : 'Total'}</span>
               <span className="text-2xl font-bold text-gray-900">
                 {profile?.currency_preference} {calculateSubtotal().toLocaleString()}
               </span>
@@ -352,14 +355,14 @@ export function EditInvoiceModal({ invoice, customers, onClose, onUpdated }: Edi
               onClick={onClose}
               className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="flex-1 bg-[#3D5F42] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#2F4A34] disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer les modifications' : 'Save Changes')}
             </button>
           </div>
         </form>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { ConfirmEggCollectionModal } from './ConfirmEggCollectionModal';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
@@ -16,6 +17,8 @@ interface LogCollectionModalProps {
 
 export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskRecord = false }: LogCollectionModalProps) {
   const { user, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const [date, setDate] = useState(() => {
     const d = new Date();
@@ -85,13 +88,13 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
     const brokenNum = parseFloat(eggsBroken) || 0;
 
     if (liveTotals.totalGood === 0 && brokenNum === 0) {
-      setError('Please enter at least some eggs collected');
+      setError(isFr ? 'Veuillez entrer au moins quelques œufs collectés' : 'Please enter at least some eggs collected');
       return;
     }
 
     const badLoose = (Object.values(liveTotals.looseNums) as number[]).some((v) => v >= eggsPerTray);
     if (badLoose) {
-      setError(`Loose eggs for each size must be less than ${eggsPerTray}.`);
+      setError(isFr ? `Les œufs en vrac pour chaque taille doivent être inférieurs à ${eggsPerTray}.` : `Loose eggs for each size must be less than ${eggsPerTray}.`);
       return;
     }
 
@@ -222,7 +225,7 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
 
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to log collection');
+      setError(err instanceof Error ? err.message : (isFr ? "Échec de l'enregistrement de la collecte" : 'Failed to log collection'));
     } finally {
       setLoading(false);
     }
@@ -241,7 +244,7 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl max-w-md w-full p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Log Egg Collection</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{isFr ? 'Enregistrer la collecte d\'œufs' : 'Log Egg Collection'}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -259,7 +262,7 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
 
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-              Date
+              {isFr ? 'Date' : 'Date'}
             </label>
             <input
               id="date"
@@ -273,15 +276,15 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
 
           <div className="border border-gray-200 rounded-xl overflow-hidden">
             <div className="grid grid-cols-3 bg-gray-50 text-xs font-semibold text-gray-700">
-              <div className="px-3 py-2">Size</div>
-              <div className="px-3 py-2 text-center">Trays</div>
-              <div className="px-3 py-2 text-center">Loose</div>
+              <div className="px-3 py-2">{isFr ? 'Taille' : 'Size'}</div>
+              <div className="px-3 py-2 text-center">{isFr ? 'Plateaux' : 'Trays'}</div>
+              <div className="px-3 py-2 text-center">{isFr ? 'En vrac' : 'Loose'}</div>
             </div>
             {([
-              { key: 'small', label: 'Small' },
-              { key: 'medium', label: 'Medium' },
-              { key: 'large', label: 'Large' },
-              { key: 'jumbo', label: 'Jumbo' },
+              { key: 'small', label: isFr ? 'Petit' : 'Small' },
+              { key: 'medium', label: isFr ? 'Moyen' : 'Medium' },
+              { key: 'large', label: isFr ? 'Grand' : 'Large' },
+              { key: 'jumbo', label: isFr ? 'Jumbo' : 'Jumbo' },
             ] as const).map((row) => (
               <div key={row.key} className="grid grid-cols-3 items-center border-t border-gray-200">
                 <div className="px-3 py-2 text-sm font-semibold text-gray-900">{row.label}</div>
@@ -309,13 +312,13 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
               </div>
             ))}
             <div className="px-3 py-2 bg-gray-50 text-[11px] text-gray-600">
-              Loose eggs must be less than {eggsPerTray} per size.
+              {isFr ? `Les œufs en vrac doivent être inférieurs à ${eggsPerTray} par taille.` : `Loose eggs must be less than ${eggsPerTray} per size.`}
             </div>
           </div>
 
           <div>
             <label htmlFor="broken" className="block text-sm font-medium text-gray-700 mb-2">
-              Eggs Broken
+              {isFr ? 'Œufs cassés' : 'Eggs Broken'}
             </label>
             <input
               id="broken"
@@ -329,14 +332,14 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
 
           <div className="border border-gray-200 rounded-xl px-3 py-2 bg-white">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-700">Total good eggs</span>
+              <span className="text-xs font-semibold text-gray-700">{isFr ? 'Total des bons œufs' : 'Total good eggs'}</span>
               <span className="text-sm font-bold text-gray-900">{liveTotals.totalGood}</span>
             </div>
           </div>
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
+              {isFr ? 'Notes (Optionnel)' : 'Notes (Optional)'}
             </label>
             <textarea
               id="notes"
@@ -344,18 +347,18 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all resize-none text-sm"
-              placeholder="Any additional notes..."
+              placeholder={isFr ? 'Notes supplémentaires...' : 'Any additional notes...'}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Photo (Optional)
+              {isFr ? 'Photo (Optionnel)' : 'Photo (Optional)'}
             </label>
             <label className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#3D5F42] transition-colors cursor-pointer">
               <Camera className="w-5 h-5 text-gray-400" />
               <span className="text-sm text-gray-600">
-                {photo ? photo.name : 'Upload photo'}
+                {photo ? photo.name : (isFr ? 'Téléverser une photo' : 'Upload photo')}
               </span>
               <input
                 type="file"
@@ -372,14 +375,14 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
               onClick={onClose}
               className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 px-6 py-3 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2d4632] transition-colors font-medium disabled:opacity-50"
             >
-              {loading ? 'Logging...' : 'Log Collection'}
+              {loading ? (isFr ? 'Enregistrement...' : 'Logging...') : (isFr ? 'Enregistrer la collecte' : 'Log Collection')}
             </button>
           </div>
         </form>

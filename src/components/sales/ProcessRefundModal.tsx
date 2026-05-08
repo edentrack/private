@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { SalesReceipt, ReceiptItem } from '../../types/database';
 import { processRefund } from '../../utils/receiptOperations';
@@ -13,6 +14,8 @@ interface ProcessRefundModalProps {
 
 export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefundModalProps) {
   const { user, profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [items, setItems] = useState<ReceiptItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [refundReason, setRefundReason] = useState('');
@@ -57,12 +60,12 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
     if (!user || !currentFarm?.id) return;
 
     if (selectedItems.size === 0) {
-      setError('Please select at least one item to refund');
+      setError(isFr ? 'Veuillez sélectionner au moins un article à rembourser' : 'Please select at least one item to refund');
       return;
     }
 
     if (!refundReason.trim()) {
-      setError('Please provide a refund reason');
+      setError(isFr ? 'Veuillez fournir une raison du remboursement' : 'Please provide a refund reason');
       return;
     }
 
@@ -91,7 +94,7 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
     if (result.success) {
       onRefunded();
     } else {
-      setError(result.error || 'Failed to process refund');
+      setError(result.error || (isFr ? 'Échec du traitement du remboursement' : 'Failed to process refund'));
       setProcessing(false);
     }
   };
@@ -105,8 +108,8 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
               <RotateCcw className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Process Refund</h2>
-              <p className="text-sm text-gray-500">Receipt #{receipt.receipt_number}</p>
+              <h2 className="text-xl font-bold text-gray-900">{isFr ? 'Traiter le remboursement' : 'Process Refund'}</h2>
+              <p className="text-sm text-gray-500">{isFr ? 'Reçu' : 'Receipt'} #{receipt.receipt_number}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
@@ -118,17 +121,17 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-medium text-yellow-900 mb-1">Important</h3>
+              <h3 className="font-medium text-yellow-900 mb-1">{isFr ? 'Important' : 'Important'}</h3>
               <ul className="text-sm text-yellow-800 space-y-1">
-                <li>• This action will create a refund record and reverse the revenue</li>
-                <li>• The original receipt will be marked as refunded</li>
-                <li>• This action cannot be undone</li>
+                <li>{isFr ? '• Cette action créera un enregistrement de remboursement et annulera les revenus' : '• This action will create a refund record and reverse the revenue'}</li>
+                <li>{isFr ? '• Le reçu original sera marqué comme remboursé' : '• The original receipt will be marked as refunded'}</li>
+                <li>{isFr ? '• Cette action ne peut pas être annulée' : '• This action cannot be undone'}</li>
               </ul>
             </div>
           </div>
 
           <div>
-            <div className="text-sm font-medium text-gray-700 mb-3">Select Items to Refund</div>
+            <div className="text-sm font-medium text-gray-700 mb-3">{isFr ? 'Sélectionner les articles à rembourser' : 'Select Items to Refund'}</div>
             <div className="space-y-2">
               {items.map((item) => (
                 <label
@@ -163,14 +166,14 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Refund Reason <span className="text-red-500">*</span>
+              {isFr ? 'Raison du remboursement' : 'Refund Reason'} <span className="text-red-500">*</span>
             </label>
             <textarea
               required
               value={refundReason}
               onChange={(e) => setRefundReason(e.target.value)}
               rows={3}
-              placeholder="Explain why this refund is being processed..."
+              placeholder={isFr ? 'Expliquez pourquoi ce remboursement est traité...' : 'Explain why this refund is being processed...'}
               className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
           </div>
@@ -185,9 +188,9 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
                   className="mt-0.5 w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                 />
                 <div>
-                  <div className="font-medium text-blue-900">Restore Egg Inventory</div>
+                  <div className="font-medium text-blue-900">{isFr ? 'Restaurer le stock d\'œufs' : 'Restore Egg Inventory'}</div>
                   <div className="text-sm text-blue-700">
-                    Add the refunded eggs back to your inventory stock
+                    {isFr ? 'Rajoutez les œufs remboursés à votre stock d\'inventaire' : 'Add the refunded eggs back to your inventory stock'}
                   </div>
                 </div>
               </label>
@@ -196,13 +199,13 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
 
           <div className="bg-gray-100 rounded-xl p-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-gray-600">Original Amount</span>
+              <span className="text-gray-600">{isFr ? 'Montant original' : 'Original Amount'}</span>
               <span className="text-gray-900 font-medium">
                 {profile?.currency_preference} {receipt.total.toLocaleString()}
               </span>
             </div>
             <div className="flex items-center justify-between pt-3 border-t border-gray-300">
-              <span className="text-lg font-medium text-gray-900">Refund Amount</span>
+              <span className="text-lg font-medium text-gray-900">{isFr ? 'Montant du remboursement' : 'Refund Amount'}</span>
               <span className="text-2xl font-bold text-red-600">
                 {profile?.currency_preference} {calculateRefundAmount().toLocaleString()}
               </span>
@@ -221,14 +224,14 @@ export function ProcessRefundModal({ receipt, onClose, onRefunded }: ProcessRefu
               onClick={onClose}
               className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={processing || selectedItems.size === 0 || !refundReason.trim()}
               className="flex-1 bg-red-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {processing ? 'Processing...' : 'Process Refund'}
+              {processing ? (isFr ? 'Traitement...' : 'Processing...') : (isFr ? 'Traiter le remboursement' : 'Process Refund')}
             </button>
           </div>
         </form>
