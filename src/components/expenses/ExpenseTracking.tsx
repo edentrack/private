@@ -1107,7 +1107,7 @@ export function ExpenseTracking() {
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-semibold text-gray-900 mb-1">
-                  {t('expenses.flock')} <span className="text-red-500">*</span>
+                  {farmSpecies.id === 'poultry' ? t('expenses.flock') : farmSpecies.groupTerm} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedExpenseFlock}
@@ -1115,7 +1115,7 @@ export function ExpenseTracking() {
                   required
                   className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-100 transition-all text-xs"
                 >
-                  <option value="">{t('expenses.select_a_flock')}</option>
+                  <option value="">{farmSpecies.id === 'poultry' ? t('expenses.select_a_flock') : `Select a ${farmSpecies.groupTerm.toLowerCase()}`}</option>
                   {flocks.map((flock) => (
                     <option key={flock.id} value={flock.id}>
                       {flock.name}

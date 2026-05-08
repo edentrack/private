@@ -108,7 +108,7 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
       <div className="absolute top-0 right-0 w-32 h-32 bg-neon-500/20 rounded-full blur-3xl" />
       <div className="relative">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">Active Flock</h3>
+          <h3 className="font-semibold text-gray-900">{`Active ${farmSpecies.groupTerm}`}</h3>
           <div className="flex items-center gap-2">
             {onLogMortality && (
               <button
@@ -116,7 +116,7 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
                 className="text-red-600 text-sm font-medium hover:text-red-700 inline-flex items-center gap-1 px-3 py-1.5 bg-white/50 rounded-full hover:bg-white/70 transition-colors"
               >
                 <AlertTriangle className="w-4 h-4" />
-                Log Mortality
+                {`Log ${farmSpecies.lossNounPlural}`}
               </button>
             )}
             {onNavigate && (

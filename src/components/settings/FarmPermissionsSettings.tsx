@@ -53,6 +53,8 @@ interface PermissionVocab {
   animalTerm: string;           // "Bird", "Fish", "Rabbit"
   animalTermLower: string;      // "bird", "fish", "rabbit"
   animalTermPluralLower: string;
+  lossNoun: string;             // "Mortality", "Loss", "Death"
+  lossNounPlural: string;       // "Mortalities", "Losses", "Deaths"
   isPoultry: boolean;
 }
 
@@ -119,7 +121,7 @@ function buildWorkerGroups(v: PermissionVocab): PermissionGroup[] {
       title: 'Data Logging',
       description: 'What workers can record directly from their phone',
       permissions: [
-        { key: 'workers_can_log_mortality', label: 'Log Mortality', description: `Workers can report dead ${v.animalTermPluralLower} and enter cause of death` },
+        { key: 'workers_can_log_mortality', label: `Log ${v.lossNounPlural}`, description: `Workers can report dead ${v.animalTermPluralLower} and enter cause of death` },
         // Egg-collection logging only on poultry.
         ...(v.isPoultry
           ? ([{ key: 'workers_can_log_eggs' as const, label: 'Log Egg Collections', description: 'Workers can record daily egg counts by size and damage' }])
@@ -145,7 +147,7 @@ function buildViewerInfo(v: PermissionVocab): { label: string; access: string }[
     { label: 'Tasks & Shifts', access: 'Read only' },
     { label: 'Expenses & Sales', access: 'Read only' },
     { label: 'Inventory & Feed', access: 'Read only' },
-    { label: 'Mortality & Weight', access: 'Read only' },
+    { label: `${v.lossNounPlural} & Weight`, access: 'Read only' },
     { label: 'Vaccinations & Vet Log', access: 'Read only' },
     { label: 'Analytics & Insights', access: 'Read only' },
     { label: 'Eden AI', access: 'Full access' },
@@ -168,6 +170,8 @@ export function FarmPermissionsSettings() {
     animalTerm: farmSpecies.animalTerm,
     animalTermLower: farmSpecies.animalTerm.toLowerCase(),
     animalTermPluralLower: farmSpecies.animalTermPlural.toLowerCase(),
+    lossNoun: farmSpecies.lossNoun,
+    lossNounPlural: farmSpecies.lossNounPlural,
     isPoultry: farmSpecies.id === 'poultry',
   }), [farmSpecies.id]);
   const managerGroups = useMemo(() => buildManagerGroups(permVocab), [permVocab]);
@@ -365,7 +369,9 @@ export function FarmPermissionsSettings() {
                 className="px-3 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 text-xs font-semibold hover:bg-gray-100 transition-colors text-left">
                 <div className="font-bold">Basic</div>
                 <div className="text-gray-500 font-normal mt-0.5">
-                  {permVocab.isPoultry ? 'Eggs & mortality only' : 'Mortality only'}
+                  {permVocab.isPoultry
+                    ? 'Eggs & mortality only'
+                    : `${permVocab.lossNounPlural} only`}
                 </div>
               </button>
               <button onClick={() => applyWorkerPreset('full')}
@@ -374,7 +380,7 @@ export function FarmPermissionsSettings() {
                 <div className="text-amber-600 font-normal mt-0.5">
                   {permVocab.isPoultry
                     ? 'Eggs, mortality, weight & Eden AI'
-                    : 'Mortality, weight & Eden AI'}
+                    : `${permVocab.lossNounPlural}, weight & Eden AI`}
                 </div>
               </button>
             </div>

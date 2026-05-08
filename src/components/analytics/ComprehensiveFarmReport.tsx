@@ -819,10 +819,10 @@ export function ComprehensiveFarmReport({
 
                     {flock.birdsSold > 0 && (
                       <div className="pt-2 border-t border-gray-200">
-                        <p className="text-xs font-medium text-gray-700 mb-1">Bird Sales</p>
+                        <p className="text-xs font-medium text-gray-700 mb-1">{`${farmSpecies.animalTerm} Sales`}</p>
                         <div className="grid grid-cols-2 gap-3 text-sm">
                           <div>
-                            <p className="text-gray-600">Birds Sold</p>
+                            <p className="text-gray-600">{`${farmSpecies.animalTermPlural} Sold`}</p>
                             <p className="font-semibold text-purple-900">{flock.birdsSold.toLocaleString()}</p>
                           </div>
                           <div>
