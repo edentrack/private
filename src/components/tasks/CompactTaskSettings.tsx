@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings, Edit2, X, Clock, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface TaskTemplate {
@@ -26,6 +27,8 @@ interface Props {
 
 export function CompactTaskSettings({ onClose }: Props) {
   const { profile } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   // Note: useFarmSpecies is also called inside EditTemplateModal (the inner
   // component); this hook is cheap so duplicating is fine and keeps each
   // component self-contained.
@@ -60,22 +63,22 @@ export function CompactTaskSettings({ onClose }: Props) {
   }
 
   async function deleteTemplate(id: string) {
-    if (!confirm('Delete this task template?')) return;
+    if (!confirm(isFr ? 'Supprimer ce modèle de tâche ?' : 'Delete this task template?')) return;
     await supabase.from('task_templates').delete().eq('id', id);
     setTemplates(prev => prev.filter(t => t.id !== id));
   }
 
   function getFrequencyTag(template: TaskTemplate) {
-    if (template.frequency === 'daily') return 'Daily';
-    if (template.frequency === 'weekly') return 'Weekly';
-    if (template.frequency === 'custom') return `Every ${template.custom_interval_days}d`;
+    if (template.frequency === 'daily') return isFr ? 'Quotidienne' : 'Daily';
+    if (template.frequency === 'weekly') return isFr ? 'Hebdomadaire' : 'Weekly';
+    if (template.frequency === 'custom') return isFr ? `Tous les ${template.custom_interval_days}j` : `Every ${template.custom_interval_days}d`;
     return template.frequency;
   }
 
   function getFlockTypeTag(scope: string) {
-    if (scope === 'broiler') return { label: 'Broiler', color: 'bg-orange-100 text-orange-700' };
-    if (scope === 'layer') return { label: 'Layer', color: 'bg-blue-100 text-blue-700' };
-    return { label: 'General', color: 'bg-gray-100 text-gray-700' };
+    if (scope === 'broiler') return { label: isFr ? 'Poulet de chair' : 'Broiler', color: 'bg-orange-100 text-orange-700' };
+    if (scope === 'layer') return { label: isFr ? 'Pondeuse' : 'Layer', color: 'bg-blue-100 text-blue-700' };
+    return { label: isFr ? 'Général' : 'General', color: 'bg-gray-100 text-gray-700' };
   }
 
   const filteredTemplates = templates.filter(t => {
@@ -94,7 +97,7 @@ export function CompactTaskSettings({ onClose }: Props) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl p-8">
-          <p className="text-gray-500">Loading...</p>
+          <p className="text-gray-500">{isFr ? 'Chargement...' : 'Loading...'}</p>
         </div>
       </div>
     );
@@ -109,8 +112,8 @@ export function CompactTaskSettings({ onClose }: Props) {
               <Settings className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Task Templates</h2>
-              <p className="text-sm text-gray-500">{templates.length} templates</p>
+              <h2 className="text-lg font-bold text-gray-900">{isFr ? 'Modèles de tâches' : 'Task Templates'}</h2>
+              <p className="text-sm text-gray-500">{templates.length} {isFr ? 'modèles' : 'templates'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -119,9 +122,9 @@ export function CompactTaskSettings({ onClose }: Props) {
               onChange={(e) => setFilter(e.target.value as any)}
               className="text-sm border border-gray-300 rounded-lg px-3 py-1.5"
             >
-              <option value="all">All</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">{isFr ? 'Tous' : 'All'}</option>
+              <option value="active">{isFr ? 'Actifs' : 'Active'}</option>
+              <option value="inactive">{isFr ? 'Inactifs' : 'Inactive'}</option>
             </select>
             <button
               onClick={onClose}
@@ -198,7 +201,7 @@ export function CompactTaskSettings({ onClose }: Props) {
 
           {Object.keys(groupedByCategory).length === 0 && (
             <div className="text-center py-12 text-gray-500">
-              No task templates found
+              {isFr ? 'Aucun modèle de tâche trouvé' : 'No task templates found'}
             </div>
           )}
         </div>
@@ -223,13 +226,13 @@ export function CompactTaskSettings({ onClose }: Props) {
             className="flex items-center gap-2 px-4 py-2 text-[#3D5F42] hover:bg-[#3D5F42]/5 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Add Template
+            {isFr ? 'Ajouter un modèle' : 'Add Template'}
           </button>
           <button
             onClick={onClose}
             className="px-6 py-2 bg-[#3D5F42] text-white rounded-lg hover:bg-[#2d4631]"
           >
-            Done
+            {isFr ? 'Terminé' : 'Done'}
           </button>
         </div>
       </div>
@@ -276,6 +279,8 @@ function EditTemplateModal({
   const [form, setForm] = useState(template);
   const [saving, setSaving] = useState(false);
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const groupTermLower = farmSpecies.groupTerm.toLowerCase();
 
   const isNew = !template.id;
@@ -293,7 +298,7 @@ function EditTemplateModal({
       <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">
-            {isNew ? 'New Template' : 'Edit Template'}
+            {isNew ? (isFr ? 'Nouveau modèle' : 'New Template') : (isFr ? 'Modifier le modèle' : 'Edit Template')}
           </h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
             <X className="w-5 h-5" />
@@ -302,64 +307,64 @@ function EditTemplateModal({
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Titre' : 'Title'}</label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
-              placeholder="e.g., Morning Feed"
+              placeholder={isFr ? 'ex. Repas du matin' : 'e.g., Morning Feed'}
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Description' : 'Description'}</label>
             <textarea
               value={form.description || ''}
               onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value || null }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
               rows={2}
-              placeholder="Optional description"
+              placeholder={isFr ? 'Description facultative' : 'Optional description'}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Catégorie' : 'Category'}</label>
               <select
                 value={form.category}
                 onChange={(e) => setForm(prev => ({ ...prev, category: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
               >
-                <option value="Feed Management">Feed Management</option>
-                <option value="Health">Health</option>
-                <option value="Biosecurity">Biosecurity</option>
-                <option value="Cleaning">Cleaning</option>
-                <option value="Production">Production</option>
-                <option value="General">General</option>
+                <option value="Feed Management">{isFr ? "Gestion de l'alimentation" : 'Feed Management'}</option>
+                <option value="Health">{isFr ? 'Santé' : 'Health'}</option>
+                <option value="Biosecurity">{isFr ? 'Biosécurité' : 'Biosecurity'}</option>
+                <option value="Cleaning">{isFr ? 'Nettoyage' : 'Cleaning'}</option>
+                <option value="Production">{isFr ? 'Production' : 'Production'}</option>
+                <option value="General">{isFr ? 'Général' : 'General'}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Fréquence' : 'Frequency'}</label>
               <select
                 value={form.frequency}
                 onChange={(e) => setForm(prev => ({ ...prev, frequency: e.target.value }))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
               >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="custom">Custom Interval</option>
+                <option value="daily">{isFr ? 'Quotidienne' : 'Daily'}</option>
+                <option value="weekly">{isFr ? 'Hebdomadaire' : 'Weekly'}</option>
+                <option value="custom">{isFr ? 'Intervalle personnalisé' : 'Custom Interval'}</option>
               </select>
             </div>
           </div>
 
           {form.frequency === 'weekly' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Days of Week</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Jours de la semaine' : 'Days of Week'}</label>
               <div className="flex gap-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                {(isFr ? ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).map((day, idx) => (
                   <button
                     key={day}
                     type="button"
@@ -385,7 +390,7 @@ function EditTemplateModal({
 
           {form.frequency === 'custom' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Interval (days)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Intervalle (jours)' : 'Interval (days)'}</label>
               <input
                 type="number"
                 min="1"
@@ -399,7 +404,7 @@ function EditTemplateModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default Time</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Heure par défaut' : 'Default Time'}</label>
               <input
                 type="time"
                 value={form.default_time || '08:00'}
@@ -410,8 +415,8 @@ function EditTemplateModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Completion Window
-                <span className="font-normal text-gray-500 ml-1">(minutes)</span>
+                {isFr ? 'Délai de complétion' : 'Completion Window'}
+                <span className="font-normal text-gray-500 ml-1">{isFr ? '(minutes)' : '(minutes)'}</span>
               </label>
               <input
                 type="number"
@@ -423,41 +428,41 @@ function EditTemplateModal({
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Time after due when task becomes overdue
+                {isFr ? "Temps après échéance avant que la tâche ne devienne en retard" : 'Time after due when task becomes overdue'}
               </p>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{`${farmSpecies.groupTerm} Type Scope`}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? `Portée de type ${farmSpecies.groupTerm.toLowerCase()}` : `${farmSpecies.groupTerm} Type Scope`}</label>
             <select
               value={form.flock_type_scope}
               onChange={(e) => setForm(prev => ({ ...prev, flock_type_scope: e.target.value }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
             >
-              <option value="general">{`General (all ${farmSpecies.groupTermPlural.toLowerCase()})`}</option>
+              <option value="general">{isFr ? `Général (tous les ${farmSpecies.groupTermPlural.toLowerCase()})` : `General (all ${farmSpecies.groupTermPlural.toLowerCase()})`}</option>
               {/* Type-specific filtering only meaningful for poultry where the
                   broiler/layer split drives different task cadences. Aqua and
                   rabbits don't currently differentiate task templates by sub-
                   type, so the type-only options are hidden on those species. */}
               {farmSpecies.id === 'poultry' && (
                 <>
-                  <option value="broiler">Broiler only</option>
-                  <option value="layer">Layer only</option>
+                  <option value="broiler">{isFr ? 'Poulets de chair uniquement' : 'Broiler only'}</option>
+                  <option value="layer">{isFr ? 'Pondeuses uniquement' : 'Layer only'}</option>
                 </>
               )}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Portée' : 'Scope'}</label>
             <select
               value={form.scope}
               onChange={(e) => setForm(prev => ({ ...prev, scope: e.target.value }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
             >
-              <option value="farm">Farm-wide (one task)</option>
-              <option value="flock">{`Per ${groupTermLower} (one task per ${groupTermLower})`}</option>
+              <option value="farm">{isFr ? "À l'échelle de la ferme (une tâche)" : 'Farm-wide (one task)'}</option>
+              <option value="flock">{isFr ? `Par ${groupTermLower} (une tâche par ${groupTermLower})` : `Per ${groupTermLower} (one task per ${groupTermLower})`}</option>
             </select>
           </div>
 
@@ -470,7 +475,7 @@ function EditTemplateModal({
               className="w-4 h-4 text-[#3D5F42] rounded border-gray-300 focus:ring-[#3D5F42]"
             />
             <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
-              Active
+              {isFr ? 'Actif' : 'Active'}
             </label>
           </div>
 
@@ -480,14 +485,14 @@ function EditTemplateModal({
               onClick={onClose}
               className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={saving || !form.name.trim()}
               className="px-4 py-2 bg-[#3D5F42] text-white rounded-lg hover:bg-[#2d4631] disabled:opacity-50"
             >
-              {saving ? 'Saving...' : isNew ? 'Create' : 'Save'}
+              {saving ? (isFr ? 'Enregistrement...' : 'Saving...') : isNew ? (isFr ? 'Créer' : 'Create') : (isFr ? 'Enregistrer' : 'Save')}
             </button>
           </div>
         </form>

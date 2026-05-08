@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, Save, RotateCcw, Edit2, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface GrowthTarget {
   weight: number;
@@ -42,6 +43,8 @@ interface GrowthTargetsSettingsProps {
 
 export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [targets, setTargets] = useState<GrowthTargets>(
@@ -106,14 +109,14 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving growth targets:', error);
-      alert('Failed to save growth targets');
+      alert(isFr ? "Échec de l'enregistrement des objectifs de croissance" : 'Failed to save growth targets');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleReset = () => {
-    if (confirm('Reset to default targets? This will overwrite your custom targets.')) {
+    if (confirm(isFr ? "Réinitialiser les objectifs par défaut ? Vos objectifs personnalisés seront écrasés." : 'Reset to default targets? This will overwrite your custom targets.')) {
       if (type === 'broiler') {
         setTargets(DEFAULT_BROILER_TARGETS);
         setMinAge(6);
@@ -139,9 +142,9 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
           <TrendingUp className="w-6 h-6 text-[#3D5F42]" />
           <div>
             <h3 className="text-lg font-bold text-gray-900">
-              Growth Targets - {type === 'broiler' ? 'Broilers' : 'Layers'}
+              {isFr ? 'Objectifs de croissance' : 'Growth Targets'} - {isFr ? (type === 'broiler' ? 'Poulets de chair' : 'Pondeuses') : (type === 'broiler' ? 'Broilers' : 'Layers')}
             </h3>
-            <p className="text-sm text-gray-600">Customize target weights for each week</p>
+            <p className="text-sm text-gray-600">{isFr ? 'Personnalisez les poids cibles pour chaque semaine' : 'Customize target weights for each week'}</p>
           </div>
         </div>
         {!isEditing && (
@@ -150,19 +153,19 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
             className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white rounded-lg hover:bg-[#2F4A34] transition-colors"
           >
             <Edit2 className="w-4 h-4" />
-            Edit Targets
+            {isFr ? 'Modifier les objectifs' : 'Edit Targets'}
           </button>
         )}
       </div>
 
       <div className="space-y-3 mb-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Week-by-Week Target Weights</h4>
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">{isFr ? 'Poids cibles semaine par semaine' : 'Week-by-Week Target Weights'}</h4>
         {Object.keys(targets).sort((a, b) => parseInt(a) - parseInt(b)).map(week => (
           <div
             key={week}
             className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
           >
-            <span className="w-20 font-medium text-gray-900">Week {week}:</span>
+            <span className="w-20 font-medium text-gray-900">{isFr ? `Sem. ${week}` : `Week ${week}`}:</span>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -189,10 +192,10 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
 
       {type === 'broiler' && (
         <div className="border-t border-gray-200 pt-4 mb-4">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4">Market Ready Criteria</h4>
+          <h4 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Critères de prêt pour le marché' : 'Market Ready Criteria'}</h4>
           <div className="space-y-3">
             <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
-              <span className="w-40 text-gray-700">Minimum Age:</span>
+              <span className="w-40 text-gray-700">{isFr ? 'Âge minimum :' : 'Minimum Age:'}</span>
               <input
                 type="number"
                 min="1"
@@ -205,10 +208,10 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
                     : 'border-gray-200 bg-gray-100 text-gray-600'
                 }`}
               />
-              <span className="text-gray-600">weeks</span>
+              <span className="text-gray-600">{isFr ? 'semaines' : 'weeks'}</span>
             </div>
             <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
-              <span className="w-40 text-gray-700">Minimum Weight:</span>
+              <span className="w-40 text-gray-700">{isFr ? 'Poids minimum :' : 'Minimum Weight:'}</span>
               <input
                 type="number"
                 step="0.1"
@@ -225,7 +228,7 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
               <span className="text-gray-600">kg</span>
             </div>
             <div className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
-              <span className="w-40 text-gray-700">Optimal Weight:</span>
+              <span className="w-40 text-gray-700">{isFr ? 'Poids optimal :' : 'Optimal Weight:'}</span>
               <input
                 type="number"
                 step="0.1"
@@ -247,8 +250,9 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
         <p className="text-sm text-blue-900">
-          <span className="font-medium">💡 Tip:</span> These targets are used in weight analysis and market readiness calculations.
-          Adjust based on your breed, climate, and feed quality for more accurate insights.
+          <span className="font-medium">💡 {isFr ? 'Astuce' : 'Tip'} :</span> {isFr
+            ? "Ces objectifs sont utilisés dans l'analyse du poids et les calculs de prêt pour le marché. Ajustez en fonction de votre race, du climat et de la qualité de l'aliment pour des insights plus précis."
+            : 'These targets are used in weight analysis and market readiness calculations. Adjust based on your breed, climate, and feed quality for more accurate insights.'}
         </p>
       </div>
 
@@ -260,7 +264,7 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
             className="flex items-center gap-2 px-6 py-2.5 bg-[#3D5F42] text-white rounded-lg hover:bg-[#2F4A34] transition-colors disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {isSaving ? 'Saving...' : 'Save Growth Targets'}
+            {isSaving ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer les objectifs' : 'Save Growth Targets')}
           </button>
           <button
             onClick={() => {
@@ -271,7 +275,7 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
             className="flex items-center gap-2 px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <X className="w-4 h-4" />
-            Cancel
+            {isFr ? 'Annuler' : 'Cancel'}
           </button>
           <button
             onClick={handleReset}
@@ -279,14 +283,16 @@ export function GrowthTargetsSettings({ type }: GrowthTargetsSettingsProps) {
             className="flex items-center gap-2 px-6 py-2.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
           >
             <RotateCcw className="w-4 h-4" />
-            Reset to Defaults
+            {isFr ? 'Réinitialiser' : 'Reset to Defaults'}
           </button>
         </div>
       )}
 
       <p className="text-xs text-gray-500 mt-4">
-        ℹ️ Based on: {type === 'broiler' ? 'Cobb 500 breed standards' : 'Standard layer breed growth curves'}.
-        Adjust for your specific breed and conditions.
+        ℹ️ {isFr ? 'Basé sur' : 'Based on'} : {isFr
+          ? (type === 'broiler' ? 'normes Cobb 500' : 'courbes de croissance standard pour pondeuses')
+          : (type === 'broiler' ? 'Cobb 500 breed standards' : 'Standard layer breed growth curves')}.
+        {isFr ? ' Ajustez selon votre race et vos conditions spécifiques.' : ' Adjust for your specific breed and conditions.'}
       </p>
     </div>
   );
