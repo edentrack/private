@@ -9,6 +9,7 @@ import { calculateSGR, formatSGR } from '../../utils/sgrAnalysis';
 import { calculateStockingDensity } from '../../utils/stockingDensity';
 import { calculateHarvestReadiness } from '../../utils/harvestReadiness';
 import { calculateFishFCR, formatFCR, type FishSpeciesType } from '../../utils/fcrAquaculture';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface AquaCycleWidgetProps {
   pond: Flock | null;
@@ -79,6 +80,21 @@ function getPhasesForType(type: string | null | undefined): { phases: FishPhase[
 
 export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
+
+  const phaseLabelFr = (name: string): string => {
+    switch (name) {
+      case 'Fingerling': return 'Alevin';
+      case 'Juvenile': return 'Juvénile';
+      case 'Grow-out': return 'Grossissement';
+      case 'Pre-harvest': return 'Pré-récolte';
+      case 'Harvest': return 'Récolte';
+      case 'Harvest ready': return 'Prêt pour la récolte';
+      case 'Unknown': return 'Inconnu';
+      default: return name;
+    }
+  };
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [currentWeek, setCurrentWeek] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -306,9 +322,9 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
       <div className="section-card-yellow p-4">
         <div className="flex items-center gap-2 mb-3">
           <RefreshCw className="w-5 h-5 text-gray-600" />
-          <h3 className="font-semibold text-gray-900">Production Cycle</h3>
+          <h3 className="font-semibold text-gray-900">{isFr ? 'Cycle de production' : 'Production Cycle'}</h3>
         </div>
-        <p className="text-gray-500 text-sm">Select a pond to view its production cycle.</p>
+        <p className="text-gray-500 text-sm">{isFr ? 'Sélectionnez un étang pour voir son cycle de production.' : 'Select a pond to view its production cycle.'}</p>
       </div>
     );
   }
@@ -326,7 +342,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <RefreshCw className="w-5 h-5 text-gray-700" />
-            <h3 className="font-semibold text-gray-900">Production Cycle</h3>
+            <h3 className="font-semibold text-gray-900">{isFr ? 'Cycle de production' : 'Production Cycle'}</h3>
           </div>
           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/60 rounded-full">
             <Fish className="w-4 h-4 text-blue-600" />
@@ -338,18 +354,18 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
         <div className="mb-3">
           <p className="text-sm text-gray-600 mb-1">{pond.name}</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-gray-900">Week {currentWeek}</span>
+            <span className="text-3xl font-bold text-gray-900">{isFr ? 'Semaine' : 'Week'} {currentWeek}</span>
           </div>
         </div>
 
         {/* Progress bar within current phase */}
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">Progress</span>
+            <span className="text-sm text-gray-600">{isFr ? 'Progression' : 'Progress'}</span>
             <span className="text-sm font-medium text-gray-700">
               {weeksUntilNextPhase > 0
-                ? `${weeksUntilNextPhase}w until next phase`
-                : 'Phase complete'}
+                ? (isFr ? `${weeksUntilNextPhase} sem jusqu'à la prochaine phase` : `${weeksUntilNextPhase}w until next phase`)
+                : (isFr ? 'Phase terminée' : 'Phase complete')}
             </span>
           </div>
           <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
@@ -360,11 +376,15 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
           </div>
           {currentPhaseData ? (
             <p className="text-xs text-gray-500 mt-1">
-              {progress.toFixed(1)}% through {currentPhase} (Week {currentWeek} of {currentPhaseData.startWeek}–{currentPhaseData.endWeek})
+              {isFr
+                ? `${progress.toFixed(1)}% de ${phaseLabelFr(currentPhase)} (Semaine ${currentWeek} sur ${currentPhaseData.startWeek}–${currentPhaseData.endWeek})`
+                : `${progress.toFixed(1)}% through ${currentPhase} (Week ${currentWeek} of ${currentPhaseData.startWeek}–${currentPhaseData.endWeek})`}
             </p>
           ) : (
             <p className="text-xs text-gray-500 mt-1">
-              Week {currentWeek} of {targetWeek} target — {Math.min(100, (currentWeek / targetWeek) * 100).toFixed(1)}%
+              {isFr
+                ? `Semaine ${currentWeek} sur ${targetWeek} ciblées — ${Math.min(100, (currentWeek / targetWeek) * 100).toFixed(1)}%`
+                : `Week ${currentWeek} of ${targetWeek} target — ${Math.min(100, (currentWeek / targetWeek) * 100).toFixed(1)}%`}
             </p>
           )}
         </div>
@@ -373,11 +393,11 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
         <div className="mb-3 p-2.5 bg-white/40 rounded-xl">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Current Phase</p>
-              <p className="font-semibold text-gray-900">{currentPhase}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{isFr ? 'Phase actuelle' : 'Current Phase'}</p>
+              <p className="font-semibold text-gray-900">{isFr ? phaseLabelFr(currentPhase) : currentPhase}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Feed Type</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">{isFr ? 'Type d\'aliment' : 'Feed Type'}</p>
               <p className="font-semibold text-gray-900">{feedType}</p>
             </div>
           </div>
@@ -390,7 +410,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-xs text-gray-600 uppercase tracking-wide mb-0.5 flex items-center">
-                Week {currentWeek} ABW
+                {isFr ? `Semaine ${currentWeek} ABW` : `Week ${currentWeek} ABW`}
                 {onNavigate && <WhyThisMatters topic="abw_sampling" onNavigate={onNavigate} />}
               </p>
               {sample.abwG ? (
@@ -401,7 +421,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
                         midnight, which renders one day earlier in any negative-UTC
                         locale. Split + reassemble in local time to keep the
                         widget date consistent with the Sampling page. */}
-                    Sampled on {(() => {
+                    {isFr ? 'Échantillonné le' : 'Sampled on'} {(() => {
                       const [y, m, d] = sample.date!.split('T')[0].split('-').map(Number);
                       return new Date(y, m - 1, d).toLocaleDateString();
                     })()}
@@ -410,10 +430,10 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
               ) : sample.isOverdue ? (
                 <div className="flex items-center gap-1.5">
                   <AlertCircle className="w-4 h-4 text-red-600" />
-                  <p className="text-sm font-semibold text-red-700">Sample overdue</p>
+                  <p className="text-sm font-semibold text-red-700">{isFr ? 'Échantillon en retard' : 'Sample overdue'}</p>
                 </div>
               ) : (
-                <p className="text-sm text-gray-600">Not yet sampled</p>
+                <p className="text-sm text-gray-600">{isFr ? 'Pas encore échantillonné' : 'Not yet sampled'}</p>
               )}
             </div>
             <Scale className={`w-5 h-5 ${
@@ -500,7 +520,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
               {sgr && sgr.status !== 'invalid' && (
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(sgr.color)}`}
-                  title={`Specific Growth Rate: ${formatSGR(sgr.sgr)} — ${sgr.label}`}
+                  title={isFr ? `Taux de croissance spécifique : ${formatSGR(sgr.sgr)} — ${sgr.label}` : `Specific Growth Rate: ${formatSGR(sgr.sgr)} — ${sgr.label}`}
                 >
                   SGR {formatSGR(sgr.sgr)}
                 </span>
@@ -510,7 +530,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(density.color)}`}
                   title={density.message}
                 >
-                  Density {density.density.toFixed(1)}/m²
+                  {isFr ? 'Densité' : 'Density'} {density.density.toFixed(1)}/m²
                 </span>
               )}
               {harvest && harvest.status !== 'unknown' && (
@@ -524,7 +544,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
               {fcr && fcr.fcr !== null && (
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(fcr.color)}`}
-                  title={`Feed Conversion Ratio: ${formatFCR(fcr.fcr)} kg feed / kg gain — ${fcr.label}`}
+                  title={isFr ? `Indice de conversion alimentaire : ${formatFCR(fcr.fcr)} kg aliment / kg gain — ${fcr.label}` : `Feed Conversion Ratio: ${formatFCR(fcr.fcr)} kg feed / kg gain — ${fcr.label}`}
                 >
                   FCR {formatFCR(fcr.fcr)}
                 </span>
@@ -535,7 +555,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
 
         {/* Key milestones — same shape as poultry */}
         <div className="mb-3">
-          <p className="text-sm font-medium text-gray-700 mb-2">Key Milestones</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">{isFr ? 'Étapes clés' : 'Key Milestones'}</p>
           <div className="space-y-2">
             {milestones.map((m, idx) => (
               <div
@@ -553,7 +573,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
                 ) : (
                   <Circle className="w-4 h-4 text-gray-300" />
                 )}
-                <span>Week {m.week}: {m.label}</span>
+                <span>{isFr ? `Semaine ${m.week} : ${phaseLabelFr(m.label.split(' · ')[0]) + (m.label.includes(' · ') ? ' · ' + m.label.split(' · ')[1] : '')}` : `Week ${m.week}: ${m.label}`}</span>
               </div>
             ))}
           </div>
@@ -567,13 +587,17 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
               <div>
                 <p className={`text-sm font-semibold ${nextPhaseData ? 'text-amber-800' : 'text-green-800'}`}>
                   {nextPhaseData
-                    ? `${currentPhaseData.name} phase complete!`
-                    : '🐟 Harvest time!'}
+                    ? (isFr ? `Phase ${phaseLabelFr(currentPhaseData.name)} terminée !` : `${currentPhaseData.name} phase complete!`)
+                    : (isFr ? '🐟 C\'est le moment de la récolte !' : '🐟 Harvest time!')}
                 </p>
                 <p className={`text-xs mt-0.5 ${nextPhaseData ? 'text-amber-700' : 'text-green-700'}`}>
                   {nextPhaseData
-                    ? `Switch feed to ${nextPhaseData.feedType} and move into the ${nextPhaseData.name} phase.`
-                    : `Your pond has completed ${currentPhaseData.name} — fish are at market size.`}
+                    ? (isFr
+                        ? `Passez à l'aliment ${nextPhaseData.feedType} et entrez dans la phase ${phaseLabelFr(nextPhaseData.name)}.`
+                        : `Switch feed to ${nextPhaseData.feedType} and move into the ${nextPhaseData.name} phase.`)
+                    : (isFr
+                        ? `Votre étang a terminé la phase ${phaseLabelFr(currentPhaseData.name)} — les poissons ont atteint la taille du marché.`
+                        : `Your pond has completed ${currentPhaseData.name} — fish are at market size.`)}
                 </p>
               </div>
             </div>
@@ -585,7 +609,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
             onClick={() => onNavigate('insights')}
             className="w-full py-2 text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center justify-center gap-1 bg-white/40 rounded-xl hover:bg-white/60 transition-colors"
           >
-            View Production Details
+            {isFr ? 'Voir les détails de production' : 'View Production Details'}
             <ArrowRight className="w-4 h-4" />
           </button>
         )}

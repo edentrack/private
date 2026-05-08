@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Syringe, Calendar, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Flock, Vaccination } from '../../types/database';
 
 interface NextVaccinationCardProps {
@@ -10,6 +11,8 @@ interface NextVaccinationCardProps {
 
 export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [nextVaccination, setNextVaccination] = useState<Vaccination | null>(null);
   const [loading, setLoading] = useState(true);
   const [daysUntil, setDaysUntil] = useState<number | null>(null);
@@ -67,10 +70,10 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
           <div className="p-3 bg-blue-50 rounded-xl">
             <Syringe className="w-6 h-6 text-blue-600" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Next Vaccination</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Prochaine vaccination' : 'Next Vaccination'}</h3>
         </div>
         <p className="text-gray-500 text-center py-8">
-          Select a flock to view upcoming vaccinations
+          {isFr ? 'Sélectionnez un troupeau pour voir les vaccinations à venir' : 'Select a flock to view upcoming vaccinations'}
         </p>
       </div>
     );
@@ -83,9 +86,9 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
           <div className="p-3 bg-blue-50 rounded-xl">
             <Syringe className="w-6 h-6 text-blue-600" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Next Vaccination</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Prochaine vaccination' : 'Next Vaccination'}</h3>
         </div>
-        <div className="text-center py-8 text-gray-500">Loading...</div>
+        <div className="text-center py-8 text-gray-500">{isFr ? 'Chargement...' : 'Loading...'}</div>
       </div>
     );
   }
@@ -97,12 +100,14 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
           <div className="p-3 bg-gray-50 rounded-xl">
             <Syringe className="w-6 h-6 text-gray-400" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Next Vaccination</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Prochaine vaccination' : 'Next Vaccination'}</h3>
         </div>
         <div className="text-center py-8">
-          <p className="text-gray-500 mb-2">No upcoming vaccinations</p>
+          <p className="text-gray-500 mb-2">{isFr ? 'Aucune vaccination à venir' : 'No upcoming vaccinations'}</p>
           <p className="text-sm text-gray-400">
-            {`Schedule vaccinations to keep your ${farmSpecies.groupTerm.toLowerCase()} healthy`}
+            {isFr
+              ? `Planifiez des vaccinations pour garder vos ${farmSpecies.groupTerm.toLowerCase()} en bonne santé`
+              : `Schedule vaccinations to keep your ${farmSpecies.groupTerm.toLowerCase()} healthy`}
           </p>
         </div>
       </div>
@@ -132,12 +137,12 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
         <div className={`p-3 rounded-xl ${colorClasses[urgencyColor]}`}>
           <Syringe className="w-6 h-6" />
         </div>
-        <h3 className="text-xl font-bold text-gray-900">Next Vaccination</h3>
+        <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Prochaine vaccination' : 'Next Vaccination'}</h3>
       </div>
 
       <div className="space-y-4">
         <div>
-          <div className="text-sm text-gray-500 mb-1">Vaccine Name</div>
+          <div className="text-sm text-gray-500 mb-1">{isFr ? 'Nom du vaccin' : 'Vaccine Name'}</div>
           <div className="text-2xl font-bold text-gray-900">
             {nextVaccination.name}
           </div>
@@ -147,7 +152,7 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
           <div className="flex items-center gap-2 text-gray-600">
             <Calendar className="w-5 h-5" />
             <span className="font-medium">
-              {new Date(nextVaccination.scheduled_date).toLocaleDateString('en-US', {
+              {new Date(nextVaccination.scheduled_date).toLocaleDateString(isFr ? 'fr-FR' : 'en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric'
@@ -158,32 +163,32 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
           <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold ${colorClasses[urgencyColor]}`}>
             <Clock className="w-4 h-4" />
             {daysUntil === 0 ? (
-              <span>Today</span>
+              <span>{isFr ? 'Aujourd\'hui' : 'Today'}</span>
             ) : daysUntil === 1 ? (
-              <span>Tomorrow</span>
+              <span>{isFr ? 'Demain' : 'Tomorrow'}</span>
             ) : (
-              <span>in {daysUntil} days</span>
+              <span>{isFr ? `dans ${daysUntil} jours` : `in ${daysUntil} days`}</span>
             )}
           </div>
         </div>
 
         {nextVaccination.dosage && (
           <div>
-            <div className="text-sm text-gray-500 mb-1">Dosage</div>
+            <div className="text-sm text-gray-500 mb-1">{isFr ? 'Dosage' : 'Dosage'}</div>
             <div className="text-sm text-gray-900">{nextVaccination.dosage}</div>
           </div>
         )}
 
         {nextVaccination.notes && (
           <div>
-            <div className="text-sm text-gray-500 mb-1">Notes</div>
+            <div className="text-sm text-gray-500 mb-1">{isFr ? 'Notes' : 'Notes'}</div>
             <div className="text-sm text-gray-700">{nextVaccination.notes}</div>
           </div>
         )}
 
         <div className="pt-2 border-t border-gray-100">
           <div className="text-xs text-gray-500">
-            Flock: <span className="font-medium text-gray-700">{flock.name}</span>
+            {isFr ? 'Troupeau' : 'Flock'}: <span className="font-medium text-gray-700">{flock.name}</span>
           </div>
         </div>
       </div>

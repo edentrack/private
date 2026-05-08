@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Activity, DollarSign, Syringe, AlertTriangle, Scale, TrendingUp } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ActivityLog {
   id: string;
@@ -22,6 +23,8 @@ interface ActivityLog {
 
 export function RecentActivityPanel() {
   const { profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -92,11 +95,11 @@ export function RecentActivityPanel() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (diffMins < 1) return isFr ? 'À l\'instant' : 'Just now';
+    if (diffMins < 60) return isFr ? `il y a ${diffMins}m` : `${diffMins}m ago`;
+    if (diffHours < 24) return isFr ? `il y a ${diffHours}h` : `${diffHours}h ago`;
+    if (diffDays < 7) return isFr ? `il y a ${diffDays}j` : `${diffDays}d ago`;
+    return date.toLocaleDateString(isFr ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric' });
   };
 
   if (loading) {
@@ -106,7 +109,7 @@ export function RecentActivityPanel() {
           <div className="icon-circle-gray">
             <Activity className="w-5 h-5" />
           </div>
-          <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+          <h3 className="font-semibold text-gray-900">{isFr ? 'Activité récente' : 'Recent Activity'}</h3>
         </div>
         <div className="flex items-center justify-center py-8">
           <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
@@ -121,7 +124,7 @@ export function RecentActivityPanel() {
         <div className="icon-circle-gray">
           <Activity className="w-5 h-5" />
         </div>
-        <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+        <h3 className="font-semibold text-gray-900">{isFr ? 'Activité récente' : 'Recent Activity'}</h3>
       </div>
 
       {activities.length === 0 ? (
@@ -129,9 +132,9 @@ export function RecentActivityPanel() {
           <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <Activity className="w-6 h-6 text-gray-400" />
           </div>
-          <p className="text-gray-600 font-medium mb-1">No recent activity</p>
+          <p className="text-gray-600 font-medium mb-1">{isFr ? 'Aucune activité récente' : 'No recent activity'}</p>
           <p className="text-sm text-gray-400">
-            Activity will appear here as you manage your farm
+            {isFr ? 'L\'activité apparaîtra ici à mesure que vous gérez votre ferme' : 'Activity will appear here as you manage your farm'}
           </p>
         </div>
       ) : (

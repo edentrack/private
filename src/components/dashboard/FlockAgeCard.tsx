@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock } from '../../types/database';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface FlockAgeCardProps {
   flockId: string | null;
@@ -14,6 +15,8 @@ interface FlockAgeCardProps {
 export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCardProps) {
   const { currentFarm } = useAuth();
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [flock, setFlock] = useState<Flock | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -77,7 +80,7 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
             <div className="icon-circle-gray">
               <Calendar className="w-5 h-5" />
             </div>
-            <span className="stat-label">Flock Age</span>
+            <span className="stat-label">{isFr ? 'Âge du troupeau' : 'Flock Age'}</span>
           </div>
           {onNavigate && (
             <button
@@ -92,9 +95,9 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
           <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <Bird className="w-7 h-7 text-gray-400" />
           </div>
-          <p className="text-gray-600 font-medium mb-1">Select a flock</p>
+          <p className="text-gray-600 font-medium mb-1">{isFr ? 'Sélectionner un troupeau' : 'Select a flock'}</p>
           <p className="text-sm text-gray-400">
-            Use the flock switcher above
+            {isFr ? 'Utilisez le sélecteur de troupeau ci-dessus' : 'Use the flock switcher above'}
           </p>
         </div>
       </div>
@@ -108,7 +111,7 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
       <div className="absolute top-0 right-0 w-32 h-32 bg-neon-500/20 rounded-full blur-3xl" />
       <div className="relative">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-gray-900">{`Active ${farmSpecies.groupTerm}`}</h3>
+          <h3 className="font-semibold text-gray-900">{isFr ? `${farmSpecies.groupTerm} actif` : `Active ${farmSpecies.groupTerm}`}</h3>
           <div className="flex items-center gap-2">
             {onLogMortality && (
               <button
@@ -116,7 +119,7 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
                 className="text-red-600 text-sm font-medium hover:text-red-700 inline-flex items-center gap-1 px-3 py-1.5 bg-white/50 rounded-full hover:bg-white/70 transition-colors"
               >
                 <AlertTriangle className="w-4 h-4" />
-                {`Log ${farmSpecies.lossNounPlural}`}
+                {isFr ? `Enregistrer ${farmSpecies.lossNounPlural}` : `Log ${farmSpecies.lossNounPlural}`}
               </button>
             )}
             {onNavigate && (
@@ -132,8 +135,8 @@ export function FlockAgeCard({ flockId, onLogMortality, onNavigate }: FlockAgeCa
 
         <div className="flex items-end gap-2 mb-1">
           <span className="text-5xl font-bold text-gray-900">{age.weeks}</span>
-          <span className="text-xl text-gray-600 mb-1">weeks</span>
-          {age.days > 0 && <span className="text-lg text-gray-400 mb-1">{age.days}d</span>}
+          <span className="text-xl text-gray-600 mb-1">{isFr ? 'semaines' : 'weeks'}</span>
+          {age.days > 0 && <span className="text-lg text-gray-400 mb-1">{age.days}{isFr ? 'j' : 'd'}</span>}
         </div>
 
         <p className="text-gray-600 mb-4">{flock.name}</p>

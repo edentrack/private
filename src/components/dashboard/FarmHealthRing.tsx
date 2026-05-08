@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface FarmHealthRingProps {
   size?: number;
@@ -105,6 +106,8 @@ async function computeHealthScore(farmId: string): Promise<HealthScoreResult> {
 
 export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLabel = false }: FarmHealthRingProps) {
   const { currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [result, setResult] = useState<HealthScoreResult | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -167,18 +170,25 @@ export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLab
     : '#94a3b8'; // grey = abandoned
 
   const label = isSetup
-    ? 'Setup mode'
-    : score >= 80 ? 'Healthy'
-    : score >= 50 ? 'Fair'
-    : score >= 25 ? 'At risk'
-    : 'Inactive';
+    ? (isFr ? 'Mode configuration' : 'Setup mode')
+    : score >= 80 ? (isFr ? 'En bonne santé' : 'Healthy')
+    : score >= 50 ? (isFr ? 'Correct' : 'Fair')
+    : score >= 25 ? (isFr ? 'À risque' : 'At risk')
+    : (isFr ? 'Inactive' : 'Inactive');
 
   const helpText = isSetup
-    ? 'Farm Health is in Setup mode while you add your first flock/pond/rabbitry. Once you log your first event, the ring will start scoring you on operational health.'
-    : `Farm Health: ${score}% — ${label}.\n` +
-      `Combines farm setup completeness (workers added, prices set, feed tracked) ` +
-      `with operational health (mortality rate, overdue tasks, recent activity). ` +
-      `Add data daily to raise the score.`;
+    ? (isFr
+        ? "La santé de la ferme est en mode Configuration pendant que vous ajoutez votre premier troupeau/étang/élevage. Dès que vous enregistrez votre premier événement, l'anneau commencera à évaluer la santé opérationnelle."
+        : 'Farm Health is in Setup mode while you add your first flock/pond/rabbitry. Once you log your first event, the ring will start scoring you on operational health.')
+    : (isFr
+        ? `Santé de la ferme : ${score}% — ${label}.\n` +
+          `Combine la complétude de la configuration de la ferme (travailleurs ajoutés, prix définis, aliments suivis) ` +
+          `avec la santé opérationnelle (taux de mortalité, tâches en retard, activité récente). ` +
+          `Ajoutez des données quotidiennement pour augmenter le score.`
+        : `Farm Health: ${score}% — ${label}.\n` +
+          `Combines farm setup completeness (workers added, prices set, feed tracked) ` +
+          `with operational health (mortality rate, overdue tasks, recent activity). ` +
+          `Add data daily to raise the score.`);
 
   return (
     <div className="flex flex-col items-center gap-0.5">
