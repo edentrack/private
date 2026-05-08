@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, Baby, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -46,6 +47,8 @@ export function kitSurvivalRate(bornAlive: number, weaned: number | null): numbe
 
 export function LittersPage() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
 
   const [litters, setLitters] = useState<Litter[]>([]);
@@ -87,7 +90,7 @@ export function LittersPage() {
       .eq('farm_id', currentFarm!.id)
       .order('kindling_date', { ascending: false });
     if (error) {
-      toast.error('Failed to load litters');
+      toast.error(isFr ? 'Échec du chargement des portées' : 'Failed to load litters');
     } else {
       setLitters(data || []);
     }
@@ -106,11 +109,11 @@ export function LittersPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formDoeTag.trim()) { toast.error('Enter the doe tag'); return; }
-    if (!formKindlingDate) { toast.error('Select kindling date'); return; }
+    if (!formDoeTag.trim()) { toast.error(isFr ? "Saisissez l'étiquette de la lapine" : 'Enter the doe tag'); return; }
+    if (!formKindlingDate) { toast.error(isFr ? 'Sélectionnez la date de mise bas' : 'Select kindling date'); return; }
     const bornAlive = parseInt(formBornAlive, 10);
     if (!formBornAlive || isNaN(bornAlive) || bornAlive < 0) {
-      toast.error('Enter kits born alive (can be 0)');
+      toast.error(isFr ? "Saisissez le nombre de lapereaux nés vivants (peut être 0)" : 'Enter kits born alive (can be 0)');
       return;
     }
 
@@ -132,9 +135,9 @@ export function LittersPage() {
     setSubmitting(false);
 
     if (error) {
-      toast.error('Failed to save litter');
+      toast.error(isFr ? "Échec de l'enregistrement de la portée" : 'Failed to save litter');
     } else {
-      toast.success('Litter recorded');
+      toast.success(isFr ? 'Portée enregistrée' : 'Litter recorded');
       resetForm();
       setShowForm(false);
       loadLitters();
@@ -152,8 +155,8 @@ export function LittersPage() {
             <Baby className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Litters</h1>
-            <p className="text-sm text-gray-500">Record kindling outcomes and weaning results.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Portées' : 'Litters'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? "Enregistrez les résultats de mise bas et de sevrage." : 'Record kindling outcomes and weaning results.'}</p>
           </div>
         </div>
         <button
@@ -161,20 +164,20 @@ export function LittersPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'Record Litter'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Enregistrer une portée' : 'Record Litter')}
         </button>
       </div>
 
       {litters.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
           <div className="section-card text-center">
-            <p className="text-xs text-gray-500 mb-1">Total Kits Born Alive</p>
+            <p className="text-xs text-gray-500 mb-1">{isFr ? 'Total lapereaux nés vivants' : 'Total Kits Born Alive'}</p>
             <p className="text-2xl font-bold text-gray-900">{totalKits.toLocaleString()}</p>
           </div>
           <div className="section-card text-center">
             <div className="flex items-center justify-center gap-1 mb-1 text-gray-500">
               <TrendingUp className="w-4 h-4" />
-              <span className="text-xs">Total Weaned</span>
+              <span className="text-xs">{isFr ? 'Total sevrés' : 'Total Weaned'}</span>
             </div>
             <p className="text-2xl font-bold text-[#3D5F42]">{totalWeaned.toLocaleString()}</p>
           </div>
@@ -183,11 +186,11 @@ export function LittersPage() {
 
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">New Litter Record</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Nouvelle portée' : 'New Litter Record'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {breedingOptions.length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Link to Breeding Event <span className="text-gray-400 font-normal">optional</span></label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Lier à un accouplement' : 'Link to Breeding Event'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
                 <select
                   value={formBreedingId}
                   onChange={e => {
@@ -197,7 +200,7 @@ export function LittersPage() {
                   }}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
                 >
-                  <option value="">— none —</option>
+                  <option value="">{isFr ? '— aucun —' : '— none —'}</option>
                   {breedingOptions.map(o => (
                     <option key={o.id} value={o.id}>
                       {o.doe_tag} × {o.buck_tag} ({fmtDate(o.mating_date)})
@@ -207,7 +210,7 @@ export function LittersPage() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Doe Tag *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étiquette lapine *' : 'Doe Tag *'}</label>
               <input
                 type="text"
                 placeholder="e.g. DOE-01"
@@ -217,7 +220,7 @@ export function LittersPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Kindling Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date de mise bas *' : 'Kindling Date *'}</label>
               <input
                 type="date"
                 value={formKindlingDate}
@@ -227,7 +230,7 @@ export function LittersPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Kits Born Alive *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Lapereaux nés vivants *' : 'Kits Born Alive *'}</label>
               <input
                 type="number"
                 min="0"
@@ -238,7 +241,7 @@ export function LittersPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Kits Born Dead <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Lapereaux mort-nés' : 'Kits Born Dead'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="number"
                 min="0"
@@ -249,7 +252,7 @@ export function LittersPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Kits Weaned <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Lapereaux sevrés' : 'Kits Weaned'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="number"
                 min="0"
@@ -260,7 +263,7 @@ export function LittersPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Weaning Date <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date de sevrage' : 'Weaning Date'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="date"
                 value={formWeaningDate}
@@ -270,10 +273,10 @@ export function LittersPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. Strong litter, all pinkies healthy"
+                placeholder={isFr ? "ex. Belle portée, tous les rosés en bonne santé" : 'e.g. Strong litter, all pinkies healthy'}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -286,7 +289,7 @@ export function LittersPage() {
               disabled={submitting}
               className="px-5 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving...' : 'Save Litter'}
+              {submitting ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer la portée' : 'Save Litter')}
             </button>
           </div>
         </div>
@@ -302,16 +305,18 @@ export function LittersPage() {
             <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mb-3">
               <Baby className="w-7 h-7 text-amber-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">No litters recorded yet</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Aucune portée enregistrée pour le moment' : 'No litters recorded yet'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
-              Record your first kindling to track kit survival and weaning rates.
+              {isFr
+                ? "Enregistrez votre première mise bas pour suivre la survie et les taux de sevrage."
+                : 'Record your first kindling to track kit survival and weaning rates.'}
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Record First Litter
+              {isFr ? 'Première portée' : 'Record First Litter'}
             </button>
           </div>
         ) : (
@@ -327,20 +332,20 @@ export function LittersPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 mt-1.5">
                       <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">
-                        <Baby className="w-3 h-3" />{litter.kits_born_alive} alive
+                        <Baby className="w-3 h-3" />{litter.kits_born_alive} {isFr ? 'vivants' : 'alive'}
                       </span>
                       {litter.kits_born_dead > 0 && (
                         <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                          {litter.kits_born_dead} dead at birth
+                          {litter.kits_born_dead} {isFr ? 'mort-nés' : 'dead at birth'}
                         </span>
                       )}
                       {litter.kits_weaned !== null && (
                         <span className="inline-flex items-center gap-1 text-xs bg-[#3D5F42]/10 text-[#3D5F42] px-2 py-0.5 rounded-full">
-                          <TrendingUp className="w-3 h-3" />{litter.kits_weaned} weaned
+                          <TrendingUp className="w-3 h-3" />{litter.kits_weaned} {isFr ? 'sevrés' : 'weaned'}
                         </span>
                       )}
                       {survival !== null && (
-                        <span className="text-xs text-gray-500">({survival}% survival)</span>
+                        <span className="text-xs text-gray-500">({survival}{isFr ? '% de survie' : '% survival'})</span>
                       )}
                     </div>
                     {litter.notes && (

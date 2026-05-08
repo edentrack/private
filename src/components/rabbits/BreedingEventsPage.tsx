@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, Heart, Calendar } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -47,6 +48,8 @@ function fmtDate(s: string): string {
 
 export function BreedingEventsPage() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
 
   const [events, setEvents] = useState<BreedingEvent[]>([]);
@@ -90,7 +93,7 @@ export function BreedingEventsPage() {
       .eq('farm_id', currentFarm!.id)
       .order('mating_date', { ascending: false });
     if (error) {
-      toast.error('Failed to load breeding events');
+      toast.error(isFr ? 'Échec du chargement des événements de reproduction' : 'Failed to load breeding events');
     } else {
       setEvents(data || []);
     }
@@ -106,9 +109,9 @@ export function BreedingEventsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formDoeTag.trim()) { toast.error('Enter the doe tag'); return; }
-    if (!formBuckTag.trim()) { toast.error('Enter the buck tag'); return; }
-    if (!formMatingDate) { toast.error('Select mating date'); return; }
+    if (!formDoeTag.trim()) { toast.error(isFr ? "Saisissez l'étiquette de la lapine" : 'Enter the doe tag'); return; }
+    if (!formBuckTag.trim()) { toast.error(isFr ? "Saisissez l'étiquette du lapin mâle" : 'Enter the buck tag'); return; }
+    if (!formMatingDate) { toast.error(isFr ? "Sélectionnez la date d'accouplement" : 'Select mating date'); return; }
 
     setSubmitting(true);
     const { error } = await supabase.from('breeding_events').insert({
@@ -123,9 +126,9 @@ export function BreedingEventsPage() {
     setSubmitting(false);
 
     if (error) {
-      toast.error('Failed to save breeding event');
+      toast.error(isFr ? "Échec de l'enregistrement de l'accouplement" : 'Failed to save breeding event');
     } else {
-      toast.success('Breeding event recorded');
+      toast.success(isFr ? 'Accouplement enregistré' : 'Breeding event recorded');
       resetForm();
       setShowForm(false);
       loadEvents();
@@ -142,8 +145,8 @@ export function BreedingEventsPage() {
             <Heart className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Breeding Events</h1>
-            <p className="text-sm text-gray-500">Track mating pairs and expected kindling dates.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Événements de reproduction' : 'Breeding Events'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? "Suivez les couples reproducteurs et les dates prévues de mise bas." : 'Track mating pairs and expected kindling dates.'}</p>
           </div>
         </div>
         <button
@@ -151,23 +154,23 @@ export function BreedingEventsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'Log Mating'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Enregistrer un accouplement' : 'Log Mating')}
         </button>
       </div>
 
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">New Breeding Event</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Nouvel événement de reproduction' : 'New Breeding Event'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {flocks.length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Rabbitry <span className="text-gray-400 font-normal">optional</span></label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Élevage' : 'Rabbitry'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
                 <select
                   value={formFlockId}
                   onChange={e => setFormFlockId(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
                 >
-                  <option value="">— none —</option>
+                  <option value="">{isFr ? '— aucun —' : '— none —'}</option>
                   {flocks.map(f => (
                     <option key={f.id} value={f.id}>{f.name}</option>
                   ))}
@@ -175,7 +178,7 @@ export function BreedingEventsPage() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Doe Tag *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étiquette lapine *' : 'Doe Tag *'}</label>
               <input
                 type="text"
                 placeholder="e.g. DOE-01"
@@ -185,7 +188,7 @@ export function BreedingEventsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Buck Tag *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étiquette mâle *' : 'Buck Tag *'}</label>
               <input
                 type="text"
                 placeholder="e.g. BUCK-01"
@@ -195,7 +198,7 @@ export function BreedingEventsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Mating Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? "Date d'accouplement *" : 'Mating Date *'}</label>
               <input
                 type="date"
                 value={formMatingDate}
@@ -206,19 +209,19 @@ export function BreedingEventsPage() {
             </div>
             {expectedKindling && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Expected Kindling</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Mise bas prévue' : 'Expected Kindling'}</label>
                 <div className="flex items-center gap-2 px-3 py-2 bg-pink-50 border border-pink-100 rounded-lg">
                   <Calendar className="w-4 h-4 text-pink-500 shrink-0" />
                   <span className="text-sm font-medium text-pink-700">{fmtDate(expectedKindling)}</span>
-                  <span className="text-xs text-pink-400">(+{KINDLING_GESTATION_DAYS}d)</span>
+                  <span className="text-xs text-pink-400">(+{KINDLING_GESTATION_DAYS}{isFr ? 'j' : 'd'})</span>
                 </div>
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. First litter, introduced at 7am"
+                placeholder={isFr ? 'ex. Première portée, introduit à 7h' : 'e.g. First litter, introduced at 7am'}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -231,7 +234,7 @@ export function BreedingEventsPage() {
               disabled={submitting}
               className="px-5 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving...' : 'Save Event'}
+              {submitting ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? "Enregistrer l'événement" : 'Save Event')}
             </button>
           </div>
         </div>
@@ -247,16 +250,18 @@ export function BreedingEventsPage() {
             <div className="w-14 h-14 rounded-full bg-pink-50 flex items-center justify-center mb-3">
               <Heart className="w-7 h-7 text-pink-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">No breeding events yet</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? "Aucun accouplement enregistré pour le moment" : 'No breeding events yet'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
-              Log your first mating pair to track gestation and expected kindling dates.
+              {isFr
+                ? "Enregistrez votre premier couple reproducteur pour suivre la gestation et les dates prévues de mise bas."
+                : 'Log your first mating pair to track gestation and expected kindling dates.'}
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Log First Mating
+              {isFr ? 'Premier accouplement' : 'Log First Mating'}
             </button>
           </div>
         ) : (
@@ -278,7 +283,7 @@ export function BreedingEventsPage() {
                     {ev.expected_kindling_date && (
                       <div className="mt-1 flex items-center gap-1 text-xs text-pink-600">
                         <Calendar className="w-3 h-3" />
-                        Expected kindling: {fmtDate(ev.expected_kindling_date)}
+                        {isFr ? 'Mise bas prévue' : 'Expected kindling'}: {fmtDate(ev.expected_kindling_date)}
                       </div>
                     )}
                     {ev.notes && (
