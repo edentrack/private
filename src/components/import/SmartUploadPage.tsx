@@ -3,6 +3,7 @@ import { Upload, FileText, Image, Table, X, ChevronDown, Sparkles, Lock, AlertTr
 import { ImportHistory } from './ImportHistory';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { ProposedImportReview } from './ProposedImportReview';
 import { CSVMappingFlow } from './CSVMappingFlow';
 
@@ -25,6 +26,8 @@ type ImportScope = 'farm' | 'existing_flock' | 'new_flock';
 
 export function SmartUploadPage() {
   const { profile } = useAuth();
+  const farmSpecies = useFarmSpecies();
+  const groupTerm = farmSpecies.groupTerm;
   const farmId = profile?.farm_id;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -423,8 +426,8 @@ export function SmartUploadPage() {
                 className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent"
               >
                 <option value="farm">General Farm Import</option>
-                <option value="existing_flock">Import into Existing Flock</option>
-                <option value="new_flock">Create New Flock from Document</option>
+                <option value="existing_flock">{`Import into Existing ${groupTerm}`}</option>
+                <option value="new_flock">{`Create New ${groupTerm} from Document`}</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
@@ -433,7 +436,7 @@ export function SmartUploadPage() {
           {scope === 'existing_flock' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Target Flock
+                {`Target ${groupTerm}`}
               </label>
               <div className="relative">
                 <select

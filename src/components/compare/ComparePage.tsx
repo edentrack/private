@@ -649,7 +649,7 @@ export function ComparePage({ onNavigate }: ComparePageProps) {
               <h3 className="text-lg font-bold text-gray-900 mb-4">{t('compare.statistical_summary') || 'Statistical Summary'}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-blue-50 rounded-xl">
-                  <div className="text-sm text-gray-600 mb-1">{t('compare.avg_cost_per_bird') || 'Avg Cost/Bird'}</div>
+                  <div className="text-sm text-gray-600 mb-1">{farmSpecies.id === 'poultry' ? (t('compare.avg_cost_per_bird') || 'Avg Cost/Bird') : `Avg Cost/${farmSpecies.animalTerm}`}</div>
                   <div className="text-xl font-bold text-gray-900">{formatCurrency(statistics.avgCostPerBird)}</div>
                 </div>
                 <div className="p-4 bg-green-50 rounded-xl">
