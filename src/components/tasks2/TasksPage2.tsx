@@ -3,6 +3,7 @@ import { AlertTriangle, Calendar, Clock, Plus, Settings, ChevronLeft, ChevronRig
 import { DateTime } from 'luxon';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { TaskTemplate, TaskTypeCategory, TaskScope } from '../../types/database';
 import { UnifiedTaskSettings } from '../tasks/UnifiedTaskSettings';
@@ -109,6 +110,8 @@ async function fetchTemplates(farmId: string): Promise<TaskTemplate[]> {
 
 export function TasksPage2() {
   const { currentFarm, currentRole, user } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const species = useFarmSpecies();
   const canManage = currentRole === 'owner' || currentRole === 'manager';
   const farmTz = getFarmTimeZone(currentFarm);
@@ -258,13 +261,13 @@ export function TasksPage2() {
     <div className="space-y-5 animate-fade-in">
       <div data-tour="task-header" className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tasks</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{isFr ? 'Tâches' : 'Tasks'}</h1>
           <p className="text-gray-500 mt-1">
             {species.features.eggs
-              ? 'Daily tasks + egg collection tracking'
+              ? (isFr ? "Tâches quotidiennes + suivi des collectes d'œufs" : 'Daily tasks + egg collection tracking')
               : species.id === 'aquaculture'
-                ? 'Daily pond monitoring + water quality + sampling'
-                : 'Daily tasks'}
+                ? (isFr ? "Surveillance quotidienne de l'étang + qualité de l'eau + échantillonnage" : 'Daily pond monitoring + water quality + sampling')
+                : (isFr ? 'Tâches quotidiennes' : 'Daily tasks')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -281,7 +284,7 @@ export function TasksPage2() {
             type="button"
             onClick={() => setDateISO(addDays(dateISO, -1))}
             className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50"
-            title="Previous day"
+            title={isFr ? 'Jour précédent' : 'Previous day'}
           >
             <ChevronLeft className="w-4 h-4 text-gray-700" />
           </button>
@@ -289,7 +292,7 @@ export function TasksPage2() {
             type="button"
             onClick={() => setDateISO(addDays(dateISO, 1))}
             className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50"
-            title="Next day"
+            title={isFr ? 'Jour suivant' : 'Next day'}
           >
             <ChevronRight className="w-4 h-4 text-gray-700" />
           </button>
@@ -302,7 +305,7 @@ export function TasksPage2() {
           className={`nav-pill flex items-center gap-2 ${tab === 'today' ? 'nav-pill-active' : 'nav-pill-inactive'}`}
         >
           <Clock className="w-4 h-4" />
-          Today
+          {isFr ? "Aujourd'hui" : 'Today'}
         </button>
         <button
           id="tasks-settings-button"
@@ -313,7 +316,7 @@ export function TasksPage2() {
           className={`nav-pill flex items-center gap-2 ${tab === 'schedule' ? 'nav-pill-active' : 'nav-pill-inactive'}`}
         >
           <Settings className="w-4 h-4" />
-          Task Settings
+          {isFr ? 'Paramètres des tâches' : 'Task Settings'}
         </button>
       </div>
 
@@ -326,9 +329,9 @@ export function TasksPage2() {
           <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-semibold text-gray-900">Daily Tasks</div>
+                <div className="font-semibold text-gray-900">{isFr ? 'Tâches quotidiennes' : 'Daily Tasks'}</div>
                 <div className="text-sm text-gray-600 mt-1">
-                  Mark tasks complete (past dates included).
+                  {isFr ? 'Marquez les tâches comme terminées (dates passées incluses).' : 'Mark tasks complete (past dates included).'}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -340,7 +343,9 @@ export function TasksPage2() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-60 whitespace-nowrap"
                   >
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    {dismissingOverdue ? 'Archiving…' : `Dismiss ${overdueCount} overdue`}
+                    {dismissingOverdue
+                      ? (isFr ? 'Archivage…' : 'Archiving…')
+                      : (isFr ? `Ignorer ${overdueCount} en retard` : `Dismiss ${overdueCount} overdue`)}
                   </button>
                 )}
                 {canManage && (
@@ -353,7 +358,7 @@ export function TasksPage2() {
                     }}
                   >
                     <Plus className="w-4 h-4" />
-                    Add Task
+                    {isFr ? 'Ajouter une tâche' : 'Add Task'}
                   </button>
                 )}
               </div>
@@ -362,21 +367,27 @@ export function TasksPage2() {
             <div className="mt-4">
               {dailyTasks.length === 0 ? (
                 <div className="text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl px-3 py-4">
-                  No daily tasks for this date.
+                  {isFr ? 'Aucune tâche quotidienne pour cette date.' : 'No daily tasks for this date.'}
                 </div>
               ) : (
                 <div className="space-y-2">
                   {visibleDailyTasks.map((t) => {
                     const timeLabel = fmtTimeFromScheduledTime(t.scheduled_time);
                     const statusLabel =
-                      t.status === 'completed' ? 'Completed' : t.status === 'in_progress' ? 'In progress' : 'Not started';
+                      t.status === 'completed'
+                        ? (isFr ? 'Terminée' : 'Completed')
+                        : t.status === 'in_progress'
+                          ? (isFr ? 'En cours' : 'In progress')
+                          : (isFr ? 'Non commencée' : 'Not started');
                     // Audit fix: the page used to show two different button verbs
                     // ("Complete" vs "Done") for the same conceptual action with no
                     // visible cue — one opened a modal, the other was instant. Use
                     // a single canonical label ("Mark done") with a subtle suffix
                     // when more input is required, so the user knows what to expect.
                     const isEntryTask = Boolean((t as any).requires_input || (t as any).isRecording);
-                    const buttonLabel = isEntryTask ? 'Mark done…' : 'Mark done';
+                    const buttonLabel = isEntryTask
+                      ? (isFr ? 'Marquer terminée…' : 'Mark done…')
+                      : (isFr ? 'Marquer terminée' : 'Mark done');
                     return (
                       <div
                         // Include status in the key so React always remounts the row
@@ -387,18 +398,20 @@ export function TasksPage2() {
                       >
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-gray-900 truncate">
-                            {t.title_override || t.templateTitle || 'Task'}
+                            {t.title_override || t.templateTitle || (isFr ? 'Tâche' : 'Task')}
                           </div>
                           <div className="text-xs text-gray-600 mt-0.5">
-                            {timeLabel ? `Due: ${timeLabel}` : 'All day'}
-                            {t.assigned_to ? ` • Assigned` : ''}
+                            {timeLabel
+                              ? (isFr ? `Échéance : ${timeLabel}` : `Due: ${timeLabel}`)
+                              : (isFr ? 'Toute la journée' : 'All day')}
+                            {t.assigned_to ? (isFr ? ' • Attribuée' : ' • Assigned') : ''}
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                           {t.isOverdue && (
                             <span className="text-xs px-2 py-1 rounded-full border bg-amber-50 border-amber-200 text-amber-700 whitespace-nowrap">
-                              Overdue
+                              {isFr ? 'En retard' : 'Overdue'}
                             </span>
                           )}
                           <div
@@ -417,8 +430,8 @@ export function TasksPage2() {
                               type="button"
                               className="btn-secondary text-sm whitespace-nowrap"
                               title={isEntryTask
-                                ? 'Opens a form to record details (notes, photo, measurements)'
-                                : 'Mark complete instantly'}
+                                ? (isFr ? 'Ouvre un formulaire pour saisir les détails (notes, photo, mesures)' : 'Opens a form to record details (notes, photo, measurements)')
+                                : (isFr ? 'Marquer terminée immédiatement' : 'Mark complete instantly')}
                               onClick={() => {
                                 if (isEntryTask) setCompleteTaskModal(t);
                                 else handleQuickComplete(t);
@@ -439,7 +452,7 @@ export function TasksPage2() {
                   onClick={() => setVisibleDailyTaskCount((prev) => prev + DAILY_TASKS_PAGE_SIZE)}
                   className="mt-3 w-full py-2 text-xs font-medium text-[#3D5F42] hover:bg-[#3D5F42]/5 rounded-lg transition-colors flex items-center justify-center gap-1.5 border border-dashed border-[#3D5F42]"
                 >
-                  Load more tasks ({dailyTasks.length - visibleDailyTaskCount})
+                  {isFr ? `Charger plus de tâches (${dailyTasks.length - visibleDailyTaskCount})` : `Load more tasks (${dailyTasks.length - visibleDailyTaskCount})`}
                 </button>
               )}
               {!hasMoreDailyTasks && dailyTasks.length > DAILY_TASKS_PAGE_SIZE && (
@@ -448,12 +461,12 @@ export function TasksPage2() {
                   onClick={() => setVisibleDailyTaskCount(DAILY_TASKS_PAGE_SIZE)}
                   className="mt-3 w-full py-2 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  Show less
+                  {isFr ? 'Afficher moins' : 'Show less'}
                 </button>
               )}
               {dailyTasks.length > 0 && (
                 <div className="mt-3 text-xs text-gray-500">
-                  Pending: {pendingDailyTasksCount} • Completed: {completedDailyTasks.length}
+                  {isFr ? `En attente : ${pendingDailyTasksCount} • Terminées : ${completedDailyTasks.length}` : `Pending: ${pendingDailyTasksCount} • Completed: ${completedDailyTasks.length}`}
                 </div>
               )}
             </div>
@@ -464,9 +477,11 @@ export function TasksPage2() {
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <div className="font-semibold text-gray-900">Task Settings</div>
+              <div className="font-semibold text-gray-900">{isFr ? 'Paramètres des tâches' : 'Task Settings'}</div>
               <div className="text-sm text-gray-600 mt-1">
-                Configure daily tasks, egg interval schedule, recurrence, and default inventory sync.
+                {isFr
+                  ? "Configurez les tâches quotidiennes, l'intervalle de collecte d'œufs, la récurrence et la synchronisation par défaut de l'inventaire."
+                  : 'Configure daily tasks, egg interval schedule, recurrence, and default inventory sync.'}
               </div>
             </div>
             {canManage ? (
@@ -476,10 +491,10 @@ export function TasksPage2() {
                 onClick={() => setShowTaskSettingsModal(true)}
               >
                 <Settings className="w-4 h-4" />
-                Open Task Settings
+                {isFr ? 'Ouvrir les paramètres des tâches' : 'Open Task Settings'}
               </button>
             ) : (
-              <div className="text-xs text-gray-500">Ask your farm owner to configure tasks.</div>
+              <div className="text-xs text-gray-500">{isFr ? 'Demandez au propriétaire de la ferme de configurer les tâches.' : 'Ask your farm owner to configure tasks.'}</div>
             )}
           </div>
         </div>

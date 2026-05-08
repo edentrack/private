@@ -219,7 +219,9 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
       loadFlocks();
     } catch (err) {
       console.error('Error deleting flock:', err);
-      toast.error(`Failed to delete ${groupTerm.toLowerCase()}. Please try again.`);
+      toast.error(isFr
+        ? `Échec de la suppression du ${groupTerm.toLowerCase()}. Veuillez réessayer.`
+        : `Failed to delete ${groupTerm.toLowerCase()}. Please try again.`);
     }
   };
 
@@ -237,10 +239,18 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
               the species term so the page header, subtitle, and nav stay
               in sync. */}
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
-            {groupTermPlural}
+            {isFr
+              ? (farmSpecies.id === 'aquaculture' ? 'Étangs' : farmSpecies.id === 'rabbits' ? 'Élevages' : 'Troupeaux')
+              : groupTermPlural}
           </h2>
           <p className="text-gray-500 mt-1 text-sm sm:text-base">
-            {showArchived ? `Archived ${groupTermPlural}` : `Active ${groupTermPlural}`}
+            {(() => {
+              const groupTermPluralFr = farmSpecies.id === 'aquaculture' ? 'étangs' : farmSpecies.id === 'rabbits' ? 'élevages' : 'troupeaux';
+              if (isFr) {
+                return showArchived ? `${groupTermPluralFr.charAt(0).toUpperCase() + groupTermPluralFr.slice(1)} archivés` : `${groupTermPluralFr.charAt(0).toUpperCase() + groupTermPluralFr.slice(1)} actifs`;
+              }
+              return showArchived ? `Archived ${groupTermPlural}` : `Active ${groupTermPlural}`;
+            })()}
           </p>
         </div>
         <div className="flex gap-2 sm:gap-3 w-full sm:w-auto justify-start sm:justify-end">

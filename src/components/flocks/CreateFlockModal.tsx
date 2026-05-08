@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { FlockType } from '../../types/database';
 import { upsertChickExpenses } from '../../utils/flockExpenses';
@@ -16,6 +17,8 @@ interface CreateFlockModalProps {
 
 export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) {
   const { t } = useTranslation();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { user, currentFarm, profile } = useAuth();
 
   const farmKind = (currentFarm as any)?.farm_type ?? 'poultry';
@@ -197,7 +200,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
       >
         <div className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-gray-200/60">
           <h2 className="text-lg font-bold text-gray-900">
-            {isAquaculture ? 'Create new pond' : isRabbits ? 'Create new rabbitry' : `${t('flocks.create_new')} flock`}
+            {isAquaculture
+              ? (isFr ? 'Créer un nouvel étang' : 'Create new pond')
+              : isRabbits
+                ? (isFr ? 'Créer un nouvel élevage' : 'Create new rabbitry')
+                : (isFr ? 'Créer un nouveau troupeau' : `${t('flocks.create_new')} flock`)}
           </h2>
           <button
             onClick={onClose}
@@ -235,6 +242,18 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                     return '';
                   };
                   const isSelected = type === animalType;
+                  const getDisplayName = (t: string) => {
+                    if (!isFr) return t;
+                    if (t === 'Broiler') return 'Poulet de chair';
+                    if (t === 'Layer') return 'Pondeuse';
+                    if (t === 'Meat Rabbits') return 'Lapins de chair';
+                    if (t === 'Breeder Rabbits') return 'Lapins reproducteurs';
+                    if (t === 'Catfish') return 'Poisson-chat';
+                    if (t === 'Tilapia') return 'Tilapia';
+                    if (t === 'Clarias') return 'Clarias';
+                    if (t === 'Other Fish') return 'Autre poisson';
+                    return t;
+                  };
                   return (
                     <button
                       key={animalType}
@@ -247,7 +266,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                       <div className={`text-sm font-bold tracking-tight leading-tight ${
                         isSelected ? 'text-gray-900' : 'text-gray-800'
                       }`}>
-                        {animalType}
+                        {getDisplayName(animalType)}
                       </div>
                       {getDescriptionForType(animalType) && (
                         <div className="text-[11px] italic text-gray-500 mt-1 leading-tight">
@@ -263,7 +282,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
 
           <div>
             <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-1">
-              {isAquaculture ? 'Pond name' : isRabbits ? 'Rabbitry name' : t('flocks.flock_name')}
+              {isAquaculture
+                ? (isFr ? "Nom de l'étang" : 'Pond name')
+                : isRabbits
+                  ? (isFr ? "Nom de l'élevage" : 'Rabbitry name')
+                  : t('flocks.flock_name')}
             </label>
             <input
               id="name"
@@ -272,14 +295,18 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               onChange={(e) => setName(e.target.value)}
               required
               className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
-              placeholder={isAquaculture ? 'e.g. Pond 1 — Catfish' : isRabbits ? 'e.g. Hutch Block A' : t('flocks.flock_name_placeholder')}
+              placeholder={isAquaculture
+                ? (isFr ? 'ex. Étang 1 — Poisson-chat' : 'e.g. Pond 1 — Catfish')
+                : isRabbits
+                  ? (isFr ? 'ex. Bloc clapier A' : 'e.g. Hutch Block A')
+                  : t('flocks.flock_name_placeholder')}
             />
           </div>
 
           {isAquaculture && (
             <div>
               <label htmlFor="pondSize" className="block text-xs font-medium text-gray-700 mb-1">
-                Pond size (m²) <span className="text-gray-400 font-normal">— optional</span>
+                {isFr ? "Taille de l'étang (m²)" : 'Pond size (m²)'} <span className="text-gray-400 font-normal">{isFr ? '— optionnel' : '— optional'}</span>
               </label>
               <input
                 id="pondSize"
@@ -291,7 +318,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                 className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
                 placeholder="200"
               />
-              <p className="text-[10px] text-gray-500 mt-0.5">Used to calculate stocking density (fish/m²)</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">{isFr ? "Utilisé pour calculer la densité d'empoissonnement (poissons/m²)" : 'Used to calculate stocking density (fish/m²)'}</p>
             </div>
           )}
 
@@ -324,7 +351,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               and retroactive tracking. Default = 0 (freshly hatched/stocked). */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1.5">
-              How old were they when you got them?
+              {isFr ? "Quel âge avaient-ils à l'arrivée ?" : 'How old were they when you got them?'}
             </label>
             {(() => {
               // Species-specific lifecycle presets — pick the most common
@@ -332,23 +359,23 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               // figuring out the week number.
               const presets: Array<{ label: string; weeks: number; sublabel?: string }> = isAquaculture
                 ? [
-                    { label: 'Fry', weeks: 1, sublabel: '1–2w · 0.1–2g' },
-                    { label: 'Fingerlings', weeks: 6, sublabel: '5–8w · 5–15g · most common' },
-                    { label: 'Juveniles', weeks: 12, sublabel: '12w+ · 50–150g' },
-                    { label: 'Adults', weeks: 20, sublabel: '20w+ · grown stock' },
+                    { label: isFr ? 'Larves' : 'Fry', weeks: 1, sublabel: isFr ? '1–2 sem · 0,1–2 g' : '1–2w · 0.1–2g' },
+                    { label: isFr ? 'Alevins' : 'Fingerlings', weeks: 6, sublabel: isFr ? '5–8 sem · 5–15 g · le plus courant' : '5–8w · 5–15g · most common' },
+                    { label: isFr ? 'Juvéniles' : 'Juveniles', weeks: 12, sublabel: isFr ? '12 sem+ · 50–150 g' : '12w+ · 50–150g' },
+                    { label: isFr ? 'Adultes' : 'Adults', weeks: 20, sublabel: isFr ? '20 sem+ · stock adulte' : '20w+ · grown stock' },
                   ]
                 : isRabbits
                 ? [
-                    { label: 'Kits (weaned)', weeks: 4, sublabel: '~4w · just weaned' },
-                    { label: 'Weanlings', weeks: 6, sublabel: '~6w · most common buy-in' },
-                    { label: 'Growers', weeks: 9, sublabel: '~9w · growing phase' },
-                    { label: 'Adults', weeks: 16, sublabel: '16w+ · breeding stock' },
+                    { label: isFr ? 'Lapereaux (sevrés)' : 'Kits (weaned)', weeks: 4, sublabel: isFr ? '~4 sem · juste sevrés' : '~4w · just weaned' },
+                    { label: isFr ? 'Sevrés' : 'Weanlings', weeks: 6, sublabel: isFr ? '~6 sem · achat le plus courant' : '~6w · most common buy-in' },
+                    { label: isFr ? 'En croissance' : 'Growers', weeks: 9, sublabel: isFr ? '~9 sem · phase de croissance' : '~9w · growing phase' },
+                    { label: isFr ? 'Adultes' : 'Adults', weeks: 16, sublabel: isFr ? '16 sem+ · reproducteurs' : '16w+ · breeding stock' },
                   ]
                 : [
-                    { label: 'Day-old chicks', weeks: 0, sublabel: 'Fresh from hatchery' },
-                    { label: 'Growers', weeks: 6, sublabel: '~6w old' },
-                    { label: 'Pullets', weeks: 13, sublabel: '~13w old' },
-                    { label: 'Point-of-lay', weeks: 18, sublabel: '~18w · ready to lay' },
+                    { label: isFr ? "Poussins d'un jour" : 'Day-old chicks', weeks: 0, sublabel: isFr ? "Frais de l'écloserie" : 'Fresh from hatchery' },
+                    { label: isFr ? 'Croissance' : 'Growers', weeks: 6, sublabel: isFr ? '~6 sem' : '~6w old' },
+                    { label: isFr ? 'Poulettes' : 'Pullets', weeks: 13, sublabel: isFr ? '~13 sem' : '~13w old' },
+                    { label: isFr ? 'Point de ponte' : 'Point-of-lay', weeks: 18, sublabel: isFr ? '~18 sem · prêtes à pondre' : '~18w · ready to lay' },
                   ];
               return (
                 <>
@@ -377,7 +404,9 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                     onClick={() => setShowCustomAge((v) => !v)}
                     className="mt-1.5 text-[11px] text-gray-600 hover:text-gray-900 underline"
                   >
-                    {showCustomAge ? '— close custom' : '+ enter custom age'}
+                    {showCustomAge
+                      ? (isFr ? '— fermer personnalisé' : '— close custom')
+                      : (isFr ? '+ saisir un âge personnalisé' : '+ enter custom age')}
                   </button>
                   {showCustomAge && (
                     <div className="mt-1.5 flex items-center gap-2">
@@ -406,10 +435,16 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
 
           <div>
             <label htmlFor="initialCount" className="block text-xs font-medium text-gray-700 mb-1">
-              {isAquaculture ? 'Fingerlings stocked' : isRabbits ? 'Rabbits stocked' : t('flocks.initial_count')}
+              {isAquaculture
+                ? (isFr ? "Alevins empoissonnés" : 'Fingerlings stocked')
+                : isRabbits
+                  ? (isFr ? "Lapins introduits" : 'Rabbits stocked')
+                  : t('flocks.initial_count')}
               {!isAquaculture && (
                 <span className="ml-1 text-gray-400 font-normal">
-                  (max {getMaxBirdsPerFlock((profile?.subscription_tier as any) || 'basic').toLocaleString()} on your plan)
+                  {isFr
+                    ? `(max ${getMaxBirdsPerFlock((profile?.subscription_tier as any) || 'basic').toLocaleString()} selon votre forfait)`
+                    : `(max ${getMaxBirdsPerFlock((profile?.subscription_tier as any) || 'basic').toLocaleString()} on your plan)`}
                 </span>
               )}
             </label>
@@ -424,7 +459,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               placeholder={isAquaculture ? '1000' : '1000'}
             />
             <p className="text-[10px] text-gray-600 mt-0.5">
-              {isAquaculture ? 'Total fingerlings you stocked in this pond' : isRabbits ? 'Total rabbits in this hutch block' : t('flocks.total_birds_you_started_with')}
+              {isAquaculture
+                ? (isFr ? "Total d'alevins empoissonnés dans cet étang" : 'Total fingerlings you stocked in this pond')
+                : isRabbits
+                  ? (isFr ? "Total des lapins dans ce bloc clapier" : 'Total rabbits in this hutch block')
+                  : t('flocks.total_birds_you_started_with')}
             </p>
           </div>
 
@@ -445,7 +484,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             )}
             {!currentCount && (
               <p className="text-[10px] text-gray-600 mt-0.5">
-                {isAquaculture ? 'Leave empty if no fish died before using this app' : isRabbits ? 'Leave empty if no rabbits died before using this app' : t('flocks.leave_empty_if_no_deaths')}
+                {isAquaculture
+                  ? (isFr ? "Laissez vide si aucun poisson n'est mort avant d'utiliser cette application" : 'Leave empty if no fish died before using this app')
+                  : isRabbits
+                    ? (isFr ? "Laissez vide si aucun lapin n'est mort avant d'utiliser cette application" : 'Leave empty if no rabbits died before using this app')
+                    : t('flocks.leave_empty_if_no_deaths')}
               </p>
             )}
           </div>
@@ -455,7 +498,11 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="purchasePricePerBird" className="block text-xs font-medium text-gray-700 mb-1">
-                  {isAquaculture ? 'Price per fingerling' : isRabbits ? 'Price per rabbit' : t('flocks.price_per_bird')}
+                  {isAquaculture
+                    ? (isFr ? 'Prix par alevin' : 'Price per fingerling')
+                    : isRabbits
+                      ? (isFr ? 'Prix par lapin' : 'Price per rabbit')
+                      : t('flocks.price_per_bird')}
                 </label>
                 <input
                   id="purchasePricePerBird"
@@ -493,8 +540,12 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             </button>
             <button type="submit" disabled={loading || !species || !type} className="flex-1 px-4 py-2.5 text-sm border-2 border-gray-900 text-gray-900 rounded-lg font-medium hover:bg-[#faf7f2] bg-white disabled:opacity-50 disabled:cursor-not-allowed">
               {loading
-                ? (isAquaculture ? 'Creating…' : isRabbits ? 'Creating…' : t('flocks.creating'))
-                : (isAquaculture ? 'Create Pond' : isRabbits ? 'Create Rabbitry' : t('flocks.create_flock'))}
+                ? (isFr ? 'Création…' : (isAquaculture ? 'Creating…' : isRabbits ? 'Creating…' : t('flocks.creating')))
+                : (isAquaculture
+                    ? (isFr ? 'Créer un étang' : 'Create Pond')
+                    : isRabbits
+                      ? (isFr ? 'Créer un élevage' : 'Create Rabbitry')
+                      : (isFr ? 'Créer un troupeau' : t('flocks.create_flock')))}
             </button>
           </div>
         </form>

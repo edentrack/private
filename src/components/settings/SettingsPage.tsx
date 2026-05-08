@@ -33,6 +33,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const { setLanguage } = useLanguage();
   const { showToast } = useToast();
   const language = (i18n.language || 'en') as 'en' | 'fr';
+  const isFr = language === 'fr';
   const { user, currentFarm, currentRole, refreshSession } = useAuth();
 
   const isOwner = currentRole === 'owner';
@@ -337,7 +338,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                     {SUPPORTED_COUNTRIES.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
-                    <option value="Other / Custom">Other / Custom</option>
+                    <option value="Other / Custom">{isFr ? 'Autre / Personnalisé' : 'Other / Custom'}</option>
                   </select>
                 </div>
 
@@ -350,13 +351,13 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                  */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Farm type
+                    {isFr ? 'Type de ferme' : 'Farm type'}
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {([
-                      { id: 'poultry', label: 'Poultry', sub: 'Chickens' },
-                      { id: 'aquaculture', label: 'Fish', sub: 'Tilapia / catfish' },
-                      { id: 'rabbits', label: 'Rabbits', sub: 'Meat / breeders' },
+                      { id: 'poultry', label: isFr ? 'Volaille' : 'Poultry', sub: isFr ? 'Poulets' : 'Chickens' },
+                      { id: 'aquaculture', label: isFr ? 'Poisson' : 'Fish', sub: isFr ? 'Tilapia / poisson-chat' : 'Tilapia / catfish' },
+                      { id: 'rabbits', label: isFr ? 'Lapins' : 'Rabbits', sub: isFr ? 'Viande / reproducteurs' : 'Meat / breeders' },
                     ] as const).map(({ id, label, sub }) => {
                       const active = farmType === id;
                       return (
@@ -379,7 +380,9 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                   </div>
                   {farm && (farm as any).farm_type && (farm as any).farm_type !== farmType && (
                     <p className="text-[11px] text-amber-700 mt-1.5">
-                      Changing farm type swaps your entire navigation and terminology. Existing data is preserved but may not be meaningful in the new view.
+                      {isFr
+                        ? "Changer de type de ferme remplace toute votre navigation et terminologie. Les données existantes sont conservées mais peuvent ne pas être significatives dans la nouvelle vue."
+                        : 'Changing farm type swaps your entire navigation and terminology. Existing data is preserved but may not be meaningful in the new view.'}
                     </p>
                   )}
                 </div>
@@ -403,7 +406,9 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                       disabled={saving}
                       className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neon-500 text-gray-900 text-sm font-semibold hover:bg-neon-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                     >
-                      {saving ? (t('settings.saving') || 'Saving…') : 'Save Farm Information'}
+                      {saving
+                        ? (t('settings.saving') || (isFr ? 'Enregistrement…' : 'Saving…'))
+                        : (isFr ? 'Enregistrer les informations de la ferme' : 'Save Farm Information')}
                     </button>
                   </div>
                 )}
@@ -484,7 +489,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                     */}
                     {rateAsFloat > 0 && effectiveCurrency.toUpperCase() !== 'USD' && (
                       <div className="text-right">
-                        <p className="text-xs text-gray-500 mb-0.5">Exchange rate</p>
+                        <p className="text-xs text-gray-500 mb-0.5">{isFr ? 'Taux de change' : 'Exchange rate'}</p>
                         <p className="text-sm font-semibold text-gray-900">
                           1 USD = {rateAsFloat.toLocaleString(undefined, { maximumFractionDigits: 2 })} {effectiveCurrency}
                         </p>
@@ -711,8 +716,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                   <Users className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-gray-900">Farm Join Link</h3>
-                  <p className="text-xs text-gray-500">Invite workers to join your farm</p>
+                  <h3 className="text-base font-semibold text-gray-900">{isFr ? "Lien d'invitation à la ferme" : 'Farm Join Link'}</h3>
+                  <p className="text-xs text-gray-500">{isFr ? 'Invitez des ouvriers à rejoindre votre ferme' : 'Invite workers to join your farm'}</p>
                 </div>
               </div>
               <FarmJoinCodeSection />

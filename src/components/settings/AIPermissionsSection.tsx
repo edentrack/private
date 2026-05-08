@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bot, Save, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 
 interface AIPermissions {
@@ -22,41 +23,60 @@ const DEFAULTS: AIPermissions = {
   can_void_records: true,
 };
 
-const PERMISSION_DEFS: { key: keyof AIPermissions; label: string; desc: string; risk: 'low' | 'medium' | 'high' }[] = [
+interface PermissionDef {
+  key: keyof AIPermissions;
+  label: string;
+  desc: string;
+  risk: 'low' | 'medium' | 'high';
+}
+
+const buildPermissionDefs = (isFr: boolean): PermissionDef[] => [
   {
     key: 'can_add_workers',
-    label: 'Add workers',
-    desc: 'Eden can add new offline workers to your farm by name via chat',
+    label: isFr ? 'Ajouter des ouvriers' : 'Add workers',
+    desc: isFr
+      ? 'Eden peut ajouter de nouveaux ouvriers hors-ligne à votre ferme par nom via le chat'
+      : 'Eden can add new offline workers to your farm by name via chat',
     risk: 'low',
   },
   {
     key: 'can_edit_workers',
-    label: 'Edit worker details',
-    desc: 'Eden can update worker salary, role, and other details via chat',
+    label: isFr ? "Modifier les détails d'un ouvrier" : 'Edit worker details',
+    desc: isFr
+      ? 'Eden peut mettre à jour le salaire, le rôle et autres détails des ouvriers via le chat'
+      : 'Eden can update worker salary, role, and other details via chat',
     risk: 'medium',
   },
   {
     key: 'can_change_team_roles',
-    label: 'Change app user roles',
-    desc: 'Eden can promote or demote team members who have app accounts',
+    label: isFr ? "Changer les rôles utilisateurs de l'application" : 'Change app user roles',
+    desc: isFr
+      ? "Eden peut promouvoir ou rétrograder les membres de l'équipe ayant un compte"
+      : 'Eden can promote or demote team members who have app accounts',
     risk: 'medium',
   },
   {
     key: 'can_run_payroll',
-    label: 'Run payroll',
-    desc: 'Eden can execute pay runs and log salary payments for workers',
+    label: isFr ? 'Exécuter la paie' : 'Run payroll',
+    desc: isFr
+      ? "Eden peut exécuter la paie et enregistrer les paiements de salaires pour les ouvriers"
+      : 'Eden can execute pay runs and log salary payments for workers',
     risk: 'medium',
   },
   {
     key: 'can_edit_records',
-    label: 'Edit records',
-    desc: 'Eden can correct existing sales, expense, or mortality records',
+    label: isFr ? 'Modifier les enregistrements' : 'Edit records',
+    desc: isFr
+      ? 'Eden peut corriger les ventes, dépenses ou mortalités existantes'
+      : 'Eden can correct existing sales, expense, or mortality records',
     risk: 'medium',
   },
   {
     key: 'can_void_records',
-    label: 'Delete / void records',
-    desc: 'Eden can permanently delete records you ask it to remove — this cannot be undone',
+    label: isFr ? 'Supprimer / annuler des enregistrements' : 'Delete / void records',
+    desc: isFr
+      ? "Eden peut supprimer définitivement les enregistrements que vous lui demandez — c'est irréversible"
+      : 'Eden can permanently delete records you ask it to remove — this cannot be undone',
     risk: 'high',
   },
 ];
@@ -67,12 +87,17 @@ const riskColor = (risk: 'low' | 'medium' | 'high') => ({
   high:   'bg-red-50 text-red-700 border-red-200',
 }[risk]);
 
-const riskLabel = (risk: 'low' | 'medium' | 'high') => ({
+const riskLabel = (risk: 'low' | 'medium' | 'high', isFr: boolean) => (isFr ? {
+  low: 'Risque faible', medium: 'Confirmation requise', high: 'Risque élevé',
+}[risk] : {
   low: 'Low risk', medium: 'Confirm required', high: 'High risk',
 }[risk]);
 
 export function AIPermissionsSection() {
   const { currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
+  const PERMISSION_DEFS = buildPermissionDefs(isFr);
   const { showToast } = useToast();
   const [perms, setPerms] = useState<AIPermissions>(DEFAULTS);
   const [saved, setSaved] = useState(false);
@@ -106,11 +131,11 @@ export function AIPermissionsSection() {
         ai_permissions: perms,
         updated_at: new Date().toISOString(),
       });
-      showToast('Eden permissions saved', 'success');
+      showToast(isFr ? "Permissions d'Eden enregistrées" : 'Eden permissions saved', 'success');
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err: any) {
-      showToast('Failed to save: ' + err.message, 'error');
+      showToast((isFr ? "Échec de l'enregistrement : " : 'Failed to save: ') + err.message, 'error');
     } finally {
       setSaving(false);
     }
@@ -131,8 +156,10 @@ export function AIPermissionsSection() {
           <Bot className="w-5 h-5 text-indigo-600" />
         </div>
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Eden AI Permissions</h3>
-          <p className="text-xs text-gray-500">Control what Eden is allowed to do on your farm. All actions still require your confirmation before executing.</p>
+          <h3 className="text-base font-semibold text-gray-900">{isFr ? 'Permissions Eden AI' : 'Eden AI Permissions'}</h3>
+          <p className="text-xs text-gray-500">{isFr
+            ? "Contrôlez ce qu'Eden est autorisé à faire sur votre ferme. Toutes les actions nécessitent encore votre confirmation avant exécution."
+            : 'Control what Eden is allowed to do on your farm. All actions still require your confirmation before executing.'}</p>
         </div>
       </div>
 
@@ -143,7 +170,7 @@ export function AIPermissionsSection() {
               <div className="flex items-center gap-2 mb-0.5">
                 <span className="text-sm font-medium text-gray-900">{p.label}</span>
                 <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${riskColor(p.risk)}`}>
-                  {riskLabel(p.risk)}
+                  {riskLabel(p.risk, isFr)}
                 </span>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">{p.desc}</p>
@@ -169,9 +196,13 @@ export function AIPermissionsSection() {
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
           {saved ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-          {saved ? 'Saved' : saving ? 'Saving…' : 'Save permissions'}
+          {saved
+            ? (isFr ? 'Enregistré' : 'Saved')
+            : saving
+              ? (isFr ? 'Enregistrement…' : 'Saving…')
+              : (isFr ? 'Enregistrer les permissions' : 'Save permissions')}
         </button>
-        <p className="text-xs text-gray-400">Only owners and managers can change these settings</p>
+        <p className="text-xs text-gray-400">{isFr ? 'Seuls les propriétaires et gestionnaires peuvent modifier ces paramètres' : 'Only owners and managers can change these settings'}</p>
       </div>
     </div>
   );

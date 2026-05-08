@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export interface EdenChip {
   icon: string;
@@ -24,7 +25,7 @@ interface CacheEntry {
 }
 
 const CACHE_VERSION = 1;
-const STATIC_FALLBACKS: Record<string, EdenChip[]> = {
+const STATIC_FALLBACKS_EN: Record<string, EdenChip[]> = {
   aquaculture: [
     { icon: '📊', label: "What's my current FCR?" },
     { icon: '💧', label: 'Should I worry about my water quality?' },
@@ -41,18 +42,35 @@ const STATIC_FALLBACKS: Record<string, EdenChip[]> = {
     { icon: '💉', label: 'What vaccines do my birds need?' },
   ],
 };
+const STATIC_FALLBACKS_FR: Record<string, EdenChip[]> = {
+  aquaculture: [
+    { icon: '📊', label: "Quel est mon ICA actuel ?" },
+    { icon: '💧', label: "Dois-je m'inquiéter de la qualité de l'eau ?" },
+    { icon: '🎯', label: "Quand dois-je récolter ?" },
+  ],
+  rabbits: [
+    { icon: '📊', label: "Quel est mon taux de mortalité ?" },
+    { icon: '🐰', label: "Aidez-moi à planifier ma prochaine reproduction" },
+    { icon: '🎯', label: "Quand dois-je sevrer mes portées ?" },
+  ],
+  poultry: [
+    { icon: '📊', label: "Analyser la performance de ma ferme cette semaine" },
+    { icon: '🥚', label: "Quelle est ma marge bénéficiaire ?" },
+    { icon: '💉', label: "Quels vaccins faut-il à mes oiseaux ?" },
+  ],
+};
 
 function todayBucket(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function cacheKey(farmId: string): string {
-  return `eden_chips_v${CACHE_VERSION}:${farmId}`;
+function cacheKey(farmId: string, lang: string): string {
+  return `eden_chips_v${CACHE_VERSION}:${lang}:${farmId}`;
 }
 
-function readCache(farmId: string): CacheEntry | null {
+function readCache(farmId: string, lang: string): CacheEntry | null {
   try {
-    const raw = localStorage.getItem(cacheKey(farmId));
+    const raw = localStorage.getItem(cacheKey(farmId, lang));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CacheEntry;
     if (parsed.bucket !== todayBucket()) return null;
@@ -63,9 +81,9 @@ function readCache(farmId: string): CacheEntry | null {
   }
 }
 
-function writeCache(farmId: string, entry: CacheEntry): void {
+function writeCache(farmId: string, lang: string, entry: CacheEntry): void {
   try {
-    localStorage.setItem(cacheKey(farmId), JSON.stringify(entry));
+    localStorage.setItem(cacheKey(farmId, lang), JSON.stringify(entry));
   } catch {
     /* quota — non-fatal */
   }
@@ -82,7 +100,10 @@ export function useEdenChips(
   farmId: string | null | undefined,
   farmType: string | null | undefined
 ): UseEdenChipsResult {
-  const initialFallback = STATIC_FALLBACKS[farmType ?? 'poultry'] ?? STATIC_FALLBACKS.poultry;
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
+  const fallbackTable = isFr ? STATIC_FALLBACKS_FR : STATIC_FALLBACKS_EN;
+  const initialFallback = fallbackTable[farmType ?? 'poultry'] ?? fallbackTable.poultry;
   const [chips, setChips] = useState<EdenChip[]>(initialFallback);
   const [loading, setLoading] = useState(true);
   const [fallback, setFallback] = useState(true);
@@ -95,8 +116,9 @@ export function useEdenChips(
       return;
     }
 
+    const lang = isFr ? 'fr' : 'en';
     // 1. Hit cache — instant.
-    const cached = readCache(farmId);
+    const cached = readCache(farmId, lang);
     if (cached) {
       setChips(cached.chips);
       setFallback(cached.fallback);
@@ -124,7 +146,7 @@ export function useEdenChips(
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ farm_id: farmId, today: todayBucket() }),
+          body: JSON.stringify({ farm_id: farmId, today: todayBucket(), language: isFr ? 'fr' : 'en' }),
         });
         if (!resp.ok) {
           if (!cancelled) {
@@ -141,7 +163,7 @@ export function useEdenChips(
           chips: data.chips,
           fallback: !!data.fallback,
         };
-        writeCache(farmId, result);
+        writeCache(farmId, lang, result);
         setChips(result.chips);
         setFallback(result.fallback);
         setLoading(false);
@@ -157,7 +179,7 @@ export function useEdenChips(
     return () => {
       cancelled = true;
     };
-  }, [farmId, farmType]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [farmId, farmType, isFr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { chips, loading, fallback };
 }

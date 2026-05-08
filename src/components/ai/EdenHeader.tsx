@@ -11,6 +11,7 @@
 
 import { EdenAvatarAnimated } from './EdenAvatarAnimated';
 import { EdenFarmSelector } from './EdenFarmSelector';
+import { useLanguage } from '../../contexts/LanguageContext';
 import type { OwnedFarm } from '../../contexts/authContextRef';
 
 interface UsageInfo {
@@ -34,10 +35,20 @@ interface Props {
   onClear: () => void;
 }
 
-function taglineFor(species: Props['speciesId']): string {
-  if (species === 'aquaculture') return 'Pond health · Water quality · FCR · Diagnostics · Data import';
-  if (species === 'rabbits') return 'Hutch health · Feed · Growth tracking · Diagnostics · Data import';
-  return 'Farm performance · Flock health · Diagnostics · Data import';
+function taglineFor(species: Props['speciesId'], isFr: boolean): string {
+  if (species === 'aquaculture') {
+    return isFr
+      ? "Santé de l'étang · Qualité de l'eau · ICA · Diagnostics · Import de données"
+      : 'Pond health · Water quality · FCR · Diagnostics · Data import';
+  }
+  if (species === 'rabbits') {
+    return isFr
+      ? 'Santé du clapier · Alimentation · Suivi de croissance · Diagnostics · Import de données'
+      : 'Hutch health · Feed · Growth tracking · Diagnostics · Data import';
+  }
+  return isFr
+    ? 'Performance de la ferme · Santé du troupeau · Diagnostics · Import de données'
+    : 'Farm performance · Flock health · Diagnostics · Data import';
 }
 
 function usageColorClass(used: number, cap: number): string {
@@ -57,13 +68,15 @@ export function EdenHeader({
   showClear,
   onClear,
 }: Props) {
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   return (
     <div data-tour="ai-header" className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
       <div className="flex items-center gap-3">
         <EdenAvatarAnimated size="md" />
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-agri-brown-700">Eden</h1>
-          <p className="text-sm text-gray-500 truncate">{taglineFor(speciesId)}</p>
+          <p className="text-sm text-gray-500 truncate">{taglineFor(speciesId, isFr)}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {allFarms && allFarms.length > 0 && (
@@ -78,8 +91,10 @@ export function EdenHeader({
           {usageInfo && (
             <div className={`text-xs px-2 py-1 rounded-full font-medium ${usageColorClass(usageInfo.used, usageInfo.cap)}`}>
               {usageInfo.tier === 'free'
-                ? `${usageInfo.used}/${usageInfo.cap} today`
-                : `${usageInfo.used}/${usageInfo.cap === 99999 ? '∞' : usageInfo.cap} this month`}
+                ? (isFr ? `${usageInfo.used}/${usageInfo.cap} aujourd'hui` : `${usageInfo.used}/${usageInfo.cap} today`)
+                : (isFr
+                    ? `${usageInfo.used}/${usageInfo.cap === 99999 ? '∞' : usageInfo.cap} ce mois-ci`
+                    : `${usageInfo.used}/${usageInfo.cap === 99999 ? '∞' : usageInfo.cap} this month`)}
             </div>
           )}
           {showClear && (
@@ -87,7 +102,7 @@ export function EdenHeader({
               onClick={onClear}
               className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors touch-target"
             >
-              Clear Chat
+              {isFr ? 'Effacer la discussion' : 'Clear Chat'}
             </button>
           )}
         </div>
