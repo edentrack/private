@@ -28,6 +28,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { EdenAvatarAnimated } from '../ai/EdenAvatarAnimated';
 import { trackEvent } from '../../utils/analytics';
 import { sortActionsByDependency } from '../../utils/actionDependencyOrder';
+import { parseInlineDate } from '../../utils/parseInlineDate';
 
 interface Msg {
   role: 'user' | 'assistant';
@@ -143,9 +144,13 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
    * page doesn't drag in the whole AI chat surface — and because at the
    * time of CREATE_FARM the user has NO currentFarm yet, which the main
    * executor assumes.
+   *
+   * `lastUserText` lets the executor fall back to client-side date
+   * parsing if Eden's CREATE_FLOCK lacked arrival_date.
    */
   const executeAction = async (
-    action: Action
+    action: Action,
+    lastUserText: string = '',
   ): Promise<{ pill: string | null; complete: boolean; switchToForm: boolean }> => {
     if (!user) return { pill: null, complete: false, switchToForm: false };
 
@@ -256,6 +261,11 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         (action as any).arrived_at ||
         (action as any).stocked_date ||
         (action as any).stocked_at ||
+        // Fallback: parse the user's most recent message ("arrived 3
+        // months ago", "last week", "May 1"). Eden has the INLINE DATE
+        // RULE in the system prompt but doesn't always comply, so this
+        // is a deterministic safety net.
+        parseInlineDate(lastUserText) ||
         today;
       const { error } = await supabase.from('flocks').insert({
         farm_id: farm.id,
@@ -475,7 +485,10 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       // helper as the AIAssistantPage bulk executor uses.
       const orderedActions = sortActionsByDependency(actions);
       for (const action of orderedActions) {
-        const result = await executeAction(action);
+        // Pass the latest user message into each action executor so
+        // CREATE_FLOCK can client-side-parse "3 months ago" if Eden
+        // didn't emit arrival_date itself.
+        const result = await executeAction(action, newUserMsg.content);
         if (result.pill) pills.push(result.pill);
         if (result.complete) shouldComplete = true;
         if (result.switchToForm) shouldSwitch = true;

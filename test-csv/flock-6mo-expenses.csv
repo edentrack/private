@@ -1,0 +1,31 @@
+incurred_on,category,amount,currency,description,vendor
+2025-11-08,chicks purchase,300000,XAF,200 day-old Lohmann Brown layer chicks,Yaoundé Hatchery
+2025-11-08,equipment,85000,XAF,20 chick feeders + 15 drinkers + brooder bulbs,Eden Agro Supply
+2025-11-08,equipment,45000,XAF,Pine shavings 20 sacks for brooder litter,Bakassi Wood Yard
+2025-11-08,transport,25000,XAF,Pickup hire from hatchery and supply run,Mokolo Transport
+2025-11-09,medication,15000,XAF,Marek's and Newcastle starter vaccines,VetCare Yaoundé
+2025-11-12,feed,28000,XAF,Layer Starter mash 50kg bag,Cameroun Feed Co
+2025-11-19,feed,28000,XAF,Layer Starter mash 50kg bag,Cameroun Feed Co
+2025-11-26,feed,28000,XAF,Layer Starter mash 50kg bag,Cameroun Feed Co
+2025-12-03,feed,32000,XAF,Layer Grower mash 50kg bag,Cameroun Feed Co
+2025-12-10,medication,8000,XAF,Multivitamin and dewormer,VetCare Yaoundé
+2025-12-10,labor,50000,XAF,November caretaker wages,Solomon Mbah
+2025-12-17,feed,32000,XAF,Layer Grower mash 50kg bag,Cameroun Feed Co
+2025-12-24,feed,32000,XAF,Layer Grower mash 50kg bag,Cameroun Feed Co
+2026-01-08,labor,50000,XAF,December caretaker wages,Solomon Mbah
+2026-01-08,medication,12000,XAF,Gumboro and Fowl Pox booster,VetCare Yaoundé
+2026-01-15,feed,35000,XAF,Layer Grower mash 50kg with premix,Cameroun Feed Co
+2026-01-22,equipment,30000,XAF,8 nest boxes and roosting perches,Local Carpenter
+2026-02-01,other,18000,XAF,Electricity bill Nov-Jan,ENEO Cameroon
+2026-02-08,labor,50000,XAF,January caretaker wages,Solomon Mbah
+2026-02-12,feed,45000,XAF,Layer Mash 50kg with calcium grit,Cameroun Feed Co
+2026-02-19,feed,45000,XAF,Layer Mash 50kg bag,Cameroun Feed Co
+2026-02-26,feed,45000,XAF,Layer Mash 50kg bag,Cameroun Feed Co
+2026-03-08,labor,50000,XAF,February caretaker wages,Solomon Mbah
+2026-03-12,equipment,12000,XAF,30 plastic egg crates 30-egg trays,Plastico Douala
+2026-03-19,feed,45000,XAF,Layer Mash 50kg bag,Cameroun Feed Co
+2026-04-08,labor,55000,XAF,March caretaker wages with productivity bonus,Solomon Mbah
+2026-04-15,medication,9000,XAF,IB vaccine and multivitamin top-up,VetCare Yaoundé
+2026-04-22,feed,48000,XAF,Layer Mash 50kg with oyster shell,Cameroun Feed Co
+2026-05-01,other,22000,XAF,Electricity bill Feb-Apr,ENEO Cameroon
+2026-05-08,labor,55000,XAF,April caretaker wages,Solomon Mbah
