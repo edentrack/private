@@ -50,23 +50,26 @@ export interface CreditScoreResult {
 interface BuildArgs {
   farmId: string;
   supabase: SupabaseClient;
+  /** UI language for the rendered component labels + details. Defaults to 'en'. */
+  language?: 'en' | 'fr';
 }
 
-function tierFor(total: number): { tier: CreditScoreResult['tier']; tierLabel: string } {
-  if (total >= 80) return { tier: 'excellent', tierLabel: 'Excellent' };
-  if (total >= 65) return { tier: 'good', tierLabel: 'Good' };
-  if (total >= 50) return { tier: 'fair', tierLabel: 'Fair' };
-  if (total >= 35) return { tier: 'building', tierLabel: 'Building' };
-  return { tier: 'insufficient', tierLabel: 'Insufficient data' };
+function tierFor(total: number, isFr: boolean): { tier: CreditScoreResult['tier']; tierLabel: string } {
+  if (total >= 80) return { tier: 'excellent', tierLabel: isFr ? 'Excellent' : 'Excellent' };
+  if (total >= 65) return { tier: 'good', tierLabel: isFr ? 'Bon' : 'Good' };
+  if (total >= 50) return { tier: 'fair', tierLabel: isFr ? 'Correct' : 'Fair' };
+  if (total >= 35) return { tier: 'building', tierLabel: isFr ? 'En construction' : 'Building' };
+  return { tier: 'insufficient', tierLabel: isFr ? 'Données insuffisantes' : 'Insufficient data' };
 }
 
 function isoDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
 }
 
-export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise<CreditScoreResult> {
+export async function buildCreditScore({ farmId, supabase, language }: BuildArgs): Promise<CreditScoreResult> {
   const since90 = isoDaysAgo(90);
   const since365 = isoDaysAgo(365);
+  const isFr = language === 'fr';
 
   const [farmRes, flocksRes, salesRes, expensesRes, mortRes, waterRes, vaxRes] = await Promise.all([
     supabase.from('farms').select('id, name, created_at, farm_type').eq('id', farmId).single(),
@@ -174,10 +177,12 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
   const completenessScore = Math.round(completenessRatio * 25);
   components.push({
     key: 'data_completeness',
-    label: 'Data completeness',
+    label: isFr ? 'Complétude des données' : 'Data completeness',
     score: completenessScore,
     maxScore: 25,
-    detail: `${activeDaysLast90} active days in last 90 (target: 60+)`,
+    detail: isFr
+      ? `${activeDaysLast90} jours actifs sur les 90 derniers (objectif : 60+)`
+      : `${activeDaysLast90} active days in last 90 (target: 60+)`,
   });
 
   // 2) Financial discipline (25 max) — both directions logged + net positive.
@@ -190,10 +195,12 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
   else if (netLast12mo === 0) financeScore += 2;
   components.push({
     key: 'financial_discipline',
-    label: 'Financial discipline',
+    label: isFr ? 'Discipline financière' : 'Financial discipline',
     score: Math.min(25, financeScore),
     maxScore: 25,
-    detail: `${sales.length} sales, ${expenses.length} expenses, net ${netLast12mo >= 0 ? '+' : ''}${Math.round(netLast12mo).toLocaleString()}`,
+    detail: isFr
+      ? `${sales.length} ventes, ${expenses.length} dépenses, net ${netLast12mo >= 0 ? '+' : ''}${Math.round(netLast12mo).toLocaleString()}`
+      : `${sales.length} sales, ${expenses.length} expenses, net ${netLast12mo >= 0 ? '+' : ''}${Math.round(netLast12mo).toLocaleString()}`,
   });
 
   // 3) Production track record (25 max) — low mortality + active flocks.
@@ -207,10 +214,12 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
   else productionScore += 1;
   components.push({
     key: 'production',
-    label: 'Production track record',
+    label: isFr ? 'Performance de production' : 'Production track record',
     score: Math.min(25, productionScore),
     maxScore: 25,
-    detail: `${totalAnimals.toLocaleString()} ${animalTermPluralLower}, ${activeFlocks.length} active ${groupTermPluralLower}, ${mortalityRatePct.toFixed(1)}% ${lossNounLower}`,
+    detail: isFr
+      ? `${totalAnimals.toLocaleString()} ${animalTermPluralLower}, ${activeFlocks.length} ${groupTermPluralLower} actifs, ${mortalityRatePct.toFixed(1)}% de ${lossNounLower}`
+      : `${totalAnimals.toLocaleString()} ${animalTermPluralLower}, ${activeFlocks.length} active ${groupTermPluralLower}, ${mortalityRatePct.toFixed(1)}% ${lossNounLower}`,
   });
 
   // 4) Tenure on platform (15 max) — longer history = more credible.
@@ -222,10 +231,12 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
   else tenureScore = 1;
   components.push({
     key: 'tenure',
-    label: 'Tenure on platform',
+    label: isFr ? 'Ancienneté sur la plateforme' : 'Tenure on platform',
     score: tenureScore,
     maxScore: 15,
-    detail: `${daysOnPlatform} day${daysOnPlatform !== 1 ? 's' : ''} since farm created`,
+    detail: isFr
+      ? `${daysOnPlatform} jour${daysOnPlatform !== 1 ? 's' : ''} depuis la création de la ferme`
+      : `${daysOnPlatform} day${daysOnPlatform !== 1 ? 's' : ''} since farm created`,
   });
 
   // 5) Operational health (10 max) — vaccinations on schedule, no water emergencies.
@@ -239,17 +250,20 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
   else if (waterQualityEmergencies <= 2) opsScore += 1;
   components.push({
     key: 'operational_health',
-    label: 'Operational health',
+    label: isFr ? 'Santé opérationnelle' : 'Operational health',
     score: Math.min(10, opsScore),
     maxScore: 10,
-    detail:
-      vaccinationsOnSchedulePct == null
-        ? `No vaccinations scheduled · ${waterQualityEmergencies} water emergencies (90d)`
-        : `${vaccinationsOnSchedulePct.toFixed(0)}% vax on schedule · ${waterQualityEmergencies} water emergencies (90d)`,
+    detail: isFr
+      ? (vaccinationsOnSchedulePct == null
+          ? `Aucune vaccination programmée · ${waterQualityEmergencies} urgences d'eau (90j)`
+          : `${vaccinationsOnSchedulePct.toFixed(0)}% de vaccins à jour · ${waterQualityEmergencies} urgences d'eau (90j)`)
+      : (vaccinationsOnSchedulePct == null
+          ? `No vaccinations scheduled · ${waterQualityEmergencies} water emergencies (90d)`
+          : `${vaccinationsOnSchedulePct.toFixed(0)}% vax on schedule · ${waterQualityEmergencies} water emergencies (90d)`),
   });
 
   const total = components.reduce((s, c) => s + c.score, 0);
-  const { tier, tierLabel } = tierFor(total);
+  const { tier, tierLabel } = tierFor(total, isFr);
 
   return {
     total,
