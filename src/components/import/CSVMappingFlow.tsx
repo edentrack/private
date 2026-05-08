@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ArrowRight, AlertTriangle, Check, Loader2} from "lucide-react";
 import { supabase } from '../../lib/supabaseClient';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface Props {
   file: File;
@@ -50,6 +51,7 @@ const _CATEGORY_OPTIONS = ['feed', 'medication', 'equipment', 'labor', 'chicks p
 const _LOG_TYPE_OPTIONS = ['mortality', 'weight', 'egg_count', 'feed_usage', 'water_intake', 'notes'];
 
 export function CSVMappingFlow({ file, importId, farmId, scope, targetFlockId, onComplete, onCancel }: Props) {
+  const farmSpecies = useFarmSpecies();
   const [step, setStep] = useState<'type' | 'mapping' | 'preview' | 'processing'>('type');
   const [entityType, setEntityType] = useState<EntityType>('expense');
   const [headers, setHeaders] = useState<string[]>([]);
@@ -280,7 +282,11 @@ export function CSVMappingFlow({ file, importId, farmId, scope, targetFlockId, o
                 <p className="text-sm text-gray-500">
                   {type === 'expense' && 'Receipts, invoices, purchase records'}
                   {type === 'inventory' && 'Feed stock, supplies, equipment'}
-                  {type === 'production' && 'Mortality, weights, egg counts, feed usage'}
+                  {type === 'production' && (
+                    farmSpecies.id === 'aquaculture' ? `${farmSpecies.lossNounPlural}, weights, sampling, water quality, feed usage`
+                    : farmSpecies.id === 'rabbits' ? `${farmSpecies.lossNounPlural}, weights, breeding events, feed usage`
+                    : 'Mortality, weights, egg counts, feed usage'
+                  )}
                 </p>
               </button>
             ))}

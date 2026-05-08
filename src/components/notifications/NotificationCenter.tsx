@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Bell, X, AlertTriangle, Info, AlertCircle, CheckCircle, ChevronRight, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { Notification } from '../../types/database';
 import { useTranslation } from 'react-i18next';
 import { showAlertNotification, isNotificationPermitted } from '../../lib/pushNotifications';
@@ -52,6 +53,7 @@ function savePushedAlertIds(ids: string[]) {
 
 export function NotificationCenter() {
   const { user, currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
   useTranslation(); // i18n side-effect; copy is hardcoded here for now
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -227,7 +229,16 @@ export function NotificationCenter() {
     const avgDaily = total / 14;
     const todayDeaths = data.filter(m => m.event_date === today).reduce((s, m) => s + (m.count || 0), 0);
     if (todayDeaths > avgDaily * 2 && todayDeaths > 0) {
-      alerts.push({ id: 'mortality-spike', severity: 'critical', title: 'Mortality spike today', description: `${todayDeaths} deaths today vs 14-day average of ${avgDaily.toFixed(1)}/day. Investigate immediately.`, action: 'View Mortality Log', actionLink: 'mortality' });
+      const lossNoun = farmSpecies.lossNoun;
+      const lossPlural = farmSpecies.lossNounPlural.toLowerCase();
+      alerts.push({
+        id: 'mortality-spike',
+        severity: 'critical',
+        title: `${lossNoun} spike today`,
+        description: `${todayDeaths} ${lossPlural} today vs 14-day average of ${avgDaily.toFixed(1)}/day. Investigate immediately.`,
+        action: `View ${lossNoun} Log`,
+        actionLink: 'mortality',
+      });
     }
   };
 
