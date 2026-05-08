@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, Circle, Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import {
   ensureTasksGeneratedForDate,
   getTasksForDate,
@@ -20,6 +21,8 @@ interface TodayTasksViewProps {
 
 export function TodayTasksView({ onTaskCompleted, compact = false }: TodayTasksViewProps) {
   const { currentFarm, user, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const farmTz = getFarmTimeZone(currentFarm);
   const [tasks, setTasks] = useState<TaskWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +70,7 @@ export function TodayTasksView({ onTaskCompleted, compact = false }: TodayTasksV
   };
 
   const fmtTime = (s: string) =>
-    new Date(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    new Date(s).toLocaleTimeString(isFr ? 'fr-FR' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: !isFr });
 
   const pending = tasks.filter(t => t.status === 'pending');
   const overdue = pending.filter(t => t.isOverdue);
@@ -116,8 +119,8 @@ export function TodayTasksView({ onTaskCompleted, compact = false }: TodayTasksV
     return (
       <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
         <CheckCircle className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-        <p className="text-gray-500 font-medium">All done!</p>
-        <p className="text-gray-400 text-sm mt-1">No tasks for today</p>
+        <p className="text-gray-500 font-medium">{isFr ? 'Tout est fait !' : 'All done!'}</p>
+        <p className="text-gray-400 text-sm mt-1">{isFr ? 'Aucune tâche pour aujourd\'hui' : 'No tasks for today'}</p>
       </div>
     );
   }
@@ -127,9 +130,9 @@ export function TodayTasksView({ onTaskCompleted, compact = false }: TodayTasksV
       {!compact && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            {new Date().toLocaleDateString(isFr ? 'fr-FR' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
           </p>
-          <span className="text-sm text-gray-400">{pending.length} pending</span>
+          <span className="text-sm text-gray-400">{pending.length} {isFr ? 'en attente' : 'pending'}</span>
         </div>
       )}
 
@@ -137,7 +140,7 @@ export function TodayTasksView({ onTaskCompleted, compact = false }: TodayTasksV
         <div className="bg-red-50 border border-red-100 rounded-2xl p-3">
           <div className="flex items-center gap-2 mb-2 px-1">
             <AlertTriangle className="w-4 h-4 text-red-500" />
-            <span className="text-sm font-semibold text-red-700">Overdue ({overdue.length})</span>
+            <span className="text-sm font-semibold text-red-700">{isFr ? 'En retard' : 'Overdue'} ({overdue.length})</span>
           </div>
           <div className="space-y-1">
             {overdue.map(t => <TaskRow key={t.id} task={t} />)}
@@ -149,7 +152,7 @@ export function TodayTasksView({ onTaskCompleted, compact = false }: TodayTasksV
         <div className="bg-white border border-gray-100 rounded-2xl p-3">
           <div className="flex items-center gap-2 mb-2 px-1">
             <Clock className="w-4 h-4 text-gray-400" />
-            <span className="text-sm font-semibold text-gray-700">Due Today ({dueToday.length})</span>
+            <span className="text-sm font-semibold text-gray-700">{isFr ? 'À faire aujourd\'hui' : 'Due Today'} ({dueToday.length})</span>
           </div>
           <div className="space-y-1">
             {dueToday.map(t => <TaskRow key={t.id} task={t} />)}
@@ -165,7 +168,7 @@ export function TodayTasksView({ onTaskCompleted, compact = false }: TodayTasksV
           >
             <div className="flex items-center gap-2">
               <CheckCircle className="w-4 h-4 text-green-500" />
-              <span className="text-sm font-semibold text-gray-700">Completed ({completed.length})</span>
+              <span className="text-sm font-semibold text-gray-700">{isFr ? 'Terminé' : 'Completed'} ({completed.length})</span>
             </div>
             {showCompleted ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
           </button>

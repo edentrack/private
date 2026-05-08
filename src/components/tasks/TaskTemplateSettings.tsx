@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings, ChevronDown, ChevronUp, Save, X, Clock, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { TaskTemplate, FrequencyMode, UserRole } from '../../types/database';
 
 interface TaskTemplateSettingsProps {
@@ -10,6 +11,8 @@ interface TaskTemplateSettingsProps {
 
 export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
   const { profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -69,7 +72,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
       );
     } catch (error) {
       console.error('Error updating template:', error);
-      alert('Failed to save changes. Please try again.');
+      alert(isFr ? 'Échec de l\'enregistrement des modifications. Veuillez réessayer.' : 'Failed to save changes. Please try again.');
     } finally {
       setSaving(null);
     }
@@ -134,7 +137,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
     }
 
     if (newRoles.length === 0) {
-      alert('At least one role must be allowed to complete this task.');
+      alert(isFr ? 'Au moins un rôle doit être autorisé à terminer cette tâche.' : 'At least one role must be allowed to complete this task.');
       return;
     }
 
@@ -153,7 +156,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white rounded-3xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-auto">
-          <div className="text-center text-gray-500">Loading task settings...</div>
+          <div className="text-center text-gray-500">{isFr ? 'Chargement des paramètres de tâche...' : 'Loading task settings...'}</div>
         </div>
       </div>
     );
@@ -168,8 +171,8 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
               <Settings className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Task Template Settings</h2>
-              <p className="text-sm text-gray-600">Configure daily task frequency and timing</p>
+              <h2 className="text-2xl font-bold text-gray-900">{isFr ? 'Paramètres des modèles de tâches' : 'Task Template Settings'}</h2>
+              <p className="text-sm text-gray-600">{isFr ? 'Configurez la fréquence et le moment des tâches quotidiennes' : 'Configure daily task frequency and timing'}</p>
             </div>
           </div>
           <button
@@ -216,14 +219,14 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                             className="w-5 h-5 text-[#3D5F42] rounded"
                             disabled={saving === template.id}
                           />
-                          <span className="text-sm font-medium text-gray-700">Enabled</span>
+                          <span className="text-sm font-medium text-gray-700">{isFr ? 'Activé' : 'Enabled'}</span>
                         </label>
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Frequency
+                            {isFr ? 'Fréquence' : 'Frequency'}
                           </label>
                           <select
                             value={template.frequency_mode}
@@ -233,9 +236,9 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                             className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-[#3D5F42] focus:outline-none"
                             disabled={saving === template.id}
                           >
-                            <option value="once_per_day">Once per day</option>
-                            <option value="multiple_times_per_day">Multiple times per day</option>
-                            <option value="ad_hoc">Ad-hoc (manual only)</option>
+                            <option value="once_per_day">{isFr ? 'Une fois par jour' : 'Once per day'}</option>
+                            <option value="multiple_times_per_day">{isFr ? 'Plusieurs fois par jour' : 'Multiple times per day'}</option>
+                            <option value="ad_hoc">{isFr ? 'Ad hoc (manuel uniquement)' : 'Ad-hoc (manual only)'}</option>
                           </select>
                         </div>
 
@@ -243,7 +246,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                           <div>
                             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                               <Clock className="w-4 h-4" />
-                              Specific Time
+                              {isFr ? 'Heure spécifique' : 'Specific Time'}
                             </label>
                             <div className="flex items-center gap-2">
                               <input
@@ -278,7 +281,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                         {template.frequency_mode === 'multiple_times_per_day' && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Times per Day
+                              {isFr ? 'Fois par jour' : 'Times per Day'}
                             </label>
                             <input
                               type="number"
@@ -299,7 +302,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                         template.scheduled_times && (
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Scheduled Times
+                              {isFr ? 'Heures programmées' : 'Scheduled Times'}
                             </label>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                               {template.scheduled_times.map((time, index) => (
@@ -322,7 +325,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                         <div className="grid md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Complete Before (minutes)
+                              {isFr ? 'Terminer avant (minutes)' : 'Complete Before (minutes)'}
                             </label>
                             <input
                               type="number"
@@ -341,7 +344,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Complete After (minutes)
+                              {isFr ? 'Terminer après (minutes)' : 'Complete After (minutes)'}
                             </label>
                             <input
                               type="number"
@@ -364,7 +367,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                       <div>
                         <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                           <Users className="w-4 h-4" />
-                          Who can complete this task?
+                          {isFr ? 'Qui peut terminer cette tâche ?' : 'Who can complete this task?'}
                         </label>
                         <div className="flex flex-wrap gap-2">
                           {(['owner', 'manager', 'worker'] as UserRole[]).map((role) => (
@@ -388,7 +391,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
                       {saving === template.id && (
                         <div className="flex items-center gap-2 text-sm text-[#3D5F42]">
                           <Save className="w-4 h-4 animate-spin" />
-                          <span>Saving...</span>
+                          <span>{isFr ? 'Enregistrement...' : 'Saving...'}</span>
                         </div>
                       )}
                     </div>
@@ -404,7 +407,7 @@ export function TaskTemplateSettings({ onClose }: TaskTemplateSettingsProps) {
             onClick={onClose}
             className="px-6 py-3 bg-[#3D5F42] text-white rounded-xl font-medium hover:bg-[#2d4632] transition-colors"
           >
-            Done
+            {isFr ? 'Terminé' : 'Done'}
           </button>
         </div>
       </div>

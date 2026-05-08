@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, Circle, Clock, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 
 interface UpcomingTask {
@@ -21,6 +22,8 @@ interface DayGroup {
 
 export function UpcomingTasksView() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const farmTz = getFarmTimeZone(currentFarm);
   const [groups, setGroups] = useState<DayGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +58,7 @@ export function UpcomingTasksView() {
 
       const tasks: UpcomingTask[] = (data || []).map((t: any) => ({
         id: t.id,
-        title: t.title_override || t.task_templates?.title || 'Task',
+        title: t.title_override || t.task_templates?.title || (isFr ? 'Tâche' : 'Task'),
         scheduled_time: t.scheduled_time,
         due_date: t.due_date,
         status: t.status,
@@ -76,8 +79,8 @@ export function UpcomingTasksView() {
         d.setDate(d.getDate() + i);
         const iso = d.toISOString().split('T')[0];
         const label = i === 1
-          ? 'Tomorrow'
-          : d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+          ? (isFr ? 'Demain' : 'Tomorrow')
+          : d.toLocaleDateString(isFr ? 'fr-FR' : 'en-US', { weekday: 'long', month: 'short', day: 'numeric' });
         dayGroups.push({ dateISO: iso, label, tasks: map.get(iso) || [] });
       }
 
@@ -90,7 +93,7 @@ export function UpcomingTasksView() {
   const fmtTime = (t: string | null) => {
     if (!t) return '';
     const d = new Date(`1970-01-01T${t.slice(0, 5)}:00`);
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return d.toLocaleTimeString(isFr ? 'fr-FR' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: !isFr });
   };
 
   if (loading) {
@@ -108,8 +111,8 @@ export function UpcomingTasksView() {
       {!hasAny && (
         <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
           <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">Nothing scheduled</p>
-          <p className="text-gray-400 text-sm mt-1">No tasks in the next 7 days</p>
+          <p className="text-gray-500 font-medium">{isFr ? 'Rien de prévu' : 'Nothing scheduled'}</p>
+          <p className="text-gray-400 text-sm mt-1">{isFr ? 'Aucune tâche dans les 7 prochains jours' : 'No tasks in the next 7 days'}</p>
         </div>
       )}
 
@@ -119,7 +122,7 @@ export function UpcomingTasksView() {
           <div key={group.dateISO} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{group.label}</span>
-              <span className="ml-2 text-xs text-gray-400">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</span>
+              <span className="ml-2 text-xs text-gray-400">{group.tasks.length} {isFr ? `tâche${group.tasks.length !== 1 ? 's' : ''}` : `task${group.tasks.length !== 1 ? 's' : ''}`}</span>
             </div>
             <div className="divide-y divide-gray-50">
               {group.tasks.map(task => (

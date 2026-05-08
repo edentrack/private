@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Receipt, Calendar, User, DollarSign, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { SalesReceipt, ReceiptItem, ReceiptRefund } from '../../types/database';
 import { ProcessRefundModal } from './ProcessRefundModal';
@@ -12,6 +13,8 @@ interface ReceiptsListProps {
 
 export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
   const { profile, currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [receipts, setReceipts] = useState<(SalesReceipt & { items: ReceiptItem[]; refunds: ReceiptRefund[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [refundingReceipt, setRefundingReceipt] = useState<SalesReceipt | null>(null);
@@ -86,7 +89,7 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
   if (loading) {
     return (
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-12 text-center">
-        <div className="text-gray-500">Loading receipts...</div>
+        <div className="text-gray-500">{isFr ? 'Chargement des reçus...' : 'Loading receipts...'}</div>
       </div>
     );
   }
@@ -95,8 +98,8 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
     return (
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-12 text-center">
         <Receipt className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Receipts Yet</h3>
-        <p className="text-gray-500">Create your first sales receipt to get started</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{isFr ? 'Aucun reçu pour le moment' : 'No Receipts Yet'}</h3>
+        <p className="text-gray-500">{isFr ? 'Créez votre premier reçu de vente pour commencer' : 'Create your first sales receipt to get started'}</p>
       </div>
     );
   }
@@ -132,7 +135,7 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
                       <h3 className="text-xl font-bold text-gray-900">#{receipt.receipt_number}</h3>
                       {refunded && (
                         <span className="inline-block px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
-                          Refunded
+                          {isFr ? 'Remboursé' : 'Refunded'}
                         </span>
                       )}
                     </div>
@@ -147,12 +150,12 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
                     )}
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="w-4 h-4" />
-                      {new Date(receipt.sale_date).toLocaleDateString()}
+                      {new Date(receipt.sale_date).toLocaleDateString(isFr ? 'fr-FR' : undefined)}
                     </div>
                     {!isExpanded && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <DollarSign className="w-4 h-4" />
-                        {receipt.items.length} item{receipt.items.length !== 1 ? 's' : ''}
+                        {receipt.items.length} {isFr ? `article${receipt.items.length !== 1 ? 's' : ''}` : `item${receipt.items.length !== 1 ? 's' : ''}`}
                       </div>
                     )}
                   </div>
@@ -160,9 +163,9 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
 
                 <div className="text-right flex items-start gap-3">
                   <div>
-                    <div className="text-sm text-gray-500 mb-1">Total</div>
+                    <div className="text-sm text-gray-500 mb-1">{isFr ? 'Total' : 'Total'}</div>
                     {hideFinancials ? (
-                      <div className="text-xl font-bold text-gray-400 italic">Hidden</div>
+                      <div className="text-xl font-bold text-gray-400 italic">{isFr ? 'Masqué' : 'Hidden'}</div>
                     ) : (
                       <>
                         <div className="text-3xl font-bold text-gray-900">
@@ -170,12 +173,12 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
                         </div>
                         {refunded && (
                           <div className="text-sm text-red-600 mt-2">
-                            Refunded: {profile?.currency_preference} {totalRefunded.toLocaleString()}
+                            {isFr ? 'Remboursé' : 'Refunded'}: {profile?.currency_preference} {totalRefunded.toLocaleString()}
                           </div>
                         )}
                         {refunded && netAmount > 0 && (
                           <div className="text-sm text-gray-600 mt-1">
-                            Net: {profile?.currency_preference} {netAmount.toLocaleString()}
+                            {isFr ? 'Net' : 'Net'}: {profile?.currency_preference} {netAmount.toLocaleString()}
                           </div>
                         )}
                       </>
@@ -200,7 +203,7 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
               {isExpanded && (
                 <>
                   <div className="border-t border-gray-200 pt-4 px-6">
-                    <div className="text-sm font-medium text-gray-700 mb-3">Items</div>
+                    <div className="text-sm font-medium text-gray-700 mb-3">{isFr ? 'Articles' : 'Items'}</div>
                     <div className="space-y-2">
                       {receipt.items.map((item) => (
                         <div key={item.id} className="flex items-center justify-between text-sm bg-gray-50 p-3 rounded-lg">
@@ -216,7 +219,7 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
                             )}
                           </div>
                           {hideFinancials ? (
-                            <span className="text-gray-400 italic text-xs">Hidden</span>
+                            <span className="text-gray-400 italic text-xs">{isFr ? 'Masqué' : 'Hidden'}</span>
                           ) : (
                             <span className="font-semibold text-gray-900">
                               {profile?.currency_preference} {item.total.toLocaleString()}
@@ -230,7 +233,7 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
                   {receipt.notes && (
                     <div className="border-t border-gray-200 pt-4 px-6 mt-4">
                       <div className="text-sm text-gray-600">
-                        <span className="font-medium">Notes:</span> {receipt.notes}
+                        <span className="font-medium">{isFr ? 'Notes :' : 'Notes:'}</span> {receipt.notes}
                       </div>
                     </div>
                   )}
@@ -244,7 +247,7 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
                         }}
                         className="px-6 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
                       >
-                        Process Refund
+                        {isFr ? 'Traiter le remboursement' : 'Process Refund'}
                       </button>
                     </div>
                   )}
@@ -254,17 +257,17 @@ export function ReceiptsList({ refreshTrigger }: ReceiptsListProps) {
                       <div className="flex items-start gap-2">
                         <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <div className="font-medium text-red-900 mb-1">Refund Details</div>
+                          <div className="font-medium text-red-900 mb-1">{isFr ? 'Détails du remboursement' : 'Refund Details'}</div>
                           {receipt.refunds.map((refund) => (
                             <div key={refund.id} className="text-sm text-red-800">
                               {hideFinancials ? (
-                                <div>Amount: <span className="text-gray-400 italic">Hidden</span></div>
+                                <div>{isFr ? 'Montant' : 'Amount'}: <span className="text-gray-400 italic">{isFr ? 'Masqué' : 'Hidden'}</span></div>
                               ) : (
-                                <div>Amount: {profile?.currency_preference} {refund.refund_amount.toLocaleString()}</div>
+                                <div>{isFr ? 'Montant' : 'Amount'}: {profile?.currency_preference} {refund.refund_amount.toLocaleString()}</div>
                               )}
-                              <div>Reason: {refund.refund_reason}</div>
+                              <div>{isFr ? 'Motif' : 'Reason'}: {refund.refund_reason}</div>
                               <div className="text-xs text-red-600 mt-1">
-                                {new Date(refund.refunded_at).toLocaleString()}
+                                {new Date(refund.refunded_at).toLocaleString(isFr ? 'fr-FR' : undefined)}
                               </div>
                             </div>
                           ))}

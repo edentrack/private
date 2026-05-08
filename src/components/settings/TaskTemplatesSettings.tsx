@@ -3,6 +3,7 @@ import { Clock, Plus, Trash2, Save, X, ToggleLeft, ToggleRight, RefreshCw } from
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface TaskTemplate {
   id: string;
@@ -19,6 +20,8 @@ export function TaskTemplatesSettings() {
   const farmSpecies = useFarmSpecies();
   const groupTermPluralLower = farmSpecies.groupTermPlural.toLowerCase();
   const groupTermLower = farmSpecies.groupTerm.toLowerCase();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { currentFarm } = useAuth();
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +93,7 @@ export function TaskTemplatesSettings() {
   };
 
   const deleteTemplate = async (templateId: string) => {
-    if (!confirm('Are you sure you want to delete this task template?')) return;
+    if (!confirm(isFr ? 'Êtes-vous sûr de vouloir supprimer ce modèle de tâche ?' : 'Are you sure you want to delete this task template?')) return;
 
     try {
       const { error } = await supabase
@@ -151,9 +154,9 @@ export function TaskTemplatesSettings() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Task Templates</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{isFr ? 'Modèles de tâches' : 'Task Templates'}</h3>
           <p className="text-sm text-gray-500 mt-1">
-            Control which tasks appear daily and which are one-time reminders
+            {isFr ? 'Contrôlez quelles tâches apparaissent quotidiennement et lesquelles sont des rappels uniques' : 'Control which tasks appear daily and which are one-time reminders'}
           </p>
         </div>
         <button
@@ -161,27 +164,27 @@ export function TaskTemplatesSettings() {
           className="btn-neon inline-flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add Template
+          {isFr ? 'Ajouter un modèle' : 'Add Template'}
         </button>
       </div>
 
       {showAddForm && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-gray-900">New Task Template</h4>
+            <h4 className="font-semibold text-gray-900">{isFr ? 'Nouveau modèle de tâche' : 'New Task Template'}</h4>
             <button onClick={() => setShowAddForm(false)} className="text-gray-400 hover:text-gray-600">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Task Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Nom de la tâche' : 'Task Name'}</label>
             <input
               type="text"
               value={newTemplate.title}
               onChange={(e) => setNewTemplate({ ...newTemplate, title: e.target.value })}
               className="input-field"
-              placeholder="e.g., Check Litter"
+              placeholder={isFr ? 'ex. Vérifier la litière' : 'e.g., Check Litter'}
             />
           </div>
 
@@ -192,12 +195,12 @@ export function TaskTemplatesSettings() {
               onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
               className="input-field"
               rows={2}
-              placeholder="Optional description"
+              placeholder={isFr ? 'Description facultative' : 'Optional description'}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Heure' : 'Time'}</label>
             <input
               type="time"
               value={newTemplate.scheduled_times[0]}
@@ -207,7 +210,7 @@ export function TaskTemplatesSettings() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Fréquence' : 'Frequency'}</label>
             <div className="flex gap-4">
               <label className="flex items-center gap-2">
                 <input
@@ -216,7 +219,7 @@ export function TaskTemplatesSettings() {
                   onChange={() => setNewTemplate({ ...newTemplate, type_category: 'daily' })}
                   className="w-4 h-4 text-green-600"
                 />
-                <span className="text-sm">Daily</span>
+                <span className="text-sm">{isFr ? 'Quotidien' : 'Daily'}</span>
               </label>
               <label className="flex items-center gap-2">
                 <input
@@ -225,7 +228,7 @@ export function TaskTemplatesSettings() {
                   onChange={() => setNewTemplate({ ...newTemplate, type_category: 'one_time' })}
                   className="w-4 h-4 text-green-600"
                 />
-                <span className="text-sm">One-time reminder</span>
+                <span className="text-sm">{isFr ? 'Rappel unique' : 'One-time reminder'}</span>
               </label>
             </div>
           </div>
@@ -239,20 +242,22 @@ export function TaskTemplatesSettings() {
               className="w-4 h-4 text-green-600 rounded"
             />
             <label htmlFor="applies-to-all" className="text-sm text-gray-700">
-              {`Apply to all ${groupTermPluralLower} (don't duplicate per ${groupTermLower})`}
+              {isFr
+                ? `Appliquer à tous les ${groupTermPluralLower} (ne pas dupliquer par ${groupTermLower})`
+                : `Apply to all ${groupTermPluralLower} (don't duplicate per ${groupTermLower})`}
             </label>
           </div>
 
           <div className="flex gap-3">
             <button onClick={createTemplate} className="btn-neon">
               <Save className="w-4 h-4" />
-              Create Template
+              {isFr ? 'Créer le modèle' : 'Create Template'}
             </button>
             <button
               onClick={() => setShowAddForm(false)}
               className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
           </div>
         </div>
@@ -262,13 +267,13 @@ export function TaskTemplatesSettings() {
         {templates.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
             <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 mb-4">No task templates yet</p>
+            <p className="text-gray-600 mb-4">{isFr ? 'Aucun modèle de tâche pour le moment' : 'No task templates yet'}</p>
             <button
               onClick={() => setShowAddForm(true)}
               className="btn-neon inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Create Your First Template
+              {isFr ? 'Créer votre premier modèle' : 'Create Your First Template'}
             </button>
           </div>
         ) : (
@@ -293,12 +298,12 @@ export function TaskTemplatesSettings() {
                       {template.type_category === 'one_time' ? (
                         <>
                           <Clock className="w-3 h-3" />
-                          One-time
+                          {isFr ? 'Unique' : 'One-time'}
                         </>
                       ) : (
                         <>
                           <RefreshCw className="w-3 h-3" />
-                          Daily
+                          {isFr ? 'Quotidien' : 'Daily'}
                         </>
                       )}
                     </span>
@@ -322,8 +327,8 @@ export function TaskTemplatesSettings() {
                     }
                     className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
-                    <option value="daily">Daily</option>
-                    <option value="one_time">One-time</option>
+                    <option value="daily">{isFr ? 'Quotidien' : 'Daily'}</option>
+                    <option value="one_time">{isFr ? 'Unique' : 'One-time'}</option>
                   </select>
 
                   <button
@@ -333,7 +338,7 @@ export function TaskTemplatesSettings() {
                         ? 'text-green-600 hover:bg-green-50'
                         : 'text-gray-400 hover:bg-gray-100'
                     }`}
-                    title={template.is_enabled ? 'Enabled' : 'Disabled'}
+                    title={template.is_enabled ? (isFr ? 'Activé' : 'Enabled') : (isFr ? 'Désactivé' : 'Disabled')}
                   >
                     {template.is_enabled ? (
                       <ToggleRight className="w-6 h-6" />
@@ -345,7 +350,7 @@ export function TaskTemplatesSettings() {
                   <button
                     onClick={() => deleteTemplate(template.id)}
                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                    title="Delete template"
+                    title={isFr ? 'Supprimer le modèle' : 'Delete template'}
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
