@@ -670,9 +670,15 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                 <h3 className="text-base font-semibold text-gray-900">{t('settings.task_settings') || 'Task Settings'}</h3>
               </div>
               <p className="text-sm text-gray-600 mb-3">
-                {language === 'fr'
-                  ? 'Configurer le mode intervalle des œufs et les modèles de tâches.'
-                  : 'Configure egg interval mode and task templates.'}
+                {/* Egg-interval mode is poultry-only — for non-poultry farms
+                    we just describe the templates aspect. */}
+                {farmType === 'poultry'
+                  ? (language === 'fr'
+                      ? 'Configurer le mode intervalle des œufs et les modèles de tâches.'
+                      : 'Configure egg interval mode and task templates.')
+                  : (language === 'fr'
+                      ? 'Configurer les modèles de tâches récurrentes.'
+                      : 'Configure recurring task templates.')}
               </p>
               <button type="button" onClick={() => onNavigate('tasks')} className="btn-primary w-full inline-flex items-center justify-center gap-2">
                 {language === 'fr' ? 'Ouvrir les tâches' : 'Open Tasks'}

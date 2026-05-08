@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { getSpeciesModule, type AnimalSpecies } from './speciesModules';
 
 /**
  * Creditworthiness scoring for African smallholder farmers.
@@ -68,7 +69,7 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
   const since365 = isoDaysAgo(365);
 
   const [farmRes, flocksRes, salesRes, expensesRes, mortRes, waterRes, vaxRes] = await Promise.all([
-    supabase.from('farms').select('id, name, created_at').eq('id', farmId).single(),
+    supabase.from('farms').select('id, name, created_at, farm_type').eq('id', farmId).single(),
     supabase
       .from('flocks')
       .select('id, current_count, initial_count, status, start_date, archived_at')
@@ -101,10 +102,19 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
       .gte('scheduled_date', since365),
   ]);
 
-  const farm = farmRes.data as { id: string; name: string; created_at: string } | null;
+  const farm = farmRes.data as { id: string; name: string; created_at: string; farm_type?: string | null } | null;
   const daysOnPlatform = farm?.created_at
     ? Math.max(1, Math.floor((Date.now() - new Date(farm.created_at).getTime()) / 86400_000))
     : 0;
+  // Species-aware vocab for the human-readable detail strings the
+  // CreditScorePage component renders verbatim.
+  const speciesId: AnimalSpecies = (farm?.farm_type === 'aquaculture' || farm?.farm_type === 'rabbits')
+    ? farm.farm_type
+    : 'poultry';
+  const speciesModule = getSpeciesModule(speciesId);
+  const animalTermPluralLower = speciesModule.animalTermPlural.toLowerCase();
+  const groupTermPluralLower = speciesModule.groupTermPlural.toLowerCase();
+  const lossNounLower = speciesModule.lossNoun.toLowerCase();
 
   const flocks = (flocksRes.data || []) as Array<{
     current_count: number;
@@ -200,7 +210,7 @@ export async function buildCreditScore({ farmId, supabase }: BuildArgs): Promise
     label: 'Production track record',
     score: Math.min(25, productionScore),
     maxScore: 25,
-    detail: `${totalAnimals.toLocaleString()} animals, ${activeFlocks.length} active units, ${mortalityRatePct.toFixed(1)}% mortality`,
+    detail: `${totalAnimals.toLocaleString()} ${animalTermPluralLower}, ${activeFlocks.length} active ${groupTermPluralLower}, ${mortalityRatePct.toFixed(1)}% ${lossNounLower}`,
   });
 
   // 4) Tenure on platform (15 max) — longer history = more credible.

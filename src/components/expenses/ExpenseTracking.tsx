@@ -1006,7 +1006,10 @@ export function ExpenseTracking() {
         selectedFlockId={selectedFlockId}
         onFlockChange={handleFlockChange}
         showAllOption={true}
-        label={t('expenses.filter_by_flock')}
+        // Pass i18n label only on poultry; on aqua/rabbits, omit and let
+        // FlockSwitcher derive its species-aware default ("Filter by Pond"
+        // / "Filter by Rabbitry").
+        label={farmSpecies.id === 'poultry' ? t('expenses.filter_by_flock') : undefined}
       />
 
       {/* Quick Actions */}
@@ -1263,8 +1266,12 @@ export function ExpenseTracking() {
           </div>
           <div className="text-xs text-gray-600">
             {selectedFlockId
-              ? t('expenses.for_flock', { flock: getFlockName(selectedFlockId) })
-              : t('expenses.all_flocks_combined')}
+              ? (farmSpecies.id === 'poultry'
+                  ? t('expenses.for_flock', { flock: getFlockName(selectedFlockId) })
+                  : `For ${farmSpecies.groupTerm.toLowerCase()}: ${getFlockName(selectedFlockId)}`)
+              : (farmSpecies.id === 'poultry'
+                  ? t('expenses.all_flocks_combined')
+                  : `All ${farmSpecies.groupTermPlural.toLowerCase()} combined`)}
             {currency === 'USD' && ` • ≈ ${totalExpenses.toLocaleString('en-US')} CFA`}
           </div>
         </div>
