@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { farmLocalToUtcIso, getFarmTimeZone } from '../../utils/farmTime';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
@@ -23,6 +24,8 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const farmTz = getFarmTimeZone(currentFarm);
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   // Pick a placeholder relevant to the current species. Pre-fix the box
   // showed "Clean drinkers, Weigh birds…" on every farm; aqua and
   // rabbit operators don't think in those terms.
@@ -148,7 +151,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Add Task</h2>
+          <h2 className="text-xl font-bold text-gray-900">{isFr ? 'Ajouter une tâche' : 'Add Task'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -159,7 +162,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Task name</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{isFr ? 'Nom de la tâche' : 'Task name'}</label>
             <input
               type="text"
               value={title}
@@ -173,7 +176,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
 
           {/* Repeat */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Repeat</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">{isFr ? 'Récurrence' : 'Repeat'}</label>
             <div className="flex rounded-xl border border-gray-200 overflow-hidden">
               {(['once', 'weekly'] as const).map(opt => (
                 <button
@@ -184,7 +187,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
                     repeat === opt ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
                   }`}
                 >
-                  {opt === 'once' ? 'Once' : 'Weekly (recurring)'}
+                  {isFr ? (opt === 'once' ? 'Une fois' : 'Hebdomadaire (récurrent)') : (opt === 'once' ? 'Once' : 'Weekly (recurring)')}
                 </button>
               ))}
             </div>
@@ -194,7 +197,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
           {repeat === 'once' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Date</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{isFr ? 'Date' : 'Date'}</label>
                 <input
                   type="date"
                   value={dueDate}
@@ -204,7 +207,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Time</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{isFr ? 'Heure' : 'Time'}</label>
                 <input
                   type="time"
                   value={dueTime}
@@ -219,7 +222,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
           {repeat === 'weekly' && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Runs on</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">{isFr ? 'Jours' : 'Runs on'}</label>
                 <div className="flex gap-1.5">
                   {DAYS.map((day, idx) => (
                     <button
@@ -238,7 +241,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Time</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">{isFr ? 'Heure' : 'Time'}</label>
                 <input
                   type="time"
                   value={dueTime}
@@ -246,20 +249,20 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
               </div>
-              <p className="text-xs text-gray-400">This task will appear automatically every selected day.</p>
+              <p className="text-xs text-gray-400">{isFr ? "Cette tâche apparaîtra automatiquement chaque jour sélectionné." : 'This task will appear automatically every selected day.'}</p>
             </div>
           )}
 
           {/* Flock */}
           {flocks.length > 0 && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{`${farmSpecies.groupTerm} (optional)`}</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{isFr ? `${farmSpecies.groupTerm} (optionnel)` : `${farmSpecies.groupTerm} (optional)`}</label>
               <select
                 value={selectedFlockId}
                 onChange={e => setSelectedFlockId(e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
               >
-                <option value="">Farm-wide</option>
+                <option value="">{isFr ? 'Toute la ferme' : 'Farm-wide'}</option>
                 {flocks.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
             </div>
@@ -268,13 +271,13 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
           {/* Assign */}
           {members.length > 1 && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Assign to (optional)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{isFr ? 'Attribuer à (optionnel)' : 'Assign to (optional)'}</label>
               <select
                 value={assignedTo}
                 onChange={e => setAssignedTo(e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
               >
-                <option value="">Unassigned</option>
+                <option value="">{isFr ? 'Non attribué' : 'Unassigned'}</option>
                 {members.map(m => (
                   <option key={m.user_id} value={m.user_id}>{m.full_name} ({m.role})</option>
                 ))}
@@ -285,11 +288,15 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button type="submit" disabled={saving || !title.trim()}
               className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors">
-              {saving ? 'Saving…' : repeat === 'weekly' ? 'Save Recurring Task' : 'Save Task'}
+              {saving
+                ? (isFr ? 'Enregistrement…' : 'Saving…')
+                : repeat === 'weekly'
+                  ? (isFr ? 'Enregistrer la tâche récurrente' : 'Save Recurring Task')
+                  : (isFr ? 'Enregistrer la tâche' : 'Save Task')}
             </button>
           </div>
         </form>
