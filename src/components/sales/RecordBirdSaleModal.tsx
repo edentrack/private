@@ -338,14 +338,14 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.select_flock')}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{`Select ${species.groupTerm}`}</label>
             <select
               value={selectedFlockId}
               onChange={(e) => setSelectedFlockId(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 text-gray-900 bg-white"
               required
             >
-              <option value="">{t('sales.select_flock')}</option>
+              <option value="">{`Select ${species.groupTerm}`}</option>
               {flocks.map(f => (
                 <option key={f.id} value={f.id}>
                   {f.name} ({`Available: ${f.current_count.toLocaleString()} ${animalTermPluralLower}`}) - {f.type}
@@ -661,8 +661,8 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
       <div className="bg-white rounded-2xl border border-gray-200">
         {!showSuccess && (
           <div className="border-b border-gray-100 px-6 py-4">
-            <h2 className="text-xl font-bold text-gray-900">{t('sales.record_bird_sale')}</h2>
-            <p className="text-sm text-gray-500">{t('sales.track_bird_sales')}</p>
+            <h2 className="text-xl font-bold text-gray-900">{`Record ${animalTerm} Sale`}</h2>
+            <p className="text-sm text-gray-500">{`Track ${animalTermPluralLower} sales from your ${species.groupTerm.toLowerCase()}`}</p>
           </div>
         )}
         {content}
@@ -676,7 +676,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">{t('sales.record_sale')}</h2>
-            <p className="text-sm text-gray-500">{t('sales.track_bird_sales')}</p>
+            <p className="text-sm text-gray-500">{`Track ${animalTermPluralLower} sales from your ${species.groupTerm.toLowerCase()}`}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
             <X className="w-5 h-5 text-gray-500" />

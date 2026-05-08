@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { buildCreditScore, CreditScoreResult } from '../../utils/creditScore';
+import { useFarmSpecies } from '../../hooks/useSpecies';
+import { getCurrencySymbol } from '../../utils/currency';
 // creditworthinessPDF pulls in jsPDF + jspdf-autotable. Dynamic-imported in
 // handleDownload so the chunk only loads when the user clicks the button.
 
@@ -21,6 +23,10 @@ export function CreditScorePage() {
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState<CreditScoreResult | null>(null);
   const [downloading, setDownloading] = useState(false);
+  // Species-aware labels for "Active flocks/ponds" and "Animals on farm"
+  // — pre-fix the page used hardcoded generic copy on every species.
+  // Greg's audit, May 8 2026.
+  const farmSpecies = useFarmSpecies();
 
   const compute = useCallback(async () => {
     if (!currentFarm) return;
@@ -167,16 +173,30 @@ export function CreditScorePage() {
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
         <h2 className="font-medium text-gray-900 mb-3">Your operations summary</h2>
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-          <Stat label="Days on platform" value={`${score.metrics.daysOnPlatform}`} />
-          <Stat label="Active flocks/ponds" value={`${score.metrics.activeFlockCount}`} />
-          <Stat label="Animals on farm" value={fmt(score.metrics.totalAnimals)} />
-          <Stat label="Revenue (12mo)" value={`${currency} ${fmt(score.metrics.totalRevenueLast12mo)}`} />
-          <Stat label="Expenses (12mo)" value={`${currency} ${fmt(score.metrics.totalExpensesLast12mo)}`} />
-          <Stat
-            label="Net result (12mo)"
-            value={`${currency} ${fmt(score.metrics.netLast12mo)}`}
-            tone={score.metrics.netLast12mo >= 0 ? 'good' : 'bad'}
-          />
+          {(() => {
+            // Use the human currency symbol on UI (CFA, NGN). The PDF
+            // download keeps the ISO code for bank submission.
+            const currencyLabel = getCurrencySymbol(currency);
+            // Species-correct labels: poultry → "Active flocks", aquaculture
+            // → "Active ponds", rabbits → "Active rabbitries". And the
+            // "animals" tile uses the species term.
+            const groupLabel = `Active ${farmSpecies.groupTermPlural.toLowerCase()}`;
+            const animalsLabel = `${farmSpecies.animalTermPlural} on farm`;
+            return (
+              <>
+                <Stat label="Days on platform" value={`${score.metrics.daysOnPlatform}`} />
+                <Stat label={groupLabel} value={`${score.metrics.activeFlockCount}`} />
+                <Stat label={animalsLabel} value={fmt(score.metrics.totalAnimals)} />
+                <Stat label="Revenue (12mo)" value={`${currencyLabel} ${fmt(score.metrics.totalRevenueLast12mo)}`} />
+                <Stat label="Expenses (12mo)" value={`${currencyLabel} ${fmt(score.metrics.totalExpensesLast12mo)}`} />
+                <Stat
+                  label="Net result (12mo)"
+                  value={`${currencyLabel} ${fmt(score.metrics.netLast12mo)}`}
+                  tone={score.metrics.netLast12mo >= 0 ? 'good' : 'bad'}
+                />
+              </>
+            );
+          })()}
           <Stat label="Sales records" value={`${score.metrics.salesEntryCount}`} />
           <Stat label="Expense records" value={`${score.metrics.expenseEntryCount}`} />
           <Stat
