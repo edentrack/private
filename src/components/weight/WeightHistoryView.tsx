@@ -3,6 +3,7 @@ import { ArrowLeft, TrendingUp, TrendingDown, Calendar, Scale, Download, Trash2,
 import { supabase } from '../../lib/supabaseClient';
 import { Flock } from '../../types/database';
 import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { calculateCurrentWeek, getTargetWeight } from '../../utils/growthTargets';
 import { getSpeciesByType, getSpeciesModule } from '../../utils/speciesModules';
@@ -29,6 +30,8 @@ interface WeightHistoryViewProps {
 
 export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
   const { t } = useTranslation();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const species = getSpeciesModule(getSpeciesByType((flock.type as any) ?? 'Broiler'));
   const toast = useToast();
   const [logs, setLogs] = useState<WeightLog[]>([]);
@@ -169,16 +172,16 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
     let growthStatus = '';
     let statusColor = '';
     if (percentOfTarget >= 105) {
-      growthStatus = 'Excellent - Above Target';
+      growthStatus = isFr ? 'Excellent - Au-dessus de la cible' : 'Excellent - Above Target';
       statusColor = 'green';
     } else if (percentOfTarget >= 95) {
-      growthStatus = 'Good - On Target';
+      growthStatus = isFr ? 'Bon - Sur la cible' : 'Good - On Target';
       statusColor = 'green';
     } else if (percentOfTarget >= 85) {
-      growthStatus = 'Fair - Slightly Below Target';
+      growthStatus = isFr ? 'Moyen - Légèrement sous la cible' : 'Fair - Slightly Below Target';
       statusColor = 'yellow';
     } else {
-      growthStatus = 'Poor - Below Target';
+      growthStatus = isFr ? 'Faible - Sous la cible' : 'Poor - Below Target';
       statusColor = 'red';
     }
 
@@ -194,7 +197,7 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading history...</div>
+        <div className="text-gray-500">{isFr ? 'Chargement de l\'historique...' : 'Loading history...'}</div>
       </div>
     );
   }
@@ -209,13 +212,13 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
         >
           <ArrowLeft className="w-5 h-5" />
-          Back to History
+          {isFr ? 'Retour à l\'historique' : 'Back to History'}
         </button>
 
         <div className="bg-white rounded-3xl p-6 space-y-6">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Weight Check Results</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{isFr ? 'Résultats de la pesée' : 'Weight Check Results'}</h2>
               <div className="flex items-center gap-4">
                 <p className="text-gray-600">{new Date(selectedLog.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 {editingDateId === selectedLog.id ? (
@@ -263,15 +266,15 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
           <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-6">
             <div className="grid md:grid-cols-3 gap-4 text-center mb-4">
               <div>
-                <div className="text-sm text-gray-600 mb-1">Current Age</div>
-                <div className="text-2xl font-bold text-gray-900">Week {analysis.currentWeek}</div>
+                <div className="text-sm text-gray-600 mb-1">{isFr ? 'Âge actuel' : 'Current Age'}</div>
+                <div className="text-2xl font-bold text-gray-900">{isFr ? `Semaine ${analysis.currentWeek}` : `Week ${analysis.currentWeek}`}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600 mb-1">Average Weight</div>
+                <div className="text-sm text-gray-600 mb-1">{isFr ? 'Poids moyen' : 'Average Weight'}</div>
                 <div className="text-2xl font-bold text-gray-900">{selectedLog.average_weight.toFixed(2)} kg</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600 mb-1">Target for Week {analysis.currentWeek}</div>
+                <div className="text-sm text-gray-600 mb-1">{isFr ? `Cible pour la semaine ${analysis.currentWeek}` : `Target for Week ${analysis.currentWeek}`}</div>
                 <div className="text-2xl font-bold text-gray-900">{analysis.targetWeight.toFixed(2)} kg</div>
               </div>
             </div>
@@ -286,39 +289,41 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
                 <p className="font-bold text-lg">{analysis.growthStatus}</p>
               </div>
               <p className="text-sm text-gray-700">
-                Your {species.animalTermPlural.toLowerCase()} are at {analysis.percentOfTarget.toFixed(1)}% of target weight for Week {analysis.currentWeek}.
+                {isFr
+                  ? `Vos ${species.animalTermPlural.toLowerCase()} sont à ${analysis.percentOfTarget.toFixed(1)}% du poids cible pour la semaine ${analysis.currentWeek}.`
+                  : `Your ${species.animalTermPlural.toLowerCase()} are at ${analysis.percentOfTarget.toFixed(1)}% of target weight for Week ${analysis.currentWeek}.`}
               </p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-4 gap-4">
             <div className="bg-blue-50 rounded-2xl p-4">
-              <div className="text-sm text-gray-600 mb-1">Average Weight</div>
+              <div className="text-sm text-gray-600 mb-1">{isFr ? 'Poids moyen' : 'Average Weight'}</div>
               <div className="text-3xl font-bold text-gray-900">{selectedLog.average_weight.toFixed(2)} kg</div>
             </div>
             <div className="bg-green-50 rounded-2xl p-4">
-              <div className="text-sm text-gray-600 mb-1">Sample Size</div>
+              <div className="text-sm text-gray-600 mb-1">{isFr ? 'Taille de l\'échantillon' : 'Sample Size'}</div>
               <div className="text-3xl font-bold text-gray-900">{selectedLog.sample_size}</div>
             </div>
             <div className="bg-amber-50 rounded-2xl p-4">
-              <div className="text-sm text-gray-600 mb-1">Weight Range</div>
+              <div className="text-sm text-gray-600 mb-1">{isFr ? 'Plage de poids' : 'Weight Range'}</div>
               <div className="text-lg font-bold text-gray-900">{selectedLog.min_weight.toFixed(2)} - {selectedLog.max_weight.toFixed(2)} kg</div>
             </div>
             <div className="bg-purple-50 rounded-2xl p-4">
-              <div className="text-sm text-gray-600 mb-1">Variation (CV)</div>
+              <div className="text-sm text-gray-600 mb-1">{isFr ? 'Variation (CV)' : 'Variation (CV)'}</div>
               <div className="text-3xl font-bold text-gray-900">{selectedLog.coefficient_variation.toFixed(1)}%</div>
             </div>
           </div>
 
           <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-6">
-            <h3 className="font-bold text-lg text-gray-900 mb-4">Flock Estimates</h3>
+            <h3 className="font-bold text-lg text-gray-900 mb-4">{isFr ? 'Estimations du lot' : 'Flock Estimates'}</h3>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-600 mb-1">Total {species.animalTermPlural}</div>
+                <div className="text-sm text-gray-600 mb-1">{isFr ? `Total ${species.animalTermPlural}` : `Total ${species.animalTermPlural}`}</div>
                 <div className="text-2xl font-bold text-gray-900">{flock.current_count?.toLocaleString()}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600 mb-1">Estimated Total Weight</div>
+                <div className="text-sm text-gray-600 mb-1">{isFr ? 'Poids total estimé' : 'Estimated Total Weight'}</div>
                 <div className="text-2xl font-bold text-gray-900">{selectedLog.total_estimated_weight.toLocaleString()} kg</div>
               </div>
             </div>
@@ -326,15 +331,15 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
 
           {selectedLog.daily_gain !== null && (
             <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
-              <h3 className="font-bold text-lg text-gray-900 mb-4">Growth Performance</h3>
+              <h3 className="font-bold text-lg text-gray-900 mb-4">{isFr ? 'Performance de croissance' : 'Growth Performance'}</h3>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <div className="text-sm text-gray-600 mb-1">Daily Gain</div>
-                  <div className="text-3xl font-bold text-gray-900">{selectedLog.daily_gain.toFixed(0)} g/day</div>
+                  <div className="text-sm text-gray-600 mb-1">{isFr ? 'Gain quotidien' : 'Daily Gain'}</div>
+                  <div className="text-3xl font-bold text-gray-900">{selectedLog.daily_gain.toFixed(0)} {isFr ? 'g/jour' : 'g/day'}</div>
                 </div>
                 {flock.type === 'Broiler' && selectedLog.market_ready && (
                   <div className="bg-green-100 border-2 border-green-300 rounded-xl px-6 py-3">
-                    <div className="text-green-800 font-bold">Market Ready</div>
+                    <div className="text-green-800 font-bold">{isFr ? 'Prêt pour le marché' : 'Market Ready'}</div>
                   </div>
                 )}
               </div>
@@ -343,7 +348,7 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
 
           {selectedLog.individual_weights && selectedLog.individual_weights.length > 0 && (
             <div className="bg-gray-50 rounded-2xl p-6">
-              <h3 className="font-bold text-lg text-gray-900 mb-4">Individual Weights</h3>
+              <h3 className="font-bold text-lg text-gray-900 mb-4">{isFr ? 'Poids individuels' : 'Individual Weights'}</h3>
               <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
                 {selectedLog.individual_weights.map((weight, idx) => (
                   <div key={idx} className="bg-white rounded-lg p-2 text-center">
@@ -366,14 +371,14 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
       >
         <ArrowLeft className="w-5 h-5" />
-        Back to Weight Check
+        {isFr ? 'Retour à la pesée' : 'Back to Weight Check'}
       </button>
 
       <div className="bg-white rounded-3xl p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Weight Check History</h2>
-            <p className="text-gray-600">{flock.name} - {logs.length} checks recorded</p>
+            <h2 className="text-2xl font-bold text-gray-900">{isFr ? 'Historique des pesées' : 'Weight Check History'}</h2>
+            <p className="text-gray-600">{flock.name} - {logs.length} {isFr ? 'pesées enregistrées' : 'checks recorded'}</p>
           </div>
           {logs.length > 0 && (
             <button
@@ -381,7 +386,7 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
               className="flex items-center gap-2 bg-white border border-gray-200 text-gray-900 px-6 py-3 rounded-xl font-medium hover:bg-[#f5f0e8] transition-all"
             >
               <Download className="w-5 h-5" />
-              Export CSV
+              {isFr ? 'Exporter CSV' : 'Export CSV'}
             </button>
           )}
         </div>
@@ -389,31 +394,31 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
         {logs.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <Scale className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p>No weight checks recorded yet</p>
+            <p>{isFr ? 'Aucune pesée enregistrée pour le moment' : 'No weight checks recorded yet'}</p>
           </div>
         ) : (
           <>
             <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-2xl p-6 mb-6">
-              <h3 className="font-bold text-lg text-gray-900 mb-4">Progress Overview</h3>
+              <h3 className="font-bold text-lg text-gray-900 mb-4">{isFr ? 'Aperçu des progrès' : 'Progress Overview'}</h3>
               <div className="grid md:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Latest Weight</div>
+                  <div className="text-sm text-gray-600 mb-1">{isFr ? 'Dernier poids' : 'Latest Weight'}</div>
                   <div className="text-2xl font-bold text-gray-900">{logs[0].average_weight.toFixed(2)} kg</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">First Weight</div>
+                  <div className="text-sm text-gray-600 mb-1">{isFr ? 'Premier poids' : 'First Weight'}</div>
                   <div className="text-2xl font-bold text-gray-900">{logs[logs.length - 1].average_weight.toFixed(2)} kg</div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Total Gain</div>
+                  <div className="text-sm text-gray-600 mb-1">{isFr ? 'Gain total' : 'Total Gain'}</div>
                   <div className="text-2xl font-bold text-green-600">
                     +{(logs[0].average_weight - logs[logs.length - 1].average_weight).toFixed(2)} kg
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Avg Daily Gain</div>
+                  <div className="text-sm text-gray-600 mb-1">{isFr ? 'Gain quotidien moyen' : 'Avg Daily Gain'}</div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {logs[0].daily_gain ? `${logs[0].daily_gain.toFixed(0)} g/day` : 'N/A'}
+                    {logs[0].daily_gain ? `${logs[0].daily_gain.toFixed(0)} ${isFr ? 'g/jour' : 'g/day'}` : 'N/A'}
                   </div>
                 </div>
               </div>
@@ -443,18 +448,18 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
                           </div>
                           {log.market_ready && flock.type === 'Broiler' && (
                             <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">
-                              Market Ready
+                              {isFr ? 'Prêt pour le marché' : 'Market Ready'}
                             </span>
                           )}
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                           <div>
-                            <div className="text-xs text-gray-500 mb-1">Avg Weight</div>
+                            <div className="text-xs text-gray-500 mb-1">{isFr ? 'Poids moy.' : 'Avg Weight'}</div>
                             <div className="text-xl font-bold text-gray-900">{log.average_weight.toFixed(2)} kg</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 mb-1">Sample Size</div>
+                            <div className="text-xs text-gray-500 mb-1">{isFr ? 'Échantillon' : 'Sample Size'}</div>
                             <div className="text-xl font-bold text-gray-900">{log.sample_size}</div>
                           </div>
                           <div>
@@ -462,13 +467,13 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
                             <div className="text-xl font-bold text-gray-900">{log.coefficient_variation.toFixed(1)}%</div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 mb-1">Daily Gain</div>
+                            <div className="text-xs text-gray-500 mb-1">{isFr ? 'Gain quotidien' : 'Daily Gain'}</div>
                             <div className="text-xl font-bold text-gray-900">
                               {log.daily_gain ? `${log.daily_gain.toFixed(0)} g` : 'N/A'}
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs text-gray-500 mb-1">Total Weight</div>
+                            <div className="text-xs text-gray-500 mb-1">{isFr ? 'Poids total' : 'Total Weight'}</div>
                             <div className="text-xl font-bold text-gray-900">{log.total_estimated_weight.toLocaleString()} kg</div>
                           </div>
                         </div>
@@ -479,18 +484,18 @@ export function WeightHistoryView({ flock, onBack }: WeightHistoryViewProps) {
                               <>
                                 <TrendingUp className="w-4 h-4 text-green-600" />
                                 <span className="text-sm font-medium text-green-600">
-                                  +{weightChange.toFixed(2)} kg since last check
+                                  +{weightChange.toFixed(2)} kg {isFr ? 'depuis la dernière pesée' : 'since last check'}
                                 </span>
                               </>
                             ) : weightChange < 0 ? (
                               <>
                                 <TrendingDown className="w-4 h-4 text-red-600" />
                                 <span className="text-sm font-medium text-red-600">
-                                  {weightChange.toFixed(2)} kg since last check
+                                  {weightChange.toFixed(2)} kg {isFr ? 'depuis la dernière pesée' : 'since last check'}
                                 </span>
                               </>
                             ) : (
-                              <span className="text-sm text-gray-500">No change since last check</span>
+                              <span className="text-sm text-gray-500">{isFr ? 'Aucun changement depuis la dernière pesée' : 'No change since last check'}</span>
                             )}
                           </div>
                         )}

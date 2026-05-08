@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, Circle, Package, Egg, AlertTriangle, Calendar, Clock, Eye, EyeOff, ListTodo } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Task, Flock, TaskTemplate } from '../../types/database';
 import { RecordFeedUsageModal } from './RecordFeedUsageModal';
 import { LogCollectionModal } from '../eggs/LogCollectionModal';
@@ -15,6 +16,8 @@ interface DailyTaskTemplatesProps {
 
 export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps) {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [tasks, setTasks] = useState<Task[]>([]);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,13 +86,15 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
 
     const check = canUserCompleteTask(currentFarm.role || 'worker', task);
     if (!check.allowed) {
-      alert(check.reason || 'You cannot complete this task right now.');
+      alert(check.reason || (isFr ? 'Vous ne pouvez pas terminer cette tâche pour le moment.' : 'You cannot complete this task right now.'));
       return;
     }
 
     if (check.isOutsideWindow) {
       const confirm = window.confirm(
-        'This task is outside its scheduled window. Do you want to override and complete it anyway?'
+        isFr
+          ? 'Cette tâche est en dehors de sa fenêtre programmée. Voulez-vous la terminer quand même ?'
+          : 'This task is outside its scheduled window. Do you want to override and complete it anyway?'
       );
       if (!confirm) return;
     }
@@ -121,7 +126,7 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
       onTaskCompleted();
     } catch (error) {
       console.error('Error completing checklist task:', error);
-      alert('Failed to complete task. Please try again.');
+      alert(isFr ? 'Échec de l\'achèvement de la tâche. Veuillez réessayer.' : 'Failed to complete task. Please try again.');
     }
   };
 
@@ -130,7 +135,7 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
 
     const check = canUserCompleteTask(currentFarm.role || 'worker', task);
     if (!check.allowed) {
-      alert(check.reason || 'You cannot complete this task right now.');
+      alert(check.reason || (isFr ? 'Vous ne pouvez pas terminer cette tâche pour le moment.' : 'You cannot complete this task right now.'));
       return;
     }
 
@@ -199,7 +204,7 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
 
   const getTaskCategory = (task: Task): string => {
     const template = templates.find((t) => t.id === task.template_id);
-    return template?.category || 'Custom Tasks';
+    return template?.category || (isFr ? 'Tâches personnalisées' : 'Custom Tasks');
   };
 
   const isDataTask = (task: Task): boolean => {
@@ -226,7 +231,7 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading daily tasks...</div>
+        <div className="text-gray-500">{isFr ? 'Chargement des tâches quotidiennes...' : 'Loading daily tasks...'}</div>
       </div>
     );
   }
@@ -237,9 +242,9 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
         <div className="flex items-center gap-3">
           <Calendar className="w-8 h-8 text-[#3D5F42]" />
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Daily Tasks</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{isFr ? 'Tâches quotidiennes' : 'Daily Tasks'}</h2>
             <p className="text-sm text-gray-600">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {new Date().toLocaleDateString(isFr ? 'fr-FR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
           </div>
         </div>
@@ -247,7 +252,7 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
         {flocks.length > 0 && (
           <div>
             <label htmlFor="flock-select" className="block text-sm font-medium text-gray-700 mb-1">
-              Active Flock
+              {isFr ? 'Lot actif' : 'Active Flock'}
             </label>
             <select
               id="flock-select"
@@ -317,18 +322,18 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
                       )}
                       {dataTask && (
                         <span className="inline-block mt-1 text-xs font-medium text-[#3D5F42]">
-                          Requires input
+                          {isFr ? 'Saisie requise' : 'Requires input'}
                         </span>
                       )}
                     </div>
                     {status === 'overdue' && (
                       <span className="text-xs font-medium text-red-600 px-2 py-1 bg-red-100 rounded-lg">
-                        Overdue
+                        {isFr ? 'En retard' : 'Overdue'}
                       </span>
                     )}
                     {status === 'due_now' && (
                       <span className="text-xs font-medium text-orange-600 px-2 py-1 bg-orange-100 rounded-lg">
-                        Due Now
+                        {isFr ? 'À faire maintenant' : 'Due Now'}
                       </span>
                     )}
                   </button>
@@ -344,12 +349,16 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
                     {showCompletedInCategory ? (
                       <>
                         <EyeOff className="w-4 h-4" />
-                        Hide {completedTasks.length} completed task{completedTasks.length > 1 ? 's' : ''}
+                        {isFr
+                          ? `Masquer ${completedTasks.length} tâche${completedTasks.length > 1 ? 's' : ''} terminée${completedTasks.length > 1 ? 's' : ''}`
+                          : `Hide ${completedTasks.length} completed task${completedTasks.length > 1 ? 's' : ''}`}
                       </>
                     ) : (
                       <>
                         <Eye className="w-4 h-4" />
-                        Show {completedTasks.length} completed task{completedTasks.length > 1 ? 's' : ''}
+                        {isFr
+                          ? `Afficher ${completedTasks.length} tâche${completedTasks.length > 1 ? 's' : ''} terminée${completedTasks.length > 1 ? 's' : ''}`
+                          : `Show ${completedTasks.length} completed task${completedTasks.length > 1 ? 's' : ''}`}
                       </>
                     )}
                   </button>
@@ -371,16 +380,16 @@ export function DailyTaskTemplates({ onTaskCompleted }: DailyTaskTemplatesProps)
                             )}
                             {task.completed_at && (
                               <p className="text-xs text-green-600 mt-1">
-                                Completed at{' '}
-                                {new Date(task.completed_at).toLocaleTimeString('en-US', {
+                                {isFr ? 'Terminé à ' : 'Completed at '}
+                                {new Date(task.completed_at).toLocaleTimeString(isFr ? 'fr-FR' : 'en-US', {
                                   hour: 'numeric',
                                   minute: '2-digit',
-                                  hour12: true,
+                                  hour12: !isFr,
                                 })}
                               </p>
                             )}
                           </div>
-                          <span className="text-xs font-medium text-green-600">Completed</span>
+                          <span className="text-xs font-medium text-green-600">{isFr ? 'Terminé' : 'Completed'}</span>
                         </div>
                       ))}
                     </div>

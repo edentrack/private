@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Sprout, AlertCircle, CheckCircle, Loader2, Users, Shield, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface InviteAcceptPageProps {
   token: string;
@@ -22,6 +23,8 @@ interface InviteInfo {
 
 export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }: InviteAcceptPageProps) {
   const { user, loading: authLoading } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +57,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
       const result = data as { success: boolean; error?: string; error_code?: string; invite?: InviteInfo };
 
       if (!result.success) {
-        setError(result.error || 'Invalid invitation');
+        setError(result.error || (isFr ? 'Invitation invalide' : 'Invalid invitation'));
         setErrorCode(result.error_code || null);
         return;
       }
@@ -62,7 +65,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
       setInviteInfo(result.invite!);
     } catch (err: any) {
       console.error('Error loading invite:', err);
-      setError(err.message || 'Failed to load invitation');
+      setError(err.message || (isFr ? 'Échec du chargement de l\'invitation' : 'Failed to load invitation'));
     } finally {
       setLoading(false);
     }
@@ -79,7 +82,9 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
       const inviteEmail = inviteInfo.email.toLowerCase();
 
       if (userEmail !== inviteEmail) {
-        setError(`This invitation was sent to ${inviteInfo.email}. You are signed in as ${user.email}. Please sign out and sign in with the correct account.`);
+        setError(isFr
+          ? `Cette invitation a été envoyée à ${inviteInfo.email}. Vous êtes connecté en tant que ${user.email}. Veuillez vous déconnecter et vous connecter avec le bon compte.`
+          : `This invitation was sent to ${inviteInfo.email}. You are signed in as ${user.email}. Please sign out and sign in with the correct account.`);
         setAccepting(false);
         return;
       }
@@ -93,7 +98,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
       const result = data as { success: boolean; error?: string; message?: string; farm_id?: string };
 
       if (!result.success) {
-        setError(result.error || 'Failed to accept invitation');
+        setError(result.error || (isFr ? 'Échec de l\'acceptation de l\'invitation' : 'Failed to accept invitation'));
         return;
       }
 
@@ -104,7 +109,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
       }, 2000);
     } catch (err: any) {
       console.error('Error accepting invite:', err);
-      setError(err.message || 'Failed to accept invitation');
+      setError(err.message || (isFr ? 'Échec de l\'acceptation de l\'invitation' : 'Failed to accept invitation'));
     } finally {
       setAccepting(false);
     }
@@ -115,7 +120,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
       <div className="min-h-screen bg-[#F5F1E8] flex items-center justify-center p-4">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-[#3D5F42] mx-auto mb-4" />
-          <p className="text-gray-600">Loading invitation...</p>
+          <p className="text-gray-600">{isFr ? 'Chargement de l\'invitation...' : 'Loading invitation...'}</p>
         </div>
       </div>
     );
@@ -138,10 +143,10 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
                 <AlertCircle className="w-8 h-8 text-red-600" />
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">
-                {errorCode === 'EXPIRED' ? 'Invitation Expired' :
-                 errorCode === 'ALREADY_ACCEPTED' ? 'Already Accepted' :
-                 errorCode === 'REVOKED' ? 'Invitation Revoked' :
-                 'Invalid Invitation'}
+                {errorCode === 'EXPIRED' ? (isFr ? 'Invitation expirée' : 'Invitation Expired') :
+                 errorCode === 'ALREADY_ACCEPTED' ? (isFr ? 'Déjà acceptée' : 'Already Accepted') :
+                 errorCode === 'REVOKED' ? (isFr ? 'Invitation révoquée' : 'Invitation Revoked') :
+                 (isFr ? 'Invitation invalide' : 'Invalid Invitation')}
               </h2>
               <p className="text-gray-600 mb-6">{error}</p>
 
@@ -149,7 +154,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
                 onClick={onGoToLogin}
                 className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-medium hover:bg-[#2F4A34] transition-colors"
               >
-                Go to Login
+                {isFr ? 'Aller à la connexion' : 'Go to Login'}
               </button>
             </div>
           </div>
@@ -174,11 +179,15 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Welcome to {inviteInfo?.farm_name}!</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">{isFr ? `Bienvenue à ${inviteInfo?.farm_name} !` : `Welcome to ${inviteInfo?.farm_name}!`}</h2>
               <p className="text-gray-600 mb-4">
-                You have successfully joined the farm as a <strong className="capitalize">{inviteInfo?.role}</strong>.
+                {isFr ? (
+                  <>Vous avez rejoint la ferme avec succès en tant que <strong className="capitalize">{inviteInfo?.role}</strong>.</>
+                ) : (
+                  <>You have successfully joined the farm as a <strong className="capitalize">{inviteInfo?.role}</strong>.</>
+                )}
               </p>
-              <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+              <p className="text-sm text-gray-500">{isFr ? 'Redirection vers le tableau de bord...' : 'Redirecting to dashboard...'}</p>
             </div>
           </div>
         </div>
@@ -196,7 +205,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
             <Sprout className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">EBENEZER FARM</h1>
-          <p className="text-gray-600">You've been invited to join a farm</p>
+          <p className="text-gray-600">{isFr ? 'Vous avez été invité(e) à rejoindre une ferme' : 'You\'ve been invited to join a farm'}</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-sm p-8">
@@ -205,11 +214,11 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
               <Users className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Join {inviteInfo.farm_name}
+              {isFr ? `Rejoindre ${inviteInfo.farm_name}` : `Join ${inviteInfo.farm_name}`}
             </h2>
             {inviteInfo.inviter_name && (
               <p className="text-gray-600 text-sm mb-4">
-                {inviteInfo.inviter_name} has invited you to join their farm
+                {isFr ? `${inviteInfo.inviter_name} vous a invité(e) à rejoindre sa ferme` : `${inviteInfo.inviter_name} has invited you to join their farm`}
               </p>
             )}
           </div>
@@ -217,19 +226,19 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
           <div className="bg-gray-50 rounded-xl p-4 mb-6">
             <div className="flex items-center gap-3 mb-3">
               <Shield className="w-5 h-5 text-gray-600" />
-              <span className="text-sm text-gray-600">You will join as:</span>
+              <span className="text-sm text-gray-600">{isFr ? 'Vous rejoindrez en tant que :' : 'You will join as:'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="font-semibold text-gray-900 capitalize">{inviteInfo.role}</span>
               <span className="text-xs text-gray-500">
-                Expires {new Date(inviteInfo.expires_at).toLocaleDateString()}
+                {isFr ? `Expire le ${new Date(inviteInfo.expires_at).toLocaleDateString('fr-FR')}` : `Expires ${new Date(inviteInfo.expires_at).toLocaleDateString()}`}
               </span>
             </div>
           </div>
 
           <div className="bg-blue-50 rounded-xl p-4 mb-6">
             <p className="text-sm text-blue-800">
-              <strong>Invitation for:</strong> {inviteInfo.email}
+              <strong>{isFr ? 'Invitation pour :' : 'Invitation for:'}</strong> {inviteInfo.email}
             </p>
           </div>
 
@@ -238,14 +247,14 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
               {accepting ? (
                 <div className="flex items-center justify-center gap-2 py-3">
                   <Loader2 className="w-5 h-5 animate-spin text-[#3D5F42]" />
-                  <span className="text-gray-600">Joining farm...</span>
+                  <span className="text-gray-600">{isFr ? 'Adhésion à la ferme...' : 'Joining farm...'}</span>
                 </div>
               ) : (
                 <button
                   onClick={handleAcceptInvite}
                   className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-medium hover:bg-[#2F4A34] transition-colors flex items-center justify-center gap-2"
                 >
-                  Accept Invitation
+                  {isFr ? 'Accepter l\'invitation' : 'Accept Invitation'}
                   <ArrowRight className="w-5 h-5" />
                 </button>
               )}
@@ -253,13 +262,13 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-gray-600 text-center mb-4">
-                Sign in or create an account to accept this invitation
+                {isFr ? 'Connectez-vous ou créez un compte pour accepter cette invitation' : 'Sign in or create an account to accept this invitation'}
               </p>
               <button
                 onClick={onGoToLogin}
                 className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-medium hover:bg-[#2F4A34] transition-colors"
               >
-                Sign In
+                {isFr ? 'Se connecter' : 'Sign In'}
               </button>
               <button
                 onClick={() => {
@@ -270,7 +279,7 @@ export function InviteAcceptPage({ token, onGoToLogin, onGoToSignup, onSuccess }
                 }}
                 className="w-full bg-white text-[#3D5F42] py-3 rounded-xl font-medium border-2 border-[#3D5F42] hover:bg-[#3D5F42]/5 transition-colors"
               >
-                Create Account
+                {isFr ? 'Créer un compte' : 'Create Account'}
               </button>
             </div>
           )}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calendar, User, Edit, Trash2, CheckCircle } from 'lucide-react';
 import { SalesInvoice, Customer } from '../../types/database';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { EditInvoiceModal } from './EditInvoiceModal';
 
@@ -13,11 +14,13 @@ interface InvoiceListProps {
 
 export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps) {
   const { profile } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [editingInvoice, setEditingInvoice] = useState<SalesInvoice | null>(null);
 
   const getCustomerName = (customerId: string | null) => {
-    if (!customerId) return 'Walk-in Customer';
-    return customers.find((c) => c.id === customerId)?.name || 'Unknown';
+    if (!customerId) return isFr ? 'Client de passage' : 'Walk-in Customer';
+    return customers.find((c) => c.id === customerId)?.name || (isFr ? 'Inconnu' : 'Unknown');
   };
 
   const getStatusColor = (status: string) => {
@@ -36,7 +39,7 @@ export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps
   };
 
   const handleMarkAsPaid = async (invoice: SalesInvoice) => {
-    if (!confirm('Mark this invoice as paid?')) return;
+    if (!confirm(isFr ? 'Marquer cette facture comme payée ?' : 'Mark this invoice as paid?')) return;
 
     try {
       const { error } = await supabase
@@ -53,12 +56,12 @@ export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps
       onRefresh();
     } catch (error) {
       console.error('Error marking invoice as paid:', error);
-      alert('Failed to update invoice');
+      alert(isFr ? 'Échec de la mise à jour de la facture' : 'Failed to update invoice');
     }
   };
 
   const handleDelete = async (invoice: SalesInvoice) => {
-    if (!confirm(`Delete invoice #${invoice.invoice_number}? This cannot be undone.`)) return;
+    if (!confirm(isFr ? `Supprimer la facture n°${invoice.invoice_number} ? Cette action est irréversible.` : `Delete invoice #${invoice.invoice_number}? This cannot be undone.`)) return;
 
     try {
       const { error } = await supabase
@@ -70,14 +73,14 @@ export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps
       onRefresh();
     } catch (error) {
       console.error('Error deleting invoice:', error);
-      alert('Failed to delete invoice');
+      alert(isFr ? 'Échec de la suppression de la facture' : 'Failed to delete invoice');
     }
   };
 
   if (invoices.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">No invoices yet. Create your first invoice to get started.</p>
+        <p className="text-gray-500">{isFr ? 'Aucune facture pour le moment. Créez votre première facture pour commencer.' : 'No invoices yet. Create your first invoice to get started.'}</p>
       </div>
     );
   }
@@ -102,18 +105,18 @@ export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps
                   </div>
                   <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
                     <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                    {new Date(invoice.invoice_date).toLocaleDateString()}
+                    {new Date(invoice.invoice_date).toLocaleDateString(isFr ? 'fr-FR' : undefined)}
                   </div>
                 </div>
               </div>
               <div className="sm:text-right flex-shrink-0">
-                <div className="text-xs sm:text-sm text-gray-500">Total</div>
+                <div className="text-xs sm:text-sm text-gray-500">{isFr ? 'Total' : 'Total'}</div>
                 <div className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
                   {profile?.currency_preference} {invoice.total.toLocaleString()}
                 </div>
                 {invoice.status !== 'paid' && invoice.amount_paid > 0 && (
                   <div className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
-                    Paid: {profile?.currency_preference} {invoice.amount_paid.toLocaleString()}
+                    {isFr ? 'Payé' : 'Paid'}: {profile?.currency_preference} {invoice.amount_paid.toLocaleString()}
                   </div>
                 )}
               </div>
@@ -125,7 +128,7 @@ export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps
                 className="flex-1 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center justify-center gap-2 text-sm"
               >
                 <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                Edit
+                {isFr ? 'Modifier' : 'Edit'}
               </button>
 
               {invoice.status !== 'paid' && (
@@ -134,7 +137,7 @@ export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps
                   className="flex-1 px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors inline-flex items-center justify-center gap-2 text-sm"
                 >
                   <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Mark Paid
+                  {isFr ? 'Marquer payée' : 'Mark Paid'}
                 </button>
               )}
 
@@ -143,7 +146,7 @@ export function InvoiceList({ invoices, customers, onRefresh }: InvoiceListProps
                 className="sm:flex-initial px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-2 text-sm"
               >
                 <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                Delete
+                {isFr ? 'Supprimer' : 'Delete'}
               </button>
             </div>
           </div>

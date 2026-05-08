@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bell, Plus, Trash2, X, Save } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 
 /**
@@ -59,6 +60,8 @@ interface PondAlertsSettingsProps {
 export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
   const { currentFarm } = useAuth();
   const toast = useToast();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
 
   const [flocks, setFlocks] = useState<AquaFlock[]>([]);
   const [alerts, setAlerts] = useState<PondAlert[]>([]);
@@ -99,9 +102,9 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
     if (error) {
       if (error.code === '42P01' || error.message?.includes('pond_alerts')) {
         setAlerts([]);
-        toast.info('Pond alerts table not yet applied — run migration 20260506000001 to enable.');
+        toast.info(isFr ? 'Table des alertes d\'étang non appliquée — exécutez la migration 20260506000001 pour l\'activer.' : 'Pond alerts table not yet applied — run migration 20260506000001 to enable.');
       } else {
-        toast.error('Failed to load alerts');
+        toast.error(isFr ? 'Échec du chargement des alertes' : 'Failed to load alerts');
       }
     } else {
       setAlerts((data as PondAlert[]) || []);
@@ -117,12 +120,12 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
 
   const handleSubmit = async () => {
     if (!formFlockId) {
-      toast.error('Please select a pond');
+      toast.error(isFr ? 'Veuillez sélectionner un étang' : 'Please select a pond');
       return;
     }
     const threshold = parseFloat(formThreshold);
     if (isNaN(threshold)) {
-      toast.error('Please enter a valid threshold');
+      toast.error(isFr ? 'Veuillez saisir un seuil valide' : 'Please enter a valid threshold');
       return;
     }
     setSubmitting(true);
@@ -139,9 +142,9 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
     );
     setSubmitting(false);
     if (error) {
-      toast.error('Failed to save alert rule');
+      toast.error(isFr ? 'Échec de l\'enregistrement de la règle' : 'Failed to save alert rule');
     } else {
-      toast.success('Alert rule saved');
+      toast.success(isFr ? 'Règle d\'alerte enregistrée' : 'Alert rule saved');
       setShowForm(false);
       loadAlerts();
     }
@@ -154,28 +157,28 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
       .eq('id', alert.id)
       .eq('farm_id', currentFarm!.id);
     if (error) {
-      toast.error('Failed to toggle alert');
+      toast.error(isFr ? 'Échec de la modification de l\'alerte' : 'Failed to toggle alert');
     } else {
       loadAlerts();
     }
   };
 
   const handleDelete = async (alert: PondAlert) => {
-    if (!confirm('Delete this alert rule?')) return;
+    if (!confirm(isFr ? 'Supprimer cette règle d\'alerte ?' : 'Delete this alert rule?')) return;
     const { error } = await supabase
       .from('pond_alerts')
       .delete()
       .eq('id', alert.id)
       .eq('farm_id', currentFarm!.id);
     if (error) {
-      toast.error('Failed to delete alert');
+      toast.error(isFr ? 'Échec de la suppression' : 'Failed to delete alert');
     } else {
-      toast.success('Alert deleted');
+      toast.success(isFr ? 'Alerte supprimée' : 'Alert deleted');
       loadAlerts();
     }
   };
 
-  const flockName = (id: string) => flocks.find(f => f.id === id)?.name || 'Unknown pond';
+  const flockName = (id: string) => flocks.find(f => f.id === id)?.name || (isFr ? 'Étang inconnu' : 'Unknown pond');
   const alertTypeLabel = (v: string) => ALERT_TYPES.find(a => a.value === v)?.label || v;
   const alertTypeUnit = (v: string) => ALERT_TYPES.find(a => a.value === v)?.unit || '';
   const selectedTypeMeta = ALERT_TYPES.find(a => a.value === formType);
@@ -188,8 +191,8 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
             <Bell className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Pond Alerts</h2>
-            <p className="text-xs text-gray-500">Per-pond threshold rules. Notifications fire via push when crossed.</p>
+            <h2 className="text-lg font-bold text-gray-900">{isFr ? 'Alertes d\'étang' : 'Pond Alerts'}</h2>
+            <p className="text-xs text-gray-500">{isFr ? 'Règles de seuil par étang. Les notifications se déclenchent par push lors du dépassement.' : 'Per-pond threshold rules. Notifications fire via push when crossed.'}</p>
           </div>
         </div>
         {onClose && (
@@ -201,7 +204,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
 
       {flocks.length === 0 ? (
         <div className="text-center py-10 text-gray-400">
-          <p className="text-sm">No active aquaculture flocks. Create a pond first.</p>
+          <p className="text-sm">{isFr ? 'Aucun étang actif. Créez d\'abord un étang.' : 'No active aquaculture flocks. Create a pond first.'}</p>
         </div>
       ) : (
         <>
@@ -211,7 +214,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
               className="flex items-center gap-2 px-3 py-1.5 bg-[#3D5F42] text-white text-xs rounded-lg hover:bg-[#2f4a34] transition-colors"
             >
               {showForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-              {showForm ? 'Cancel' : 'New rule'}
+              {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Nouvelle règle' : 'New rule')}
             </button>
           </div>
 
@@ -219,7 +222,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
             <div className="border border-gray-200 rounded-xl p-4 mb-4 bg-gray-50/40">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Pond</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étang' : 'Pond'}</label>
                   <select
                     value={formFlockId}
                     onChange={e => setFormFlockId(e.target.value)}
@@ -231,7 +234,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Trigger</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Déclencheur' : 'Trigger'}</label>
                   <select
                     value={formType}
                     onChange={e => handleAlertTypeChange(e.target.value)}
@@ -244,7 +247,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Threshold {alertTypeUnit(formType) && `(${alertTypeUnit(formType)})`}
+                    {isFr ? 'Seuil' : 'Threshold'} {alertTypeUnit(formType) && `(${alertTypeUnit(formType)})`}
                   </label>
                   <input
                     type="number"
@@ -264,7 +267,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
                   onClick={() => setShowForm(false)}
                   className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
                 >
-                  Cancel
+                  {isFr ? 'Annuler' : 'Cancel'}
                 </button>
                 <button
                   type="button"
@@ -273,7 +276,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
                   className="px-3 py-1.5 text-xs font-medium bg-[#3D5F42] text-white rounded-lg hover:bg-[#2f4a34] disabled:opacity-60 inline-flex items-center gap-1"
                 >
                   <Save className="w-3 h-3" />
-                  {submitting ? 'Saving…' : 'Save rule'}
+                  {submitting ? (isFr ? 'Enregistrement…' : 'Saving…') : (isFr ? 'Enregistrer la règle' : 'Save rule')}
                 </button>
               </div>
             </div>
@@ -286,8 +289,8 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
           ) : alerts.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No alert rules yet.</p>
-              <p className="text-xs mt-1">Click "New rule" to add one.</p>
+              <p className="text-sm">{isFr ? 'Aucune règle d\'alerte pour le moment.' : 'No alert rules yet.'}</p>
+              <p className="text-xs mt-1">{isFr ? 'Cliquez sur "Nouvelle règle" pour en ajouter une.' : 'Click "New rule" to add one.'}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -307,7 +310,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
                         : 'bg-gray-100 text-gray-500'
                     }`}
                   >
-                    {a.enabled ? 'Enabled' : 'Disabled'}
+                    {a.enabled ? (isFr ? 'Activée' : 'Enabled') : (isFr ? 'Désactivée' : 'Disabled')}
                   </button>
                   <button
                     onClick={() => handleDelete(a)}

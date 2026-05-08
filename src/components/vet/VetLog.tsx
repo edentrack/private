@@ -127,34 +127,34 @@ export function VetLog() {
       if (editingId) {
         const { error } = await supabase.from('vet_logs').update(payload).eq('id', editingId);
         if (error) throw error;
-        toast.success('Vet log updated');
+        toast.success(isFr ? 'Journal vétérinaire mis à jour' : 'Vet log updated');
       } else {
         const { error } = await supabase.from('vet_logs').insert(payload);
         if (error) {
           if (isNetworkError(error)) {
             await tryWrite('vet_logs', 'insert', payload);
-            toast.success('Vet log queued — will sync when online');
+            toast.success(isFr ? 'Journal vétérinaire en file d\'attente — synchronisation en ligne' : 'Vet log queued — will sync when online');
           } else {
             throw error;
           }
         } else {
-          toast.success('Vet log saved');
+          toast.success(isFr ? 'Journal vétérinaire enregistré' : 'Vet log saved');
         }
       }
       closeForm();
       loadLogs();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to save');
+      toast.error(err.message || (isFr ? 'Échec de l\'enregistrement' : 'Failed to save'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this vet log entry?')) return;
+    if (!confirm(isFr ? 'Supprimer cette entrée de journal vétérinaire ?' : 'Delete this vet log entry?')) return;
     const { error } = await supabase.from('vet_logs').delete().eq('id', id);
-    if (error) { toast.error('Failed to delete'); return; }
-    toast.success('Deleted');
+    if (error) { toast.error(isFr ? 'Échec de la suppression' : 'Failed to delete'); return; }
+    toast.success(isFr ? 'Supprimé' : 'Deleted');
     setLogs(prev => prev.filter(l => l.id !== id));
   };
 
@@ -205,7 +205,7 @@ export function VetLog() {
             const clear = withdrawalClearDate(log);
             return (
               <p key={log.id} className="text-amber-700 text-sm pl-6">
-                {log.medication || log.diagnosis || 'Medication'} {log.flocks?.name ? `(${log.flocks.name})` : ''} — clear on <strong>{clear?.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                {log.medication || log.diagnosis || (isFr ? 'Médicament' : 'Medication')} {log.flocks?.name ? `(${log.flocks.name})` : ''} — {isFr ? 'levée le' : 'clear on'} <strong>{clear?.toLocaleDateString(isFr ? 'fr' : 'en', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
               </p>
             );
           })}
@@ -217,7 +217,7 @@ export function VetLog() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-              <h2 className="font-bold text-gray-900">{editingId ? 'Edit Vet Visit' : 'Log Vet Visit'}</h2>
+              <h2 className="font-bold text-gray-900">{editingId ? (isFr ? 'Modifier la visite vétérinaire' : 'Edit Vet Visit') : (isFr ? 'Enregistrer une visite vétérinaire' : 'Log Vet Visit')}</h2>
               <button onClick={closeForm}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="p-4 space-y-4">
@@ -238,7 +238,7 @@ export function VetLog() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Vet Name</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Nom du vétérinaire' : 'Vet Name'}</label>
                 <input type="text" value={form.vet_name} onChange={e => setForm(p => ({ ...p, vet_name: e.target.value }))}
                   placeholder="Dr. Amadou" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]" />
               </div>
@@ -265,24 +265,28 @@ export function VetLog() {
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Délai de retrait (jours)' : 'Withdrawal Period (days)'}</label>
                 <input type="number" min="0" value={form.withdrawal_period_days} onChange={e => setForm(p => ({ ...p, withdrawal_period_days: e.target.value }))}
-                  placeholder="0 = none" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  placeholder={isFr ? '0 = aucun' : '0 = none'} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 <p className="text-xs text-gray-400 mt-1">
-                  {farmSpecies.id === 'poultry'
-                    ? 'Days after last treatment before eggs/birds can be sold'
-                    : `Days after last treatment before ${farmSpecies.animalTermPlural.toLowerCase()} can be sold`}
+                  {isFr
+                    ? (farmSpecies.id === 'poultry'
+                      ? 'Jours après le dernier traitement avant la vente des œufs/oiseaux'
+                      : `Jours après le dernier traitement avant la vente des ${farmSpecies.animalTermPlural.toLowerCase()}`)
+                    : (farmSpecies.id === 'poultry'
+                      ? 'Days after last treatment before eggs/birds can be sold'
+                      : `Days after last treatment before ${farmSpecies.animalTermPlural.toLowerCase()} can be sold`)}
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
                 <textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                  rows={3} placeholder="Additional observations, follow-up instructions..."
+                  rows={3} placeholder={isFr ? 'Observations supplémentaires, instructions de suivi...' : 'Additional observations, follow-up instructions...'}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42] resize-none" />
               </div>
 
               <button onClick={handleSave} disabled={saving || !form.visit_date}
                 className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#2F4A34] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                {saving ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</> : <><Check className="w-4 h-4" /> Save Visit</>}
+                {saving ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> {isFr ? 'Enregistrement…' : 'Saving…'}</> : <><Check className="w-4 h-4" /> {isFr ? 'Enregistrer la visite' : 'Save Visit'}</>}
               </button>
             </div>
           </div>
@@ -297,8 +301,8 @@ export function VetLog() {
       ) : logs.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Stethoscope className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No vet visits recorded yet</p>
-          <p className="text-sm mt-1">Tap "Add Visit" to log your first entry</p>
+          <p className="font-medium">{isFr ? 'Aucune visite vétérinaire enregistrée pour le moment' : 'No vet visits recorded yet'}</p>
+          <p className="text-sm mt-1">{isFr ? 'Appuyez sur "Ajouter une visite" pour enregistrer votre première entrée' : 'Tap "Add Visit" to log your first entry'}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -319,18 +323,18 @@ export function VetLog() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(log.visit_date).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(log.visit_date).toLocaleDateString(isFr ? 'fr' : 'en', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                         {log.flocks?.name && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{log.flocks.name}</span>
                         )}
                         {withdrawalActive && (
                           <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
-                            ⚠ Withdrawal until {clearDate?.toLocaleDateString('en', { day: 'numeric', month: 'short' })}
+                            ⚠ {isFr ? `Retrait jusqu'au ${clearDate?.toLocaleDateString('fr', { day: 'numeric', month: 'short' })}` : `Withdrawal until ${clearDate?.toLocaleDateString('en', { day: 'numeric', month: 'short' })}`}
                           </span>
                         )}
                       </div>
-                      <p className="font-semibold text-gray-900 mt-1 truncate">{log.diagnosis || log.medication || 'General visit'}</p>
+                      <p className="font-semibold text-gray-900 mt-1 truncate">{log.diagnosis || log.medication || (isFr ? 'Visite générale' : 'General visit')}</p>
                       {log.vet_name && (
                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                           <User className="w-3 h-3" />{log.vet_name}
@@ -349,7 +353,7 @@ export function VetLog() {
                       <div className="flex items-start gap-2">
                         <Pill className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                         <div>
-                          <span className="text-xs font-semibold text-gray-600">Medication: </span>
+                          <span className="text-xs font-semibold text-gray-600">{isFr ? 'Médicament : ' : 'Medication: '}</span>
                           <span className="text-sm text-gray-800">{log.medication}</span>
                           {log.dosage && <span className="text-sm text-gray-500"> — {log.dosage}</span>}
                         </div>
@@ -357,8 +361,9 @@ export function VetLog() {
                     )}
                     {log.withdrawal_period_days != null && log.withdrawal_period_days > 0 && (
                       <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
-                        Withdrawal: {log.withdrawal_period_days} days after {new Date(log.visit_date).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
-                        {clearDate ? ` — clear on ${clearDate.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                        {isFr
+                          ? `Retrait : ${log.withdrawal_period_days} jours après le ${new Date(log.visit_date).toLocaleDateString('fr', { day: 'numeric', month: 'short' })}${clearDate ? ` — levée le ${clearDate.toLocaleDateString('fr', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
+                          : `Withdrawal: ${log.withdrawal_period_days} days after ${new Date(log.visit_date).toLocaleDateString('en', { day: 'numeric', month: 'short' })}${clearDate ? ` — clear on ${clearDate.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`}
                       </p>
                     )}
                     {log.notes && <p className="text-sm text-gray-600 whitespace-pre-wrap">{log.notes}</p>}
@@ -366,11 +371,11 @@ export function VetLog() {
                     <div className="flex gap-2 pt-1">
                       <button onClick={() => openEdit(log)}
                         className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#3D5F42] transition-colors px-3 py-1.5 border border-gray-200 rounded-lg">
-                        <Edit2 className="w-3.5 h-3.5" /> Edit
+                        <Edit2 className="w-3.5 h-3.5" /> {isFr ? 'Modifier' : 'Edit'}
                       </button>
                       <button onClick={() => handleDelete(log.id)}
                         className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors px-3 py-1.5 border border-red-100 rounded-lg">
-                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                        <Trash2 className="w-3.5 h-3.5" /> {isFr ? 'Supprimer' : 'Delete'}
                       </button>
                     </div>
                   </div>
