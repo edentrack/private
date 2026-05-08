@@ -149,7 +149,17 @@ export function WeatherWidget({ fallbackLocation, onOpenSettings }: Props) {
           </div>
           <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
             <MapPin className="w-3 h-3 shrink-0" />
-            <span className="truncate">{weather.location}</span>
+            {/* The weather edge function echoes the country twice when
+                only a country (no city) is sent. Dedupe at render time
+                so a fallback like "Nigeria" doesn't render as
+                "Nigeria, Nigeria". (Greg's audit, May 2026, BUG #3.) */}
+            <span className="truncate">{
+              (weather.location || '')
+                .split(',')
+                .map(s => s.trim())
+                .filter((s, i, arr) => s.length > 0 && arr.findIndex(x => x.toLowerCase() === s.toLowerCase()) === i)
+                .join(', ')
+            }</span>
             <span className="shrink-0 flex items-center gap-1">
               <Droplets className="w-3 h-3" />{current.humidity}%
             </span>
