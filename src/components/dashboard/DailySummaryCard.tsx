@@ -816,7 +816,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
               <span className="text-lg font-bold text-amber-600">
                 {summary.avgWeight > 0 ? summary.avgWeight.toFixed(2) : '-'}
               </span>
-              <span className="text-xs text-gray-600">kg/bird</span>
+              <span className="text-xs text-gray-600">{`kg/${farmSpecies.animalTerm.toLowerCase()}`}</span>
             </div>
           </div>
         )}

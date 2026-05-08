@@ -759,7 +759,7 @@ export function ComparePage({ onNavigate }: ComparePageProps) {
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50/50 bg-gray-50/30">
-                    <td className="px-6 py-3 text-sm font-medium text-gray-700 sticky left-0 bg-white z-10">{t('compare.cost_per_bird') || 'Cost per Bird'}</td>
+                    <td className="px-6 py-3 text-sm font-medium text-gray-700 sticky left-0 bg-white z-10">{farmSpecies.id === 'poultry' ? (t('compare.cost_per_bird') || 'Cost per Bird') : `Cost per ${farmSpecies.animalTerm}`}</td>
                     {selectedMetrics.map((metrics, idx) => {
                       const isBest = statistics?.bestCostPerBird?.flock.id === metrics.flock.id;
                       const isWorst = statistics?.worstCostPerBird?.flock.id === metrics.flock.id;
