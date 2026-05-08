@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Camera, Search, AlertTriangle, X, ImageIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import {
@@ -61,6 +62,8 @@ const EXPERT_REVIEW_CONFIDENCE_THRESHOLD = 0.7;
 
 export function FishHealthPage() {
   const { currentFarm, user, profile } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
 
   const [mode, setMode] = useState<'library' | 'diagnose'>('library');
@@ -111,7 +114,7 @@ export function FishHealthPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('Photo too large — max 10 MB');
+      toast.error(isFr ? 'Photo trop grande — 10 Mo maximum' : 'Photo too large — max 10 MB');
       return;
     }
     setImageFile(file);
@@ -218,7 +221,7 @@ export function FishHealthPage() {
 
   const handleDiagnose = async () => {
     if (!imageFile || !user || !currentFarm?.id) {
-      toast.error('Please pick a photo first');
+      toast.error(isFr ? 'Veuillez choisir une photo' : 'Please pick a photo first');
       return;
     }
     setDiagnosing(true);
@@ -234,18 +237,22 @@ export function FishHealthPage() {
       if (result.diagnoses.length === 0 && result.uncertain) {
         setSonnetResult(result);
         setDiagnosisError(
-          'Eden was uncertain after looking at the photo. Click "Get expert review" to escalate to the high-tier model, or browse the disease library below.',
+          isFr
+            ? "Eden n'a pas pu se prononcer après avoir regardé la photo. Cliquez sur « Avis d'expert » pour passer au modèle de niveau supérieur, ou parcourez la bibliothèque des maladies ci-dessous."
+            : 'Eden was uncertain after looking at the photo. Click "Get expert review" to escalate to the high-tier model, or browse the disease library below.',
         );
       } else if (result.diagnoses.length === 0) {
         setDiagnosisError(
-          'Eden could not match the photo to any known disease. Browse the library below for likely candidates and consult a vet.',
+          isFr
+            ? "Eden n'a pas pu associer la photo à une maladie connue. Parcourez la bibliothèque ci-dessous pour des pistes et consultez un vétérinaire."
+            : 'Eden could not match the photo to any known disease. Browse the library below for likely candidates and consult a vet.',
         );
       } else {
         setSonnetResult(result);
       }
     } catch (err: any) {
       console.error('Diagnosis error', err);
-      setDiagnosisError(err?.message || 'Failed to call Eden AI for diagnosis');
+      setDiagnosisError(err?.message || (isFr ? "Échec de l'appel à Eden AI pour le diagnostic" : 'Failed to call Eden AI for diagnosis'));
     } finally {
       setDiagnosing(false);
     }
@@ -264,7 +271,7 @@ export function FishHealthPage() {
       setOpusResult(result);
     } catch (err: any) {
       console.error('Expert review error', err);
-      setDiagnosisError(err?.message || 'Failed to get expert review from Eden AI');
+      setDiagnosisError(err?.message || (isFr ? "Échec de l'avis d'expert depuis Eden AI" : 'Failed to get expert review from Eden AI'));
     } finally {
       setReviewing(false);
     }
@@ -317,16 +324,15 @@ export function FishHealthPage() {
           <AlertTriangle className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Fish Health & Diseases</h1>
-          <p className="text-sm text-gray-500">Browse the disease library or upload a photo for AI-assisted triage.</p>
+          <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Santé des poissons & maladies' : 'Fish Health & Diseases'}</h1>
+          <p className="text-sm text-gray-500">{isFr ? "Parcourez la bibliothèque ou téléchargez une photo pour un triage assisté par IA." : 'Browse the disease library or upload a photo for AI-assisted triage.'}</p>
         </div>
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
         <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-amber-900 leading-relaxed">
-          Eden's diagnoses are for <strong>triage only</strong>. Always confirm with a fish-health professional before
-          starting antibiotics or pond-wide treatments. Wrong treatment can be worse than the disease.
+          {isFr ? <>Les diagnostics d'Eden servent <strong>uniquement au triage</strong>. Confirmez toujours avec un professionnel de la santé des poissons avant de commencer des antibiotiques ou des traitements à l'échelle de l'étang. Un mauvais traitement peut être pire que la maladie.</> : <>Eden's diagnoses are for <strong>triage only</strong>. Always confirm with a fish-health professional before starting antibiotics or pond-wide treatments. Wrong treatment can be worse than the disease.</>}
         </p>
       </div>
 
@@ -341,7 +347,7 @@ export function FishHealthPage() {
           }`}
         >
           <Search className="inline w-4 h-4 mr-1" />
-          Browse library
+          {isFr ? 'Parcourir la bibliothèque' : 'Browse library'}
         </button>
         <button
           type="button"
@@ -353,7 +359,7 @@ export function FishHealthPage() {
           }`}
         >
           <Camera className="inline w-4 h-4 mr-1" />
-          Diagnose from photo
+          {isFr ? 'Diagnostiquer depuis une photo' : 'Diagnose from photo'}
         </button>
       </div>
 
@@ -365,7 +371,7 @@ export function FishHealthPage() {
                 type="search"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search by name, symptom, or cause…"
+                placeholder={isFr ? 'Recherchez par nom, symptôme ou cause…' : 'Search by name, symptom, or cause…'}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
             </div>
@@ -374,17 +380,17 @@ export function FishHealthPage() {
               onChange={e => setSpeciesFilter(e.target.value as any)}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
             >
-              <option value="all">All species</option>
+              <option value="all">{isFr ? 'Toutes espèces' : 'All species'}</option>
               <option value="Tilapia">Tilapia</option>
-              <option value="Catfish">Catfish</option>
+              <option value="Catfish">{isFr ? 'Poisson-chat' : 'Catfish'}</option>
               <option value="Clarias">Clarias</option>
-              <option value="Other Fish">Other</option>
+              <option value="Other Fish">{isFr ? 'Autre' : 'Other'}</option>
             </select>
           </div>
 
           {filtered.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
-              <p className="text-sm">No diseases match. Try a different search.</p>
+              <p className="text-sm">{isFr ? 'Aucune maladie correspondante. Essayez une autre recherche.' : 'No diseases match. Try a different search.'}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -399,9 +405,9 @@ export function FishHealthPage() {
           <div className="bg-white border border-gray-200 rounded-2xl p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Pond / species</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étang / espèce' : 'Pond / species'}</label>
                 {flocks.length === 0 ? (
-                  <p className="text-xs text-amber-600">No active aquaculture flocks. Create a pond first.</p>
+                  <p className="text-xs text-amber-600">{isFr ? "Aucun étang aquacole actif. Créez d'abord un étang." : 'No active aquaculture flocks. Create a pond first.'}</p>
                 ) : (
                   <select
                     value={diagnoseFlockId}
@@ -417,7 +423,7 @@ export function FishHealthPage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Photo</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Photo' : 'Photo'}</label>
                 <input
                   type="file"
                   accept="image/*"
@@ -428,12 +434,12 @@ export function FishHealthPage() {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Extra observations <span className="text-gray-400">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Observations supplémentaires' : 'Extra observations'} <span className="text-gray-400">{isFr ? 'optionnel' : 'optional'}</span></label>
               <textarea
                 value={extraNotes}
                 onChange={e => setExtraNotes(e.target.value)}
                 rows={2}
-                placeholder="e.g. Started 2 days ago, fish gasping at surface, water turned green this week."
+                placeholder={isFr ? "ex. Commencé il y a 2 jours, poissons qui halètent en surface, eau devenue verte cette semaine." : 'e.g. Started 2 days ago, fish gasping at surface, water turned green this week.'}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30 resize-none"
               />
             </div>
@@ -460,15 +466,17 @@ export function FishHealthPage() {
                 onClick={handleDiagnose}
                 disabled={!imageFile || diagnosing || profile?.subscription_tier === 'free'}
                 className="px-4 py-2 text-sm font-medium bg-[#3D5F42] text-white rounded-lg hover:bg-[#2f4a34] disabled:opacity-60 inline-flex items-center gap-2"
-                title={profile?.subscription_tier === 'free' ? 'Photo diagnosis requires the Grower plan' : ''}
+                title={profile?.subscription_tier === 'free' ? (isFr ? 'Le diagnostic photo nécessite le plan Grower' : 'Photo diagnosis requires the Grower plan') : ''}
               >
                 <ImageIcon className="w-4 h-4" />
-                {diagnosing ? 'Asking Eden…' : 'Diagnose photo'}
+                {diagnosing ? (isFr ? 'Eden réfléchit…' : 'Asking Eden…') : (isFr ? 'Diagnostiquer la photo' : 'Diagnose photo')}
               </button>
             </div>
             {profile?.subscription_tier === 'free' && (
               <p className="text-xs text-amber-700 mt-2">
-                Photo diagnosis is a <strong>Grower plan</strong> feature. Upgrade to use Eden's vision diagnosis.
+                {isFr
+                  ? <>Le diagnostic photo est une fonctionnalité du <strong>plan Grower</strong>. Passez à un plan supérieur pour utiliser le diagnostic visuel d'Eden.</>
+                  : <>Photo diagnosis is a <strong>Grower plan</strong> feature. Upgrade to use Eden's vision diagnosis.</>}
               </p>
             )}
             {diagnosisError && (
@@ -480,10 +488,11 @@ export function FishHealthPage() {
 
           {sonnetResult && sonnetResult.diagnoses.length > 0 && (
             <DiagnosisPane
-              title="Eden's ranked diagnoses"
+              title={isFr ? "Diagnostics classés d'Eden" : "Eden's ranked diagnoses"}
               modelLabel="Sonnet"
               result={sonnetResult}
               onOpenDisease={setOpenDisease}
+              isFr={isFr}
             />
           )}
 
@@ -496,21 +505,25 @@ export function FishHealthPage() {
                 <Search className="w-4 h-4 text-purple-700" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-purple-900">Want a second opinion?</p>
+                <p className="text-sm font-semibold text-purple-900">{isFr ? 'Un deuxième avis ?' : 'Want a second opinion?'}</p>
                 <p className="text-xs text-purple-800 mt-0.5">
                   {sonnetResult?.uncertain
-                    ? 'Eden was uncertain. The expert-tier model can take a closer look — it is slower but better at differentiating visually similar diseases.'
-                    : `The top diagnosis is below ${Math.round(EXPERT_REVIEW_CONFIDENCE_THRESHOLD * 100)}% confidence. The expert-tier model can re-examine the photo with more rigour.`}
+                    ? (isFr
+                        ? "Eden n'a pas pu se prononcer. Le modèle expert peut regarder de plus près — plus lent mais meilleur pour différencier des maladies visuellement similaires."
+                        : 'Eden was uncertain. The expert-tier model can take a closer look — it is slower but better at differentiating visually similar diseases.')
+                    : (isFr
+                        ? `Le diagnostic principal est en dessous de ${Math.round(EXPERT_REVIEW_CONFIDENCE_THRESHOLD * 100)} % de confiance. Le modèle expert peut réexaminer la photo avec plus de rigueur.`
+                        : `The top diagnosis is below ${Math.round(EXPERT_REVIEW_CONFIDENCE_THRESHOLD * 100)}% confidence. The expert-tier model can re-examine the photo with more rigour.`)}
                 </p>
                 <button
                   type="button"
                   onClick={handleExpertReview}
                   disabled={reviewing || profile?.subscription_tier === 'free'}
                   className="mt-2 px-3 py-1.5 text-xs font-medium bg-purple-700 text-white rounded-lg hover:bg-purple-800 disabled:opacity-60 inline-flex items-center gap-1.5"
-                  title={profile?.subscription_tier === 'free' ? 'Expert review requires the Grower plan' : ''}
+                  title={profile?.subscription_tier === 'free' ? (isFr ? "L'avis d'expert nécessite le plan Grower" : 'Expert review requires the Grower plan') : ''}
                 >
                   <Search className="w-3 h-3" />
-                  {reviewing ? 'Asking expert model…' : 'Get expert review'}
+                  {reviewing ? (isFr ? 'Modèle expert en cours…' : 'Asking expert model…') : (isFr ? "Demander un avis d'expert" : 'Get expert review')}
                 </button>
               </div>
             </div>
@@ -518,17 +531,18 @@ export function FishHealthPage() {
 
           {opusResult && opusResult.diagnoses.length > 0 && (
             <DiagnosisPane
-              title="Expert review (Opus)"
+              title={isFr ? "Avis d'expert (Opus)" : 'Expert review (Opus)'}
               modelLabel="Opus"
               accent="purple"
               result={opusResult}
               onOpenDisease={setOpenDisease}
+              isFr={isFr}
             />
           )}
 
           {opusResult && opusResult.diagnoses.length === 0 && opusResult.uncertain && (
             <div className="bg-purple-50 border border-purple-200 text-purple-900 text-xs p-3 rounded-lg">
-              The expert model was also uncertain. Browse the disease library below for likely candidates and consult a fish-health professional before treating.
+              {isFr ? "Le modèle expert n'a pas pu se prononcer non plus. Parcourez la bibliothèque ci-dessous pour des pistes et consultez un professionnel de la santé des poissons avant de traiter." : 'The expert model was also uncertain. Browse the disease library below for likely candidates and consult a fish-health professional before treating.'}
             </div>
           )}
         </div>
@@ -560,10 +574,10 @@ export function FishHealthPage() {
               </button>
             </div>
             <div className="p-6 space-y-5">
-              <DetailSection title="Symptoms" items={openDisease.symptoms} />
-              <DetailSection title="Causes" items={openDisease.causes} />
-              <DetailSection title="Treatment" items={openDisease.treatment} accent="green" />
-              <DetailSection title="Prevention" items={openDisease.prevention} accent="blue" />
+              <DetailSection title={isFr ? 'Symptômes' : 'Symptoms'} items={openDisease.symptoms} />
+              <DetailSection title={isFr ? 'Causes' : 'Causes'} items={openDisease.causes} />
+              <DetailSection title={isFr ? 'Traitement' : 'Treatment'} items={openDisease.treatment} accent="green" />
+              <DetailSection title={isFr ? 'Prévention' : 'Prevention'} items={openDisease.prevention} accent="blue" />
             </div>
           </div>
         </div>
@@ -578,12 +592,14 @@ function DiagnosisPane({
   result,
   onOpenDisease,
   accent,
+  isFr,
 }: {
   title: string;
   modelLabel: string;
   result: DiagnosisResponse;
   onOpenDisease: (d: FishDisease) => void;
   accent?: 'purple';
+  isFr: boolean;
 }) {
   const headerClass = accent === 'purple' ? 'text-purple-700' : 'text-gray-700';
   const cardClass =
@@ -619,7 +635,7 @@ function DiagnosisPane({
               onClick={() => onOpenDisease(disease)}
               className="text-xs text-[#3D5F42] font-medium hover:underline"
             >
-              View full treatment plan →
+              {isFr ? 'Voir le plan de traitement complet →' : 'View full treatment plan →'}
             </button>
           </div>
         );

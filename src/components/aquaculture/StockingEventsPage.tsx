@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Fish, X, Calendar, Banknote, Truck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { StockingEvent } from '../../types/database';
@@ -42,6 +43,8 @@ function formatDate(s: string): string {
 
 export function StockingEventsPage() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
   const currency = currentFarm?.currency_code ?? 'XAF';
 
@@ -116,7 +119,7 @@ export function StockingEventsPage() {
       .eq('farm_id', currentFarm!.id)
       .order('stocked_at', { ascending: false });
     if (error) {
-      toast.error('Failed to load stocking events');
+      toast.error(isFr ? "Échec du chargement des empoissonnements" : 'Failed to load stocking events');
     } else {
       // Display fallback: when species was saved as 'other' (e.g. by an
       // older OnboardingChat flow that didn't derive species from the
@@ -171,16 +174,16 @@ export function StockingEventsPage() {
 
   const handleSubmit = async () => {
     if (!formFlockId) {
-      toast.error('Please select a pond');
+      toast.error(isFr ? 'Veuillez sélectionner un étang' : 'Please select a pond');
       return;
     }
     if (!formDate) {
-      toast.error('Please select a stocking date');
+      toast.error(isFr ? "Veuillez sélectionner une date d'empoissonnement" : 'Please select a stocking date');
       return;
     }
     const count = parseInt(formCount);
     if (!formCount || isNaN(count) || count <= 0) {
-      toast.error('Please enter a valid fingerling count');
+      toast.error(isFr ? "Veuillez entrer un nombre d'alevins valide" : 'Please enter a valid fingerling count');
       return;
     }
 
@@ -231,7 +234,7 @@ export function StockingEventsPage() {
 
     if (insertError) {
       setSubmitting(false);
-      toast.error('Failed to save stocking event');
+      toast.error(isFr ? "Échec de l'enregistrement de l'empoissonnement" : 'Failed to save stocking event');
       return;
     }
 
@@ -243,14 +246,14 @@ export function StockingEventsPage() {
     }
 
     setSubmitting(false);
-    toast.success(`Stocking event saved · +${count.toLocaleString()} fingerlings`);
+    toast.success(isFr ? `Empoissonnement enregistré · +${count.toLocaleString()} alevins` : `Stocking event saved · +${count.toLocaleString()} fingerlings`);
     resetForm();
     setShowForm(false);
     loadEvents();
     loadFlocks(); // refresh current_count
   };
 
-  const flockName = (id: string) => flocks.find(f => f.id === id)?.name ?? 'Unknown pond';
+  const flockName = (id: string) => flocks.find(f => f.id === id)?.name ?? (isFr ? 'Étang inconnu' : 'Unknown pond');
 
   // Summary stats
   const totals = useMemo(() => {
@@ -268,8 +271,8 @@ export function StockingEventsPage() {
             <Fish className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Stocking Events</h1>
-            <p className="text-sm text-gray-500">Log fingerlings stocked into your ponds — initial stocking and mid-cycle restocks.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Empoissonnements' : 'Stocking Events'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? "Enregistrez les alevins introduits dans vos étangs — empoissonnement initial et rempoissonnements en cours de cycle." : 'Log fingerlings stocked into your ponds — initial stocking and mid-cycle restocks.'}</p>
           </div>
         </div>
         <button
@@ -277,7 +280,7 @@ export function StockingEventsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'Log Stocking'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Enregistrer un empoissonnement' : 'Log Stocking')}
         </button>
       </div>
 
@@ -287,14 +290,14 @@ export function StockingEventsPage() {
           <div className="section-card text-center">
             <div className="flex items-center justify-center gap-1 mb-1 text-gray-500">
               <Fish className="w-4 h-4" />
-              <span className="text-xs font-medium">Total Fingerlings Stocked</span>
+              <span className="text-xs font-medium">{isFr ? "Total d'alevins empoissonnés" : 'Total Fingerlings Stocked'}</span>
             </div>
             <p className="text-2xl font-bold text-gray-900">{totals.totalFingerlings.toLocaleString()}</p>
           </div>
           <div className="section-card text-center">
             <div className="flex items-center justify-center gap-1 mb-1 text-gray-500">
               <Banknote className="w-4 h-4" />
-              <span className="text-xs font-medium">Total Spend on Stocking</span>
+              <span className="text-xs font-medium">{isFr ? "Dépense totale d'empoissonnement" : 'Total Spend on Stocking'}</span>
             </div>
             <p className="text-2xl font-bold text-[#3D5F42]">
               {totals.totalSpend > 0 ? formatCurrency(totals.totalSpend, currency) : '—'}
@@ -306,12 +309,12 @@ export function StockingEventsPage() {
       {/* Inline Add Form */}
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">New Stocking Event</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Nouvel empoissonnement' : 'New Stocking Event'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Pond *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étang *' : 'Pond *'}</label>
               {flocks.length === 0 ? (
-                <p className="text-xs text-amber-600">No active aquaculture ponds found.</p>
+                <p className="text-xs text-amber-600">{isFr ? 'Aucun étang actif trouvé.' : 'No active aquaculture ponds found.'}</p>
               ) : (
                 <select
                   value={formFlockId}
@@ -319,13 +322,13 @@ export function StockingEventsPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
                 >
                   {flocks.map(f => (
-                    <option key={f.id} value={f.id}>{f.name} ({f.type} · {f.current_count.toLocaleString()} fish)</option>
+                    <option key={f.id} value={f.id}>{f.name} ({f.type} · {f.current_count.toLocaleString()} {isFr ? 'poissons' : 'fish'})</option>
                   ))}
                 </select>
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Stocking Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? "Date d'empoissonnement *" : 'Stocking Date *'}</label>
               <input
                 type="date"
                 value={formDate}
@@ -335,20 +338,20 @@ export function StockingEventsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Species</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Espèce' : 'Species'}</label>
               <select
                 value={formSpecies}
                 onChange={e => setFormSpecies(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               >
-                <option value="catfish">Catfish</option>
+                <option value="catfish">{isFr ? 'Poisson-chat' : 'Catfish'}</option>
                 <option value="tilapia">Tilapia</option>
                 <option value="clarias">Clarias</option>
-                <option value="other">Other Fish</option>
+                <option value="other">{isFr ? 'Autre poisson' : 'Other Fish'}</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Fingerling Count *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? "Nombre d'alevins *" : 'Fingerling Count *'}</label>
               <input
                 type="number"
                 min="1"
@@ -358,16 +361,16 @@ export function StockingEventsPage() {
                 onChange={e => setFormCount(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
-              <p className="text-[10px] text-gray-500 mt-0.5">Will be added to the pond's current fish count</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">{isFr ? "Sera ajouté au nombre actuel de poissons de l'étang" : "Will be added to the pond's current fish count"}</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                <Truck className="inline w-3 h-3 mr-1" />Hatchery / Source <span className="text-gray-400 font-normal">optional</span>
+                <Truck className="inline w-3 h-3 mr-1" />{isFr ? 'Écloserie / Source' : 'Hatchery / Source'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span>
               </label>
               <input
                 type="text"
                 list="fingerling-sources-list"
-                placeholder="Type a name or pick a previous hatchery"
+                placeholder={isFr ? 'Saisissez un nom ou choisissez une écloserie précédente' : 'Type a name or pick a previous hatchery'}
                 value={formSource}
                 onChange={e => setFormSource(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -379,14 +382,14 @@ export function StockingEventsPage() {
               <datalist id="fingerling-sources-list">
                 {knownSources.map(s => (
                   <option key={s.id} value={s.hatchery_name}>
-                    {s.avg_survival_pct ? `${s.avg_survival_pct.toFixed(0)}% survival` : 'no history yet'}
+                    {s.avg_survival_pct ? `${s.avg_survival_pct.toFixed(0)}${isFr ? '% de survie' : '% survival'}` : (isFr ? "pas d'historique" : 'no history yet')}
                   </option>
                 ))}
               </datalist>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Cost per fingerling ({currency}) <span className="text-gray-400 font-normal">optional</span>
+                {isFr ? `Coût par alevin (${currency})` : `Cost per fingerling (${currency})`} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span>
               </label>
               <input
                 type="number"
@@ -400,8 +403,8 @@ export function StockingEventsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Total Cost ({currency})
-                {autoTotal && <span className="ml-1 text-xs text-[#3D5F42] font-normal">(auto)</span>}
+                {isFr ? `Coût total (${currency})` : `Total Cost (${currency})`}
+                {autoTotal && <span className="ml-1 text-xs text-[#3D5F42] font-normal">{isFr ? '(auto)' : '(auto)'}</span>}
               </label>
               <input
                 type="number"
@@ -420,10 +423,10 @@ export function StockingEventsPage() {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. Restock after partial harvest"
+                placeholder={isFr ? 'ex. Rempoissonnement après récolte partielle' : 'e.g. Restock after partial harvest'}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -436,7 +439,7 @@ export function StockingEventsPage() {
               disabled={submitting || flocks.length === 0}
               className="px-5 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving…' : 'Save Stocking'}
+              {submitting ? (isFr ? 'Enregistrement…' : 'Saving…') : (isFr ? "Enregistrer l'empoissonnement" : 'Save Stocking')}
             </button>
           </div>
         </div>
@@ -453,16 +456,18 @@ export function StockingEventsPage() {
             <div className="w-14 h-14 rounded-full bg-cyan-50 flex items-center justify-center mb-3">
               <Fish className="w-7 h-7 text-cyan-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">No stocking events yet</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Aucun empoissonnement enregistré pour le moment' : 'No stocking events yet'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
-              Log every batch of fingerlings you put in a pond — initial stocking, restocks, mixed-batch additions.
+              {isFr
+                ? "Enregistrez chaque lot d'alevins que vous mettez dans un étang — empoissonnement initial, rempoissonnements, ajouts mixtes."
+                : 'Log every batch of fingerlings you put in a pond — initial stocking, restocks, mixed-batch additions.'}
             </p>
             <button
               onClick={() => { setShowForm(true); resetForm(); }}
               className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Log First Stocking
+              {isFr ? 'Premier empoissonnement' : 'Log First Stocking'}
             </button>
           </div>
         ) : (
@@ -480,7 +485,7 @@ export function StockingEventsPage() {
                   <div className="flex flex-wrap gap-2 mt-1.5">
                     <span className="inline-flex items-center gap-1 text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full">
                       <Fish className="w-3 h-3" />
-                      {(e.fingerling_count || 0).toLocaleString()} fingerlings
+                      {(e.fingerling_count || 0).toLocaleString()} {isFr ? 'alevins' : 'fingerlings'}
                     </span>
                     <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full capitalize">
                       {e.species}
@@ -499,7 +504,7 @@ export function StockingEventsPage() {
                     )}
                     {e.cost_per_fingerling && (
                       <span className="text-xs text-gray-400">
-                        @ {formatCurrency(Number(e.cost_per_fingerling), currency)}/fingerling
+                        @ {formatCurrency(Number(e.cost_per_fingerling), currency)}/{isFr ? 'alevin' : 'fingerling'}
                       </span>
                     )}
                   </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Droplets, X, Thermometer, Wind, FlaskConical, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { WaterQualityLog } from '../../types/database';
@@ -28,6 +29,8 @@ interface WaterQualityPageProps {
 
 export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
 
   const [logs, setLogs] = useState<WaterQualityLog[]>([]);
@@ -78,7 +81,7 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
       .eq('farm_id', currentFarm!.id)
       .order('logged_at', { ascending: false });
     if (error) {
-      toast.error('Failed to load water quality logs');
+      toast.error(isFr ? "Échec du chargement des relevés de qualité de l'eau" : 'Failed to load water quality logs');
     } else {
       setLogs(data || []);
     }
@@ -98,15 +101,15 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
 
   const handleSubmit = async () => {
     if (!formFlockId) {
-      toast.error('Please select a pond/flock');
+      toast.error(isFr ? 'Veuillez sélectionner un étang' : 'Please select a pond/flock');
       return;
     }
     if (!formDate) {
-      toast.error('Please select a date');
+      toast.error(isFr ? 'Veuillez sélectionner une date' : 'Please select a date');
       return;
     }
     if (!formTemp && !formDO && !formPH && !formAmmonia && !formNitrite) {
-      toast.error('Please enter at least one measurement');
+      toast.error(isFr ? 'Veuillez saisir au moins une mesure' : 'Please enter at least one measurement');
       return;
     }
 
@@ -125,16 +128,16 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
     setSubmitting(false);
 
     if (error) {
-      toast.error('Failed to save reading');
+      toast.error(isFr ? "Échec de l'enregistrement du relevé" : 'Failed to save reading');
     } else {
-      toast.success('Water quality reading saved');
+      toast.success(isFr ? "Relevé de qualité de l'eau enregistré" : 'Water quality reading saved');
       resetForm();
       setShowForm(false);
       loadLogs();
     }
   };
 
-  const getFlockName = (id: string) => flocks.find(f => f.id === id)?.name ?? 'Unknown pond';
+  const getFlockName = (id: string) => flocks.find(f => f.id === id)?.name ?? (isFr ? 'Étang inconnu' : 'Unknown pond');
 
   return (
     <div className="space-y-6">
@@ -145,8 +148,8 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
             <Droplets className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Water Quality</h1>
-            <p className="text-sm text-gray-500">Monitor pond parameters for your fish farm.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? "Qualité de l'eau" : 'Water Quality'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? "Surveillez les paramètres des étangs de votre exploitation piscicole." : 'Monitor pond parameters for your fish farm.'}</p>
           </div>
         </div>
         <button
@@ -154,19 +157,19 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'Log Reading'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Enregistrer un relevé' : 'Log Reading')}
         </button>
       </div>
 
       {/* Inline Add Form */}
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">New Water Quality Reading</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? "Nouveau relevé de qualité de l'eau" : 'New Water Quality Reading'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Pond / Flock *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étang *' : 'Pond / Flock *'}</label>
               {flocks.length === 0 ? (
-                <p className="text-xs text-amber-600">No active aquaculture flocks found.</p>
+                <p className="text-xs text-amber-600">{isFr ? 'Aucun étang aquacole actif trouvé.' : 'No active aquaculture flocks found.'}</p>
               ) : (
                 <select
                   value={formFlockId}
@@ -180,7 +183,7 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date *' : 'Date *'}</label>
               <input
                 type="date"
                 value={formDate}
@@ -191,7 +194,7 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
             </div>
             <div>
               <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <Thermometer className="w-3 h-3 mr-1 flex-shrink-0" />Temperature (°C)
+                <Thermometer className="w-3 h-3 mr-1 flex-shrink-0" />{isFr ? 'Température (°C)' : 'Temperature (°C)'}
                 {onNavigate && <WhyThisMatters topic="water_temperature" onNavigate={onNavigate} />}
               </label>
               <input
@@ -207,7 +210,7 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
             </div>
             <div>
               <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <Wind className="w-3 h-3 mr-1 flex-shrink-0" />Dissolved Oxygen (mg/L)
+                <Wind className="w-3 h-3 mr-1 flex-shrink-0" />{isFr ? 'Oxygène dissous (mg/L)' : 'Dissolved Oxygen (mg/L)'}
                 {onNavigate && <WhyThisMatters topic="dissolved_oxygen" onNavigate={onNavigate} />}
               </label>
               <input
@@ -220,7 +223,7 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                 onChange={e => setFormDO(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
-              <p className="text-xs text-gray-400 mt-0.5">Normal: ≥5 mg/L</p>
+              <p className="text-xs text-gray-400 mt-0.5">{isFr ? 'Normal : ≥5 mg/L' : 'Normal: ≥5 mg/L'}</p>
             </div>
             <div>
               <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
@@ -237,11 +240,11 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                 onChange={e => setFormPH(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
-              <p className="text-xs text-gray-400 mt-0.5">Ideal: 6.5 – 8.5</p>
+              <p className="text-xs text-gray-400 mt-0.5">{isFr ? 'Idéal : 6,5 – 8,5' : 'Ideal: 6.5 – 8.5'}</p>
             </div>
             <div>
               <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />Ammonia NH₃ (mg/L)
+                <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />{isFr ? 'Ammoniac NH₃ (mg/L)' : 'Ammonia NH₃ (mg/L)'}
                 {onNavigate && <WhyThisMatters topic="ammonia" onNavigate={onNavigate} />}
               </label>
               <input
@@ -254,11 +257,11 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                 onChange={e => setFormAmmonia(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
-              <p className="text-xs text-gray-400 mt-0.5">Safe: &lt;0.02 mg/L · Critical: &gt;0.1</p>
+              <p className="text-xs text-gray-400 mt-0.5">{isFr ? 'Sûr : <0,02 mg/L · Critique : >0,1' : 'Safe: <0.02 mg/L · Critical: >0.1'}</p>
             </div>
             <div>
               <label className="flex items-center text-xs font-medium text-gray-600 mb-1">
-                <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />Nitrite NO₂ (mg/L)
+                <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />{isFr ? 'Nitrite NO₂ (mg/L)' : 'Nitrite NO₂ (mg/L)'}
                 {onNavigate && <WhyThisMatters topic="nitrite" onNavigate={onNavigate} />}
               </label>
               <input
@@ -271,13 +274,13 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                 onChange={e => setFormNitrite(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
-              <p className="text-xs text-gray-400 mt-0.5">Safe: &lt;0.1 mg/L · Critical: &gt;0.5</p>
+              <p className="text-xs text-gray-400 mt-0.5">{isFr ? 'Sûr : <0,1 mg/L · Critique : >0,5' : 'Safe: <0.1 mg/L · Critical: >0.5'}</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'}</label>
               <input
                 type="text"
-                placeholder="Optional observations..."
+                placeholder={isFr ? 'Observations facultatives...' : 'Optional observations...'}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -290,7 +293,7 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
               disabled={submitting || flocks.length === 0}
               className="px-5 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving...' : 'Save Reading'}
+              {submitting ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer le relevé' : 'Save Reading')}
             </button>
           </div>
         </div>
@@ -307,16 +310,18 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
             <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-3">
               <Droplets className="w-7 h-7 text-blue-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">No readings yet</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Aucun relevé pour le moment' : 'No readings yet'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
-              Start monitoring your pond health by logging your first water quality reading.
+              {isFr
+                ? "Commencez à surveiller la santé de votre étang en enregistrant votre premier relevé de qualité de l'eau."
+                : 'Start monitoring your pond health by logging your first water quality reading.'}
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Log First Reading
+              {isFr ? 'Premier relevé' : 'Log First Reading'}
             </button>
           </div>
         ) : (
@@ -351,12 +356,12 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
                       </span>
                       {wqSummary.overallStatus === 'emergency' && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
-                          <AlertTriangle className="w-3 h-3" /> Emergency
+                          <AlertTriangle className="w-3 h-3" /> {isFr ? 'Urgence' : 'Emergency'}
                         </span>
                       )}
                       {wqSummary.overallStatus === 'marginal' && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                          Watch
+                          {isFr ? 'Surveiller' : 'Watch'}
                         </span>
                       )}
                     </div>
@@ -434,19 +439,19 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
       {logs.length > 0 && (
         <div className="flex flex-wrap gap-3 text-xs text-gray-500">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> DO ≥5 mg/L — Good
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> {isFr ? 'OD ≥5 mg/L — Bon' : 'DO ≥5 mg/L — Good'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> DO 3–5 mg/L — Warning
+            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> {isFr ? 'OD 3–5 mg/L — Attention' : 'DO 3–5 mg/L — Warning'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> DO &lt;3 mg/L — Critical
+            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {isFr ? 'OD <3 mg/L — Critique' : 'DO <3 mg/L — Critical'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> NH₃ &lt;0.02 — Safe
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> {isFr ? 'NH₃ <0,02 — Sûr' : 'NH₃ <0.02 — Safe'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> NH₃ &gt;0.1 — Critical
+            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {isFr ? 'NH₃ >0,1 — Critique' : 'NH₃ >0.1 — Critical'}
           </span>
         </div>
       )}
