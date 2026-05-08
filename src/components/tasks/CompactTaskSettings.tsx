@@ -429,15 +429,23 @@ function EditTemplateModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Flock Type Scope</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{`${farmSpecies.groupTerm} Type Scope`}</label>
             <select
               value={form.flock_type_scope}
               onChange={(e) => setForm(prev => ({ ...prev, flock_type_scope: e.target.value }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
             >
-              <option value="general">General (all flocks)</option>
-              <option value="broiler">Broiler only</option>
-              <option value="layer">Layer only</option>
+              <option value="general">{`General (all ${farmSpecies.groupTermPlural.toLowerCase()})`}</option>
+              {/* Type-specific filtering only meaningful for poultry where the
+                  broiler/layer split drives different task cadences. Aqua and
+                  rabbits don't currently differentiate task templates by sub-
+                  type, so the type-only options are hidden on those species. */}
+              {farmSpecies.id === 'poultry' && (
+                <>
+                  <option value="broiler">Broiler only</option>
+                  <option value="layer">Layer only</option>
+                </>
+              )}
             </select>
           </div>
 
