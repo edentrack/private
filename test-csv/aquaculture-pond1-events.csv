@@ -1,0 +1,12 @@
+event_date,event_type,quantity,unit,flock_name,notes
+2026-03-08,stocking,500,fingerlings,Pond 1,Initial stocking. 1g fingerlings from Limbe Hatchery.
+2026-03-15,water_quality,5.8,mg/L,Pond 1,Morning DO reading. Within healthy range.
+2026-03-22,water_quality,5.4,mg/L,Pond 1,Slight drop. Increased aeration.
+2026-03-29,sampling,12,grams,Pond 1,ABW from 8-fish sample. Growth on track.
+2026-04-05,water_quality,5.6,mg/L,Pond 1,Morning DO. Healthy.
+2026-04-12,sampling,28,grams,Pond 1,ABW. Doubled in 2 weeks. Switching to Grower feed.
+2026-04-15,mortality,3,fish,Pond 1,Dead fish found at corner intake. Cause: possible low DO overnight.
+2026-04-19,water_quality,5.2,mg/L,Pond 1,Lower DO. Doubled aerator runtime.
+2026-04-26,sampling,52,grams,Pond 1,ABW. Slowing slightly but still on track.
+2026-05-03,sampling,78,grams,Pond 1,ABW. Steady growth. ~Week 8.
+2026-05-08,water_quality,6.1,mg/L,Pond 1,Improved after pond clean.

@@ -1,0 +1,16 @@
+incurred_on,category,amount,currency,description,vendor
+2026-03-08,chicks purchase,200000,XAF,500 tilapia fingerlings (1g) for Pond 1 stocking,Limbe Tilapia Hatchery
+2026-03-08,equipment,120000,XAF,Aerator + DO meter + ammonia test kit,Aqua Cameroun
+2026-03-08,transport,18000,XAF,Pickup hire to bring fingerlings from hatchery,Mokolo Transport
+2026-03-10,feed,45000,XAF,Tilapia Starter (40% protein) 25kg bag,Aqua Feed Cameroon
+2026-03-17,feed,45000,XAF,Tilapia Starter (40% protein) 25kg bag,Aqua Feed Cameroon
+2026-03-24,feed,45000,XAF,Tilapia Starter (40% protein) 25kg bag,Aqua Feed Cameroon
+2026-03-31,feed,42000,XAF,Tilapia Grower (32% protein) 25kg bag,Aqua Feed Cameroon
+2026-04-07,feed,42000,XAF,Tilapia Grower (32% protein) 25kg bag,Aqua Feed Cameroon
+2026-04-14,feed,42000,XAF,Tilapia Grower (32% protein) 25kg bag,Aqua Feed Cameroon
+2026-04-21,feed,42000,XAF,Tilapia Grower (32% protein) 25kg bag,Aqua Feed Cameroon
+2026-04-28,feed,42000,XAF,Tilapia Grower (32% protein) 25kg bag,Aqua Feed Cameroon
+2026-05-05,feed,42000,XAF,Tilapia Grower (32% protein) 25kg bag,Aqua Feed Cameroon
+2026-04-02,medication,8500,XAF,Salt for general prophylaxis,VetCare Cameroun
+2026-04-15,medication,12000,XAF,Pond probiotic mix,VetCare Cameroun
+2026-05-01,labor,30000,XAF,Pond cleaning crew (partial water exchange),Local laborers
