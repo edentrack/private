@@ -9,7 +9,13 @@ export const COUNTRY_CURRENCY_MAP: Record<string, CountryInfo> = {
   'Cameroon': {
     name: 'Cameroon',
     currency: 'XAF',
-    currencySymbol: 'XAF',
+    // Use the colloquial "CFA" symbol on user-facing labels (matches
+    // West African XOF entries below). Greg's BUG #11 audit (May 2026):
+    // egg-sale form labels showed "(XAF)" while dashboard totals showed
+    // "CFA 0" — same currency, two different strings on the same screen.
+    // Currency code stays 'XAF' (the ISO standard); only the display
+    // symbol changes here.
+    currencySymbol: 'CFA',
     currencyName: 'Central African CFA Franc'
   },
   'Nigeria': {
