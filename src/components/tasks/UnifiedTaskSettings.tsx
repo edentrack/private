@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Settings, X, Pencil, Trash2, RefreshCw, Copy, Eye, EyeOff, HelpCircle, Clock, Save, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { TaskTemplate, TaskScope, TaskTypeCategory } from '../../types/database';
 import { ensureTasksGeneratedForDate, getFlockTypesForFarm } from '../../utils/unifiedTaskSystem';
 import { formatFarmTimeForViewerWithFormat, getFarmTimeZone, getFarmTodayISO, getUiTimeFormat, setUiTimeFormat } from '../../utils/farmTime';
@@ -621,6 +622,7 @@ interface EditTemplateModalProps {
 
 function EditTemplateModal({ template, farmTz, onClose, onSave, onAutoSave }: EditTemplateModalProps) {
   const isEggTemplate = template.icon === 'egg' || template.category === 'Egg Production';
+  const farmSpecies = useFarmSpecies();
   const viewerTz = (() => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local';
@@ -819,8 +821,14 @@ function EditTemplateModal({ template, farmTz, onClose, onSave, onAutoSave }: Ed
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42]"
               >
                 <option value="general">General (All)</option>
-                <option value="broiler">Broiler Only</option>
-                <option value="layer">Layer Only</option>
+                {/* Type-specific filtering only meaningful on poultry —
+                    aqua/rabbits don't have an equivalent task split. */}
+                {farmSpecies.id === 'poultry' && (
+                  <>
+                    <option value="broiler">Broiler Only</option>
+                    <option value="layer">Layer Only</option>
+                  </>
+                )}
               </select>
             </div>
 
