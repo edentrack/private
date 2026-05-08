@@ -573,7 +573,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
               />
               {parseFloat(amountPaid) > 0 && (
                 <p className="text-sm text-gray-500 mt-1">
-                  {t('sales.pending')} {(totalAmount - parseFloat(amountPaid)).toLocaleString()} {currency}
+                  {t('sales.pending')} {(totalAmount - parseFloat(amountPaid)).toLocaleString()} {currencyLabel}
                 </p>
               )}
             </div>
@@ -601,14 +601,14 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
                 <div className="flex justify-between">
                   <span className="text-gray-600">{`Price per ${animalTerm}`}</span>
                   <span className="font-medium text-gray-900">
-                    {pricePerBirdCalculated.toLocaleString()} {currency}
+                    {pricePerBirdCalculated.toLocaleString()} {currencyLabel}
                   </span>
                 </div>
               )}
               <div className="flex justify-between pt-2 border-t border-gray-200">
                 <span className="font-semibold text-gray-900">{t('sales.total_amount')}</span>
                 <span className="font-bold text-green-600 text-lg">
-                  {totalAmount.toLocaleString()} {currency}
+                  {totalAmount.toLocaleString()} {currencyLabel}
                 </span>
               </div>
               {selectedFlock && numBirdsSold > 0 && (
