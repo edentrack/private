@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatCurrency } from '../../utils/currency';
 
 interface Adjustment {
@@ -37,26 +38,28 @@ interface Worker {
 
 const CATEGORIES = {
   bonus: [
-    { value: 'performance_bonus', label: 'Performance Bonus' },
-    { value: 'attendance_bonus', label: 'Attendance Bonus' },
-    { value: 'overtime_bonus', label: 'Overtime Bonus' },
-    { value: 'housing', label: 'Housing Allowance' },
-    { value: 'transport', label: 'Transport Allowance' },
-    { value: 'meal', label: 'Meal Allowance' },
-    { value: 'other', label: 'Other Bonus' }
+    { value: 'performance_bonus', label: 'Performance Bonus', labelFr: 'Prime de performance' },
+    { value: 'attendance_bonus', label: 'Attendance Bonus', labelFr: 'Prime de présence' },
+    { value: 'overtime_bonus', label: 'Overtime Bonus', labelFr: 'Prime d\'heures supplémentaires' },
+    { value: 'housing', label: 'Housing Allowance', labelFr: 'Indemnité de logement' },
+    { value: 'transport', label: 'Transport Allowance', labelFr: 'Indemnité de transport' },
+    { value: 'meal', label: 'Meal Allowance', labelFr: 'Indemnité de repas' },
+    { value: 'other', label: 'Other Bonus', labelFr: 'Autre prime' }
   ],
   deduction: [
-    { value: 'advance', label: 'Salary Advance' },
-    { value: 'loan_repayment', label: 'Loan Repayment' },
-    { value: 'absence', label: 'Absence' },
-    { value: 'damage', label: 'Damage/Loss' },
-    { value: 'tax', label: 'Tax' },
-    { value: 'other', label: 'Other Deduction' }
+    { value: 'advance', label: 'Salary Advance', labelFr: 'Avance sur salaire' },
+    { value: 'loan_repayment', label: 'Loan Repayment', labelFr: 'Remboursement de prêt' },
+    { value: 'absence', label: 'Absence', labelFr: 'Absence' },
+    { value: 'damage', label: 'Damage/Loss', labelFr: 'Dommage/Perte' },
+    { value: 'tax', label: 'Tax', labelFr: 'Taxe' },
+    { value: 'other', label: 'Other Deduction', labelFr: 'Autre déduction' }
   ]
 };
 
 export function PayrollAdjustments() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,21 +187,21 @@ export function PayrollAdjustments() {
 
       if (error) throw error;
 
-      setSuccess('Adjustment added successfully');
+      setSuccess(isFr ? 'Ajustement ajouté avec succès' : 'Adjustment added successfully');
       setShowModal(false);
       resetForm();
       loadAdjustments();
 
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to add adjustment');
+      setError(err.message || (isFr ? "Échec de l'ajout de l'ajustement" : 'Failed to add adjustment'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this adjustment?')) return;
+    if (!confirm(isFr ? 'Êtes-vous sûr de vouloir supprimer cet ajustement ?' : 'Are you sure you want to delete this adjustment?')) return;
 
     try {
       const { error } = await supabase
@@ -208,11 +211,11 @@ export function PayrollAdjustments() {
 
       if (error) throw error;
 
-      setSuccess('Adjustment deleted');
+      setSuccess(isFr ? 'Ajustement supprimé' : 'Adjustment deleted');
       loadAdjustments();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to delete adjustment');
+      setError(err.message || (isFr ? "Échec de la suppression de l'ajustement" : 'Failed to delete adjustment'));
     }
   };
 
@@ -232,7 +235,8 @@ export function PayrollAdjustments() {
 
   const getCategoryLabel = (type: string, category: string) => {
     const categories = CATEGORIES[type as keyof typeof CATEGORIES];
-    return categories?.find(c => c.value === category)?.label || category;
+    const found = categories?.find(c => c.value === category);
+    return (isFr ? found?.labelFr : found?.label) || category;
   };
 
   const currency = currentFarm?.currency_code || currentFarm?.currency || 'XAF';
@@ -261,7 +265,7 @@ export function PayrollAdjustments() {
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               <Gift className="w-5 h-5" />
             </div>
-            <span className="text-emerald-100 text-sm">Pending Bonuses</span>
+            <span className="text-emerald-100 text-sm">{isFr ? 'Primes en attente' : 'Pending Bonuses'}</span>
           </div>
           <p className="text-2xl font-bold">{formatCurrency(totalPendingBonuses, currency)}</p>
         </div>
@@ -271,7 +275,7 @@ export function PayrollAdjustments() {
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               <MinusCircle className="w-5 h-5" />
             </div>
-            <span className="text-red-100 text-sm">Pending Deductions</span>
+            <span className="text-red-100 text-sm">{isFr ? 'Déductions en attente' : 'Pending Deductions'}</span>
           </div>
           <p className="text-2xl font-bold">{formatCurrency(totalPendingDeductions, currency)}</p>
         </div>
@@ -282,7 +286,7 @@ export function PayrollAdjustments() {
             className="flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Add Adjustment
+            {isFr ? 'Ajouter un ajustement' : 'Add Adjustment'}
           </button>
         </div>
       </div>
@@ -303,25 +307,25 @@ export function PayrollAdjustments() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
-          <h3 className="font-semibold text-gray-900">Adjustments</h3>
+          <h3 className="font-semibold text-gray-900">{isFr ? 'Ajustements' : 'Adjustments'}</h3>
           <div className="flex gap-2">
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
               className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
             >
-              <option value="all">All Types</option>
-              <option value="bonus">Bonuses</option>
-              <option value="deduction">Deductions</option>
+              <option value="all">{isFr ? 'Tous les types' : 'All Types'}</option>
+              <option value="bonus">{isFr ? 'Primes' : 'Bonuses'}</option>
+              <option value="deduction">{isFr ? 'Déductions' : 'Deductions'}</option>
             </select>
             <select
               value={filterApplied}
               onChange={(e) => setFilterApplied(e.target.value as any)}
               className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500"
             >
-              <option value="pending">Pending</option>
-              <option value="applied">Applied</option>
-              <option value="all">All</option>
+              <option value="pending">{isFr ? 'En attente' : 'Pending'}</option>
+              <option value="applied">{isFr ? 'Appliqués' : 'Applied'}</option>
+              <option value="all">{isFr ? 'Tous' : 'All'}</option>
             </select>
           </div>
         </div>
@@ -329,28 +333,28 @@ export function PayrollAdjustments() {
         {adjustments.length === 0 ? (
           <div className="p-12 text-center">
             <Gift className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 mb-1">No adjustments found</p>
-            <p className="text-sm text-gray-400">Add bonuses or deductions for workers</p>
+            <p className="text-gray-500 mb-1">{isFr ? 'Aucun ajustement trouvé' : 'No adjustments found'}</p>
+            <p className="text-sm text-gray-400">{isFr ? 'Ajoutez des primes ou déductions pour les ouvriers' : 'Add bonuses or deductions for workers'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Worker</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Effective</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Ouvrier' : 'Worker'}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Type' : 'Type'}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Catégorie' : 'Category'}</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{isFr ? 'Montant' : 'Amount'}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Effectif' : 'Effective'}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Statut' : 'Status'}</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{isFr ? 'Actions' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {adjustments.map((adj) => (
                   <tr key={adj.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <p className="font-medium text-gray-900">{adj.worker_name || 'Unknown'}</p>
+                      <p className="font-medium text-gray-900">{adj.worker_name || (isFr ? 'Inconnu' : 'Unknown')}</p>
                       {adj.description && (
                         <p className="text-xs text-gray-500 truncate max-w-xs">{adj.description}</p>
                       )}
@@ -362,13 +366,13 @@ export function PayrollAdjustments() {
                           : 'bg-red-100 text-red-700'
                       }`}>
                         {adj.type === 'bonus' ? <Gift className="w-3 h-3" /> : <MinusCircle className="w-3 h-3" />}
-                        {adj.type.charAt(0).toUpperCase() + adj.type.slice(1)}
+                        {isFr ? (adj.type === 'bonus' ? 'Prime' : 'Déduction') : (adj.type.charAt(0).toUpperCase() + adj.type.slice(1))}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {getCategoryLabel(adj.type, adj.category)}
                       {adj.recurring && (
-                        <span className="ml-2 text-xs text-blue-600">(Recurring)</span>
+                        <span className="ml-2 text-xs text-blue-600">{isFr ? '(Récurrent)' : '(Recurring)'}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-right">
@@ -386,7 +390,7 @@ export function PayrollAdjustments() {
                           ? 'bg-gray-100 text-gray-600'
                           : 'bg-amber-100 text-amber-700'
                       }`}>
-                        {adj.is_applied ? 'Applied' : 'Pending'}
+                        {adj.is_applied ? (isFr ? 'Appliqué' : 'Applied') : (isFr ? 'En attente' : 'Pending')}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -411,7 +415,7 @@ export function PayrollAdjustments() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Add Adjustment</h2>
+              <h2 className="text-xl font-bold text-gray-900">{isFr ? 'Ajouter un ajustement' : 'Add Adjustment'}</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-6 h-6" />
               </button>
@@ -419,16 +423,16 @@ export function PayrollAdjustments() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Worker</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Ouvrier' : 'Worker'}</label>
                 <select
                   value={formData.worker_id}
                   onChange={(e) => setFormData({ ...formData, worker_id: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   required
                 >
-                  <option value="">Select worker</option>
+                  <option value="">{isFr ? 'Sélectionner un ouvrier' : 'Select worker'}</option>
                   {workers.length === 0 ? (
-                    <option value="" disabled>No workers with compensation found</option>
+                    <option value="" disabled>{isFr ? 'Aucun ouvrier avec rémunération trouvé' : 'No workers with compensation found'}</option>
                   ) : (
                     workers.map((w) => (
                       <option key={w.user_id} value={w.user_id}>{w.full_name}</option>
@@ -438,7 +442,7 @@ export function PayrollAdjustments() {
                 {workers.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
-                    Set up worker compensation in Team Management first
+                    {isFr ? "Configurez d'abord la rémunération des ouvriers dans Gestion d'équipe" : 'Set up worker compensation in Team Management first'}
                   </p>
                 )}
               </div>
@@ -454,7 +458,7 @@ export function PayrollAdjustments() {
                   }`}
                 >
                   <Gift className={`w-6 h-6 mx-auto mb-2 ${formData.type === 'bonus' ? 'text-emerald-600' : 'text-gray-400'}`} />
-                  <p className={`font-medium ${formData.type === 'bonus' ? 'text-emerald-700' : 'text-gray-600'}`}>Bonus</p>
+                  <p className={`font-medium ${formData.type === 'bonus' ? 'text-emerald-700' : 'text-gray-600'}`}>{isFr ? 'Prime' : 'Bonus'}</p>
                 </button>
                 <button
                   type="button"
@@ -466,27 +470,27 @@ export function PayrollAdjustments() {
                   }`}
                 >
                   <MinusCircle className={`w-6 h-6 mx-auto mb-2 ${formData.type === 'deduction' ? 'text-red-600' : 'text-gray-400'}`} />
-                  <p className={`font-medium ${formData.type === 'deduction' ? 'text-red-700' : 'text-gray-600'}`}>Deduction</p>
+                  <p className={`font-medium ${formData.type === 'deduction' ? 'text-red-700' : 'text-gray-600'}`}>{isFr ? 'Déduction' : 'Deduction'}</p>
                 </button>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Catégorie' : 'Category'}</label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
                   required
                 >
-                  <option value="">Select category</option>
+                  <option value="">{isFr ? 'Sélectionner une catégorie' : 'Select category'}</option>
                   {CATEGORIES[formData.type].map((cat) => (
-                    <option key={cat.value} value={cat.value}>{cat.label}</option>
+                    <option key={cat.value} value={cat.value}>{isFr ? cat.labelFr : cat.label}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Amount ({currency})</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? `Montant (${currency})` : `Amount (${currency})`}</label>
                 <input
                   type="number"
                   step="0.01"
@@ -500,18 +504,18 @@ export function PayrollAdjustments() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Description (Optionnel)' : 'Description (Optional)'}</label>
                 <input
                   type="text"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Reason for adjustment"
+                  placeholder={isFr ? "Raison de l'ajustement" : 'Reason for adjustment'}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Effective Date</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? "Date d'effet" : 'Effective Date'}</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -532,28 +536,28 @@ export function PayrollAdjustments() {
                   onChange={(e) => setFormData({ ...formData, recurring: e.target.checked })}
                   className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                 />
-                <label htmlFor="recurring" className="text-sm text-gray-700">Recurring adjustment</label>
+                <label htmlFor="recurring" className="text-sm text-gray-700">{isFr ? 'Ajustement récurrent' : 'Recurring adjustment'}</label>
               </div>
 
               {formData.recurring && (
                 <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Fréquence' : 'Frequency'}</label>
                     <select
                       value={formData.recurring_frequency}
                       onChange={(e) => setFormData({ ...formData, recurring_frequency: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"
                       required={formData.recurring}
                     >
-                      <option value="">Select</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="bi_weekly">Bi-Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="per_payroll">Per Payroll</option>
+                      <option value="">{isFr ? 'Sélectionner' : 'Select'}</option>
+                      <option value="weekly">{isFr ? 'Hebdomadaire' : 'Weekly'}</option>
+                      <option value="bi_weekly">{isFr ? 'Bimensuel' : 'Bi-Weekly'}</option>
+                      <option value="monthly">{isFr ? 'Mensuel' : 'Monthly'}</option>
+                      <option value="per_payroll">{isFr ? 'Par paie' : 'Per Payroll'}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date (Optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Date de fin (Optionnel)' : 'End Date (Optional)'}</label>
                     <input
                       type="date"
                       value={formData.end_date}
@@ -570,7 +574,7 @@ export function PayrollAdjustments() {
                   onClick={() => setShowModal(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50"
                 >
-                  Cancel
+                  {isFr ? 'Annuler' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
@@ -578,7 +582,7 @@ export function PayrollAdjustments() {
                   className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  {saving ? 'Adding...' : 'Add Adjustment'}
+                  {saving ? (isFr ? 'Ajout...' : 'Adding...') : (isFr ? 'Ajouter un ajustement' : 'Add Adjustment')}
                 </button>
               </div>
             </form>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Building2, Plus, Users, MapPin, Search, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { CreateCooperativeModal } from './CreateCooperativeModal';
 
@@ -27,6 +28,8 @@ interface CooperativeWithRole extends Cooperative {
 
 export function CooperativesPage() {
   const { user, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<CooperativeWithRole[]>([]);
@@ -73,7 +76,7 @@ export function CooperativesPage() {
       .in('id', Array.from(allIds));
 
     if (error) {
-      showToast(`Failed to load cooperatives: ${error.message}`, 'error');
+      showToast(isFr ? `Échec du chargement des coopératives : ${error.message}` : `Failed to load cooperatives: ${error.message}`, 'error');
       setLoading(false);
       return;
     }
@@ -121,7 +124,7 @@ export function CooperativesPage() {
       .limit(15);
     setBrowsing(false);
     if (error) {
-      showToast(`Search failed: ${error.message}`, 'error');
+      showToast(isFr ? `Échec de la recherche : ${error.message}` : `Search failed: ${error.message}`, 'error');
       return;
     }
     const knownIds = new Set(items.map((i) => i.id));
@@ -130,7 +133,7 @@ export function CooperativesPage() {
 
   const requestJoin = async (cooperativeId: string) => {
     if (!currentFarm) {
-      showToast('Select a farm first', 'error');
+      showToast(isFr ? "Sélectionnez d'abord une ferme" : 'Select a farm first', 'error');
       return;
     }
     const { error } = await supabase.from('cooperative_members').insert({
@@ -139,10 +142,10 @@ export function CooperativesPage() {
       status: 'pending',
     });
     if (error) {
-      showToast(`Request failed: ${error.message}`, 'error');
+      showToast(isFr ? `Échec de la demande : ${error.message}` : `Request failed: ${error.message}`, 'error');
       return;
     }
-    showToast('Join request sent — admin will approve.', 'success');
+    showToast(isFr ? "Demande d'adhésion envoyée — l'administrateur l'approuvera." : 'Join request sent — admin will approve.', 'success');
     setBrowseResults((r) => r.filter((c) => c.id !== cooperativeId));
     load();
   };
@@ -157,10 +160,10 @@ export function CooperativesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <Building2 className="w-6 h-6 text-emerald-600" />
-            Cooperatives
+            {isFr ? 'Coopératives' : 'Cooperatives'}
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            Aggregator dashboards rolling up data across many member farms.
+            {isFr ? 'Tableaux de bord agrégateurs synthétisant les données de nombreuses fermes membres.' : 'Aggregator dashboards rolling up data across many member farms.'}
           </p>
         </div>
         <button
@@ -168,7 +171,7 @@ export function CooperativesPage() {
           className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
         >
           <Plus className="w-4 h-4" />
-          New cooperative
+          {isFr ? 'Nouvelle coopérative' : 'New cooperative'}
         </button>
       </div>
 
@@ -179,10 +182,11 @@ export function CooperativesPage() {
       ) : items.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
           <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <h2 className="text-lg font-medium text-gray-900">No cooperatives yet</h2>
+          <h2 className="text-lg font-medium text-gray-900">{isFr ? 'Aucune coopérative pour le moment' : 'No cooperatives yet'}</h2>
           <p className="text-sm text-gray-600 mt-1 max-w-md mx-auto">
-            Create a cooperative if you run an NGO, dairy union, or aggregator network. Or browse below to request to
-            join an existing one.
+            {isFr
+              ? "Créez une coopérative si vous gérez une ONG, une union laitière ou un réseau agrégateur. Ou parcourez ci-dessous pour demander à rejoindre une coopérative existante."
+              : 'Create a cooperative if you run an NGO, dairy union, or aggregator network. Or browse below to request to join an existing one.'}
           </p>
         </div>
       ) : (
@@ -198,12 +202,12 @@ export function CooperativesPage() {
                   <span className="font-medium text-gray-900 truncate">{c.name}</span>
                   {c.isAdmin && (
                     <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {c.adminRole === 'admin' ? 'Admin' : 'Viewer'}
+                      {c.adminRole === 'admin' ? (isFr ? 'Administrateur' : 'Admin') : (isFr ? 'Lecteur' : 'Viewer')}
                     </span>
                   )}
                   {!c.isAdmin && c.myMembership?.status === 'pending' && (
                     <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                      Pending
+                      {isFr ? 'En attente' : 'Pending'}
                     </span>
                   )}
                 </div>
@@ -215,7 +219,7 @@ export function CooperativesPage() {
                 )}
                 <div className="text-xs text-gray-600 mt-2 flex items-center gap-1">
                   <Users className="w-3 h-3" />
-                  {c.memberFarmCount} active member {c.memberFarmCount === 1 ? 'farm' : 'farms'}
+                  {isFr ? `${c.memberFarmCount} ferme${c.memberFarmCount === 1 ? '' : 's'} membre${c.memberFarmCount === 1 ? '' : 's'} active${c.memberFarmCount === 1 ? '' : 's'}` : `${c.memberFarmCount} active member ${c.memberFarmCount === 1 ? 'farm' : 'farms'}`}
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-gray-400 mt-1 flex-shrink-0" />
@@ -225,14 +229,14 @@ export function CooperativesPage() {
       )}
 
       <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h2 className="font-medium text-gray-900 mb-2">Browse cooperatives</h2>
+        <h2 className="font-medium text-gray-900 mb-2">{isFr ? 'Parcourir les coopératives' : 'Browse cooperatives'}</h2>
         <p className="text-sm text-gray-600 mb-3">
-          Find an existing cooperative and request your farm join it.
+          {isFr ? 'Trouvez une coopérative existante et demandez à votre ferme de la rejoindre.' : 'Find an existing cooperative and request your farm join it.'}
         </p>
         {!currentFarm && (
           <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 mb-3">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            Select a farm in the top-left switcher before requesting to join.
+            {isFr ? 'Sélectionnez une ferme dans le sélecteur en haut à gauche avant de demander à rejoindre.' : 'Select a farm in the top-left switcher before requesting to join.'}
           </div>
         )}
         <div className="flex gap-2">
@@ -242,7 +246,7 @@ export function CooperativesPage() {
               value={browseQuery}
               onChange={(e) => setBrowseQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && browseSearch()}
-              placeholder="Search by name, slug, or region…"
+              placeholder={isFr ? 'Rechercher par nom, slug ou région…' : 'Search by name, slug, or region…'}
               className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </div>
@@ -251,7 +255,7 @@ export function CooperativesPage() {
             disabled={browseQuery.trim().length < 2}
             className="px-4 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-lg text-sm font-medium"
           >
-            Search
+            {isFr ? 'Rechercher' : 'Search'}
           </button>
         </div>
         {browsing ? (
@@ -273,13 +277,13 @@ export function CooperativesPage() {
                   disabled={!currentFarm}
                   className="text-xs font-medium px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
                 >
-                  Request to join
+                  {isFr ? 'Demander à rejoindre' : 'Request to join'}
                 </button>
               </li>
             ))}
           </ul>
         ) : browseQuery.trim().length >= 2 ? (
-          <div className="text-sm text-gray-500 mt-3">No matches.</div>
+          <div className="text-sm text-gray-500 mt-3">{isFr ? 'Aucun résultat.' : 'No matches.'}</div>
         ) : null}
       </div>
 

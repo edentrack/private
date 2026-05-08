@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Check, X, AlertTriangle, Edit2, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ImportItem {
   id: string;
@@ -66,6 +67,8 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
 
 export function ProposedImportReview({ importId, farmId, onComplete, onCancel }: Props) {
   const { currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [items, setItems] = useState<ImportItem[]>([]);
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -120,7 +123,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
       }
       if (flocksRes.data) setFlocks(flocksRes.data);
     } catch (err) {
-      setError('Failed to load import data');
+      setError(isFr ? "Échec du chargement des données d'importation" : 'Failed to load import data');
     } finally {
       setLoading(false);
     }
@@ -172,7 +175,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
 
   async function handleCommit(selectedOnly: boolean = false) {
     if (!canCommit) {
-      setError('Only owners and managers can commit imports');
+      setError(isFr ? 'Seuls les propriétaires et les responsables peuvent valider les importations' : 'Only owners and managers can commit imports');
       return;
     }
 
@@ -205,7 +208,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
       const _result = await response.json();
       onComplete();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to commit import');
+      setError(err instanceof Error ? err.message : (isFr ? "Échec de la validation de l'importation" : 'Failed to commit import'));
     } finally {
       setCommitting(false);
     }
@@ -263,7 +266,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
               onChange={(e) => updateItemFlock(item.id, e.target.value || null)}
               className="text-sm border border-gray-300 rounded px-2 py-1"
             >
-              <option value="">No flock</option>
+              <option value="">{isFr ? 'Aucun troupeau' : 'No flock'}</option>
               {flocks.map(f => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
@@ -358,7 +361,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
             onChange={(e) => updateItemFlock(item.id, e.target.value || null)}
             className="text-sm border border-gray-300 rounded px-2 py-1"
           >
-            <option value="">No flock</option>
+            <option value="">{isFr ? 'Aucun troupeau' : 'No flock'}</option>
             {flocks.map(f => (
               <option key={f.id} value={f.id}>{f.name}</option>
             ))}
@@ -502,7 +505,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
           {activeTab === 'warnings' ? (
             <div className="space-y-2">
               {warnings.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No warnings</p>
+                <p className="text-gray-500 text-center py-8">{isFr ? 'Aucun avertissement' : 'No warnings'}</p>
               ) : (
                 warnings.map((warning, idx) => (
                   <div key={idx} className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -533,7 +536,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
               </div>
 
               {getItemsForTab(activeTab).length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No items extracted</p>
+                <p className="text-gray-500 text-center py-8">{isFr ? 'Aucun élément extrait' : 'No items extracted'}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -550,7 +553,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flock</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Edit</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Modifier' : 'Edit'}</th>
                           </>
                         )}
                         {activeTab === 'inventory' && (
@@ -561,7 +564,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cost</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Edit</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Modifier' : 'Edit'}</th>
                           </>
                         )}
                         {activeTab === 'production' && (
@@ -572,7 +575,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flock</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Edit</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Modifier' : 'Edit'}</th>
                           </>
                         )}
                         {activeTab === 'flocks' && (
@@ -582,7 +585,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Birds</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Edit</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Modifier' : 'Edit'}</th>
                           </>
                         )}
                         {activeTab === 'task_template' && (
@@ -593,7 +596,7 @@ export function ProposedImportReview({ importId, farmId, onComplete, onCancel }:
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flock Type</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Confidence</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Edit</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">{isFr ? 'Modifier' : 'Edit'}</th>
                           </>
                         )}
                       </tr>
@@ -696,6 +699,8 @@ function EditItemModal({
   onSave: (item: ImportItem) => void;
   onClose: () => void;
 }) {
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [payload, setPayload] = useState(item.payload);
   const [linkedFlockId, setLinkedFlockId] = useState(item.linked_flock_id || '');
 
@@ -712,7 +717,7 @@ function EditItemModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold">Edit {item.entity_type}</h2>
+          <h2 className="text-lg font-semibold">{isFr ? `Modifier ${item.entity_type}` : `Edit ${item.entity_type}`}</h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
             <X className="w-5 h-5" />
           </button>
@@ -748,7 +753,7 @@ function EditItemModal({
                 onChange={(e) => setLinkedFlockId(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
               >
-                <option value="">No flock</option>
+                <option value="">{isFr ? 'Aucun troupeau' : 'No flock'}</option>
                 {flocks.map(f => (
                   <option key={f.id} value={f.id}>{f.name}</option>
                 ))}

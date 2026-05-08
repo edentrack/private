@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Egg, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Flock {
   id: string;
@@ -17,6 +18,8 @@ interface RecordEggCollectionProps {
 
 export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggCollectionProps) {
   const { profile } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [loading, setLoading] = useState(false);
   const [eggsPerTray, setEggsPerTray] = useState(30);
   const [inputMode, setInputMode] = useState<'eggs' | 'trays'>('eggs');
@@ -67,7 +70,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
         Number(formData.jumbo_eggs);
 
       if (totalEggs === 0) {
-        setErrorMessage('Please enter at least some eggs collected');
+        setErrorMessage(isFr ? 'Veuillez entrer au moins quelques œufs collectés' : 'Please enter at least some eggs collected');
         setTimeout(() => setErrorMessage(null), 3000);
         setLoading(false);
         return;
@@ -125,7 +128,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
           });
       }
 
-      setSuccessMessage(`Recorded ${totalEggs} eggs collected!`);
+      setSuccessMessage(isFr ? `${totalEggs} œufs collectés enregistrés !` : `Recorded ${totalEggs} eggs collected!`);
       setTimeout(() => setSuccessMessage(null), 4000);
 
       setFormData({
@@ -144,7 +147,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
 
     } catch (error) {
       console.error('Error recording egg collection:', error);
-      setErrorMessage('Failed to record collection. Please try again.');
+      setErrorMessage(isFr ? "Échec de l'enregistrement de la collecte. Veuillez réessayer." : 'Failed to record collection. Please try again.');
       setTimeout(() => setErrorMessage(null), 3000);
     } finally {
       setLoading(false);
@@ -177,20 +180,20 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
         <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
           <Egg className="w-5 h-5 text-white" />
         </div>
-        <h3 className="text-xl font-bold text-gray-900">Record Egg Collection</h3>
+        <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Enregistrer la collecte d\'œufs' : 'Record Egg Collection'}</h3>
       </div>
 
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Layer Flock <span className="text-gray-500 font-normal">(Optional)</span>
+            {isFr ? 'Troupeau de pondeuses' : 'Layer Flock'} <span className="text-gray-500 font-normal">{isFr ? '(Optionnel)' : '(Optional)'}</span>
           </label>
           <select
             value={formData.flock_id}
             onChange={(e) => setFormData({ ...formData, flock_id: e.target.value })}
             className="w-full px-2.5 py-1.5 bg-white text-gray-900 border-2 border-gray-200 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all text-sm"
           >
-            <option value="">All flocks combined</option>
+            <option value="">{isFr ? 'Tous les troupeaux combinés' : 'All flocks combined'}</option>
             {layerFlocks.map(flock => (
               <option key={flock.id} value={flock.id}>
                 {flock.name}
@@ -198,13 +201,13 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
             ))}
           </select>
           <p className="text-xs text-gray-500 mt-1">
-            Leave empty if eggs stored together from multiple pens
+            {isFr ? 'Laisser vide si les œufs sont stockés ensemble depuis plusieurs enclos' : 'Leave empty if eggs stored together from multiple pens'}
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Collection Date
+            {isFr ? 'Date de collecte' : 'Collection Date'}
           </label>
           <input
             type="date"
@@ -225,7 +228,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            By Eggs
+            {isFr ? 'Par œufs' : 'By Eggs'}
           </button>
           <button
             type="button"
@@ -236,7 +239,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            By Trays
+            {isFr ? 'Par plateaux' : 'By Trays'}
           </button>
         </div>
 
@@ -244,7 +247,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Number of Trays ({eggsPerTray} eggs per tray)
+                {isFr ? `Nombre de plateaux (${eggsPerTray} œufs par plateau)` : `Number of Trays (${eggsPerTray} eggs per tray)`}
               </label>
               <input
                 type="number"
@@ -266,13 +269,13 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
                 className="w-full px-2.5 py-1.5 bg-white text-gray-900 border-2 border-gray-200 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all text-sm"
               />
               <p className="text-xs text-gray-600 mt-1">
-                Total eggs: {Math.round(formData.trays * eggsPerTray)}
+                {isFr ? 'Total œufs' : 'Total eggs'}: {Math.round(formData.trays * eggsPerTray)}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Egg Size (optional)
+                {isFr ? "Taille d'œuf (optionnel)" : 'Egg Size (optional)'}
               </label>
               <select
                 onChange={(e) => {
@@ -288,13 +291,13 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
                 }}
                 className="w-full px-2.5 py-1.5 bg-white text-gray-900 border-2 border-gray-200 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all text-sm"
               >
-                <option value="large">Large (default)</option>
-                <option value="small">Small</option>
-                <option value="medium">Medium</option>
-                <option value="jumbo">Jumbo</option>
+                <option value="large">{isFr ? 'Gros (par défaut)' : 'Large (default)'}</option>
+                <option value="small">{isFr ? 'Petit' : 'Small'}</option>
+                <option value="medium">{isFr ? 'Moyen' : 'Medium'}</option>
+                <option value="jumbo">{isFr ? 'Très gros' : 'Jumbo'}</option>
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Select the predominant egg size in these trays
+                {isFr ? "Sélectionnez la taille d'œuf prédominante dans ces plateaux" : 'Select the predominant egg size in these trays'}
               </p>
             </div>
           </div>
@@ -302,7 +305,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
           <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Small Eggs
+              {isFr ? 'Petits œufs' : 'Small Eggs'}
             </label>
             <input
               type="number"
@@ -315,7 +318,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Medium Eggs
+              {isFr ? 'Œufs moyens' : 'Medium Eggs'}
             </label>
             <input
               type="number"
@@ -328,7 +331,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Large Eggs
+              {isFr ? 'Gros œufs' : 'Large Eggs'}
             </label>
             <input
               type="number"
@@ -341,7 +344,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Jumbo Eggs
+              {isFr ? 'Œufs très gros' : 'Jumbo Eggs'}
             </label>
             <input
               type="number"
@@ -356,7 +359,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Damaged/Broken Eggs
+            {isFr ? 'Œufs endommagés/cassés' : 'Damaged/Broken Eggs'}
           </label>
           <input
             type="number"
@@ -369,20 +372,20 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
 
         <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
           <p className="font-semibold text-green-900">
-            Total Good Eggs: {totalEggs}
+            {isFr ? 'Total œufs bons' : 'Total Good Eggs'}: {totalEggs}
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Notes <span className="text-gray-500 font-normal">(Optional)</span>
+            {isFr ? 'Notes' : 'Notes'} <span className="text-gray-500 font-normal">{isFr ? '(Optionnel)' : '(Optional)'}</span>
           </label>
           <textarea
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             rows={2}
             className="w-full px-2.5 py-1.5 bg-white text-gray-900 border-2 border-gray-200 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all resize-none text-sm"
-            placeholder="Any observations..."
+            placeholder={isFr ? 'Toutes observations...' : 'Any observations...'}
           />
         </div>
 
@@ -391,7 +394,7 @@ export function RecordEggCollection({ farmId, flocks, onSuccess }: RecordEggColl
           disabled={loading}
           className="w-full px-4 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-semibold hover:from-amber-700 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-500 transition-all shadow-sm hover:shadow-md"
         >
-          {loading ? 'Recording...' : 'Record Collection'}
+          {loading ? (isFr ? 'Enregistrement...' : 'Recording...') : (isFr ? 'Enregistrer la collecte' : 'Record Collection')}
         </button>
       </div>
     </form>

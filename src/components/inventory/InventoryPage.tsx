@@ -1312,7 +1312,7 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {damagedEggEntries.length === 0 ? (
-                <p className="text-sm text-gray-500">No damaged eggs recorded.</p>
+                <p className="text-sm text-gray-500">{isFr ? 'Aucun œuf endommagé enregistré.' : 'No damaged eggs recorded.'}</p>
               ) : (
                 (() => {
                   const byDate = new Map<string, Array<{ id: string; damaged: number; flock_id: string | null }>>();
@@ -1328,7 +1328,7 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
                   return (
                     <div className="space-y-2">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Day</label>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Jour' : 'Day'}</label>
                         <select
                           value={selected}
                           onChange={(e) => setSelectedDamagedDate(e.target.value)}
@@ -1343,11 +1343,11 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
                             );
                           })}
                         </select>
-                        <div className="text-xs text-red-600 font-semibold mt-1">Total damaged: {dayTotal}</div>
+                        <div className="text-xs text-red-600 font-semibold mt-1">{isFr ? `Total endommagés : ${dayTotal}` : `Total damaged: ${dayTotal}`}</div>
                       </div>
 
                       {entries.length === 0 ? (
-                        <p className="text-sm text-gray-500">No entries for this day.</p>
+                        <p className="text-sm text-gray-500">{isFr ? 'Aucune entrée pour ce jour.' : 'No entries for this day.'}</p>
                       ) : (
                         <div className="space-y-1">
                           {entries.map((x, idx) => (
@@ -1356,7 +1356,7 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
                               className="flex items-center justify-between px-3 py-2 text-sm text-gray-700 border border-gray-200 rounded-xl"
                             >
                               <span>
-                                {(x.flock_id && flocks.find((f) => f.id === x.flock_id)?.name) || 'All flocks'} • Entry {idx + 1}
+                                {(x.flock_id && flocks.find((f) => f.id === x.flock_id)?.name) || (isFr ? 'Tous les troupeaux' : 'All flocks')} • {isFr ? `Entrée ${idx + 1}` : `Entry ${idx + 1}`}
                               </span>
                               <span className="font-semibold text-red-600">{x.damaged}</span>
                             </div>
@@ -1364,7 +1364,7 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
                         </div>
                       )}
 
-                      <p className="text-xs text-gray-400 pt-2">To edit damaged eggs, use “Adjust eggs” above.</p>
+                      <p className="text-xs text-gray-400 pt-2">{isFr ? 'Pour modifier les œufs endommagés, utilisez « Ajuster les œufs » ci-dessus.' : 'To edit damaged eggs, use “Adjust eggs” above.'}</p>
                     </div>
                   );
                 })()

@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Globe, Fish, Wheat, Rabbit, Check } from 'lucide-react';
 import type { OwnedFarm } from '../../contexts/authContextRef';
 import type { FarmKind } from '../../types/database';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Props {
   farms: OwnedFarm[];
@@ -45,6 +46,8 @@ export function EdenFarmSelector({
 }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
 
   useEffect(() => {
     if (!open) return;
@@ -62,8 +65,8 @@ export function EdenFarmSelector({
   const showCrossFarm = farms.length >= 2;
 
   const buttonLabel = crossFarm
-    ? 'All my farms'
-    : activeFarm?.name ?? (farms[0]?.name ?? 'Select farm');
+    ? (isFr ? 'Toutes mes fermes' : 'All my farms')
+    : activeFarm?.name ?? (farms[0]?.name ?? (isFr ? 'Sélectionner une ferme' : 'Select farm'));
 
   return (
     <div ref={ref} className="relative inline-block">
@@ -71,7 +74,7 @@ export function EdenFarmSelector({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-sm text-gray-800 max-w-[200px]"
-        aria-label="Eden chat scope"
+        aria-label={isFr ? 'Portée du chat Eden' : 'Eden chat scope'}
       >
         {crossFarm ? (
           <Globe className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
@@ -89,7 +92,7 @@ export function EdenFarmSelector({
           className="absolute top-full mt-1 left-0 min-w-[240px] z-30 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
         >
           <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 bg-gray-50 border-b border-gray-100">
-            Conversation scope
+            {isFr ? 'Portée de la conversation' : 'Conversation scope'}
           </div>
           <ul className="max-h-72 overflow-y-auto py-1">
             {farms.map((farm) => {
@@ -131,9 +134,9 @@ export function EdenFarmSelector({
                   >
                     <Globe className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium">All my farms</div>
+                      <div className="font-medium">{isFr ? 'Toutes mes fermes' : 'All my farms'}</div>
                       <div className="text-xs text-gray-500 truncate">
-                        Compare across farms · Eden asks which to log to
+                        {isFr ? 'Comparer entre les fermes · Eden demande laquelle utiliser' : 'Compare across farms · Eden asks which to log to'}
                       </div>
                     </div>
                     {crossFarm && <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />}

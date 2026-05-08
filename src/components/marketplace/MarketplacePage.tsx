@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
 
 interface Supplier {
@@ -53,6 +54,8 @@ export function MarketplacePage() {
   const { user, currentFarm } = useAuth();
   const { showToast } = useToast();
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   // Marketplace categories vary by species — "chicks" only makes sense
   // on poultry; aqua and rabbit farmers buy fingerlings or breeding
   // stock instead. Subtitles + supplier-pitch line follow the same.
@@ -129,11 +132,11 @@ export function MarketplacePage() {
         status: 'pending',
       });
       if (error) throw error;
-      showToast('Application submitted! We will review and contact you soon.', 'success');
+      showToast(isFr ? 'Candidature envoyée ! Nous l\'examinerons et vous contacterons bientôt.' : 'Application submitted! We will review and contact you soon.', 'success');
       setShowSupplierModal(false);
       setSupplierForm({ businessName: '', category: 'feed', location: '', phone: '', email: '', description: '' });
     } catch {
-      showToast('Failed to submit application. Please try again.', 'error');
+      showToast(isFr ? 'Échec de l\'envoi de la candidature. Veuillez réessayer.' : 'Failed to submit application. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -142,8 +145,8 @@ export function MarketplacePage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900">{t('marketplace.title') || 'Marketplace'}</h2>
-        <p className="text-gray-500 mt-1">{`Find suppliers for feed, ${stockCategoryWord}, equipment, and more`}</p>
+        <h2 className="text-3xl font-bold text-gray-900">{t('marketplace.title') || (isFr ? 'Marché' : 'Marketplace')}</h2>
+        <p className="text-gray-500 mt-1">{isFr ? `Trouvez des fournisseurs pour les aliments, ${stockCategoryWord}, équipement et plus` : `Find suppliers for feed, ${stockCategoryWord}, equipment, and more`}</p>
       </div>
 
       <div className="section-card">
@@ -154,7 +157,7 @@ export function MarketplacePage() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search suppliers, products…"
+              placeholder={isFr ? 'Rechercher des fournisseurs, produits…' : 'Search suppliers, products…'}
               className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42]"
             />
           </div>
@@ -165,7 +168,7 @@ export function MarketplacePage() {
               onChange={e => setShowVerifiedOnly(e.target.checked)}
               className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
             />
-            <span className="text-sm font-medium text-gray-700">Verified only</span>
+            <span className="text-sm font-medium text-gray-700">{isFr ? 'Vérifiés uniquement' : 'Verified only'}</span>
           </label>
         </div>
 
@@ -193,7 +196,7 @@ export function MarketplacePage() {
       {currentFarm?.city && (
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <MapPin className="w-4 h-4" />
-          <span>Showing suppliers near {currentFarm.city}, {currentFarm.country}</span>
+          <span>{isFr ? `Affichage des fournisseurs près de ${currentFarm.city}, ${currentFarm.country}` : `Showing suppliers near ${currentFarm.city}, ${currentFarm.country}`}</span>
         </div>
       )}
 
@@ -218,10 +221,10 @@ export function MarketplacePage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-900">{displayName}</h3>
                         {s.status === 'verified' && (
-                          <CheckCircle className="w-4 h-4 text-green-500" title="Verified supplier" />
+                          <CheckCircle className="w-4 h-4 text-green-500" title={isFr ? 'Fournisseur vérifié' : 'Verified supplier'} />
                         )}
                         {s.is_featured && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">Featured</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">{isFr ? 'En vedette' : 'Featured'}</span>
                         )}
                       </div>
                       {s.address && (
@@ -244,7 +247,7 @@ export function MarketplacePage() {
                       <span key={p} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">{p}</span>
                     ))}
                     {s.products.length > 4 && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">+{s.products.length - 4} more</span>
+                      <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">+{s.products.length - 4} {isFr ? 'autres' : 'more'}</span>
                     )}
                   </div>
                 )}
@@ -265,7 +268,7 @@ export function MarketplacePage() {
                       rel="noopener noreferrer"
                       className="px-4 py-2 bg-[#3D5F42] text-white text-sm font-medium rounded-lg hover:bg-[#2F4A34] transition-colors flex items-center gap-2"
                     >
-                      Visit Website
+                      {isFr ? 'Visiter le site' : 'Visit Website'}
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   ) : s.email ? (
@@ -273,7 +276,7 @@ export function MarketplacePage() {
                       href={`mailto:${s.email}`}
                       className="px-4 py-2 bg-[#3D5F42] text-white text-sm font-medium rounded-lg hover:bg-[#2F4A34] transition-colors flex items-center gap-2"
                     >
-                      Contact
+                      {isFr ? 'Contact' : 'Contact'}
                       <Globe className="w-4 h-4" />
                     </a>
                   ) : null}
@@ -289,11 +292,11 @@ export function MarketplacePage() {
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Package className="w-8 h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No suppliers yet</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{isFr ? 'Aucun fournisseur pour le moment' : 'No suppliers yet'}</h3>
           <p className="text-gray-500">
             {searchQuery || selectedCategory !== 'all'
-              ? 'No suppliers match your search. Try different filters.'
-              : 'The marketplace is being set up. Suppliers will appear here soon.'}
+              ? (isFr ? 'Aucun fournisseur ne correspond à votre recherche. Essayez d\'autres filtres.' : 'No suppliers match your search. Try different filters.')
+              : (isFr ? 'Le marché est en cours de configuration. Les fournisseurs apparaîtront bientôt ici.' : 'The marketplace is being set up. Suppliers will appear here soon.')}
           </p>
         </div>
       )}
@@ -301,70 +304,70 @@ export function MarketplacePage() {
       <div className="section-card bg-gradient-to-r from-[#3D5F42] to-[#2F4A34] text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold mb-2">Are you a supplier?</h3>
-            <p className="text-white/80">{`List your business and reach thousands of ${farmerNoun}`}</p>
+            <h3 className="text-xl font-bold mb-2">{isFr ? 'Êtes-vous fournisseur ?' : 'Are you a supplier?'}</h3>
+            <p className="text-white/80">{isFr ? `Inscrivez votre entreprise et atteignez des milliers de ${farmerNoun}` : `List your business and reach thousands of ${farmerNoun}`}</p>
           </div>
           <button
             onClick={() => setShowSupplierModal(true)}
             className="px-6 py-3 bg-white text-[#3D5F42] font-medium rounded-xl hover:bg-gray-100 transition-colors"
           >
-            Register as Supplier
+            {isFr ? 'S\'inscrire comme fournisseur' : 'Register as Supplier'}
           </button>
         </div>
       </div>
 
       <div className="text-center text-sm text-gray-500">
         <Clock className="w-4 h-4 inline-block mr-1" />
-        Contact suppliers directly for current availability and pricing.
+        {isFr ? 'Contactez directement les fournisseurs pour la disponibilité et les prix actuels.' : 'Contact suppliers directly for current availability and pricing.'}
       </div>
 
       {showSupplierModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900">Register as Supplier</h3>
+              <h3 className="text-xl font-bold text-gray-900">{isFr ? 'S\'inscrire comme fournisseur' : 'Register as Supplier'}</h3>
               <button onClick={() => setShowSupplierModal(false)} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
             <form onSubmit={handleSupplierSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Nom de l\'entreprise *' : 'Business Name *'}</label>
                 <input
                   type="text" required
                   value={supplierForm.businessName}
                   onChange={e => setSupplierForm({ ...supplierForm, businessName: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42]"
-                  placeholder="Your business name"
+                  placeholder={isFr ? 'Nom de votre entreprise' : 'Your business name'}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Catégorie *' : 'Category *'}</label>
                 <select
                   required value={supplierForm.category}
                   onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42]"
                 >
-                  <option value="feed">Feed</option>
-                  <option value="chicks">Chicks</option>
-                  <option value="equipment">Equipment</option>
-                  <option value="medicine">Medicine</option>
-                  <option value="packaging">Packaging</option>
+                  <option value="feed">{isFr ? 'Aliments' : 'Feed'}</option>
+                  <option value="chicks">{isFr ? 'Poussins' : 'Chicks'}</option>
+                  <option value="equipment">{isFr ? 'Équipement' : 'Equipment'}</option>
+                  <option value="medicine">{isFr ? 'Médicaments' : 'Medicine'}</option>
+                  <option value="packaging">{isFr ? 'Emballage' : 'Packaging'}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Localisation *' : 'Location *'}</label>
                 <input
                   type="text" required
                   value={supplierForm.location}
                   onChange={e => setSupplierForm({ ...supplierForm, location: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42]"
-                  placeholder="City, Region"
+                  placeholder={isFr ? 'Ville, Région' : 'City, Region'}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Téléphone *' : 'Phone *'}</label>
                   <input
                     type="tel" required
                     value={supplierForm.phone}
@@ -374,7 +377,7 @@ export function MarketplacePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Email *' : 'Email *'}</label>
                   <input
                     type="email" required
                     value={supplierForm.email}
@@ -385,13 +388,13 @@ export function MarketplacePage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Business Description *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isFr ? 'Description de l\'entreprise *' : 'Business Description *'}</label>
                 <textarea
                   required rows={4}
                   value={supplierForm.description}
                   onChange={e => setSupplierForm({ ...supplierForm, description: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42] resize-none"
-                  placeholder="Describe your products and services…"
+                  placeholder={isFr ? 'Décrivez vos produits et services…' : 'Describe your products and services…'}
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -399,13 +402,13 @@ export function MarketplacePage() {
                   type="button" onClick={() => setShowSupplierModal(false)}
                   className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50"
                 >
-                  Cancel
+                  {isFr ? 'Annuler' : 'Cancel'}
                 </button>
                 <button
                   type="submit" disabled={submitting}
                   className="flex-1 px-4 py-2 bg-[#3D5F42] text-white font-medium rounded-lg hover:bg-[#2F4A34] disabled:opacity-50"
                 >
-                  {submitting ? 'Submitting…' : 'Submit Application'}
+                  {submitting ? (isFr ? 'Envoi…' : 'Submitting…') : (isFr ? 'Envoyer la candidature' : 'Submit Application')}
                 </button>
               </div>
             </form>
