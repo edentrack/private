@@ -2531,10 +2531,10 @@ export function AIAssistantPage() {
               }}
               onKeyDown={handleKeyPress}
               placeholder={
-                listening ? 'Listening...'
-                : pendingFile ? `Ask Eden to import ${pendingFile.name}…`
-                : pendingImages.length > 0 ? 'Describe what you see, or just hit Send…'
-                : 'Ask anything, log data, or attach a file…'
+                listening ? (isFr ? "Écoute en cours…" : 'Listening...')
+                : pendingFile ? (isFr ? `Demandez à Eden d'importer ${pendingFile.name}…` : `Ask Eden to import ${pendingFile.name}…`)
+                : pendingImages.length > 0 ? (isFr ? "Décrivez ce que vous voyez, ou cliquez sur Envoyer…" : 'Describe what you see, or just hit Send…')
+                : (isFr ? "Posez une question, saisissez des données ou joignez un fichier…" : 'Ask anything, log data, or attach a file…')
               }
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-gold-500 focus:border-transparent outline-none resize-none leading-snug"
               style={{ minHeight: '48px', maxHeight: '160px' }}
@@ -2546,7 +2546,7 @@ export function AIAssistantPage() {
               className="px-6 py-3 bg-agri-brown-600 text-white rounded-lg hover:bg-agri-brown-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              <span className="hidden sm:inline">Send</span>
+              <span className="hidden sm:inline">{isFr ? 'Envoyer' : 'Send'}</span>
             </button>
           </div>
         </div>

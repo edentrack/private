@@ -70,19 +70,19 @@ const GROUP_MEMBERSHIP: Record<NavigationGroupId, ReadonlyArray<ModuleName>> = {
   account: ['team', 'settings'],
 };
 
-const GROUP_ORDER: ReadonlyArray<{ id: NavigationGroupId; label: string }> = [
-  { id: 'production', label: 'PRODUCTION' },
-  { id: 'money', label: 'MONEY' },
-  { id: 'operations', label: 'OPERATIONS' },
-  { id: 'insights', label: 'INSIGHTS' },
-  { id: 'account', label: 'ACCOUNT' },
+const GROUP_ORDER: ReadonlyArray<{ id: NavigationGroupId; label: string; labelFr: string }> = [
+  { id: 'production', label: 'PRODUCTION', labelFr: 'PRODUCTION' },
+  { id: 'money', label: 'MONEY', labelFr: 'ARGENT' },
+  { id: 'operations', label: 'OPERATIONS', labelFr: 'OPÉRATIONS' },
+  { id: 'insights', label: 'INSIGHTS', labelFr: 'APERÇUS' },
+  { id: 'account', label: 'ACCOUNT', labelFr: 'COMPTE' },
 ];
 
-export function getNavigationGroups(items: NavigationItem[]): NavigationGroup[] {
+export function getNavigationGroups(items: NavigationItem[], isFr = false): NavigationGroup[] {
   return GROUP_ORDER
-    .map(({ id, label }) => ({
+    .map(({ id, label, labelFr }) => ({
       id,
-      label,
+      label: isFr ? labelFr : label,
       items: items.filter(item => GROUP_MEMBERSHIP[id].includes(item.id)),
     }))
     .filter(group => group.items.length > 0);

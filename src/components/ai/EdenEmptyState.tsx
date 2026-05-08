@@ -10,6 +10,7 @@
 import { FileSpreadsheet, Lightbulb, Loader2 } from 'lucide-react';
 import { EdenAvatarAnimated } from './EdenAvatarAnimated';
 import { useEdenChips } from '../../hooks/useEdenChips';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Props {
   /** First name to address the user with. Falls back to "there". */
@@ -39,18 +40,28 @@ export function EdenEmptyState({
   onCsvImport,
 }: Props) {
   const { chips, loading } = useEdenChips(crossFarm ? null : farmId, farmType);
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
 
   const greetingHeadline = crossFarm
-    ? `Hey ${ownerFirstName}, you're chatting across all your farms.`
+    ? (isFr
+        ? `Salut ${ownerFirstName}, vous discutez sur toutes vos fermes.`
+        : `Hey ${ownerFirstName}, you're chatting across all your farms.`)
     : farmName
-    ? `Hey ${ownerFirstName}, ${farmName} is ready when you are.`
-    : `Hey ${ownerFirstName}, I'm Eden.`;
+    ? (isFr
+        ? `Salut ${ownerFirstName}, ${farmName} est prête quand vous l'êtes.`
+        : `Hey ${ownerFirstName}, ${farmName} is ready when you are.`)
+    : (isFr
+        ? `Salut ${ownerFirstName}, je suis Eden.`
+        : `Hey ${ownerFirstName}, I'm Eden.`);
 
   const greetingBody = crossFarm
-    ? "Ask me anything about any farm — I'll always confirm before logging changes."
+    ? (isFr
+        ? "Posez-moi n'importe quelle question sur n'importe quelle ferme — je confirmerai toujours avant d'enregistrer des changements."
+        : "Ask me anything about any farm — I'll always confirm before logging changes.")
     : statusLine
     ? statusLine
-    : 'What can I help with today?';
+    : (isFr ? "Avec quoi puis-je vous aider aujourd'hui ?" : 'What can I help with today?');
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center px-4">
@@ -63,7 +74,7 @@ export function EdenEmptyState({
       <div className="w-full max-w-2xl">
         <p className="text-sm font-medium text-gray-700 mb-3 flex items-center justify-center gap-1.5">
           <Lightbulb className="w-4 h-4 text-amber-500" />
-          Try asking
+          {isFr ? 'Essayez de demander' : 'Try asking'}
           {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -84,7 +95,7 @@ export function EdenEmptyState({
             className="text-left px-4 py-3 bg-white border border-gray-200 rounded-xl hover:border-emerald-400 hover:bg-emerald-50/50 transition-colors text-sm text-gray-800"
           >
             <FileSpreadsheet className="w-4 h-4 inline mr-2 text-emerald-600" />
-            Import historical data from a CSV file
+            {isFr ? 'Importer des données historiques depuis un fichier CSV' : 'Import historical data from a CSV file'}
           </button>
         </div>
       </div>

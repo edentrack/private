@@ -5,6 +5,7 @@ import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useSimpleMode } from '../../contexts/SimpleModeContext';
 import { useFarmType } from '../../hooks/useFarmType';
@@ -43,6 +44,8 @@ function getTierStyle(tier: string | undefined | null): TierStyle {
 
 export function DashboardLayout({ children, currentView, onNavigate }: DashboardLayoutProps) {
   const { t } = useTranslation();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { profile, signOut, user, currentRole, currentFarm: _currentFarm, switchFarm } = useAuth();
   const { farmPermissions } = usePermissions();
   const { simpleMode } = useSimpleMode();
@@ -90,33 +93,46 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   }, []);
 
   const getNavItems = () => {
-    const flocksLabel = farmSpecies.groupTermPlural;
+    // Species-aware FR overrides for nav labels — speciesModules.ts holds
+    // English strings, so we map them here when language === 'fr'.
+    const groupTermPluralFr = farmSpecies.id === 'aquaculture'
+      ? 'Étangs'
+      : farmSpecies.id === 'rabbits'
+        ? 'Élevages'
+        : 'Troupeaux';
+    const lossNounPluralFr = farmSpecies.id === 'aquaculture'
+      ? 'Pertes'
+      : farmSpecies.id === 'rabbits'
+        ? 'Décès'
+        : 'Mortalités';
+    const flocksLabel = isFr ? groupTermPluralFr : farmSpecies.groupTermPlural;
+    const lossLabel = isFr ? lossNounPluralFr : farmSpecies.lossNounPlural;
     const flocksIcon = farmSpecies.id === 'aquaculture' ? Fish : farmSpecies.id === 'rabbits' ? Rabbit : ChickenIcon;
 
     const allItems: Array<{ id: ModuleName; label: string; icon: any; badge?: number }> = [
       { id: 'dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
       { id: 'flocks', label: flocksLabel, icon: flocksIcon },
       { id: 'insights', label: t('nav.insights'), icon: TrendingUp },
-      { id: 'tasks', label: t('nav.tasks') || 'Tasks', icon: ListChecks },
-      { id: 'egg-records', label: 'Egg Records', icon: Egg },
-      { id: 'mortality', label: farmSpecies.lossNounPlural, icon: HeartOff },
-      { id: 'harvest', label: 'Harvest', icon: Waves },
-      { id: 'water-quality', label: 'Water Quality', icon: Droplets },
-      { id: 'sampling', label: 'Weight Sampling', icon: Beaker },
-      { id: 'stocking', label: 'Stocking', icon: Truck },
-      { id: 'fish-health', label: 'Fish Health', icon: AlertTriangle },
-      { id: 'pond-inspections', label: 'Pond Inspections', icon: Eye },
-      { id: 'pond-planner', label: 'Pond Planner', icon: CalendarDays },
-      { id: 'rabbit-harvest', label: 'Rabbit Harvest', icon: Scale },
-      { id: 'breeding-events', label: 'Breeding', icon: Heart },
-      { id: 'litters', label: 'Litters', icon: Baby },
-      { id: 'rabbit-registry', label: 'Registry', icon: ClipboardList },
+      { id: 'tasks', label: t('nav.tasks') || (isFr ? 'Tâches' : 'Tasks'), icon: ListChecks },
+      { id: 'egg-records', label: isFr ? 'Œufs' : 'Egg Records', icon: Egg },
+      { id: 'mortality', label: lossLabel, icon: HeartOff },
+      { id: 'harvest', label: isFr ? 'Récolte' : 'Harvest', icon: Waves },
+      { id: 'water-quality', label: isFr ? "Qualité de l'eau" : 'Water Quality', icon: Droplets },
+      { id: 'sampling', label: isFr ? 'Échantillonnage' : 'Weight Sampling', icon: Beaker },
+      { id: 'stocking', label: isFr ? 'Empoissonnement' : 'Stocking', icon: Truck },
+      { id: 'fish-health', label: isFr ? 'Santé des poissons' : 'Fish Health', icon: AlertTriangle },
+      { id: 'pond-inspections', label: isFr ? "Inspections d'étang" : 'Pond Inspections', icon: Eye },
+      { id: 'pond-planner', label: isFr ? "Planificateur d'étang" : 'Pond Planner', icon: CalendarDays },
+      { id: 'rabbit-harvest', label: isFr ? 'Récolte de lapins' : 'Rabbit Harvest', icon: Scale },
+      { id: 'breeding-events', label: isFr ? 'Reproduction' : 'Breeding', icon: Heart },
+      { id: 'litters', label: isFr ? 'Portées' : 'Litters', icon: Baby },
+      { id: 'rabbit-registry', label: isFr ? 'Registre' : 'Registry', icon: ClipboardList },
       { id: 'inventory', label: t('nav.inventory'), icon: Package },
       { id: 'vaccinations', label: t('nav.vaccinations'), icon: Syringe },
       { id: 'expenses', label: t('nav.expenses'), icon: DollarSign },
       { id: 'sales', label: t('nav.sales'), icon: ShoppingCart },
-      { id: 'credit-score', label: 'Credit Score', icon: Award },
-      { id: 'weight', label: isAquaculture ? 'Weight & FCR' : t('nav.weight'), icon: Scale },
+      { id: 'credit-score', label: isFr ? 'Score de crédit' : 'Credit Score', icon: Award },
+      { id: 'weight', label: isAquaculture ? (isFr ? 'Poids & ICA' : 'Weight & FCR') : t('nav.weight'), icon: Scale },
       { id: 'shifts', label: t('nav.shifts'), icon: Calendar },
       { id: 'team', label: t('nav.team'), icon: Users },
       // Cooperatives nav entry removed May 2026 per Greg's request. Routes
@@ -124,8 +140,8 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       // directory + migrations if this stays out of nav for >3 months.
       // { id: 'cooperatives', label: 'Cooperatives', icon: Building2 },
       { id: 'ai-assistant', label: t('nav.ai_assistant') || 'Eden AI', icon: Zap },
-      { id: 'reports', label: 'Reports', icon: FileText },
-      { id: 'settings', label: t('nav.settings') || 'Settings', icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },
+      { id: 'reports', label: isFr ? 'Rapports' : 'Reports', icon: FileText },
+      { id: 'settings', label: t('nav.settings') || (isFr ? 'Paramètres' : 'Settings'), icon: Settings, badge: deadLetterCount > 0 ? deadLetterCount : undefined },
     ];
 
     // Items hidden in Simple Mode (advanced features)
@@ -175,7 +191,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
   };
 
   const navItems = getNavItems();
-  const navGroups = getNavigationGroups(navItems);
+  const navGroups = getNavigationGroups(navItems, isFr);
 
   const toggleGroup = (groupId: NavigationGroupId) => {
     const newExpanded = new Set(expandedGroups);
@@ -429,11 +445,19 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                 {accountMenuOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-medium py-2 z-50 animate-scale-in">
                     <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-gray-900">{profile?.full_name || 'User'}</p>
+                      <p className="text-sm font-semibold text-gray-900">{profile?.full_name || (isFr ? 'Utilisateur' : 'User')}</p>
                       <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                       <div className="flex items-center gap-2 mt-2">
                         {currentRole && (
-                          <span className="badge-yellow capitalize">{currentRole}</span>
+                          <span className="badge-yellow capitalize">{
+                            isFr
+                              ? (currentRole === 'owner' ? 'Propriétaire'
+                                  : currentRole === 'manager' ? 'Gestionnaire'
+                                  : currentRole === 'worker' ? 'Ouvrier'
+                                  : currentRole === 'viewer' ? 'Lecteur'
+                                  : currentRole)
+                              : currentRole
+                          }</span>
                         )}
                         {(() => {
                           const tier = getTierStyle(profile?.subscription_tier);
@@ -451,7 +475,9 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                           onClick={() => { setAccountMenuOpen(false); window.location.hash = '#/subscribe'; }}
                           className="mt-2 w-full text-xs text-center py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium hover:from-emerald-600 hover:to-emerald-700 transition-all"
                         >
-                          {profile?.subscription_tier === 'pro' ? '⚡ Upgrade to Farm Boss' : '🌱 Upgrade your plan'}
+                          {profile?.subscription_tier === 'pro'
+                            ? (isFr ? '⚡ Passer à Farm Boss' : '⚡ Upgrade to Farm Boss')
+                            : (isFr ? '🌱 Améliorer votre forfait' : '🌱 Upgrade your plan')}
                         </button>
                       )}
                     </div>
@@ -464,7 +490,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                         className="w-full px-4 py-2.5 text-left text-sm text-purple-600 hover:bg-purple-50 flex items-center gap-3 transition-colors font-medium"
                       >
                         <Shield className="w-4 h-4" />
-                        Super Admin
+                        {isFr ? 'Super Administrateur' : 'Super Admin'}
                       </button>
                     )}
                     {canViewModule(currentRole, 'settings', farmPermissions).visible && (
@@ -487,7 +513,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                       className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
                     >
                       <HelpCircle className="w-4 h-4" />
-                      Help & Support
+                      {isFr ? 'Aide & Assistance' : 'Help & Support'}
                     </button>
                     <button
                       onClick={() => {
@@ -577,7 +603,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
                         Falls back to a flat list if grouping returns nothing
                         (e.g. a role with no permissions on any grouped item). */}
                     {(() => {
-                      const mobileGroups = getNavigationGroups(mobileOtherItems as any);
+                      const mobileGroups = getNavigationGroups(mobileOtherItems as any, isFr);
                       const groupedIds = new Set(
                         mobileGroups.flatMap(g => g.items.map(i => i.id)),
                       );
