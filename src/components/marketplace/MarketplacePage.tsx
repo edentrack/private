@@ -3,6 +3,7 @@ import { Search, MapPin, Phone, Package, Bird, Pill, ShoppingCart, Filter, Exter
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { useTranslation } from 'react-i18next';
 
 interface Supplier {
@@ -21,14 +22,19 @@ interface Supplier {
   is_featured: boolean;
 }
 
-const CATEGORIES = [
-  { id: 'all', label: 'All', icon: ShoppingCart },
-  { id: 'feed', label: 'Feed', icon: Package },
-  { id: 'chicks', label: 'Chicks', icon: Bird },
-  { id: 'medicine', label: 'Medicine', icon: Pill },
-  { id: 'equipment', label: 'Equipment', icon: Filter },
-  { id: 'packaging', label: 'Packaging', icon: Package },
-];
+// Categories list is built per-species inside the component so the
+// stock category ('Chicks' vs 'Fingerlings' vs 'Breeders') matches
+// what the farmer actually buys.
+function buildCategories(stockLabel: string) {
+  return [
+    { id: 'all', label: 'All', icon: ShoppingCart },
+    { id: 'feed', label: 'Feed', icon: Package },
+    { id: 'chicks', label: stockLabel, icon: Bird },
+    { id: 'medicine', label: 'Medicine', icon: Pill },
+    { id: 'equipment', label: 'Equipment', icon: Filter },
+    { id: 'packaging', label: 'Packaging', icon: Package },
+  ];
+}
 
 const CATEGORY_COLOR: Record<string, string> = {
   feed:      'bg-amber-100 text-amber-700',
@@ -46,6 +52,18 @@ export function MarketplacePage() {
   const { t } = useTranslation();
   const { user, currentFarm } = useAuth();
   const { showToast } = useToast();
+  const farmSpecies = useFarmSpecies();
+  // Marketplace categories vary by species — "chicks" only makes sense
+  // on poultry; aqua and rabbit farmers buy fingerlings or breeding
+  // stock instead. Subtitles + supplier-pitch line follow the same.
+  const stockCategoryWord = farmSpecies.id === 'aquaculture' ? 'fingerlings'
+    : farmSpecies.id === 'rabbits' ? 'breeders'
+    : 'chicks';
+  const farmerNoun = farmSpecies.id === 'aquaculture' ? 'fish farmers'
+    : farmSpecies.id === 'rabbits' ? 'rabbit farmers'
+    : 'poultry farmers';
+  const stockLabel = stockCategoryWord.charAt(0).toUpperCase() + stockCategoryWord.slice(1);
+  const categories = buildCategories(stockLabel);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,7 +143,7 @@ export function MarketplacePage() {
     <div className="space-y-6 animate-fade-in">
       <div>
         <h2 className="text-3xl font-bold text-gray-900">{t('marketplace.title') || 'Marketplace'}</h2>
-        <p className="text-gray-500 mt-1">Find suppliers for feed, chicks, equipment, and more</p>
+        <p className="text-gray-500 mt-1">{`Find suppliers for feed, ${stockCategoryWord}, equipment, and more`}</p>
       </div>
 
       <div className="section-card">
@@ -152,7 +170,7 @@ export function MarketplacePage() {
         </div>
 
         <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
-          {CATEGORIES.map(cat => {
+          {categories.map(cat => {
             const Icon = cat.icon;
             return (
               <button
@@ -284,7 +302,7 @@ export function MarketplacePage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-bold mb-2">Are you a supplier?</h3>
-            <p className="text-white/80">List your business and reach thousands of poultry farmers</p>
+            <p className="text-white/80">{`List your business and reach thousands of ${farmerNoun}`}</p>
           </div>
           <button
             onClick={() => setShowSupplierModal(true)}
