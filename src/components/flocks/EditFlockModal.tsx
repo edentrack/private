@@ -18,10 +18,10 @@ export function EditFlockModal({ flock, onClose, onUpdated }: EditFlockModalProp
   const { user, profile, currentFarm } = useAuth();
   const farmSpecies = useFarmSpecies();
   // Heading + label vocab vary per species so the modal feels native to
-  // each farm type (Edit Pond / Edit Flock / Edit Hutch).
-  const headingLabel =
-    farmSpecies.id === 'aquaculture' ? 'Edit Pond' :
-    farmSpecies.id === 'rabbits' ? 'Edit Hutch' : 'Edit Flock';
+  // each farm type (Edit Pond / Edit Flock / Edit Rabbitry). The earlier
+  // "Edit Hutch" copy contradicted the rabbit species term ("Rabbitry");
+  // align on the species module's groupTerm.
+  const headingLabel = `Edit ${farmSpecies.groupTerm}`;
   const arrivalLabel =
     farmSpecies.id === 'aquaculture' ? 'Stocking Date' :
     farmSpecies.id === 'rabbits' ? 'Stock-in Date' : 'Arrival Date';
