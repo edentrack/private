@@ -3,6 +3,7 @@ import { Package, AlertTriangle, Plus, Receipt, Pencil, Trash2, Info, Eye, EyeOf
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { Farm, Expense } from '../../types/database';
 import { AddFeedTypeModal } from './AddFeedTypeModal';
@@ -44,6 +45,8 @@ interface FlockBasic {
 export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
   const { t } = useTranslation();
   const { currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { farmPermissions } = usePermissions();
   const [farm, setFarm] = useState<Farm | null>(null);
   const [eggsPerTray, setEggsPerTray] = useState(30);
@@ -1739,7 +1742,7 @@ export function InventoryPage({ onNavigate: _onNavigate }: InventoryPageProps) {
                                     }}
                                     className="w-full flex items-center justify-between py-2 px-4 pl-6 hover:bg-green-50 text-left text-sm text-gray-700 border-b border-gray-100 last:border-b-0"
                                   >
-                                    <span>Sale · {total} eggs{amount > 0 ? ` · ${amount.toLocaleString()}` : ''}</span>
+                                    <span>{isFr ? 'Vente' : 'Sale'} · {total} {isFr ? 'œufs' : 'eggs'}{amount > 0 ? ` · ${amount.toLocaleString()}` : ''}</span>
                                     <Pencil className="w-4 h-4 text-green-600 flex-shrink-0" />
                                   </button>
                                 );

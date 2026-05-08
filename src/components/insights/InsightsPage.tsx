@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { getFlockAgeDays } from '../../utils/flockAge';
 import { Flock, Expense, MortalityLog, EggCollection } from '../../types/database';
 import { useFlockSpecies, useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { pluralize } from '../../utils/pluralize';
 import { formatEggsWithTotal, formatEggsForExport } from '../../utils/eggFormatting';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
@@ -104,6 +105,8 @@ export function InsightsPage() {
   // non-layer flocks (i.e., fish).
   const species = useFlockSpecies(flockKind);
   const farmSpecies = useFarmSpecies();
+  const { language: uiLanguage } = useLanguage();
+  const isFr = uiLanguage === 'fr';
   const isAquaFlock = species.id === 'aquaculture';
 
   // Load flocks + auto-select first one immediately, then load its data in parallel
@@ -939,7 +942,7 @@ export function InsightsPage() {
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowShareMenu(false)} />
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-48">
-                    <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">Send via WhatsApp</p>
+                    <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">{isFr ? 'Envoyer via WhatsApp' : 'Send via WhatsApp'}</p>
                     {([
                       { key: 'daily', label: "📅 Today's Report" },
                       { key: 'weekly', label: '📆 Weekly Report' },
@@ -1023,7 +1026,7 @@ export function InsightsPage() {
                     <p className="text-sm text-gray-500">{currencyLabel}</p>
                   </div>
                   <div className="bg-white/60 rounded-xl p-4 text-center">
-                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Revenue Balance Left</p>
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{isFr ? 'Solde de revenus restant' : 'Revenue Balance Left'}</p>
                     <p className={`text-2xl font-bold ${remainingProfitBalance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
                       {remainingProfitBalance.toLocaleString()}
                     </p>
@@ -1096,7 +1099,7 @@ export function InsightsPage() {
                     <div className="bg-white/60 rounded-xl p-4">
                       <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.production_rate')}</p>
                       <p className="text-2xl font-bold text-gray-900">{metrics.productionRate}%</p>
-                      <p className="text-sm text-gray-500">Lay rate</p>
+                      <p className="text-sm text-gray-500">{isFr ? 'Taux de ponte' : 'Lay rate'}</p>
                     </div>
 
                       <div className="bg-white/60 rounded-2xl p-4 md:col-span-3 col-span-2">
