@@ -3,6 +3,7 @@ import { Settings, X, Pencil, Trash2, RefreshCw, Copy, Eye, EyeOff, HelpCircle, 
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { TaskTemplate, TaskScope, TaskTypeCategory } from '../../types/database';
 import { ensureTasksGeneratedForDate, getFlockTypesForFarm } from '../../utils/unifiedTaskSystem';
 import { formatFarmTimeForViewerWithFormat, getFarmTimeZone, getFarmTodayISO, getUiTimeFormat, setUiTimeFormat } from '../../utils/farmTime';
@@ -23,6 +24,8 @@ const FREQUENCIES = [
 export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
   const { currentFarm } = useAuth();
   const farmSpeciesOuter = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const farmTz = getFarmTimeZone(currentFarm);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -438,22 +441,22 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
               }`}
             >
               {showHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              {showHidden ? 'Showing all' : 'Show hidden'}
+              {showHidden ? (isFr ? 'Tout afficher' : 'Showing all') : (isFr ? 'Afficher masqués' : 'Show hidden')}
             </button>
             <button
               onClick={initializeSystemTemplates}
               className="flex items-center gap-1.5 px-3 py-1 text-sm text-[#3D5F42] hover:bg-[#3D5F42]/10 rounded-lg"
             >
               <RefreshCw className="w-4 h-4" />
-              Reset defaults
+              {isFr ? 'Réinitialiser' : 'Reset defaults'}
             </button>
             <button
               onClick={disableAllTemplates}
               className="flex items-center gap-1.5 px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-              title="Turn off all templates until you enable them"
+              title={isFr ? "Désactiver tous les modèles jusqu'à ce que vous les activiez" : 'Turn off all templates until you enable them'}
             >
               <X className="w-4 h-4" />
-              Disable all
+              {isFr ? 'Tout désactiver' : 'Disable all'}
             </button>
           </div>
         </div>
@@ -466,8 +469,8 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
           ) : filteredTemplates.length === 0 ? (
             <div className="text-center py-12">
               <Settings className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">No templates found</h3>
-              <p className="text-sm text-gray-500 mb-4">Click "Reset defaults" to create system templates</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{isFr ? 'Aucun modèle trouvé' : 'No templates found'}</h3>
+              <p className="text-sm text-gray-500 mb-4">{isFr ? "Cliquez sur « Réinitialiser » pour créer les modèles système" : 'Click "Reset defaults" to create system templates'}</p>
             </div>
           ) : (
             <div className="space-y-4">
