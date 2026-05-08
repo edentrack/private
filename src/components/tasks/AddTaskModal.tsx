@@ -253,7 +253,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
           {/* Flock */}
           {flocks.length > 0 && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Flock (optional)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">{`${farmSpecies.groupTerm} (optional)`}</label>
               <select
                 value={selectedFlockId}
                 onChange={e => setSelectedFlockId(e.target.value)}

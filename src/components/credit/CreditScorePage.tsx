@@ -200,7 +200,7 @@ export function CreditScorePage() {
           <Stat label="Sales records" value={`${score.metrics.salesEntryCount}`} />
           <Stat label="Expense records" value={`${score.metrics.expenseEntryCount}`} />
           <Stat
-            label="Mortality rate"
+            label={`${farmSpecies.lossNoun} rate`}
             value={`${score.metrics.mortalityRatePct.toFixed(1)}%`}
             tone={score.metrics.mortalityRatePct < 5 ? 'good' : score.metrics.mortalityRatePct < 15 ? undefined : 'bad'}
           />
