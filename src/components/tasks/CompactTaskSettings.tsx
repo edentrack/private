@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Settings, Edit2, X, Clock, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface TaskTemplate {
   id: string;
@@ -25,6 +26,9 @@ interface Props {
 
 export function CompactTaskSettings({ onClose }: Props) {
   const { profile } = useAuth();
+  // Note: useFarmSpecies is also called inside EditTemplateModal (the inner
+  // component); this hook is cheap so duplicating is fine and keeps each
+  // component self-contained.
   const farmId = profile?.farm_id;
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -271,6 +275,8 @@ function EditTemplateModal({
 }) {
   const [form, setForm] = useState(template);
   const [saving, setSaving] = useState(false);
+  const farmSpecies = useFarmSpecies();
+  const groupTermLower = farmSpecies.groupTerm.toLowerCase();
 
   const isNew = !template.id;
 
@@ -443,7 +449,7 @@ function EditTemplateModal({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D5F42]"
             >
               <option value="farm">Farm-wide (one task)</option>
-              <option value="flock">Per flock (one task per flock)</option>
+              <option value="flock">{`Per ${groupTermLower} (one task per ${groupTermLower})`}</option>
             </select>
           </div>
 

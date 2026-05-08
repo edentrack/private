@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { farmLocalToUtcIso, getFarmTimeZone } from '../../utils/farmTime';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
@@ -21,6 +22,14 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
   const { user, currentFarm } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const farmTz = getFarmTimeZone(currentFarm);
+  const farmSpecies = useFarmSpecies();
+  // Pick a placeholder relevant to the current species. Pre-fix the box
+  // showed "Clean drinkers, Weigh birds…" on every farm; aqua and
+  // rabbit operators don't think in those terms.
+  const taskNamePlaceholder =
+    farmSpecies.id === 'aquaculture' ? 'e.g. Check aerators, Sample fish…'
+    : farmSpecies.id === 'rabbits' ? 'e.g. Clean hutches, Weigh weanlings…'
+    : 'e.g. Clean drinkers, Weigh birds…';
 
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState(initialDueDate || new Date().toISOString().split('T')[0]);
@@ -155,7 +164,7 @@ export function AddTaskModal({ flockId, initialDueDate, onClose, onSuccess }: Ad
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="e.g. Clean drinkers, Weigh birds…"
+              placeholder={taskNamePlaceholder}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
               autoFocus
               required

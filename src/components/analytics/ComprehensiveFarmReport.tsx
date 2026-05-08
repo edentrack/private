@@ -3,6 +3,7 @@ import { FileText, Download, Share2, Calendar, TrendingUp, TrendingDown, DollarS
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { formatCurrency } from '../../utils/currency';
 import { formatEggsCompact } from '../../utils/eggFormatting';
@@ -52,6 +53,7 @@ export function ComprehensiveFarmReport({
 }: ComprehensiveFarmReportProps) {
   const { t } = useTranslation();
   const { currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
   const [startDate, setStartDate] = useState(propStartDate || '');
   const [endDate, setEndDate] = useState(propEndDate || new Date().toISOString().split('T')[0]);
   const [stats, setStats] = useState<FarmStats | null>(null);
@@ -425,43 +427,66 @@ export function ComprehensiveFarmReport({
     const farmName = currentFarm.name || 'Farm';
     const fileName = `${farmName}_Comprehensive_Report_${startDate}_to_${endDate}.csv`;
 
-    const headers = [
+    // Species-aware CSV headers. Egg lines drop on non-poultry; bird/
+    // animal labels swap to species terms.
+    const isPoultry = farmSpecies.id === 'poultry';
+    const animalTerm = farmSpecies.animalTerm;
+    const animalTermPlural = farmSpecies.animalTermPlural;
+    const groupTerm = farmSpecies.groupTerm;
+    const groupTermPlural = farmSpecies.groupTermPlural;
+
+    const headers: (string | number)[][] = [
       ['FARM OVERVIEW'],
       ['Period', `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`],
       [],
       ['Metric', 'Value'],
-      ['Total Flocks', stats.totalFlocks],
-      [t('insights.active_flocks'), stats.activeFlocks],
-      ['Total Birds', stats.totalBirds],
+      [`Total ${groupTermPlural}`, stats.totalFlocks],
+      [`Active ${groupTermPlural}`, stats.activeFlocks],
+      [`Total ${animalTermPlural}`, stats.totalBirds],
       [t('insights.total_revenue'), stats.totalRevenue],
       [t('insights.total_expenses'), stats.totalExpenses],
       [t('insights.net_profit'), stats.netProfit],
-      ['Eggs Collected', `${formatEggsCompact(stats.eggsCollected, eggsPerTray)} (${stats.eggsCollected} total)`],
-      ['Eggs Sold', `${formatEggsCompact(stats.eggsSold, eggsPerTray)} (${stats.eggsSold} total)`],
-      ['Eggs in Stock', `${formatEggsCompact(stats.eggsInStock, eggsPerTray)} (${stats.eggsInStock} total)`],
-      ['Birds Sold', stats.birdsSold],
-      ['Bird Sales Revenue', stats.birdSalesRevenue],
-      ['Mortality Count', stats.mortalityCount],
-      [`${t('insights.feed_stock')} (${t('dashboard.bags')})`, stats.feedStock],
-      [],
-      [],
-      ['FLOCK BREAKDOWN'],
-      ['Flock Name', 'Type', 'Bird Count', 'Revenue', 'Expenses', 'Profit', 'Eggs Collected', 'Eggs Sold', 'Birds Sold', 'Bird Sales Revenue', 'Mortality'],
     ];
+    if (isPoultry) {
+      headers.push(
+        ['Eggs Collected', `${formatEggsCompact(stats.eggsCollected, eggsPerTray)} (${stats.eggsCollected} total)`],
+        ['Eggs Sold', `${formatEggsCompact(stats.eggsSold, eggsPerTray)} (${stats.eggsSold} total)`],
+        ['Eggs in Stock', `${formatEggsCompact(stats.eggsInStock, eggsPerTray)} (${stats.eggsInStock} total)`],
+      );
+    }
+    headers.push(
+      [`${animalTermPlural} Sold`, stats.birdsSold],
+      [`${animalTerm} Sales Revenue`, stats.birdSalesRevenue],
+      [`${farmSpecies.lossNounPlural} Count`, stats.mortalityCount],
+      [`${t('insights.feed_stock')} (${farmSpecies.id === 'aquaculture' ? 'kg' : 'bags'})`, stats.feedStock],
+      [],
+      [],
+      [`${groupTerm.toUpperCase()} BREAKDOWN`],
+    );
+    if (isPoultry) {
+      headers.push([`${groupTerm} Name`, 'Type', `${animalTerm} Count`, 'Revenue', 'Expenses', 'Profit', 'Eggs Collected', 'Eggs Sold', `${animalTermPlural} Sold`, `${animalTerm} Sales Revenue`, farmSpecies.lossNounPlural]);
+    } else {
+      headers.push([`${groupTerm} Name`, 'Type', `${animalTerm} Count`, 'Revenue', 'Expenses', 'Profit', `${animalTermPlural} Sold`, `${animalTerm} Sales Revenue`, farmSpecies.lossNounPlural]);
+    }
 
-    const flockRows = flockBreakdowns.map(f => [
-      f.name,
-      f.type,
-      f.current_count,
-      f.revenue,
-      f.expenses,
-      f.profit,
-      `${formatEggsCompact(f.eggsCollected, eggsPerTray)} (${f.eggsCollected})`,
-      `${formatEggsCompact(f.eggsSold, eggsPerTray)} (${f.eggsSold})`,
-      f.birdsSold,
-      f.birdSalesRevenue,
-      f.mortality,
-    ]);
+    const flockRows = flockBreakdowns.map(f => {
+      const baseRow: (string | number)[] = [
+        f.name,
+        f.type,
+        f.current_count,
+        f.revenue,
+        f.expenses,
+        f.profit,
+      ];
+      if (isPoultry) {
+        baseRow.push(
+          `${formatEggsCompact(f.eggsCollected, eggsPerTray)} (${f.eggsCollected})`,
+          `${formatEggsCompact(f.eggsSold, eggsPerTray)} (${f.eggsSold})`,
+        );
+      }
+      baseRow.push(f.birdsSold, f.birdSalesRevenue, f.mortality);
+      return baseRow;
+    });
 
     const csvContent = [...headers, ...flockRows]
       .map((row) => row.map((cell) => `"${cell}"`).join(','))
@@ -482,18 +507,26 @@ export function ComprehensiveFarmReport({
       ? ((stats.netProfit / stats.totalRevenue) * 100).toFixed(1)
       : '0';
 
+    const isPoultry = farmSpecies.id === 'poultry';
+    const animalTerm = farmSpecies.animalTerm;
+    const animalTermLower = animalTerm.toLowerCase();
+    const animalTermPlural = farmSpecies.animalTermPlural;
+    const animalTermPluralLower = animalTermPlural.toLowerCase();
+    const groupTermPlural = farmSpecies.groupTermPlural;
+    const feedUnit = farmSpecies.id === 'aquaculture' ? 'kg' : 'bags';
+
     let message = `*${farmName} - Comprehensive Farm Report*\n\n` +
       `Period: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n` +
       `*Farm Overview:*\n` +
-      `Total Flocks: ${stats.totalFlocks} (${stats.activeFlocks} active)\n` +
-      `Total Birds: ${stats.totalBirds.toLocaleString()}\n\n` +
+      `Total ${groupTermPlural}: ${stats.totalFlocks} (${stats.activeFlocks} active)\n` +
+      `Total ${animalTermPlural}: ${stats.totalBirds.toLocaleString()}\n\n` +
       `*Financial Summary:*\n` +
       `Revenue: ${formatCurrency(stats.totalRevenue, currencyCode)}\n` +
       `Expenses: ${formatCurrency(stats.totalExpenses, currencyCode)}\n` +
       `Net Profit: ${formatCurrency(stats.netProfit, currencyCode)}\n` +
       `Profit Margin: ${profitMargin}%\n\n`;
 
-    if (stats.eggsCollected > 0) {
+    if (isPoultry && stats.eggsCollected > 0) {
       message += `*Egg Production:*\n` +
         `Eggs Collected: ${formatEggsCompact(stats.eggsCollected, eggsPerTray)} (${stats.eggsCollected.toLocaleString()} total)\n` +
         `Eggs Sold: ${formatEggsCompact(stats.eggsSold, eggsPerTray)} (${stats.eggsSold.toLocaleString()} total)\n` +
@@ -501,15 +534,15 @@ export function ComprehensiveFarmReport({
     }
 
     if (stats.birdsSold > 0) {
-      message += `*Bird Sales:*\n` +
-        `Birds Sold: ${stats.birdsSold.toLocaleString()}\n` +
+      message += `*${animalTerm} Sales:*\n` +
+        `${animalTermPlural} Sold: ${stats.birdsSold.toLocaleString()}\n` +
         `Revenue: ${formatCurrency(stats.birdSalesRevenue, currencyCode)}\n` +
-        `Avg per bird: ${formatCurrency(stats.birdSalesRevenue / stats.birdsSold, currencyCode)}\n\n`;
+        `Avg per ${animalTermLower}: ${formatCurrency(stats.birdSalesRevenue / stats.birdsSold, currencyCode)}\n\n`;
     }
 
     message += `*Health:*\n` +
-      `Mortality: ${stats.mortalityCount} birds\n` +
-      `Feed Stock: ${stats.feedStock.toLocaleString()} bags`;
+      `${farmSpecies.lossNounPlural}: ${stats.mortalityCount} ${animalTermPluralLower}\n` +
+      `Feed Stock: ${stats.feedStock.toLocaleString()} ${feedUnit}`;
 
     shareViaWhatsApp(message);
   }
@@ -652,19 +685,24 @@ export function ComprehensiveFarmReport({
 
           {stats.birdsSold > 0 && (
             <div>
-              <h4 className="font-semibold text-gray-900 mb-3">Bird Sales</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">{`${farmSpecies.animalTerm} Sales`}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-4">
-                  <p className="text-sm font-medium text-purple-900 mb-2">Birds Sold</p>
+                  <p className="text-sm font-medium text-purple-900 mb-2">{`${farmSpecies.animalTermPlural} Sold`}</p>
                   <p className="text-2xl font-bold text-purple-900">{stats.birdsSold.toLocaleString()}</p>
-                  <p className="text-xs text-purple-700 mt-1">broilers</p>
+                  {/* "broilers" subtext only meaningful on poultry — drop on rabbits/aqua */}
+                  {farmSpecies.id === 'poultry' && (
+                    <p className="text-xs text-purple-700 mt-1">broilers</p>
+                  )}
                 </div>
 
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4">
-                  <p className="text-sm font-medium text-green-900 mb-2">{t('insights.bird_sales_revenue')}</p>
+                  <p className="text-sm font-medium text-green-900 mb-2">
+                    {farmSpecies.id === 'poultry' ? t('insights.bird_sales_revenue') : `${farmSpecies.animalTerm} Sales Revenue`}
+                  </p>
                   <p className="text-2xl font-bold text-green-900">{formatCurrency(stats.birdSalesRevenue, currencyCode)}</p>
                   <p className="text-xs text-green-700 mt-1">
-                    {stats.birdsSold > 0 ? `${formatCurrency(stats.birdSalesRevenue / stats.birdsSold, currencyCode)} per bird` : ''}
+                    {stats.birdsSold > 0 ? `${formatCurrency(stats.birdSalesRevenue / stats.birdsSold, currencyCode)} per ${farmSpecies.animalTerm.toLowerCase()}` : ''}
                   </p>
                 </div>
               </div>
