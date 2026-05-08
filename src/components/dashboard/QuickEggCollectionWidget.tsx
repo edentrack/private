@@ -545,7 +545,13 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
         <h3 className="text-lg font-bold text-gray-900">Egg production</h3>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      {/* noValidate: same HTML5-validation silent-fail hazard as the
+          sale forms. Inputs have max={farmToday} and max={eggsPerTray-1}.
+          A user typing too many trays would trigger the browser to abort
+          submit without firing onSubmit — looks like the button does
+          nothing. JS validation in handleSubmit takes over. (Greg's
+          May 8 audit.) */}
+      <form onSubmit={handleSubmit} noValidate className="space-y-3">
         {/* Auto-select first flock if only one exists, otherwise show dropdown */}
         {layerFlocks.length > 1 && (
           <div>
