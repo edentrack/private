@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, Scale, Banknote, CheckCircle, Clock, Percent } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -59,6 +60,8 @@ export function computeDressingPct(liveKg: number, carcassKg: number): number | 
 
 export function RabbitHarvestPage() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
   const currency = currentFarm?.currency_code ?? 'XAF';
 
@@ -118,7 +121,7 @@ export function RabbitHarvestPage() {
       .eq('farm_id', currentFarm!.id)
       .order('harvested_at', { ascending: false });
     if (error) {
-      toast.error('Failed to load rabbit harvest records');
+      toast.error(isFr ? 'Échec du chargement des récoltes de lapins' : 'Failed to load rabbit harvest records');
     } else {
       setRecords(data || []);
     }
@@ -139,11 +142,11 @@ export function RabbitHarvestPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formFlockId) { toast.error('Please select a rabbitry'); return; }
-    if (!formDate) { toast.error('Select harvest date'); return; }
+    if (!formFlockId) { toast.error(isFr ? 'Veuillez sélectionner un élevage' : 'Please select a rabbitry'); return; }
+    if (!formDate) { toast.error(isFr ? 'Sélectionnez la date de récolte' : 'Select harvest date'); return; }
     const count = parseInt(formCount, 10);
     if (!formCount || isNaN(count) || count <= 0) {
-      toast.error('Enter number of rabbits harvested');
+      toast.error(isFr ? 'Saisissez le nombre de lapins récoltés' : 'Enter number of rabbits harvested');
       return;
     }
 
@@ -171,16 +174,16 @@ export function RabbitHarvestPage() {
     setSubmitting(false);
 
     if (error) {
-      toast.error('Failed to save harvest record');
+      toast.error(isFr ? "Échec de l'enregistrement de la récolte" : 'Failed to save harvest record');
     } else {
-      toast.success('Harvest record saved');
+      toast.success(isFr ? 'Récolte enregistrée' : 'Harvest record saved');
       resetForm();
       setShowForm(false);
       loadRecords();
     }
   };
 
-  const getFlockName = (id: string | null) => flocks.find(f => f.id === id)?.name ?? 'Unknown rabbitry';
+  const getFlockName = (id: string | null) => flocks.find(f => f.id === id)?.name ?? (isFr ? 'Élevage inconnu' : 'Unknown rabbitry');
   const totalRevenue = records.reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const totalCount = records.reduce((s, r) => s + r.count, 0);
 
@@ -192,8 +195,8 @@ export function RabbitHarvestPage() {
             <Scale className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Rabbit Harvest</h1>
-            <p className="text-sm text-gray-500">Track slaughter records, weights, and revenue.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Récolte de lapins' : 'Rabbit Harvest'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? "Suivez les abattages, les poids et les revenus." : 'Track slaughter records, weights, and revenue.'}</p>
           </div>
         </div>
         <button
@@ -201,20 +204,20 @@ export function RabbitHarvestPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'Log Harvest'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Enregistrer une récolte' : 'Log Harvest')}
         </button>
       </div>
 
       {records.length > 0 && (
         <div className="grid grid-cols-2 gap-4">
           <div className="section-card text-center">
-            <p className="text-xs text-gray-500 mb-1">Total Harvested</p>
-            <p className="text-2xl font-bold text-gray-900">{totalCount.toLocaleString()} rabbits</p>
+            <p className="text-xs text-gray-500 mb-1">{isFr ? 'Total récolté' : 'Total Harvested'}</p>
+            <p className="text-2xl font-bold text-gray-900">{totalCount.toLocaleString()} {isFr ? 'lapins' : 'rabbits'}</p>
           </div>
           <div className="section-card text-center">
             <div className="flex items-center justify-center gap-1 mb-1 text-gray-500">
               <Banknote className="w-4 h-4" />
-              <span className="text-xs">Total Revenue</span>
+              <span className="text-xs">{isFr ? 'Revenus totaux' : 'Total Revenue'}</span>
             </div>
             <p className="text-2xl font-bold text-[#3D5F42]">
               {totalRevenue > 0 ? formatCurrency(totalRevenue, currency) : '—'}
@@ -225,12 +228,12 @@ export function RabbitHarvestPage() {
 
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">New Harvest Record</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Nouvelle récolte' : 'New Harvest Record'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Rabbitry *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Élevage *' : 'Rabbitry *'}</label>
               {flocks.length === 0 ? (
-                <p className="text-xs text-amber-600">No active rabbit flocks found.</p>
+                <p className="text-xs text-amber-600">{isFr ? 'Aucun élevage de lapins actif trouvé.' : 'No active rabbit flocks found.'}</p>
               ) : (
                 <select
                   value={formFlockId}
@@ -244,7 +247,7 @@ export function RabbitHarvestPage() {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Harvest Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date de récolte *' : 'Harvest Date *'}</label>
               <input
                 type="date"
                 value={formDate}
@@ -254,7 +257,7 @@ export function RabbitHarvestPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Number of Rabbits *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Nombre de lapins *' : 'Number of Rabbits *'}</label>
               <input
                 type="number"
                 min="1"
@@ -265,7 +268,7 @@ export function RabbitHarvestPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Total Live Weight (kg) <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Poids vif total (kg)' : 'Total Live Weight (kg)'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="number"
                 step="0.1"
@@ -277,7 +280,7 @@ export function RabbitHarvestPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Total Carcass Weight (kg) <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Poids carcasse total (kg)' : 'Total Carcass Weight (kg)'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="number"
                 step="0.1"
@@ -290,13 +293,13 @@ export function RabbitHarvestPage() {
               {previewDressingPct !== null && (
                 <div className="flex items-center gap-1 mt-0.5 text-xs text-[#3D5F42]">
                   <Percent className="w-3 h-3" />
-                  Dressing %: <span className="font-semibold">{previewDressingPct}%</span>
-                  <span className="text-gray-400">(typical: 50–55%)</span>
+                  {isFr ? 'Rendement carcasse' : 'Dressing %'}: <span className="font-semibold">{previewDressingPct}%</span>
+                  <span className="text-gray-400">{isFr ? '(typique : 50–55 %)' : '(typical: 50–55%)'}</span>
                 </div>
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Price per kg ({currency}) <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? `Prix par kg (${currency})` : `Price per kg (${currency})`} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="number"
                 step="1"
@@ -309,8 +312,8 @@ export function RabbitHarvestPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Total Amount ({currency})
-                {autoTotal && <span className="ml-1 text-xs text-[#3D5F42] font-normal">(auto-calculated)</span>}
+                {isFr ? `Montant total (${currency})` : `Total Amount (${currency})`}
+                {autoTotal && <span className="ml-1 text-xs text-[#3D5F42] font-normal">{isFr ? '(calculé automatiquement)' : '(auto-calculated)'}</span>}
               </label>
               <input
                 type="number"
@@ -327,17 +330,17 @@ export function RabbitHarvestPage() {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Buyer Name <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? "Nom de l'acheteur" : 'Buyer Name'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. Local butcher"
+                placeholder={isFr ? 'ex. Boucher local' : 'e.g. Local butcher'}
                 value={formBuyer}
                 onChange={e => setFormBuyer(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Payment Status</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Statut de paiement' : 'Payment Status'}</label>
               <div className="flex gap-3">
                 {(['pending', 'paid'] as const).map(s => (
                   <button
@@ -352,16 +355,16 @@ export function RabbitHarvestPage() {
                         : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                     }`}
                   >
-                    {s === 'paid' ? 'Paid' : 'Pending'}
+                    {isFr ? (s === 'paid' ? 'Payé' : 'En attente') : (s === 'paid' ? 'Paid' : 'Pending')}
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. Sold live weight at market"
+                placeholder={isFr ? 'ex. Vendu vif au marché' : 'e.g. Sold live weight at market'}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -374,7 +377,7 @@ export function RabbitHarvestPage() {
               disabled={submitting || flocks.length === 0}
               className="px-5 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving...' : 'Save Harvest'}
+              {submitting ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer la récolte' : 'Save Harvest')}
             </button>
           </div>
         </div>
@@ -390,16 +393,18 @@ export function RabbitHarvestPage() {
             <div className="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center mb-3">
               <Scale className="w-7 h-7 text-orange-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">No harvest records yet</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Aucune récolte enregistrée pour le moment' : 'No harvest records yet'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
-              Log your first rabbit harvest to track sales and dressing yield.
+              {isFr
+                ? "Enregistrez votre première récolte de lapins pour suivre les ventes et le rendement carcasse."
+                : 'Log your first rabbit harvest to track sales and dressing yield.'}
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Log First Harvest
+              {isFr ? 'Première récolte' : 'Log First Harvest'}
             </button>
           </div>
         ) : (
@@ -420,26 +425,26 @@ export function RabbitHarvestPage() {
                       {record.payment_status === 'paid'
                         ? <CheckCircle className="w-3 h-3" />
                         : <Clock className="w-3 h-3" />}
-                      {record.payment_status === 'paid' ? 'Paid' : 'Pending'}
+                      {record.payment_status === 'paid' ? (isFr ? 'Payé' : 'Paid') : (isFr ? 'En attente' : 'Pending')}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-1.5">
                     <span className="inline-flex items-center gap-1 text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
-                      {record.count} rabbit{record.count !== 1 ? 's' : ''}
+                      {record.count} {isFr ? (record.count !== 1 ? 'lapins' : 'lapin') : `rabbit${record.count !== 1 ? 's' : ''}`}
                     </span>
                     {record.total_live_weight_kg && (
                       <span className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                        <Scale className="w-3 h-3" />live: {Number(record.total_live_weight_kg).toLocaleString()} kg
+                        <Scale className="w-3 h-3" />{isFr ? 'vif' : 'live'}: {Number(record.total_live_weight_kg).toLocaleString()} kg
                       </span>
                     )}
                     {record.total_carcass_weight_kg && (
                       <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                        <Scale className="w-3 h-3" />carcass: {Number(record.total_carcass_weight_kg).toLocaleString()} kg
+                        <Scale className="w-3 h-3" />{isFr ? 'carcasse' : 'carcass'}: {Number(record.total_carcass_weight_kg).toLocaleString()} kg
                       </span>
                     )}
                     {record.dressing_pct !== null && (
                       <span className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
-                        <Percent className="w-3 h-3" />{Number(record.dressing_pct)}% dressing
+                        <Percent className="w-3 h-3" />{Number(record.dressing_pct)}{isFr ? '% rendement' : '% dressing'}
                       </span>
                     )}
                     {record.total_amount && (

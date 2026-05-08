@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, X, ClipboardList, Circle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -47,6 +48,8 @@ function fmtDate(s: string): string {
 
 export function RabbitsRegistryPage() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
 
   const [rabbits, setRabbits] = useState<RabbitRecord[]>([]);
@@ -90,7 +93,7 @@ export function RabbitsRegistryPage() {
       .eq('farm_id', currentFarm!.id)
       .order('tag');
     if (error) {
-      toast.error('Failed to load rabbit registry');
+      toast.error(isFr ? 'Échec du chargement du registre des lapins' : 'Failed to load rabbit registry');
     } else {
       setRabbits(data || []);
     }
@@ -109,7 +112,7 @@ export function RabbitsRegistryPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formTag.trim()) { toast.error('Enter an ear tag or ID'); return; }
+    if (!formTag.trim()) { toast.error(isFr ? 'Saisissez un numéro de boucle ou ID' : 'Enter an ear tag or ID'); return; }
 
     setSubmitting(true);
     const { error } = await supabase.from('rabbits').insert({
@@ -128,12 +131,12 @@ export function RabbitsRegistryPage() {
 
     if (error) {
       if (error.code === '23505') {
-        toast.error(`Tag "${formTag}" already exists in this farm`);
+        toast.error(isFr ? `L'étiquette « ${formTag} » existe déjà dans cette ferme` : `Tag "${formTag}" already exists in this farm`);
       } else {
-        toast.error('Failed to save rabbit record');
+        toast.error(isFr ? "Échec de l'enregistrement du lapin" : 'Failed to save rabbit record');
       }
     } else {
-      toast.success('Rabbit added to registry');
+      toast.success(isFr ? 'Lapin ajouté au registre' : 'Rabbit added to registry');
       resetForm();
       setShowForm(false);
       loadRabbits();
@@ -156,8 +159,8 @@ export function RabbitsRegistryPage() {
             <ClipboardList className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Rabbit Registry</h1>
-            <p className="text-sm text-gray-500">Individual breeder records with lineage tracking.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Registre des lapins' : 'Rabbit Registry'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? "Fiches individuelles des reproducteurs avec suivi de la lignée." : 'Individual breeder records with lineage tracking.'}</p>
           </div>
         </div>
         <button
@@ -165,22 +168,22 @@ export function RabbitsRegistryPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'Add Rabbit'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Ajouter un lapin' : 'Add Rabbit')}
         </button>
       </div>
 
       {rabbits.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
           <div className="section-card text-center py-3">
-            <p className="text-xs text-gray-500 mb-0.5">Active</p>
+            <p className="text-xs text-gray-500 mb-0.5">{isFr ? 'Actifs' : 'Active'}</p>
             <p className="text-xl font-bold text-gray-900">{activeCount}</p>
           </div>
           <div className="section-card text-center py-3">
-            <p className="text-xs text-gray-500 mb-0.5">Does</p>
+            <p className="text-xs text-gray-500 mb-0.5">{isFr ? 'Lapines' : 'Does'}</p>
             <p className="text-xl font-bold text-pink-600">{doesCount}</p>
           </div>
           <div className="section-card text-center py-3">
-            <p className="text-xs text-gray-500 mb-0.5">Bucks</p>
+            <p className="text-xs text-gray-500 mb-0.5">{isFr ? 'Mâles' : 'Bucks'}</p>
             <p className="text-xl font-bold text-blue-600">{bucksCount}</p>
           </div>
         </div>
@@ -188,10 +191,10 @@ export function RabbitsRegistryPage() {
 
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Add Rabbit to Registry</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Ajouter un lapin au registre' : 'Add Rabbit to Registry'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Ear Tag / ID *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Boucle / ID *' : 'Ear Tag / ID *'}</label>
               <input
                 type="text"
                 placeholder="e.g. DOE-01 or R-2024-015"
@@ -201,7 +204,7 @@ export function RabbitsRegistryPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Sex *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Sexe *' : 'Sex *'}</label>
               <div className="flex gap-3">
                 {(['doe', 'buck'] as const).map(s => (
                   <button
@@ -216,20 +219,20 @@ export function RabbitsRegistryPage() {
                         : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                     }`}
                   >
-                    {s === 'doe' ? 'Doe (♀)' : 'Buck (♂)'}
+                    {isFr ? (s === 'doe' ? 'Lapine (♀)' : 'Mâle (♂)') : (s === 'doe' ? 'Doe (♀)' : 'Buck (♂)')}
                   </button>
                 ))}
               </div>
             </div>
             {flocks.length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Rabbitry <span className="text-gray-400 font-normal">optional</span></label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Élevage' : 'Rabbitry'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
                 <select
                   value={formFlockId}
                   onChange={e => setFormFlockId(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
                 >
-                  <option value="">— none —</option>
+                  <option value="">{isFr ? '— aucun —' : '— none —'}</option>
                   {flocks.map(f => (
                     <option key={f.id} value={f.id}>{f.name}</option>
                   ))}
@@ -237,17 +240,17 @@ export function RabbitsRegistryPage() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Breed <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Race' : 'Breed'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. New Zealand White, Californian"
+                placeholder={isFr ? 'ex. Néo-Zélandais blanc, Californien' : 'e.g. New Zealand White, Californian'}
                 value={formBreed}
                 onChange={e => setFormBreed(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Birth Date <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date de naissance' : 'Birth Date'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="date"
                 value={formBirthDate}
@@ -257,30 +260,30 @@ export function RabbitsRegistryPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Sire Tag <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étiquette du père' : 'Sire Tag'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="Father's ear tag"
+                placeholder={isFr ? "Boucle d'oreille du père" : "Father's ear tag"}
                 value={formSireTag}
                 onChange={e => setFormSireTag(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Dam Tag <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étiquette de la mère' : 'Dam Tag'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="Mother's ear tag"
+                placeholder={isFr ? "Boucle d'oreille de la mère" : "Mother's ear tag"}
                 value={formDamTag}
                 onChange={e => setFormDamTag(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. Purchased from XYZ farm"
+                placeholder={isFr ? 'ex. Acheté à la ferme XYZ' : 'e.g. Purchased from XYZ farm'}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -293,7 +296,7 @@ export function RabbitsRegistryPage() {
               disabled={submitting}
               className="px-5 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving...' : 'Add to Registry'}
+              {submitting ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Ajouter au registre' : 'Add to Registry')}
             </button>
           </div>
         </div>
@@ -302,22 +305,26 @@ export function RabbitsRegistryPage() {
       {/* Filter pills */}
       {rabbits.length > 0 && (
         <div className="flex gap-2 flex-wrap">
-          {['active', 'culled', 'sold', 'dead', 'all'].map(s => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filterStatus === s
-                  ? 'bg-[#3D5F42] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-              {s !== 'all' && (
-                <span className="ml-1 opacity-70">({rabbits.filter(r => r.status === s).length})</span>
-              )}
-            </button>
-          ))}
+          {(['active', 'culled', 'sold', 'dead', 'all'] as const).map(s => {
+            const labelFr: Record<string, string> = { active: 'Actifs', culled: 'Réformés', sold: 'Vendus', dead: 'Morts', all: 'Tous' };
+            const labelEn: Record<string, string> = { active: 'Active', culled: 'Culled', sold: 'Sold', dead: 'Dead', all: 'All' };
+            return (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  filterStatus === s
+                    ? 'bg-[#3D5F42] text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {isFr ? labelFr[s] : labelEn[s]}
+                {s !== 'all' && (
+                  <span className="ml-1 opacity-70">({rabbits.filter(r => r.status === s).length})</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -331,20 +338,22 @@ export function RabbitsRegistryPage() {
             <div className="w-14 h-14 rounded-full bg-purple-50 flex items-center justify-center mb-3">
               <ClipboardList className="w-7 h-7 text-purple-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">Registry is empty</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Le registre est vide' : 'Registry is empty'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
-              Add individual rabbits to track lineage, breeding history, and performance.
+              {isFr
+                ? "Ajoutez des lapins individuels pour suivre la lignée, l'historique de reproduction et les performances."
+                : 'Add individual rabbits to track lineage, breeding history, and performance.'}
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Add First Rabbit
+              {isFr ? 'Premier lapin' : 'Add First Rabbit'}
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-8">No {filterStatus} rabbits.</p>
+          <p className="text-center text-sm text-gray-400 py-8">{isFr ? `Aucun lapin ${filterStatus === 'active' ? 'actif' : filterStatus === 'culled' ? 'réformé' : filterStatus === 'sold' ? 'vendu' : 'mort'}.` : `No ${filterStatus} rabbits.`}</p>
         ) : (
           <div className="space-y-0 divide-y divide-gray-100">
             {filtered.map(r => (
@@ -353,17 +362,21 @@ export function RabbitsRegistryPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium text-gray-800">{r.tag}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.sex === 'doe' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {r.sex === 'doe' ? 'Doe ♀' : 'Buck ♂'}
+                      {isFr ? (r.sex === 'doe' ? 'Lapine ♀' : 'Mâle ♂') : (r.sex === 'doe' ? 'Doe ♀' : 'Buck ♂')}
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[r.status]}`}>
-                      <Circle className="w-2 h-2 inline mr-1 fill-current" />{r.status}
+                      <Circle className="w-2 h-2 inline mr-1 fill-current" />{
+                        isFr
+                          ? (r.status === 'active' ? 'actif' : r.status === 'culled' ? 'réformé' : r.status === 'sold' ? 'vendu' : 'mort')
+                          : r.status
+                      }
                     </span>
                     {r.breed && <span className="text-xs text-gray-400">{r.breed}</span>}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
-                    {r.birth_date && <span>Born {fmtDate(r.birth_date)}</span>}
-                    {r.sire_tag && <span>Sire: {r.sire_tag}</span>}
-                    {r.dam_tag && <span>Dam: {r.dam_tag}</span>}
+                    {r.birth_date && <span>{isFr ? 'Né(e)' : 'Born'} {fmtDate(r.birth_date)}</span>}
+                    {r.sire_tag && <span>{isFr ? 'Père' : 'Sire'}: {r.sire_tag}</span>}
+                    {r.dam_tag && <span>{isFr ? 'Mère' : 'Dam'}: {r.dam_tag}</span>}
                   </div>
                   {r.notes && (
                     <p className="text-xs text-gray-400 mt-0.5 truncate">{r.notes}</p>
