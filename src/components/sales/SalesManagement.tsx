@@ -55,7 +55,13 @@ export function SalesManagement() {
   const showEggsTab = species.id === 'poultry';
   const sellTabLabel = `Sell ${species.animalTermPlural}`;
   const [activeTab, setActiveTab] = useState<'record' | 'history' | 'customers' | 'invoices'>('record');
-  const [historySubTab, setHistorySubTab] = useState<'birds' | 'eggs' | 'receipts'>('eggs');
+  // Default the History sub-tab to the species-correct list. Pre-fix the
+  // default was 'eggs' regardless of species, so a fresh fish farm landed
+  // on Sales History showing "No Egg Sales Yet" — wrong empty state for a
+  // tilapia operator. Greg's audit, May 8 2026.
+  const [historySubTab, setHistorySubTab] = useState<'birds' | 'eggs' | 'receipts'>(
+    species.id === 'poultry' ? 'eggs' : 'birds',
+  );
   const [saleType, setSaleType] = useState<'bird' | 'egg'>('bird');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
   const [customStartDate, setCustomStartDate] = useState('');
