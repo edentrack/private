@@ -261,11 +261,11 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   }
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'farm', label: 'Farm' },
-    { id: 'my-farms', label: 'My Farms' },
-    { id: 'team', label: 'Team' },
+    { id: 'farm', label: t('settings.tabs.farm') || 'Farm' },
+    { id: 'my-farms', label: t('settings.tabs.my_farms') || 'My Farms' },
+    { id: 'team', label: t('settings.tabs.team') || 'Team' },
     { id: 'eden', label: 'Eden AI' },
-    { id: 'preferences', label: 'Prefs' },
+    { id: 'preferences', label: t('settings.tabs.prefs') || 'Prefs' },
   ];
 
   return (
@@ -832,8 +832,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
               <LayoutDashboard className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-900">Simple Mode</p>
-              <p className="text-xs text-gray-500">Hide advanced features — keep the essentials only</p>
+              <p className="text-sm font-semibold text-gray-900">{language === 'fr' ? 'Mode Simple' : 'Simple Mode'}</p>
+              <p className="text-xs text-gray-500">{language === 'fr' ? 'Masquer les fonctionnalités avancées — garder l’essentiel' : 'Hide advanced features — keep the essentials only'}</p>
             </div>
             <button
               type="button"
@@ -853,8 +853,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
               <HelpCircle className="w-4 h-4 text-blue-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Replay app tour</p>
-              <p className="text-xs text-gray-500">See the guided walkthrough of all features again</p>
+              <p className="text-sm font-semibold text-gray-900">{language === 'fr' ? 'Revoir la visite guidée' : 'Replay app tour'}</p>
+              <p className="text-xs text-gray-500">{language === 'fr' ? 'Voir à nouveau la présentation de toutes les fonctionnalités' : 'See the guided walkthrough of all features again'}</p>
             </div>
           </button>
 

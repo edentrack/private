@@ -3,6 +3,7 @@ import { Gift, Copy, Check, Users, Share2, Pencil, X, CheckCircle } from 'lucide
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ReferralStats {
   total: number;
@@ -12,6 +13,8 @@ interface ReferralStats {
 export function ReferralSection() {
   const { profile } = useAuth();
   const { showToast } = useToast();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<ReferralStats>({ total: 0, rewarded: 0 });
   const [applyCode, setApplyCode] = useState('');
@@ -143,9 +146,13 @@ export function ReferralSection() {
           <Gift className="w-5 h-5 text-amber-600" />
         </div>
         <div>
-          <h3 className="font-bold text-gray-900">Referral Program</h3>
+          <h3 className="font-bold text-gray-900">{isFr ? 'Programme de parrainage' : 'Referral Program'}</h3>
           <p className="text-sm text-gray-500">
-            Refer a friend — you <strong>both get 1 free month</strong> when they make their first payment
+            {isFr ? (
+              <>Parrainez un ami — vous <strong>recevez tous les deux 1 mois gratuit</strong> lors de son premier paiement</>
+            ) : (
+              <>Refer a friend — you <strong>both get 1 free month</strong> when they make their first payment</>
+            )}
           </p>
         </div>
       </div>
@@ -155,12 +162,12 @@ export function ReferralSection() {
         <div className="bg-gray-50 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
           <p className="text-xs text-gray-500 flex items-center justify-center gap-1 mt-0.5">
-            <Users className="w-3 h-3" /> Friends referred
+            <Users className="w-3 h-3" /> {isFr ? 'Amis parrainés' : 'Friends referred'}
           </p>
         </div>
         <div className="bg-amber-50 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-amber-700">{stats.rewarded}</p>
-          <p className="text-xs text-amber-600 mt-0.5">Free months earned</p>
+          <p className="text-xs text-amber-600 mt-0.5">{isFr ? 'Mois gratuits gagnés' : 'Free months earned'}</p>
         </div>
       </div>
 
@@ -168,18 +175,20 @@ export function ReferralSection() {
       {referralCode && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold text-gray-600">Your referral code</p>
+            <p className="text-xs font-semibold text-gray-600">{isFr ? 'Votre code de parrainage' : 'Your referral code'}</p>
             {!editing && editsRemaining > 0 && (
               <button
                 onClick={startEdit}
                 className="flex items-center gap-1 text-xs text-[#3D5F42] hover:underline font-medium"
               >
                 <Pencil className="w-3 h-3" />
-                Customise ({editsRemaining} edit{editsRemaining !== 1 ? 's' : ''} left)
+                {isFr
+                  ? `Personnaliser (${editsRemaining} modification${editsRemaining !== 1 ? 's' : ''} restante${editsRemaining !== 1 ? 's' : ''})`
+                  : `Customise (${editsRemaining} edit${editsRemaining !== 1 ? 's' : ''} left)`}
               </button>
             )}
             {!editing && editsRemaining === 0 && (
-              <span className="text-xs text-gray-400">No edits remaining</span>
+              <span className="text-xs text-gray-400">{isFr ? 'Aucune modification restante' : 'No edits remaining'}</span>
             )}
           </div>
 
@@ -215,7 +224,9 @@ export function ReferralSection() {
                 </p>
               )}
               <p className="text-xs text-gray-400">
-                Letters, numbers and hyphens only · 4–15 characters · will be UPPERCASED
+                {isFr
+                  ? 'Lettres, chiffres et tirets uniquement · 4–15 caractères · sera converti en MAJUSCULES'
+                  : 'Letters, numbers and hyphens only · 4–15 characters · will be UPPERCASED'}
               </p>
             </div>
           ) : (
@@ -228,14 +239,14 @@ export function ReferralSection() {
                 <button
                   onClick={copyLink}
                   className="p-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50"
-                  title="Copy link"
+                  title={isFr ? 'Copier le lien' : 'Copy link'}
                 >
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-500" />}
                 </button>
                 <button
                   onClick={shareLink}
                   className="p-2 rounded-lg bg-[#3D5F42] text-white hover:bg-[#2F4A34]"
-                  title="Share"
+                  title={isFr ? 'Partager' : 'Share'}
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
@@ -243,18 +254,30 @@ export function ReferralSection() {
             </div>
           )}
           <p className="text-xs text-gray-400 mt-1.5">
-            Share this code or link — reward is credited when your friend pays for their first plan
+            {isFr
+              ? "Partagez ce code ou ce lien — la récompense est créditée lors du premier paiement de votre ami"
+              : 'Share this code or link — reward is credited when your friend pays for their first plan'}
           </p>
         </div>
       )}
 
       {/* How it works */}
       <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 space-y-1.5">
-        <p className="text-xs font-semibold text-amber-800">How it works</p>
+        <p className="text-xs font-semibold text-amber-800">{isFr ? 'Comment ça marche' : 'How it works'}</p>
         <ol className="text-xs text-amber-700 space-y-1 list-decimal list-inside">
-          <li>Share your code or link with another farmer</li>
-          <li>They sign up and enter your code</li>
-          <li>When they pay for their first plan, <strong>you both get 1 month free</strong> added to your subscription</li>
+          {isFr ? (
+            <>
+              <li>Partagez votre code ou lien avec un autre éleveur</li>
+              <li>Il s'inscrit et saisit votre code</li>
+              <li>Lors de son premier paiement, <strong>vous recevez tous les deux 1 mois gratuit</strong> ajouté à votre abonnement</li>
+            </>
+          ) : (
+            <>
+              <li>Share your code or link with another farmer</li>
+              <li>They sign up and enter your code</li>
+              <li>When they pay for their first plan, <strong>you both get 1 month free</strong> added to your subscription</li>
+            </>
+          )}
         </ol>
       </div>
 

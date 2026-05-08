@@ -411,6 +411,12 @@
     "settings": "Paramètres"
   },
   "settings": {
+    "tabs": {
+      "farm": "Ferme",
+      "my_farms": "Mes Fermes",
+      "team": "Équipe",
+      "prefs": "Préférences"
+    },
     "save_settings": "Enregistrer les paramètres",
     "saving": "Enregistrement...",
     "flock_lifecycle_title": "Configuration du cycle de vie du troupeau",
