@@ -6,6 +6,7 @@ import { Task, TaskTemplate } from '../../types/database';
 import { recordInventoryDecrease, recordInventoryIncrease } from '../../utils/inventoryMovements';
 import { useTranslation } from 'react-i18next';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface CompleteTaskModalProps {
   task: Task;
@@ -16,6 +17,8 @@ interface CompleteTaskModalProps {
 export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModalProps) {
   const { t } = useTranslation();
   const { user, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const [notes, setNotes] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
@@ -258,18 +261,20 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
             <div className="border border-blue-200 bg-blue-50 rounded-xl p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Package className="w-4 h-4 text-blue-600" />
-                <h4 className="font-medium text-blue-900 text-sm">Inventory Update</h4>
+                <h4 className="font-medium text-blue-900 text-sm">{isFr ? "Mise à jour de l'inventaire" : 'Inventory Update'}</h4>
               </div>
 
               <p className="text-xs text-blue-700 mb-2">
-                {taskTemplate.inventory_effect === 'decrease' ? 'How much was used?' : 'How much was added?'}
-                {inventoryItemName && <span className="block mt-0.5">Item: {inventoryItemName}</span>}
+                {taskTemplate.inventory_effect === 'decrease'
+                  ? (isFr ? 'Quelle quantité a été utilisée ?' : 'How much was used?')
+                  : (isFr ? 'Quelle quantité a été ajoutée ?' : 'How much was added?')}
+                {inventoryItemName && <span className="block mt-0.5">{isFr ? 'Article' : 'Item'}: {inventoryItemName}</span>}
               </p>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label htmlFor="inventoryQuantity" className="block text-xs font-medium text-gray-700 mb-1">
-                    Quantity *
+                    {isFr ? 'Quantité *' : 'Quantity *'}
                   </label>
                   <input
                     id="inventoryQuantity"
@@ -284,7 +289,7 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{isFr ? 'Unité' : 'Unit'}</label>
                   <input
                     type="text"
                     value={taskTemplate.inventory_unit || 'units'}
@@ -298,7 +303,7 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-              Notes (Optional)
+              {isFr ? 'Notes (Optionnel)' : 'Notes (Optional)'}
             </label>
             <textarea
               id="notes"
@@ -306,13 +311,13 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3D5F42]/20 focus:border-[#3D5F42] resize-none"
-              placeholder="Any notes about completing this task..."
+              placeholder={isFr ? "Notes à propos de l'achèvement de cette tâche..." : 'Any notes about completing this task...'}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Photo (Optional)
+              {isFr ? 'Photo (Optionnel)' : 'Photo (Optional)'}
             </label>
             <label className="flex items-center justify-center gap-2 w-full px-3 py-2 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#3D5F42] transition-colors cursor-pointer">
               <Camera className="w-4 h-4 text-gray-400" />
@@ -334,7 +339,7 @@ export function CompleteTaskModal({ task, onClose, onSuccess }: CompleteTaskModa
               onClick={onClose}
               className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
