@@ -8,6 +8,7 @@ import { downloadFarmReportPDF } from '../../utils/farmReportPDF';
 import { downloadFarmReportCSVs, downloadFarmReportMarkdown } from '../../utils/farmReportExports';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { formatFarmReportMarkdown } from '../../utils/farmReportExports';
+import { getCurrencySymbol } from '../../utils/currency';
 
 /**
  * Reports & Exports page — Phase G.
@@ -209,19 +210,27 @@ export function ReportsPage() {
 
       {data && (
         <>
+          {/* In-app preview uses the human currency symbol ("CFA") to match
+              the rest of the UI. The exported PDF/CSV still carries the
+              ISO code for downstream consumers (banks, accounting). */}
+          {(() => {
+            const previewLabel = getCurrencySymbol(data.currency);
+            return (
           <div className="bg-white rounded-2xl border border-gray-200 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Preview</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
               <div><div className="text-xs text-gray-500">Active groups</div><div className="font-bold text-gray-900">{data.totalFlocks}</div></div>
               <div><div className="text-xs text-gray-500">Active animals</div><div className="font-bold text-gray-900">{fmt(data.totalActiveAnimals)}</div></div>
-              <div><div className="text-xs text-gray-500">Revenue</div><div className="font-bold text-gray-900">{fmt(data.totalRevenue)} {data.currency}</div></div>
-              <div><div className="text-xs text-gray-500">Expenses</div><div className="font-bold text-gray-900">{fmt(data.totalExpenses)} {data.currency}</div></div>
-              <div><div className="text-xs text-gray-500">Net profit</div><div className={`font-bold ${data.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{data.netProfit >= 0 ? '+' : ''}{fmt(data.netProfit)} {data.currency}</div></div>
+              <div><div className="text-xs text-gray-500">Revenue</div><div className="font-bold text-gray-900">{fmt(data.totalRevenue)} {previewLabel}</div></div>
+              <div><div className="text-xs text-gray-500">Expenses</div><div className="font-bold text-gray-900">{fmt(data.totalExpenses)} {previewLabel}</div></div>
+              <div><div className="text-xs text-gray-500">Net profit</div><div className={`font-bold ${data.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{data.netProfit >= 0 ? '+' : ''}{fmt(data.netProfit)} {previewLabel}</div></div>
               <div><div className="text-xs text-gray-500">Margin</div><div className="font-bold text-gray-900">{data.marginPercent.toFixed(1)}%</div></div>
               <div><div className="text-xs text-gray-500">Mortality</div><div className="font-bold text-gray-900">{data.totalMortality}</div></div>
               <div><div className="text-xs text-gray-500">Feed used</div><div className="font-bold text-gray-900">{fmt(data.totalFeedKg)} kg</div></div>
             </div>
           </div>
+            );
+          })()}
 
           <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
             <h2 className="text-sm font-semibold text-gray-700">Export</h2>

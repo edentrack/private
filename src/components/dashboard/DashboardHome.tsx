@@ -26,7 +26,7 @@ import { canViewAnalytics } from '../../utils/permissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
-import { cleanHistoricalDuplicateTasks } from '../../utils/unifiedTaskSystem';
+import { cleanHistoricalDuplicateTasks, ensureTasksGeneratedForDate, getFlockTypesForFarm } from '../../utils/unifiedTaskSystem';
 import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
 import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES, AQUACULTURE_DEFAULT_PHASES, RABBIT_DEFAULT_PHASES } from '../../utils/speciesModules';
 
@@ -136,6 +136,22 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
 
       const farmTz = getFarmTimeZone(farm);
       const today = getFarmTodayISO(farmTz);
+
+      // Materialize today's task rows from active templates BEFORE counting.
+      // The TodayTasksWidget calls this same helper, but on the dashboard
+      // it ran in a separate effect; the counter beat it to the punch and
+      // hit `tasks` while it was still empty, showing "PENDING TASKS: 0"
+      // while the widget below showed 5 items (Greg's audit, May 8 2026).
+      // Calling it here too means both surfaces query the same materialized
+      // rows.
+      try {
+        const flockTypes = await getFlockTypesForFarm(supabase, farm.id);
+        await ensureTasksGeneratedForDate(supabase, farm.id, today, flockTypes, farmTz);
+      } catch (e) {
+        // Don't block the dashboard if template generation hiccups; the
+        // widget effect will retry.
+        console.warn('Task generation failed, continuing with stale count:', e);
+      }
 
       const { data: tasksData } = await supabase
         .from('tasks')
