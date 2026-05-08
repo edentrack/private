@@ -391,6 +391,11 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       if (!token) throw new Error('Not signed in');
 
       const history = [...messages, newUserMsg].map((m) => ({ role: m.role, content: m.content }));
+      // Pass the country picked at signup so Eden can fill the CREATE_FARM
+      // action with the user's actual country instead of defaulting to
+      // "Nigeria" from the example. (BUG #1/#8 fix, May 2026.)
+      const userCountry =
+        (typeof window !== 'undefined' && localStorage.getItem('pending_farm_country')) || '';
       const resp = await fetch('/api/ai-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -398,6 +403,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
           onboarding_mode: true,
           include_context: false,
           messages: history,
+          user_country: userCountry,
         }),
       });
 
