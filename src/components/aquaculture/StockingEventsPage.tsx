@@ -112,13 +112,27 @@ export function StockingEventsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('stocking_events')
-      .select('*')
+      .select('*, flocks!inner(type)')
       .eq('farm_id', currentFarm!.id)
       .order('stocked_at', { ascending: false });
     if (error) {
       toast.error('Failed to load stocking events');
     } else {
-      setEvents(data || []);
+      // Display fallback: when species was saved as 'other' (e.g. by an
+      // older OnboardingChat flow that didn't derive species from the
+      // flock's type), use the parent flock's type as the species badge.
+      // The DB row stays as-is — only the rendered string changes.
+      const fixed = (data || []).map((e: any) => {
+        const speciesLower = String(e.species || '').toLowerCase();
+        if (speciesLower !== 'other') return e;
+        const flockType = String(e.flocks?.type || '').toLowerCase();
+        const derived = flockType === 'tilapia' ? 'tilapia'
+          : flockType === 'catfish' ? 'catfish'
+          : flockType === 'clarias' ? 'clarias'
+          : 'other';
+        return { ...e, species: derived };
+      });
+      setEvents(fixed);
     }
     setLoading(false);
   };

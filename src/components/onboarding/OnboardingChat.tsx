@@ -301,11 +301,21 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         .maybeSingle();
       if (!flock) return { pill: null, complete: false, switchToForm: false };
       const stockedAt = action.stocked_at || action.log_date || new Date().toISOString().slice(0, 10);
+      // Derive species from the flock's type when the LLM didn't supply
+      // it. Pre-fix the fallback was the literal string 'other', which
+      // produced "Other" badges on stocking events for ponds whose type
+      // was clearly tilapia / catfish / clarias. Greg's audit, May 2026.
+      const flockTypeLower = String((flock as any).type || '').toLowerCase();
+      const speciesFromType =
+        flockTypeLower === 'tilapia' ? 'tilapia' :
+        flockTypeLower === 'catfish' ? 'catfish' :
+        flockTypeLower === 'clarias' ? 'clarias' :
+        'other';
       await supabase.from('stocking_events').insert({
         farm_id: flock.farm_id,
         flock_id: flock.id,
         stocked_at: stockedAt,
-        species: action.species || 'other',
+        species: action.species || speciesFromType,
         fingerling_count: action.fingerling_count || 0,
       });
       // BUG-fix (Greg's audit, May 2026): "stocking" is fish/aquaculture
