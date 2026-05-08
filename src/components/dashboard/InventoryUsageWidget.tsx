@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { todayLocal } from '../../utils/dateUtils';
 
 interface FeedItem {
@@ -42,6 +43,7 @@ interface FeedPrediction {
 }
 
 export function InventoryUsageWidget() {
+  const farmSpecies = useFarmSpecies();
   const { t } = useTranslation();
   const { profile, currentFarm } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
@@ -768,7 +770,7 @@ export function InventoryUsageWidget() {
               {activeFlocks.length > 1 && selectedItem?.type === 'feed' && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Flock (for FCR tracking)
+                    {`${farmSpecies.groupTerm} (for FCR tracking)`}
                   </label>
                   <select
                     value={selectedFlockId}
