@@ -7,11 +7,13 @@
 
 ## The unifying insight
 
+EdenTrack is a global product. The AI works for any farm, any species, any country. We're starting in CFA-zone Africa because that's where the underserved-market opportunity is largest and where our positioning is sharpest — but the long-term thesis is global.
+
 Here's why no competitor has won African farm-management yet, and why most won't.
 
-Every player in this space — AviOptix, Tijafugo, Cropple, SmartBird, Farmojo — is competing on **feature parity with Western farm software**. They're trying to be a smaller, cheaper, African version of AgriWebb or FarmLogs. That's the wrong frame. Western farm software works because Western farms are commercial, have capital, have data infrastructure, and have technicians. African smallholders don't have any of those.
+Every player in this space — AviOptix, Tijafugo, Cropple, SmartBird, Farmojo — is competing on **feature parity with Western farm software**. They're trying to be a smaller, cheaper, African version of AgriWebb or FarmLogs. That's the wrong frame. Western farm software works because Western farms are commercial, have capital, have data infrastructure, and have technicians. Smallholders — whether African, South Asian, or Latin American — don't have any of those.
 
-The right frame is: **African smallholder agriculture is a different problem, and it requires a different shape of solution.** What African farmers actually need, in priority order:
+The right frame is: **smallholder agriculture is a different problem from industrial agriculture, and it requires a different shape of solution.** What smallholder farmers actually need, in priority order:
 
 1. **Trust** — they buy from people they know, and they know people in their network, not advertisers.
 2. **Reach** — the tool has to work on whatever device they have, in whatever language they speak, at whatever bandwidth they get.

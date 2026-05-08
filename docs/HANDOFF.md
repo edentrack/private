@@ -8,7 +8,7 @@
 
 ## 1. The product in one paragraph
 
-EdenTrack is a multi-species farm management SaaS for African smallholder farmers — poultry, aquaculture, and rabbitries on the same codebase. Farmers track flock/pond health, log production (eggs, harvests, mortalities, weight), record finances (sales, expenses, payroll), and converse with **Eden**, an in-product AI operator that takes natural-language commands ("add 50 chicks to Pen 2", "record an egg sale of 100 to John") and emits structured database actions. The frontend is a React + Vite SPA at edentrack.app, the backend is Supabase (Postgres + RLS + edge functions). Eden runs on Anthropic's Claude (Sonnet) with OpenAI Whisper for transcription.
+EdenTrack is a global multi-species farm management SaaS — poultry, aquaculture, and rabbitries on the same codebase, built for any farm anywhere in the world, launching first in CFA-zone Africa where the underserved-market opportunity is largest. Farmers track flock/pond health, log production (eggs, harvests, mortalities, weight), record finances (sales, expenses, payroll), and converse with **Eden**, an in-product AI operator that takes natural-language commands ("add 50 chicks to Pen 2", "record an egg sale of 100 to John") and emits structured database actions. Eden also works over WhatsApp, so farmers can run their books without ever opening the web app. The frontend is a React + Vite SPA at edentrack.app, the backend is Supabase (Postgres + RLS + edge functions). Eden runs on Anthropic's Claude (Sonnet) with OpenAI Whisper for transcription.
 
 ---
 
@@ -136,7 +136,7 @@ If you skip this, the deployed frontend talks to a stale edge function and your 
 
 ### Target user
 
-The first farmer is a 25-50-year-old in West/Central Africa (Cameroon, Nigeria, Ghana primarily) running a 50-500 bird poultry farm or 1-3 catfish/tilapia ponds, on Android with intermittent connectivity. They speak English or French, sometimes Pidgin or local languages. They're paying for the bookkeeping and prediction tooling, not the AI; Eden is the differentiator that makes the bookkeeping painless.
+EdenTrack is built for any farm anywhere, but the first cohort we're going after is the smallholder farmer in CFA-zone Africa — typically a 25-50-year-old in Cameroon, Senegal, Ivory Coast, or Benin running a 50-500 bird poultry farm, 1-3 catfish/tilapia ponds, or a small rabbitry. They're on Android with intermittent connectivity, speak English or French (sometimes Pidgin or local languages), and they're paying for the bookkeeping and prediction tooling, not the AI itself. Eden is the differentiator that makes the bookkeeping painless. The product itself is global — same codebase serves a US homesteader, a UK smallholder, or an Indian poultry farmer just as well — but our marketing focus is CFA-zone first because that's where the gap between competitors and farmer needs is widest.
 
 ### Why this is positioned to work
 

@@ -313,22 +313,22 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
         <div className="text-center">
           {/* Main Heading */}
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-            Professional Farm Management
+            Run your farm
             <br />
             <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #ffe833 0%, #ffdd00 50%, #F5A623 100%)', WebkitBackgroundClip: 'text' }}>
-              for Modern Farmers
+              with Eden.
             </span>
           </h1>
 
           {/* Subheading */}
           <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Run poultry, fish, and rabbits from one place. Log daily tasks, track feed and water,
-            and let Eden AI turn your records into decisions you can act on today.
+            Eden is the AI that records sales, tracks expenses, and keeps your books up to date —
+            on the dashboard or right inside WhatsApp. Poultry, fish, rabbits. Your language. Your currency.
           </p>
 
           {/* Tagline */}
           <p className="text-lg text-gray-600 mb-12 italic">
-            Built by a farmer, for farmers worldwide.
+            Made for farmers everywhere.
           </p>
 
           {/* CTA Buttons */}

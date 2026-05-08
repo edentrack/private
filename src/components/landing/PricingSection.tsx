@@ -22,9 +22,9 @@ interface PlanPricing {
 }
 
 const PRICING: Record<PaidPlan, PlanPricing> = {
-  grower:   { monthly: 12,  quarterly: 30,  yearly: 108 },
-  farmboss: { monthly: 35,  quarterly: 87,  yearly: 300 },
-  industry: { monthly: 89,  quarterly: 222, yearly: 800 },
+  grower:   { monthly: 7,   quarterly: 18,  yearly: 60 },
+  farmboss: { monthly: 19,  quarterly: 50,  yearly: 180 },
+  industry: { monthly: 49,  quarterly: 130, yearly: 480 },
 };
 
 function savings(plan: PaidPlan, cycle: Cycle): number | null {
@@ -75,10 +75,10 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
             Pricing
           </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-tight">
-            Simple, honest pricing
+            Pricing that fits your farm
           </h2>
           <p className="text-gray-400 text-xl max-w-2xl mx-auto">
-            Start free. Upgrade when your farm is ready for full analytics, AI, and team tools.
+            Start free. Pay only when Eden is doing real work for you.
           </p>
         </div>
 
@@ -118,7 +118,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Starter</h3>
-                <p className="text-xs text-gray-500">Just getting started</p>
+                <p className="text-xs text-gray-500">Try Eden. Run a real farm for free.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -128,11 +128,10 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
             <ul className="space-y-2 flex-1 mb-5">
               {[
                 '2 active flocks',
-                'Mortality & weight tracking',
-                'Expense recording',
-                'Task management',
-                'WhatsApp daily share',
-                'Eden AI. 10 questions/day',
+                'Mortality, weight & expense tracking',
+                'Daily task reminders',
+                'WhatsApp daily summary',
+                'Eden AI · 10 messages/day',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
                   <Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -163,7 +162,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Grower</h3>
-                <p className="text-xs text-gray-700">Growing farms, full control</p>
+                <p className="text-xs text-gray-700">For farmers who want Eden running their books.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -181,13 +180,12 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
             <ul className="space-y-2 flex-1 mb-5">
               {[
                 'Up to 5 active flocks',
-                'Full analytics & KPIs',
-                'Automated daily email report',
-                'Eden AI. 200 messages/month',
-                'Financial logging via Eden AI',
-                'Smart document import (CSV)',
+                'Full Eden AI · 200 messages/month',
+                'Eden logs sales & expenses for you',
+                'WhatsApp receipts to customers',
+                'CSV import & export (PDF/CSV)',
+                'Daily email report',
                 '2 team members',
-                'Export reports (CSV/PDF)',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-800">
                   <Check className="w-3.5 h-3.5 text-gray-700 flex-shrink-0 mt-0.5" />
@@ -209,7 +207,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Farm Boss</h3>
-                <p className="text-xs text-gray-500">Large commercial operations</p>
+                <p className="text-xs text-gray-500">Commercial farms with a team.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -226,12 +224,11 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
             </div>
             <ul className="space-y-2 flex-1 mb-5">
               {[
-                'Unlimited flocks',
-                'Unlimited team members',
                 'Everything in Grower',
-                'Eden AI. 1,000 messages/month',
-                'Photo disease diagnosis (10/mo)',
-                'Payroll management',
+                'Unlimited flocks & team members',
+                'Eden AI · 1,000 messages/month',
+                'Photo disease diagnosis · 10/month',
+                'Payroll for farm workers',
                 'Priority support',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
@@ -254,7 +251,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Industry</h3>
-                <p className="text-xs text-gray-500">Multi-farm & integrators</p>
+                <p className="text-xs text-gray-500">Cooperatives & multi-farm operators.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -272,9 +269,8 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
             <ul className="space-y-2 flex-1 mb-5">
               {[
                 'Everything in Farm Boss',
-                'Multiple farm accounts',
-                'Eden AI. Unlimited messages',
-                'Unlimited photo diagnosis',
+                'Multiple farms · cooperative dashboard',
+                'Unlimited Eden AI & photo diagnosis',
                 'Dedicated account manager',
                 'Custom onboarding & training',
                 'API access (coming soon)',
