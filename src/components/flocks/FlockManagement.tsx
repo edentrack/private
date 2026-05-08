@@ -192,13 +192,13 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
       if (error) throw error;
 
-      toast.success(isAquaculture ? 'Pond restored successfully' : 'Flock restored successfully');
+      toast.success(`${groupTerm} restored successfully`);
       setConfirmingUnarchive(null);
       invalidateFarmTypeCache();
       loadFlocks();
     } catch (err) {
       console.error('Error unarchiving flock:', err);
-      toast.error('Failed to restore flock. Please try again.');
+      toast.error(`Failed to restore ${groupTerm.toLowerCase()}. Please try again.`);
     }
   };
 
@@ -211,12 +211,12 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
 
       if (error) throw error;
 
-      toast.success(isAquaculture ? 'Pond permanently deleted' : 'Flock permanently deleted');
+      toast.success(`${groupTerm} permanently deleted`);
       setConfirmingDelete(null);
       loadFlocks();
     } catch (err) {
       console.error('Error deleting flock:', err);
-      toast.error('Failed to delete flock. Please try again.');
+      toast.error(`Failed to delete ${groupTerm.toLowerCase()}. Please try again.`);
     }
   };
 

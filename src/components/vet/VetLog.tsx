@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { todayLocal } from '../../utils/dateUtils';
 
 interface VetLog {
@@ -41,6 +42,7 @@ export function VetLog() {
   const { currentFarm, profile } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const toast = useToast();
+  const farmSpecies = useFarmSpecies();
   const [logs, setLogs] = useState<VetLog[]>([]);
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +223,7 @@ export function VetLog() {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Flock</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">{farmSpecies.groupTerm}</label>
                   <select value={form.flock_id} onChange={e => setForm(p => ({ ...p, flock_id: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]">
                     <option value="">All / General</option>
