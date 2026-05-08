@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Clock, Target, AlertCircle, ArrowRight, Layers } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { FlockCycleRollupItem } from '../../types/database';
 
 interface FarmRollupCycleCardProps {
@@ -10,6 +11,8 @@ interface FarmRollupCycleCardProps {
 
 export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [rollupItems, setRollupItems] = useState<FlockCycleRollupItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +48,7 @@ export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
         soonestDaysRemaining: null,
         earliestWeekEndFlock: null,
         maxWeek: null,
-        label: 'No active flocks'
+        label: isFr ? 'Aucun troupeau actif' : 'No active flocks'
       };
     }
 
@@ -70,22 +73,33 @@ export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
       }
     });
 
-    let label = 'No active flocks';
+    let label = isFr ? 'Aucun troupeau actif' : 'No active flocks';
     if (flocksWithCycles.length === 0 && rollupItems.length > 0) {
-      label = `${rollupItems.length} flock${rollupItems.length > 1 ? 's' : ''} - no cycles set`;
+      label = isFr
+        ? `${rollupItems.length} troupeau${rollupItems.length > 1 ? 'x' : ''} - aucun cycle défini`
+        : `${rollupItems.length} flock${rollupItems.length > 1 ? 's' : ''} - no cycles set`;
     } else if (soonestDaysRemaining !== null && earliestWeekEndFlock) {
+      const flockName = (earliestWeekEndFlock as FlockCycleRollupItem).flock_name;
       if (soonestDaysRemaining === 0) {
-        label = `Week ends today for ${earliestWeekEndFlock.flock_name}`;
+        label = isFr
+          ? `La semaine se termine aujourd'hui pour ${flockName}`
+          : `Week ends today for ${flockName}`;
       } else if (soonestDaysRemaining === 1) {
-        label = `New week starts tomorrow for ${earliestWeekEndFlock.flock_name}`;
+        label = isFr
+          ? `Une nouvelle semaine commence demain pour ${flockName}`
+          : `New week starts tomorrow for ${flockName}`;
       } else {
-        label = `Next week ends in ${soonestDaysRemaining} days`;
+        label = isFr
+          ? `La semaine prochaine se termine dans ${soonestDaysRemaining} jours`
+          : `Next week ends in ${soonestDaysRemaining} days`;
       }
     }
 
     const flocksWithTargets = flocksWithCycles.filter(item => item.target_weeks !== null);
     const targetSummary = flocksWithTargets.length > 0
-      ? `${flocksWithTargets.length} of ${rollupItems.length} flocks have target weeks set`
+      ? (isFr
+          ? `${flocksWithTargets.length} sur ${rollupItems.length} troupeaux ont des semaines cibles définies`
+          : `${flocksWithTargets.length} of ${rollupItems.length} flocks have target weeks set`)
       : null;
 
     return {
@@ -97,7 +111,7 @@ export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
       label,
       targetSummary
     };
-  }, [rollupItems]);
+  }, [rollupItems, isFr]);
 
   if (loading) {
     return (
@@ -126,14 +140,16 @@ export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
           <Layers className="w-5 h-5" />
         </div>
         <div className="flex-1">
-          <div className="stat-label mb-2">Farm Overview</div>
+          <div className="stat-label mb-2">{isFr ? 'Aperçu de la ferme' : 'Farm Overview'}</div>
           <div className="flex items-center gap-3 mb-4">
             <div className="text-2xl font-bold text-gray-900">
-              {summary.activeFlocks} Active Flock{summary.activeFlocks !== 1 ? 's' : ''}
+              {isFr
+                ? `${summary.activeFlocks} troupeau${summary.activeFlocks !== 1 ? 'x' : ''} actif${summary.activeFlocks !== 1 ? 's' : ''}`
+                : `${summary.activeFlocks} Active Flock${summary.activeFlocks !== 1 ? 's' : ''}`}
             </div>
             {hasAnyCycles && summary.maxWeek && (
               <span className="badge-yellow">
-                Max Week {summary.maxWeek}
+                {isFr ? 'Semaine max.' : 'Max Week'} {summary.maxWeek}
               </span>
             )}
           </div>
@@ -156,7 +172,9 @@ export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
                 <div className="flex items-center gap-2 text-amber-600">
                   <AlertCircle className="w-4 h-4" />
                   <span className="text-sm">
-                    {summary.activeFlocks - summary.flocksWithCycles} flock{summary.activeFlocks - summary.flocksWithCycles > 1 ? 's' : ''} without cycles
+                    {isFr
+                      ? `${summary.activeFlocks - summary.flocksWithCycles} troupeau${summary.activeFlocks - summary.flocksWithCycles > 1 ? 'x' : ''} sans cycle`
+                      : `${summary.activeFlocks - summary.flocksWithCycles} flock${summary.activeFlocks - summary.flocksWithCycles > 1 ? 's' : ''} without cycles`}
                   </span>
                 </div>
               )}
@@ -164,7 +182,7 @@ export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
           ) : (
             <div className="flex items-center gap-2 text-amber-600">
               <AlertCircle className="w-4 h-4" />
-              <span className="text-sm">No production cycles configured yet</span>
+              <span className="text-sm">{isFr ? 'Aucun cycle de production configuré pour le moment' : 'No production cycles configured yet'}</span>
             </div>
           )}
 
@@ -173,7 +191,7 @@ export function FarmRollupCycleCard({ onNavigate }: FarmRollupCycleCardProps) {
               onClick={() => onNavigate('settings')}
               className="mt-4 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center gap-1"
             >
-              Configure cycles in Settings
+              {isFr ? 'Configurer les cycles dans les paramètres' : 'Configure cycles in Settings'}
               <ArrowRight className="w-4 h-4" />
             </button>
           )}

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { FlockCycleStatus, FlockCycleRollupItem } from '../../types/database';
 import { canPerformAction } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface CycleCountdownCardProps {
   onNavigate?: (view: string) => void;
@@ -15,6 +16,8 @@ interface CycleCountdownCardProps {
 export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect }: CycleCountdownCardProps) {
   const { currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [activeFlockStatus, setActiveFlockStatus] = useState<FlockCycleStatus | null>(null);
   const [rollupItems, setRollupItems] = useState<FlockCycleRollupItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,15 +113,15 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
             <div className="flex items-start justify-between mb-2">
               <div>
                 <div className="text-sm font-medium text-green-600 mb-1">
-                  Production Cycle
+                  {isFr ? 'Cycle de production' : 'Production Cycle'}
                 </div>
                 {hasActiveCycle ? (
                   <>
                     <div className="text-4xl font-bold text-gray-900 mb-2">
-                      Week {activeFlockStatus.current_week}
+                      {isFr ? 'Semaine' : 'Week'} {activeFlockStatus.current_week}
                     </div>
                     <div className="text-sm text-gray-600 mb-1">
-                      Active flock: <span className="font-medium text-gray-900">{activeItem?.flock_name}</span>
+                      {isFr ? 'Troupeau actif :' : 'Active flock:'} <span className="font-medium text-gray-900">{activeItem?.flock_name}</span>
                       <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-white/50">
                         {activeItem?.flock_type}
                       </span>
@@ -127,7 +130,7 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
                 ) : (
                   <>
                     <div className="text-xl font-bold text-gray-900 mb-2">
-                      Cycle Not Set
+                      {isFr ? 'Cycle non défini' : 'Cycle Not Set'}
                     </div>
                     {activeItem && (
                       <div className="text-sm text-gray-600 mb-1">
@@ -144,7 +147,7 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
                 <button
                   onClick={() => onNavigate('settings')}
                   className="p-2 hover:bg-white/50 rounded-xl transition-colors"
-                  title="Edit cycle settings"
+                  title={isFr ? 'Modifier les paramètres du cycle' : 'Edit cycle settings'}
                 >
                   <Settings className="w-5 h-5 text-gray-600" />
                 </button>
@@ -173,7 +176,7 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
                       <span className="font-semibold text-green-700">
                         {activeFlockStatus.weeks_remaining_to_target}
                       </span>
-                      {' '}weeks remaining to reach Week {activeFlockStatus.target_weeks}
+                      {isFr ? ` semaines restantes pour atteindre la semaine ${activeFlockStatus.target_weeks}` : ` weeks remaining to reach Week ${activeFlockStatus.target_weeks}`}
                     </div>
                     <div className="mt-2 h-2 bg-white rounded-full overflow-hidden">
                       <div
@@ -188,7 +191,7 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
                     </div>
                     {activeFlockStatus.target_reached_notes && (
                       <div className="mt-3 p-3 bg-white/50 rounded-xl">
-                        <div className="text-xs font-medium text-green-700 mb-1">At target week:</div>
+                        <div className="text-xs font-medium text-green-700 mb-1">{isFr ? 'À la semaine cible :' : 'At target week:'}</div>
                         <div className="text-sm text-gray-700">{activeFlockStatus.target_reached_notes}</div>
                       </div>
                     )}
@@ -199,11 +202,11 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
               <div className="mt-2">
                 {canEdit ? (
                   <p className="text-sm text-gray-600 mb-3">
-                    Set a cycle start date to track production weeks for this flock.
+                    {isFr ? 'Définissez une date de début de cycle pour suivre les semaines de production de ce troupeau.' : 'Set a cycle start date to track production weeks for this flock.'}
                   </p>
                 ) : (
                   <p className="text-sm text-gray-600">
-                    Cycle not set for this flock yet.
+                    {isFr ? 'Cycle non encore défini pour ce troupeau.' : 'Cycle not set for this flock yet.'}
                   </p>
                 )}
                 {canEdit && onNavigate && (
@@ -212,7 +215,7 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
                     className="inline-flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white rounded-xl font-medium hover:bg-[#2F4A34] transition-colors text-sm"
                   >
                     <Settings className="w-4 h-4" />
-                    Set cycle start date
+                    {isFr ? 'Définir la date de début du cycle' : 'Set cycle start date'}
                   </button>
                 )}
               </div>
@@ -224,7 +227,7 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
       {otherFlocks.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700">All Flocks</h4>
+            <h4 className="text-sm font-semibold text-gray-700">{isFr ? 'Tous les troupeaux' : 'All Flocks'}</h4>
           </div>
           <div className="divide-y divide-gray-100">
             {otherFlocks.map((item) => (
@@ -249,12 +252,12 @@ export function CycleCountdownCard({ onNavigate, selectedFlockId, onFlockSelect 
                   <div className="text-sm text-gray-600 mt-0.5">
                     {item.has_cycle ? (
                       <>
-                        <span className="font-medium">Week {item.current_week}</span>
+                        <span className="font-medium">{isFr ? 'Semaine' : 'Week'} {item.current_week}</span>
                         <span className="mx-1">·</span>
                         <span>{item.countdown_label}</span>
                       </>
                     ) : (
-                      <span className="text-gray-400">Cycle not set</span>
+                      <span className="text-gray-400">{isFr ? 'Cycle non défini' : 'Cycle not set'}</span>
                     )}
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, CheckCircle, AlertCircle, Info, AlertTriangle, Trash2, CheckCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Notification } from '../../types/database';
 
 const iconFor = (type: string) => {
@@ -13,6 +14,8 @@ const iconFor = (type: string) => {
 
 export function NotificationsPage() {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,8 +63,8 @@ export function NotificationsPage() {
             <Bell className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Notifications</h1>
-            <p className="text-xs text-gray-500">{unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Notifications' : 'Notifications'}</h1>
+            <p className="text-xs text-gray-500">{unreadCount > 0 ? (isFr ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}` : `${unreadCount} unread`) : (isFr ? 'Tout est à jour' : 'All caught up')}</p>
           </div>
         </div>
         {unreadCount > 0 && (
@@ -70,7 +73,7 @@ export function NotificationsPage() {
             className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:text-blue-700"
           >
             <CheckCheck className="w-4 h-4" />
-            Mark all read
+            {isFr ? 'Tout marquer comme lu' : 'Mark all read'}
           </button>
         )}
       </div>
@@ -84,8 +87,8 @@ export function NotificationsPage() {
       ) : notifications.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
           <Bell className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">No notifications yet</p>
-          <p className="text-gray-400 text-sm mt-1">Farm alerts and updates will appear here</p>
+          <p className="text-gray-500 font-medium">{isFr ? 'Aucune notification pour le moment' : 'No notifications yet'}</p>
+          <p className="text-gray-400 text-sm mt-1">{isFr ? "Les alertes et mises à jour de la ferme apparaîtront ici" : 'Farm alerts and updates will appear here'}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -103,7 +106,7 @@ export function NotificationsPage() {
                   <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
                 )}
                 <p className="text-xs text-gray-400 mt-1">
-                  {new Date(n.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {new Date(n.created_at).toLocaleDateString(isFr ? 'fr-FR' : undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
               <button onClick={() => remove(n.id)} className="p-1 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CheckCircle, AlertCircle, Zap, ChevronRight, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface HealthItem {
   key: string;
@@ -18,6 +19,8 @@ interface FarmSetupScoreCardProps {
 
 export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
   const { currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [items, setItems] = useState<HealthItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -92,42 +95,42 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
         {
           key: 'flocks',
           category: 'setup',
-          label: 'Active flock running',
+          label: isFr ? 'Troupeau actif en cours' : 'Active flock running',
           done: !!flock,
           prompt: 'Help me create my first flock',
         },
         {
           key: 'workers',
           category: 'setup',
-          label: 'Workers added to farm',
+          label: isFr ? 'Travailleurs ajoutés à la ferme' : 'Workers added to farm',
           done: (workersRes.data?.length || 0) > 0,
           prompt: 'Help me add my workers to the farm',
         },
         {
           key: 'pay_rates',
           category: 'setup',
-          label: 'Pay rates configured',
+          label: isFr ? 'Taux de rémunération configurés' : 'Pay rates configured',
           done: (workersWithPayRes.data?.length || 0) > 0,
           prompt: 'Help me set up pay rates for my workers',
         },
         {
           key: 'egg_prices',
           category: 'setup',
-          label: 'Egg selling prices set',
+          label: isFr ? 'Prix de vente des œufs définis' : 'Egg selling prices set',
           done: Object.keys(configRes.data?.egg_prices || {}).length > 0,
           prompt: 'Help me configure my egg selling prices',
         },
         {
           key: 'expenses',
           category: 'setup',
-          label: 'Expenses being logged',
+          label: isFr ? 'Dépenses enregistrées' : 'Expenses being logged',
           done: (expensesRes.data?.length || 0) > 0,
           prompt: 'Show me how to log farm expenses',
         },
         {
           key: 'egg_collections',
           category: 'setup',
-          label: 'Egg collections recorded',
+          label: isFr ? 'Collectes d\'œufs enregistrées' : 'Egg collections recorded',
           done: (eggCollRes.data?.length || 0) > 0,
           prompt: 'How do I record my daily egg collections?',
         },
@@ -135,23 +138,31 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
         {
           key: 'mortality',
           category: 'health',
-          label: 'Mortality rate healthy',
+          label: isFr ? 'Taux de mortalité sain' : 'Mortality rate healthy',
           done: mortalityOk,
-          detail: flock ? `${mortalityPct.toFixed(1)}% of flock — ${mortalityOk ? 'within normal range' : 'above 5% threshold'}` : undefined,
+          detail: flock
+            ? (isFr
+                ? `${mortalityPct.toFixed(1)}% du troupeau — ${mortalityOk ? 'dans la plage normale' : 'au-dessus du seuil de 5%'}`
+                : `${mortalityPct.toFixed(1)}% of flock — ${mortalityOk ? 'within normal range' : 'above 5% threshold'}`)
+            : undefined,
           prompt: `My mortality rate is ${mortalityPct.toFixed(1)}% — is that normal and what should I do?`,
         },
         {
           key: 'tasks',
           category: 'health',
-          label: 'Tasks up to date',
+          label: isFr ? 'Tâches à jour' : 'Tasks up to date',
           done: tasksOk,
-          detail: overdueCount > 0 ? `${overdueCount} overdue task${overdueCount !== 1 ? 's' : ''}` : undefined,
+          detail: overdueCount > 0
+            ? (isFr
+                ? `${overdueCount} tâche${overdueCount !== 1 ? 's' : ''} en retard`
+                : `${overdueCount} overdue task${overdueCount !== 1 ? 's' : ''}`)
+            : undefined,
           prompt: 'I have overdue tasks — help me catch up',
         },
         {
           key: 'feed_stock',
           category: 'health',
-          label: 'Feed stock tracked',
+          label: isFr ? 'Stock d\'aliments suivi' : 'Feed stock tracked',
           done: hasFeed,
           prompt: 'Help me set up feed stock tracking',
         },
@@ -187,8 +198,8 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
             <Zap className="w-4 h-4" style={{ color: scoreColor }} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-gray-900">Farm Health Score</p>
-            <p className="text-xs text-gray-500">Checked from the start of your flock</p>
+            <p className="text-sm font-semibold text-gray-900">{isFr ? 'Score de santé de la ferme' : 'Farm Health Score'}</p>
+            <p className="text-xs text-gray-500">{isFr ? 'Vérifié depuis le début de votre troupeau' : 'Checked from the start of your flock'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -207,25 +218,25 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
             style={{ width: `${score}%`, background: scoreColor }}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-1">{doneCount} of {items.length} checks passed</p>
+        <p className="text-xs text-gray-400 mt-1">{isFr ? `${doneCount} sur ${items.length} contrôles réussis` : `${doneCount} of ${items.length} checks passed`}</p>
       </div>
 
       {/* Setup section */}
       <div className="mb-3">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Setup</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{isFr ? 'Configuration' : 'Setup'}</p>
         <div className="space-y-1.5">
           {setupItems.map(item => (
-            <HealthRow key={item.key} item={item} onAskEden={onAskEden} />
+            <HealthRow key={item.key} item={item} onAskEden={onAskEden} isFr={isFr} />
           ))}
         </div>
       </div>
 
       {/* Health section */}
       <div className="mb-3">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Health Checks</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{isFr ? 'Contrôles de santé' : 'Health Checks'}</p>
         <div className="space-y-1.5">
           {healthItems.map(item => (
-            <HealthRow key={item.key} item={item} onAskEden={onAskEden} />
+            <HealthRow key={item.key} item={item} onAskEden={onAskEden} isFr={isFr} />
           ))}
         </div>
       </div>
@@ -237,14 +248,14 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
           style={{ background: `${scoreColor}15`, color: scoreColor }}
         >
           <Zap className="w-3.5 h-3.5" />
-          Fix everything with Eden
+          {isFr ? 'Tout corriger avec Eden' : 'Fix everything with Eden'}
         </button>
       )}
     </div>
   );
 }
 
-function HealthRow({ item, onAskEden }: { item: HealthItem; onAskEden: (p: string) => void }) {
+function HealthRow({ item, onAskEden, isFr }: { item: HealthItem; onAskEden: (p: string) => void; isFr: boolean }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -267,7 +278,7 @@ function HealthRow({ item, onAskEden }: { item: HealthItem; onAskEden: (p: strin
           onClick={() => onAskEden(item.prompt)}
           className="flex items-center gap-0.5 text-xs text-[#3D5F42] font-medium hover:underline flex-shrink-0"
         >
-          Ask Eden <ChevronRight className="w-3 h-3" />
+          {isFr ? 'Demander à Eden' : 'Ask Eden'} <ChevronRight className="w-3 h-3" />
         </button>
       )}
     </div>

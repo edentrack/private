@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Flock } from '../../types/database';
 
 interface FlockFinancialSummaryProps {
@@ -17,6 +18,8 @@ interface FinancialData {
 
 export function FlockFinancialSummary({ flock, compact = false }: FlockFinancialSummaryProps) {
   const { profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [financials, setFinancials] = useState<FinancialData>({
     totalExpenses: 0,
     totalRevenue: 0,
@@ -66,10 +69,10 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
           <div className="icon-circle-yellow">
             <Wallet className={`${compact ? 'w-5 h-5' : 'w-6 h-6'}`} />
           </div>
-          <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Flock Financial Summary</h3>
+          <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>{isFr ? 'Résumé financier du troupeau' : 'Flock Financial Summary'}</h3>
         </div>
         <p className={`text-gray-500 text-center ${compact ? 'py-6' : 'py-8'}`}>
-          Select a flock to view financial summary
+          {isFr ? 'Sélectionnez un troupeau pour voir le résumé financier' : 'Select a flock to view financial summary'}
         </p>
       </div>
     );
@@ -82,9 +85,9 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
           <div className="icon-circle-yellow">
             <Wallet className={`${compact ? 'w-5 h-5' : 'w-6 h-6'}`} />
           </div>
-          <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Flock Financial Summary</h3>
+          <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>{isFr ? 'Résumé financier du troupeau' : 'Flock Financial Summary'}</h3>
         </div>
-        <div className={`text-center ${compact ? 'py-6' : 'py-8'} text-gray-500`}>Loading...</div>
+        <div className={`text-center ${compact ? 'py-6' : 'py-8'} text-gray-500`}>{isFr ? 'Chargement...' : 'Loading...'}</div>
       </div>
     );
   }
@@ -100,7 +103,7 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
           <Wallet className={`${compact ? 'w-5 h-5' : 'w-6 h-6'}`} />
         </div>
         <div>
-          <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>Flock Financial Summary</h3>
+          <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-bold text-gray-900`}>{isFr ? 'Résumé financier du troupeau' : 'Flock Financial Summary'}</h3>
           <p className="text-sm text-gray-600">{flock.name}</p>
         </div>
       </div>
@@ -108,7 +111,7 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
       <div className={`grid md:grid-cols-3 ${compact ? 'gap-3' : 'gap-4'}`}>
         <div className={`${compact ? 'p-3' : 'p-4'} bg-red-50 rounded-xl transform transition-all duration-200 hover:scale-105`}>
           <div className={`flex items-center justify-between ${compact ? 'mb-1.5' : 'mb-2'}`}>
-            <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-red-900`}>Total Expenses</span>
+            <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-red-900`}>{isFr ? 'Dépenses totales' : 'Total Expenses'}</span>
             <TrendingDown className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} text-red-600`} />
           </div>
           <div className={`${compact ? 'text-xl' : 'text-2xl'} font-bold text-red-900`}>
@@ -121,7 +124,7 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
 
         <div className={`${compact ? 'p-3' : 'p-4'} bg-neon-100 rounded-xl transform transition-all duration-200 hover:scale-105`}>
           <div className={`flex items-center justify-between ${compact ? 'mb-1.5' : 'mb-2'}`}>
-            <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-neon-900`}>Total Revenue</span>
+            <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-neon-900`}>{isFr ? 'Revenu total' : 'Total Revenue'}</span>
             <TrendingUp className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} text-neon-700`} />
           </div>
           <div className={`${compact ? 'text-xl' : 'text-2xl'} font-bold text-neon-900`}>
@@ -139,7 +142,7 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
             <span className={`${compact ? 'text-xs' : 'text-sm'} font-medium ${
               financials.profit >= 0 ? 'text-gray-900' : 'text-orange-900'
             }`}>
-              Net Profit
+              {isFr ? 'Bénéfice net' : 'Net Profit'}
             </span>
             <DollarSign className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} ${
               financials.profit >= 0 ? 'text-gray-700' : 'text-orange-600'
@@ -153,14 +156,14 @@ export function FlockFinancialSummary({ flock, compact = false }: FlockFinancial
           <div className={`text-xs mt-1 ${
             financials.profit >= 0 ? 'text-gray-700' : 'text-orange-700'
           }`}>
-            {profitMargin.toFixed(1)}% margin
+            {profitMargin.toFixed(1)}% {isFr ? 'marge' : 'margin'}
           </div>
         </div>
       </div>
 
       <div className={`${compact ? 'mt-3 p-3' : 'mt-4 p-4'} bg-gray-50 rounded-xl`}>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Revenue / Expense Ratio:</span>
+          <span className="text-gray-600">{isFr ? 'Ratio Revenus / Dépenses' : 'Revenue / Expense Ratio'}:</span>
           <span className="font-bold text-gray-900">
             {financials.totalExpenses > 0
               ? (financials.totalRevenue / financials.totalExpenses).toFixed(2)

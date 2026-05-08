@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Flock, FlockCycleStatus } from '../../types/database';
 
 import { useFlockSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface FlockPnLCardProps {
   flock: Flock | null;
@@ -34,6 +35,8 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
   const { profile, currentFarm } = useAuth();
   const flockSpecies = useFlockSpecies(flock?.type ?? null);
   const animalTermLower = flockSpecies.animalTerm.toLowerCase();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [pnl, setPnl] = useState<PnLData>({
     revenue: 0,
     feedCost: 0,
@@ -168,7 +171,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
       <div className={`bg-white ${compact ? 'rounded-xl p-4' : 'rounded-2xl p-6'} border border-gray-200`}>
         <div className="text-center py-8 text-gray-500">
           <DollarSign className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-          <p className="font-medium">Select a flock to view P&L</p>
+          <p className="font-medium">{isFr ? 'Sélectionnez un troupeau pour voir le bilan' : 'Select a flock to view P&L'}</p>
         </div>
       </div>
     );
@@ -186,10 +189,10 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
   }
 
   const cycleLabel = cycle.currentWeek && cycle.targetWeeks
-    ? `Week ${cycle.currentWeek} of ${cycle.targetWeeks}`
+    ? (isFr ? `Semaine ${cycle.currentWeek} sur ${cycle.targetWeeks}` : `Week ${cycle.currentWeek} of ${cycle.targetWeeks}`)
     : cycle.currentWeek
-      ? `Week ${cycle.currentWeek}`
-      : 'No cycle';
+      ? (isFr ? `Semaine ${cycle.currentWeek}` : `Week ${cycle.currentWeek}`)
+      : (isFr ? 'Aucun cycle' : 'No cycle');
 
   return (
     <div className={`bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow animate-fade-in-up ${compact ? 'rounded-xl p-4' : 'rounded-2xl p-6'}`}>
@@ -216,7 +219,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
       {/* Revenue Section */}
       <div className={`p-3 bg-neon-50 rounded-lg ${compact ? 'mb-3' : 'mb-4'}`}>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-neon-900">Revenue</span>
+          <span className="text-sm font-medium text-neon-900">{isFr ? 'Revenus' : 'Revenue'}</span>
           <TrendingUp className="w-4 h-4 text-neon-700" />
         </div>
         <div className="mt-1 text-lg font-bold text-neon-900">
@@ -227,11 +230,11 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
 
       {/* Costs Breakdown */}
       <div className={`space-y-2 ${compact ? 'mb-3' : 'mb-4'}`}>
-        <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Costs</div>
+        <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{isFr ? 'Coûts' : 'Costs'}</div>
 
         {/* Feed Cost */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-700">Feed</span>
+          <span className="text-gray-700">{isFr ? 'Aliments' : 'Feed'}</span>
           <span className="font-medium text-gray-900">
             {pnl.feedCost > 0 ? formatCurrency(pnl.feedCost) : '—'}
           </span>
@@ -239,16 +242,16 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
 
         {/* Direct Expenses */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-700">Direct Expenses</span>
+          <span className="text-gray-700">{isFr ? 'Dépenses directes' : 'Direct Expenses'}</span>
           <span className="font-medium text-gray-900">
-            {pnl.directExpenses > 0 ? formatCurrency(pnl.directExpenses) : (pnl.totalCosts === 0 ? 'Costs being tracked' : '—')}
+            {pnl.directExpenses > 0 ? formatCurrency(pnl.directExpenses) : (pnl.totalCosts === 0 ? (isFr ? 'Coûts en cours de suivi' : 'Costs being tracked') : '—')}
           </span>
         </div>
 
         {/* Unallocated (farm-level) costs - only show if > 0 */}
         {pnl.unallocatedCosts > 0 && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-700">Farm-level Costs</span>
+            <span className="text-gray-700">{isFr ? 'Coûts au niveau de la ferme' : 'Farm-level Costs'}</span>
             <span className="font-medium text-gray-900 text-xs">
               {formatCurrency(pnl.unallocatedCosts)}
             </span>
@@ -257,7 +260,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
 
         {/* Total Costs */}
         <div className="pt-2 border-t border-gray-200 flex items-center justify-between text-sm font-semibold">
-          <span className="text-gray-900">Total Costs</span>
+          <span className="text-gray-900">{isFr ? 'Coûts totaux' : 'Total Costs'}</span>
           <span className="text-gray-900">
             {pnl.totalCosts > 0 ? formatCurrency(pnl.totalCosts) : '—'}
           </span>
@@ -270,7 +273,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
       } ${compact ? 'mb-3' : 'mb-4'}`}>
         <div className="flex items-center justify-between">
           <span className={`text-sm font-medium ${pnl.netProfit >= 0 ? 'text-emerald-900' : 'text-red-900'}`}>
-            Net Profit/Loss
+            {isFr ? 'Bénéfice/Perte net' : 'Net Profit/Loss'}
           </span>
           {pnl.netProfit >= 0 ? (
             <TrendingUp className="w-4 h-4 text-emerald-700" />
@@ -290,7 +293,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
       <div className="space-y-2 text-sm">
         {/* Per-animal ROI — uses flock-specific species terminology */}
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">{`Per-${animalTermLower} ROI`}</span>
+          <span className="text-gray-600">{isFr ? `ROI par ${animalTermLower}` : `Per-${animalTermLower} ROI`}</span>
           <span className="font-semibold text-gray-900">
             {flock.initial_count > 0 ? formatCurrency(pnl.perBirdROI) : '—'}
           </span>
@@ -299,7 +302,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
         {/* Margin % */}
         {pnl.hasRevenue && (
           <div className="flex items-center justify-between">
-            <span className="text-gray-600">Margin</span>
+            <span className="text-gray-600">{isFr ? 'Marge' : 'Margin'}</span>
             <span className={`font-semibold ${pnl.marginPercent >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
               {pnl.marginPercent >= 0 ? '+' : ''}{pnl.marginPercent.toFixed(1)}%
             </span>
@@ -311,7 +314,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
       {pnl.unallocatedCosts > 0 && (
         <div className="mt-4 p-2 bg-amber-50 rounded text-xs text-amber-800 border border-amber-200">
           <p>
-            <strong>Note:</strong> Farm-level costs are shown for context but not deducted from this flock's P&L.
+            <strong>{isFr ? 'Note :' : 'Note:'}</strong> {isFr ? 'Les coûts au niveau de la ferme sont affichés pour le contexte mais ne sont pas déduits du bilan de ce troupeau.' : "Farm-level costs are shown for context but not deducted from this flock's P&L."}
           </p>
         </div>
       )}

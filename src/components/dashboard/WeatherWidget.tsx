@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Wind, Droplets, AlertTriangle, MapPin } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface HeatStress {
   level: string;
@@ -69,8 +70,19 @@ async function fetchWeather(token: string, location: string): Promise<WeatherDat
 }
 
 export function WeatherWidget({ fallbackLocation, onOpenSettings }: Props) {
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const stressLabelFr = (level: string): string => {
+    switch (level) {
+      case 'mild': return 'légère';
+      case 'moderate': return 'modérée';
+      case 'severe': return 'sévère';
+      default: return level;
+    }
+  };
 
   useEffect(() => {
     if (!fallbackLocation) {
@@ -120,8 +132,8 @@ export function WeatherWidget({ fallbackLocation, onOpenSettings }: Props) {
       >
         <MapPin className="w-4 h-4 text-gray-400 group-hover:text-[#3D5F42] shrink-0" />
         <div>
-          <p className="text-xs font-medium text-gray-600">Weather unavailable</p>
-          <p className="text-xs text-gray-400">Add your city in Settings → Farm Location to see forecasts</p>
+          <p className="text-xs font-medium text-gray-600">{isFr ? 'Météo indisponible' : 'Weather unavailable'}</p>
+          <p className="text-xs text-gray-400">{isFr ? 'Ajoutez votre ville dans Paramètres → Emplacement de la ferme pour voir les prévisions' : 'Add your city in Settings → Farm Location to see forecasts'}</p>
         </div>
       </button>
     );
@@ -143,7 +155,7 @@ export function WeatherWidget({ fallbackLocation, onOpenSettings }: Props) {
             <span className="text-gray-500 text-xs">{current.label}</span>
             {hasStress && (
               <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full capitalize ${STRESS_TEXT[hs.level] ?? 'text-orange-700'} bg-white/60`}>
-                ⚠ {hs.level} heat stress
+                ⚠ {isFr ? `stress thermique ${stressLabelFr(hs.level)}` : `${hs.level} heat stress`}
               </span>
             )}
           </div>

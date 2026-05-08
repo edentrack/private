@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { TrendingUp } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { formatCurrency } from '../../utils/currency';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 
@@ -15,6 +16,8 @@ interface SpendingOverviewCardProps {
 
 export function SpendingOverviewCard({ range, onRangeChange, flockId }: SpendingOverviewCardProps) {
   const { profile, currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [spending, setSpending] = useState(0);
   const [loading, setLoading] = useState(true);
   const hideFinancials = shouldHideFinancialData(currentRole);
@@ -52,13 +55,13 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
   const getRangeLabel = (range: SpendingRange): string => {
     switch (range) {
       case 'daily':
-        return 'Today';
+        return isFr ? 'Aujourd\'hui' : 'Today';
       case 'weekly':
-        return 'Last 7 days';
+        return isFr ? '7 derniers jours' : 'Last 7 days';
       case 'biweekly':
-        return 'Last 14 days';
+        return isFr ? '14 derniers jours' : 'Last 14 days';
       case 'monthly':
-        return 'Last 30 days';
+        return isFr ? '30 derniers jours' : 'Last 30 days';
       default:
         return '';
     }
@@ -98,7 +101,7 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
     <div className="section-card animate-fade-in">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="stat-label mb-1">Spending</div>
+          <div className="stat-label mb-1">{isFr ? 'Dépenses' : 'Spending'}</div>
           <div className="text-sm text-gray-600">{getRangeLabel(range)}</div>
         </div>
         <div className="icon-circle-green">
@@ -108,9 +111,9 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
 
       <div className="text-3xl font-bold text-gray-900 mb-4">
         {loading ? (
-          <span className="text-gray-400">Loading...</span>
+          <span className="text-gray-400">{isFr ? 'Chargement...' : 'Loading...'}</span>
         ) : hideFinancials ? (
-          <span className="text-gray-400 italic">Hidden</span>
+          <span className="text-gray-400 italic">{isFr ? 'Masqué' : 'Hidden'}</span>
         ) : (
           formatCurrency(spending, profile?.currency_preference || 'USD')
         )}
@@ -118,7 +121,7 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
 
       {flockId && (
         <div className="text-xs text-gray-500 mb-4">
-          Filtered to selected flock only
+          {isFr ? 'Filtré au troupeau sélectionné uniquement' : 'Filtered to selected flock only'}
         </div>
       )}
 
@@ -131,7 +134,7 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Today
+          {isFr ? 'Aujourd\'hui' : 'Today'}
         </button>
         <button
           onClick={() => onRangeChange('weekly')}
@@ -141,7 +144,7 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Week
+          {isFr ? 'Semaine' : 'Week'}
         </button>
         <button
           onClick={() => onRangeChange('biweekly')}
@@ -151,7 +154,7 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          2 Weeks
+          {isFr ? '2 Semaines' : '2 Weeks'}
         </button>
         <button
           onClick={() => onRangeChange('monthly')}
@@ -161,7 +164,7 @@ export function SpendingOverviewCard({ range, onRangeChange, flockId }: Spending
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Month
+          {isFr ? 'Mois' : 'Month'}
         </button>
       </div>
     </div>

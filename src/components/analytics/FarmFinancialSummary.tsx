@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Building2, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface FarmFinancialData {
   totalExpenses: number;
@@ -12,6 +13,8 @@ interface FarmFinancialData {
 
 export function FarmFinancialSummary({ compact: _compact = false, farm }: { compact?: boolean; farm?: any } = {}) {
   const { profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const targetFarm = farm || currentFarm;
   const [financials, setFinancials] = useState<FarmFinancialData>({
     totalExpenses: 0,
@@ -70,9 +73,9 @@ export function FarmFinancialSummary({ compact: _compact = false, farm }: { comp
           <div className="icon-circle-yellow">
             <Building2 className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Farm Financial Summary</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Résumé financier de la ferme' : 'Farm Financial Summary'}</h3>
         </div>
-        <div className="text-center py-8 text-gray-500">Loading...</div>
+        <div className="text-center py-8 text-gray-500">{isFr ? 'Chargement...' : 'Loading...'}</div>
       </div>
     );
   }
@@ -88,7 +91,7 @@ export function FarmFinancialSummary({ compact: _compact = false, farm }: { comp
           <Building2 className="w-6 h-6 text-gray-900" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-gray-900">Farm Financial Summary</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Résumé financier de la ferme' : 'Farm Financial Summary'}</h3>
           <p className="text-sm text-gray-800">{profile?.farm_name}</p>
         </div>
       </div>
@@ -96,7 +99,7 @@ export function FarmFinancialSummary({ compact: _compact = false, farm }: { comp
       <div className="grid md:grid-cols-2 gap-4 mb-4">
         <div className="bg-gray-900/10 backdrop-blur-sm rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-900">Total Expenses</span>
+            <span className="text-sm font-medium text-gray-900">{isFr ? 'Dépenses totales' : 'Total Expenses'}</span>
             <TrendingDown className="w-5 h-5 text-gray-700" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
@@ -109,7 +112,7 @@ export function FarmFinancialSummary({ compact: _compact = false, farm }: { comp
 
         <div className="bg-gray-900/10 backdrop-blur-sm rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-900">Total Revenue</span>
+            <span className="text-sm font-medium text-gray-900">{isFr ? 'Revenu total' : 'Total Revenue'}</span>
             <TrendingUp className="w-5 h-5 text-gray-700" />
           </div>
           <div className="text-3xl font-bold text-gray-900">
@@ -123,7 +126,7 @@ export function FarmFinancialSummary({ compact: _compact = false, farm }: { comp
 
       <div className="bg-gray-900/20 backdrop-blur-sm rounded-xl p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-900">Net Farm Profit</span>
+          <span className="text-sm font-medium text-gray-900">{isFr ? 'Bénéfice net de la ferme' : 'Net Farm Profit'}</span>
           <DollarSign className="w-5 h-5 text-gray-700" />
         </div>
         <div className="flex items-baseline justify-between">
@@ -134,7 +137,7 @@ export function FarmFinancialSummary({ compact: _compact = false, farm }: { comp
             <div className="text-2xl font-bold text-gray-900">
               {profitMargin.toFixed(1)}%
             </div>
-            <div className="text-xs text-gray-700">margin</div>
+            <div className="text-xs text-gray-700">{isFr ? 'marge' : 'margin'}</div>
           </div>
         </div>
         <div className="text-xs text-gray-700 mt-1">
@@ -144,11 +147,11 @@ export function FarmFinancialSummary({ compact: _compact = false, farm }: { comp
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="bg-gray-900/10 backdrop-blur-sm rounded-xl p-3">
-          <div className="text-xs text-gray-700 mb-1">Active Flocks</div>
+          <div className="text-xs text-gray-700 mb-1">{isFr ? 'Troupeaux actifs' : 'Active Flocks'}</div>
           <div className="text-2xl font-bold text-gray-900">{financials.flockCount}</div>
         </div>
         <div className="bg-gray-900/10 backdrop-blur-sm rounded-xl p-3">
-          <div className="text-xs text-gray-700 mb-1">Avg per Flock</div>
+          <div className="text-xs text-gray-700 mb-1">{isFr ? 'Moyenne par troupeau' : 'Avg per Flock'}</div>
           <div className="text-2xl font-bold text-gray-900">
             {financials.flockCount > 0
               ? Math.round(financials.totalProfit / financials.flockCount).toLocaleString()

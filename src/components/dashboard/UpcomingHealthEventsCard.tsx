@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Syringe, Calendar, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Vaccination } from '../../types/database';
 
 interface UpcomingHealthEventsCardProps {
@@ -15,6 +16,8 @@ interface HealthEvent extends Vaccination {
 
 export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealthEventsCardProps) {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [mode, setMode] = useState<'selected_flock' | 'all_flocks'>('selected_flock');
   const [events, setEvents] = useState<HealthEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +58,7 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
 
       const eventsWithFlockName = (data || []).map((event: any) => ({
         ...event,
-        flock_name: event.flocks?.name || 'Unknown Flock'
+        flock_name: event.flocks?.name || (isFr ? 'Troupeau inconnu' : 'Unknown Flock')
       }));
 
       setEvents(eventsWithFlockName);
@@ -77,9 +80,9 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
 
   const formatCountdown = (scheduledDate: string): string => {
     const days = getDaysUntil(scheduledDate);
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    return `in ${days} days`;
+    if (days === 0) return isFr ? 'Aujourd\'hui' : 'Today';
+    if (days === 1) return isFr ? 'Demain' : 'Tomorrow';
+    return isFr ? `dans ${days} jours` : `in ${days} days`;
   };
 
   const getUrgencyColor = (scheduledDate: string) => {
@@ -111,7 +114,7 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
           <div className="p-3 bg-blue-50 rounded-xl">
             <Syringe className="w-6 h-6 text-blue-600" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Upcoming Health Events</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Événements de santé à venir' : 'Upcoming Health Events'}</h3>
         </div>
       </div>
 
@@ -124,7 +127,7 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Selected Flock
+          {isFr ? 'Troupeau sélectionné' : 'Selected Flock'}
         </button>
         <button
           onClick={() => setMode('all_flocks')}
@@ -134,27 +137,27 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
               : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          All Flocks
+          {isFr ? 'Tous les troupeaux' : 'All Flocks'}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-8 text-gray-500">Loading...</div>
+        <div className="text-center py-8 text-gray-500">{isFr ? 'Chargement...' : 'Loading...'}</div>
       ) : events.length === 0 ? (
         <div className="text-center py-8">
           <Syringe className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 mb-2">No upcoming health events scheduled</p>
+          <p className="text-gray-500 mb-2">{isFr ? 'Aucun événement de santé à venir' : 'No upcoming health events scheduled'}</p>
           <p className="text-sm text-gray-400 mb-4">
             {mode === 'selected_flock' && !flockId
-              ? 'Select a flock to view upcoming vaccinations'
-              : 'Schedule vaccinations to keep your farm healthy'}
+              ? (isFr ? 'Sélectionnez un troupeau pour voir les vaccinations à venir' : 'Select a flock to view upcoming vaccinations')
+              : (isFr ? 'Planifiez des vaccinations pour garder votre ferme en bonne santé' : 'Schedule vaccinations to keep your farm healthy')}
           </p>
           {onNavigate && (
             <button
               onClick={() => onNavigate('vaccinations')}
               className="text-sm text-[#3D5F42] font-medium hover:text-[#2F4A34]"
             >
-              Go to Vaccinations →
+              {isFr ? 'Aller aux vaccinations →' : 'Go to Vaccinations →'}
             </button>
           )}
         </div>
@@ -180,7 +183,7 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
                 <div className="flex items-center gap-2 text-xs text-gray-600">
                   <Calendar className="w-3 h-3" />
                   <span>
-                    {new Date(event.scheduled_date).toLocaleDateString('en-US', {
+                    {new Date(event.scheduled_date).toLocaleDateString(isFr ? 'fr-FR' : 'en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric'
@@ -189,7 +192,7 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
                 </div>
                 {event.dosage && (
                   <div className="mt-2 text-xs text-gray-700">
-                    <span className="font-medium">Dosage:</span> {event.dosage}
+                    <span className="font-medium">{isFr ? 'Dosage :' : 'Dosage:'}</span> {event.dosage}
                   </div>
                 )}
               </div>
@@ -200,7 +203,7 @@ export function UpcomingHealthEventsCard({ flockId, onNavigate }: UpcomingHealth
               onClick={() => onNavigate('vaccinations')}
               className="w-full mt-2 text-sm text-[#3D5F42] font-medium hover:text-[#2F4A34] text-center"
             >
-              View all health events →
+              {isFr ? 'Voir tous les événements de santé →' : 'View all health events →'}
             </button>
           )}
         </div>

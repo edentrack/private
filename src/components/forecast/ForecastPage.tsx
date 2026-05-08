@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, DollarSign, Loader2, Play, Package, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { useEnsureFlockForecastWeeks, useDeleteFlockForecastWeeks, useFlockForecastRollup, useFarmForecastRollup } from '../../hooks/useForecast';
 import { supabase } from '../../lib/supabaseClient';
@@ -8,6 +9,8 @@ import type { Flock, FlockCycleStatus } from '../../types/database';
 
 export function ForecastPage() {
   const { currentFarm, profile, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
   const [startWeek, setStartWeek] = useState(1);
@@ -100,7 +103,7 @@ export function ForecastPage() {
         endWeek
       });
 
-      setSuccessMessage(`Created ${result} forecast week(s)`);
+      setSuccessMessage(isFr ? `${result} semaine(s) de prévision créée(s)` : `Created ${result} forecast week(s)`);
 
       setTimeout(() => {
         refetchFlockRollup();
@@ -112,7 +115,7 @@ export function ForecastPage() {
       }, 5000);
     } catch (error: any) {
       console.error('Error generating weeks:', error);
-      setErrorMessage(error.message || 'Failed to generate weeks');
+      setErrorMessage(error.message || (isFr ? 'Échec de la génération des semaines' : 'Failed to generate weeks'));
 
       setTimeout(() => {
         setErrorMessage(null);
@@ -133,7 +136,7 @@ export function ForecastPage() {
         endWeek
       });
 
-      setSuccessMessage(`Deleted ${result} forecast week(s)`);
+      setSuccessMessage(isFr ? `${result} semaine(s) de prévision supprimée(s)` : `Deleted ${result} forecast week(s)`);
 
       setTimeout(() => {
         refetchFlockRollup();
@@ -145,7 +148,7 @@ export function ForecastPage() {
       }, 5000);
     } catch (error: any) {
       console.error('Error deleting weeks:', error);
-      setErrorMessage(error.message || 'Failed to delete weeks');
+      setErrorMessage(error.message || (isFr ? 'Échec de la suppression des semaines' : 'Failed to delete weeks'));
 
       setTimeout(() => {
         setErrorMessage(null);
@@ -168,8 +171,8 @@ export function ForecastPage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">No Active Flocks</h3>
-          <p className="text-gray-500">Create a flock to start forecasting expenses</p>
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">{isFr ? 'Aucun troupeau actif' : 'No Active Flocks'}</h3>
+          <p className="text-gray-500">{isFr ? 'Créez un troupeau pour commencer à prévoir les dépenses' : 'Create a flock to start forecasting expenses'}</p>
         </div>
       </div>
     );
@@ -181,15 +184,15 @@ export function ForecastPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Expense Forecast</h2>
-          <p className="text-gray-500 mt-1">Project and plan upcoming flock expenses</p>
+          <h2 className="text-3xl font-bold text-gray-900">{isFr ? 'Prévision des dépenses' : 'Expense Forecast'}</h2>
+          <p className="text-gray-500 mt-1">{isFr ? 'Projetez et planifiez les dépenses à venir du troupeau' : 'Project and plan upcoming flock expenses'}</p>
         </div>
       </div>
 
       <div className="section-card">
         <div className="flex items-center gap-4 mb-6">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select Flock</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Sélectionner un troupeau' : 'Select Flock'}</label>
             <FlockSwitcher
               selectedFlockId={selectedFlockId}
               onFlockChange={setSelectedFlockId}
@@ -198,7 +201,7 @@ export function ForecastPage() {
           </div>
 
           <div className="w-32">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Start Week</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Semaine de début' : 'Start Week'}</label>
             <input
               type="number"
               min="1"
@@ -209,7 +212,7 @@ export function ForecastPage() {
           </div>
 
           <div className="w-32">
-            <label className="block text-sm font-medium text-gray-700 mb-2">End Week</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{isFr ? 'Semaine de fin' : 'End Week'}</label>
             <input
               type="number"
               min={startWeek}
@@ -229,12 +232,12 @@ export function ForecastPage() {
                 {ensureWeeks.loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating...
+                    {isFr ? 'Génération...' : 'Generating...'}
                   </>
                 ) : (
                   <>
                     <Play className="w-5 h-5" />
-                    Generate
+                    {isFr ? 'Générer' : 'Generate'}
                   </>
                 )}
               </button>
@@ -246,12 +249,12 @@ export function ForecastPage() {
                 {deleteWeeks.loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Deleting...
+                    {isFr ? 'Suppression...' : 'Deleting...'}
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-5 h-5" />
-                    Delete
+                    {isFr ? 'Supprimer' : 'Delete'}
                   </>
                 )}
               </button>
@@ -280,7 +283,7 @@ export function ForecastPage() {
               <div>
                 <p className="text-sm font-medium text-gray-900">{selectedFlock.name}</p>
                 <p className="text-xs text-gray-600">
-                  Current Week: {currentWeek} • Type: {selectedFlock.type}
+                  {isFr ? 'Semaine actuelle' : 'Current Week'}: {currentWeek} • {isFr ? 'Type' : 'Type'}: {selectedFlock.type}
                 </p>
               </div>
             </div>
@@ -293,7 +296,7 @@ export function ForecastPage() {
           <div className="icon-circle-yellow">
             <TrendingUp className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Flock Forecast Breakdown</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Détail des prévisions du troupeau' : 'Flock Forecast Breakdown'}</h3>
         </div>
 
         {loadingFlockRollup ? (
@@ -302,7 +305,7 @@ export function ForecastPage() {
           </div>
         ) : !flockRollup || flockRollup.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <p>No forecast data yet. Click "Generate Weeks" to create forecast weeks.</p>
+            <p>{isFr ? 'Aucune donnée de prévision pour le moment. Cliquez sur "Générer" pour créer des semaines de prévision.' : 'No forecast data yet. Click "Generate Weeks" to create forecast weeks.'}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -313,42 +316,42 @@ export function ForecastPage() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h4 className="font-bold text-gray-900">Week {week.week_number}</h4>
+                    <h4 className="font-bold text-gray-900">{isFr ? 'Semaine' : 'Week'} {week.week_number}</h4>
                     <p className="text-sm text-gray-600">
-                      {new Date(week.week_start_date).toLocaleDateString()} -{' '}
-                      {new Date(week.week_end_date).toLocaleDateString()}
+                      {new Date(week.week_start_date).toLocaleDateString(isFr ? 'fr-FR' : undefined)} -{' '}
+                      {new Date(week.week_end_date).toLocaleDateString(isFr ? 'fr-FR' : undefined)}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-neon-700">
                       {profile?.currency_preference || 'XAF'} {week.total_cost.toLocaleString()}
                     </p>
-                    <p className="text-xs text-gray-500">Total Cost</p>
+                    <p className="text-xs text-gray-500">{isFr ? 'Coût total' : 'Total Cost'}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-4 gap-3 text-sm">
                   {week.feed_cost > 0 && (
                     <div className="bg-orange-50 rounded-lg p-2">
-                      <p className="text-xs text-orange-700">Feed</p>
+                      <p className="text-xs text-orange-700">{isFr ? 'Aliments' : 'Feed'}</p>
                       <p className="font-semibold text-orange-900">{week.feed_cost.toLocaleString()}</p>
                     </div>
                   )}
                   {week.vaccines_cost > 0 && (
                     <div className="bg-blue-50 rounded-lg p-2">
-                      <p className="text-xs text-blue-700">Vaccines</p>
+                      <p className="text-xs text-blue-700">{isFr ? 'Vaccins' : 'Vaccines'}</p>
                       <p className="font-semibold text-blue-900">{week.vaccines_cost.toLocaleString()}</p>
                     </div>
                   )}
                   {week.medication_cost > 0 && (
                     <div className="bg-purple-50 rounded-lg p-2">
-                      <p className="text-xs text-purple-700">Medication</p>
+                      <p className="text-xs text-purple-700">{isFr ? 'Médicaments' : 'Medication'}</p>
                       <p className="font-semibold text-purple-900">{week.medication_cost.toLocaleString()}</p>
                     </div>
                   )}
                   {week.labor_cost > 0 && (
                     <div className="bg-gray-100 rounded-lg p-2">
-                      <p className="text-xs text-gray-700">Labor</p>
+                      <p className="text-xs text-gray-700">{isFr ? 'Main-d\'œuvre' : 'Labor'}</p>
                       <p className="font-semibold text-gray-900">{week.labor_cost.toLocaleString()}</p>
                     </div>
                   )}
@@ -364,7 +367,7 @@ export function ForecastPage() {
           <div className="icon-circle-yellow">
             <DollarSign className="w-6 h-6" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Farm Totals (All Flocks)</h3>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Totaux de la ferme (Tous les troupeaux)' : 'Farm Totals (All Flocks)'}</h3>
         </div>
 
         {loadingFarmRollup ? (
@@ -373,7 +376,7 @@ export function ForecastPage() {
           </div>
         ) : !farmRollup || farmRollup.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <p>No farm forecast data available</p>
+            <p>{isFr ? 'Aucune donnée de prévision disponible pour la ferme' : 'No farm forecast data available'}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -390,14 +393,14 @@ export function ForecastPage() {
                   <p className="text-xl font-bold text-gray-900">
                     {profile?.currency_preference || 'XAF'} {item.total_cost.toLocaleString()}
                   </p>
-                  <p className="text-xs text-gray-500">Weeks {startWeek}-{endWeek}</p>
+                  <p className="text-xs text-gray-500">{isFr ? 'Semaines' : 'Weeks'} {startWeek}-{endWeek}</p>
                 </div>
               </div>
             ))}
 
             <div className="pt-4 border-t-2 border-gray-300">
               <div className="flex items-center justify-between p-4 bg-neon-50 rounded-xl">
-                <h4 className="text-lg font-bold text-gray-900">Grand Total</h4>
+                <h4 className="text-lg font-bold text-gray-900">{isFr ? 'Total général' : 'Grand Total'}</h4>
                 <p className="text-2xl font-bold text-neon-700">
                   {profile?.currency_preference || 'XAF'}{' '}
                   {farmRollup.reduce((sum, item) => sum + item.total_cost, 0).toLocaleString()}
