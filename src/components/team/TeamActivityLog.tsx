@@ -2,41 +2,53 @@ import { useState, useEffect } from 'react';
 import { Clock, Loader2, ChevronDown, ChevronRight, RefreshCw, AlertCircle, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  invite_created: 'Sent a team invitation',
-  invite_accepted: 'Accepted team invitation',
-  invite_revoked: 'Revoked a team invitation',
-  member_added: 'Added a team member',
-  member_removed: 'Removed a team member',
-  role_changed: 'Changed member role',
-  member_deactivated: 'Deactivated team member',
-  member_reactivated: 'Reactivated team member',
-  flock_created: 'Created a new flock',
-  flock_updated: 'Updated flock details',
-  flock_archived: 'Archived a flock',
-  flock_deleted: 'Deleted a flock',
-  mortality_logged: 'Logged bird deaths',
-  egg_collected: 'Logged egg collection',
-  egg_sale_recorded: 'Recorded egg sale',
-  bird_sale_recorded: 'Recorded bird sale',
-  expense_logged: 'Logged an expense',
-  purchase_logged: 'Logged a purchase',
-  payroll_run_created: 'Created a payroll run',
-  payroll_approved: 'Approved payroll',
-  payroll_processed: 'Processed payroll payment',
-  task_created: 'Created a task',
-  task_completed: 'Completed a task',
-  task_deleted: 'Deleted a task',
-  weight_logged: 'Logged bird weight',
-  vaccination_logged: 'Logged vaccination',
-  settings_updated: 'Updated farm settings',
-  login: 'Logged in',
-  logout: 'Logged out',
-};
-
-function formatEventType(eventType: string): string {
-  return EVENT_TYPE_LABELS[eventType] || eventType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+// Build event-type labels using the active species so rabbits and aqua
+// farms don't see "Created a new flock" / "Logged bird deaths" /
+// "Recorded bird sale" — they should see "Created a new rabbitry",
+// "Logged fish deaths", etc. The function is exported only for tests;
+// callers should use the species-aware version returned from the hook.
+function buildEventTypeLabels(args: {
+  groupTerm: string;
+  animalTerm: string;
+  lossNoun: string;
+}): Record<string, string> {
+  const { groupTerm, animalTerm, lossNoun } = args;
+  const groupLower = groupTerm.toLowerCase();
+  const animalLower = animalTerm.toLowerCase();
+  const lossLower = lossNoun.toLowerCase();
+  return {
+    invite_created: 'Sent a team invitation',
+    invite_accepted: 'Accepted team invitation',
+    invite_revoked: 'Revoked a team invitation',
+    member_added: 'Added a team member',
+    member_removed: 'Removed a team member',
+    role_changed: 'Changed member role',
+    member_deactivated: 'Deactivated team member',
+    member_reactivated: 'Reactivated team member',
+    flock_created: `Created a new ${groupLower}`,
+    flock_updated: `Updated ${groupLower} details`,
+    flock_archived: `Archived a ${groupLower}`,
+    flock_deleted: `Deleted a ${groupLower}`,
+    mortality_logged: `Logged ${lossLower}`,
+    egg_collected: 'Logged egg collection',
+    egg_sale_recorded: 'Recorded egg sale',
+    bird_sale_recorded: `Recorded ${animalLower} sale`,
+    expense_logged: 'Logged an expense',
+    purchase_logged: 'Logged a purchase',
+    payroll_run_created: 'Created a payroll run',
+    payroll_approved: 'Approved payroll',
+    payroll_processed: 'Processed payroll payment',
+    task_created: 'Created a task',
+    task_completed: 'Completed a task',
+    task_deleted: 'Deleted a task',
+    weight_logged: `Logged ${animalLower} weight`,
+    vaccination_logged: 'Logged vaccination',
+    settings_updated: 'Updated farm settings',
+    login: 'Logged in',
+    logout: 'Logged out',
+  };
 }
 
 interface ActivityLog {
@@ -61,6 +73,15 @@ const LIMIT_OPTIONS = [5, 10, 25, 50, 100];
 
 export function TeamActivityLog({ farmId, refreshTrigger = 0 }: TeamActivityLogProps) {
   const { t } = useTranslation();
+  const farmSpecies = useFarmSpecies();
+  const eventTypeLabels = buildEventTypeLabels({
+    groupTerm: farmSpecies.groupTerm,
+    animalTerm: farmSpecies.animalTerm,
+    lossNoun: farmSpecies.lossNoun,
+  });
+  const formatEventType = (eventType: string): string =>
+    eventTypeLabels[eventType] ||
+    eventType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

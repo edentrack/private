@@ -36,7 +36,10 @@ interface BirdSalesListProps {
 export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
   const { currentFarm, currentRole, profile } = useAuth();
   const farmSpecies = useFarmSpecies();
-  const animalTermPlural = farmSpecies.animalTermPlural.toLowerCase();
+  const animalTerm = farmSpecies.animalTerm;
+  const animalTermPlural = farmSpecies.animalTermPlural;
+  const animalTermPluralLower = farmSpecies.animalTermPlural.toLowerCase();
+  const animalTermLower = farmSpecies.animalTerm.toLowerCase();
   const [sales, setSales] = useState<BirdSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSale, setExpandedSale] = useState<string | null>(null);
@@ -121,8 +124,8 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Bird className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Bird Sales Yet</h3>
-        <p className="text-gray-500">Record your first bird sale to start tracking</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{`No ${animalTerm} Sales Yet`}</h3>
+        <p className="text-gray-500">{`Record your first ${animalTermLower} sale to start tracking`}</p>
       </div>
     );
   }
@@ -135,7 +138,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="p-3 sm:p-4 bg-blue-50 rounded-xl">
-          <p className="text-xs sm:text-sm text-blue-600 mb-1">Total Birds Sold</p>
+          <p className="text-xs sm:text-sm text-blue-600 mb-1">{`Total ${animalTermPlural} Sold`}</p>
           <p className="text-xl sm:text-2xl font-bold text-gray-900">{totalBirdsSold.toLocaleString()}</p>
         </div>
         {!hideFinancials && (
@@ -168,7 +171,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{sale.birds_sold} {animalTermPlural}</span>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{sale.birds_sold} {animalTermPluralLower}</span>
                     {getSaleTypeBadge(sale.sale_type)}
                     {getPaymentStatusBadge(sale.payment_status)}
                   </div>
@@ -204,7 +207,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
                   <div>
                     <p className="text-gray-500 mb-1">Sale Method</p>
                     <p className="font-medium text-gray-900 break-words">
-                      {sale.sale_method === 'per_bird' && `Per Bird (${sale.price_per_bird?.toLocaleString()} ${currency}/bird)`}
+                      {sale.sale_method === 'per_bird' && `Per ${animalTerm} (${sale.price_per_bird?.toLocaleString()} ${currency}/${animalTermLower})`}
                       {sale.sale_method === 'per_kg' && `Per Kg (${sale.price_per_kg?.toLocaleString()} ${currency}/kg)`}
                       {sale.sale_method === 'lump_sum' && 'Lump Sum'}
                     </p>
