@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Check, Crown, Sprout, Leaf, Building2, Globe, ChevronDown, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 import {
   detectRegion, ALL_COUNTRIES, RegionConfig, COUNTRY_CONFIGS, FIXED_PRICES,
@@ -20,40 +21,47 @@ interface Plan {
   limits: string;
 }
 
-const PLANS: Plan[] = [
-  {
-    id: 'free', name: 'Starter',
-    icon: <Leaf className="w-6 h-6" />,
-    borderColor: 'border-agri-brown-200',
-    ringColor: '',
-    features: ['2 active flocks', 'Daily task management', 'Mortality & weight tracking', 'Expense recording', 'Basic inventory', 'WhatsApp report sharing'],
-    limits: 'For farmers just getting started',
-  },
-  {
-    id: 'pro', name: 'Grower', badge: 'Most Popular',
-    icon: <Sprout className="w-6 h-6" />,
-    borderColor: 'border-[#3D5F42]',
-    ringColor: 'ring-2 ring-[#3D5F42] ring-offset-2',
-    features: ['Up to 5 active flocks', 'Full analytics & KPIs', 'Automated weekly email reports', 'Eden AI advisor (30 msg/mo)', 'Smart receipt import', 'Vaccination scheduling', 'Sales & invoices', '2 team members'],
-    limits: 'For growing farms that want full control',
-  },
-  {
-    id: 'enterprise', name: 'Farm Boss',
-    icon: <Crown className="w-6 h-6" />,
-    borderColor: 'border-amber-300',
-    ringColor: '',
-    features: ['Unlimited flocks & team members', 'Eden AI — 200 msg/mo + 30 photo diagnoses', 'Smart import with receipt photos', 'Payroll & shift management', 'Benchmarking vs similar farms', 'Loan-readiness PDF report', 'Priority WhatsApp support'],
-    limits: 'For serious commercial operations',
-  },
-  {
-    id: 'industry', name: 'Industry',
-    icon: <Building2 className="w-6 h-6" />,
-    borderColor: 'border-blue-400',
-    ringColor: '',
-    features: ['Up to 10 farms', 'Multi-farm dashboard', 'Eden AI — unlimited', 'Custom-branded PDF reports', 'Excel/CSV export', 'Webhook API', 'Dedicated support line', 'Onboarding call', 'White-label option'],
-    limits: 'For agribusiness & integrators',
-  },
-];
+// Plan feature lists vary slightly by species so users see the unit
+// they actually manage ("active ponds" / "active rabbitries" vs.
+// "active flocks"). Industry plan is multi-farm so the species-specific
+// noun isn't relevant there.
+function buildPlans(args: { groupTermPluralLower: string; lossNounPluralLower: string }): Plan[] {
+  const { groupTermPluralLower, lossNounPluralLower } = args;
+  return [
+    {
+      id: 'free', name: 'Starter',
+      icon: <Leaf className="w-6 h-6" />,
+      borderColor: 'border-agri-brown-200',
+      ringColor: '',
+      features: [`2 active ${groupTermPluralLower}`, 'Daily task management', `${lossNounPluralLower.replace(/^./, (c) => c.toUpperCase())} & weight tracking`, 'Expense recording', 'Basic inventory', 'WhatsApp report sharing'],
+      limits: 'For farmers just getting started',
+    },
+    {
+      id: 'pro', name: 'Grower', badge: 'Most Popular',
+      icon: <Sprout className="w-6 h-6" />,
+      borderColor: 'border-[#3D5F42]',
+      ringColor: 'ring-2 ring-[#3D5F42] ring-offset-2',
+      features: [`Up to 5 active ${groupTermPluralLower}`, 'Full analytics & KPIs', 'Automated weekly email reports', 'Eden AI advisor (30 msg/mo)', 'Smart receipt import', 'Vaccination scheduling', 'Sales & invoices', '2 team members'],
+      limits: 'For growing farms that want full control',
+    },
+    {
+      id: 'enterprise', name: 'Farm Boss',
+      icon: <Crown className="w-6 h-6" />,
+      borderColor: 'border-amber-300',
+      ringColor: '',
+      features: [`Unlimited ${groupTermPluralLower} & team members`, 'Eden AI — 200 msg/mo + 30 photo diagnoses', 'Smart import with receipt photos', 'Payroll & shift management', 'Benchmarking vs similar farms', 'Loan-readiness PDF report', 'Priority WhatsApp support'],
+      limits: 'For serious commercial operations',
+    },
+    {
+      id: 'industry', name: 'Industry',
+      icon: <Building2 className="w-6 h-6" />,
+      borderColor: 'border-blue-400',
+      ringColor: '',
+      features: ['Up to 10 farms', 'Multi-farm dashboard', 'Eden AI — unlimited', 'Custom-branded PDF reports', 'Excel/CSV export', 'Webhook API', 'Dedicated support line', 'Onboarding call', 'White-label option'],
+      limits: 'For agribusiness & integrators',
+    },
+  ];
+}
 
 interface SubscribePageProps {
   onBack: () => void;
@@ -61,6 +69,11 @@ interface SubscribePageProps {
 
 export function SubscribePage({ onBack }: SubscribePageProps) {
   const { profile, currentFarm, refreshSession } = useAuth();
+  const farmSpecies = useFarmSpecies();
+  const plans = useMemo(() => buildPlans({
+    groupTermPluralLower: farmSpecies.groupTermPlural.toLowerCase(),
+    lossNounPluralLower: farmSpecies.lossNounPlural.toLowerCase(),
+  }), [farmSpecies.id]);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
   const [region, setRegion] = useState<RegionConfig | null>(null);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
@@ -435,7 +448,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
 
         {/* Plan cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {PLANS.map(plan => {
+          {plans.map(plan => {
             const isCurrent = plan.id === currentTier;
             const isPaid = plan.id !== 'free';
             const isIndustry = plan.id === 'industry';
