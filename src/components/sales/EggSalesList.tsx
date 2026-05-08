@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Calendar, Egg, User, Edit3, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { formatEggs } from '../../utils/eggFormatting';
 import { EditEggSaleModal, type EggSaleRecord } from '../eggs/EditEggSaleModal';
@@ -12,6 +13,8 @@ interface EggSalesListProps {
 
 export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
   const { currentFarm, currentRole, profile } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [sales, setSales] = useState<EggSaleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingSale, setEditingSale] = useState<EggSaleRecord | null>(null);
@@ -169,8 +172,8 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Egg className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Egg Sales Yet</h3>
-        <p className="text-gray-500">Record your first egg sale to start tracking history</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{isFr ? "Aucune vente d'œufs pour le moment" : 'No Egg Sales Yet'}</h3>
+        <p className="text-gray-500">{isFr ? "Enregistrez votre première vente d'œufs pour commencer le suivi" : 'Record your first egg sale to start tracking history'}</p>
       </div>
     );
   }
@@ -243,13 +246,13 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
         <div className="p-3 sm:p-4 bg-amber-50 rounded-xl">
-          <p className="text-xs sm:text-sm text-amber-700 mb-1">Total Eggs Sold</p>
+          <p className="text-xs sm:text-sm text-amber-700 mb-1">{isFr ? "Total œufs vendus" : 'Total Eggs Sold'}</p>
           <p className="text-xl sm:text-2xl font-bold text-gray-900">{formatEggs(totalEggsSold, eggsPerTray)}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{totalEggsSold.toLocaleString()} total eggs</p>
+          <p className="text-xs text-gray-500 mt-0.5">{totalEggsSold.toLocaleString()} {isFr ? 'œufs au total' : 'total eggs'}</p>
         </div>
         {!hideFinancials && (
           <div className="p-3 sm:p-4 bg-green-50 rounded-xl">
-            <p className="text-xs sm:text-sm text-green-700 mb-1">Total Revenue</p>
+            <p className="text-xs sm:text-sm text-green-700 mb-1">{isFr ? 'Revenus totaux' : 'Total Revenue'}</p>
             <p className="text-xl sm:text-2xl font-bold text-gray-900 break-words">
               {totalRevenue.toLocaleString()} {currency}
             </p>
@@ -259,13 +262,13 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
 
       <div className="rounded-lg p-1.5 sm:p-2 bg-white">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-1.5">
-          <h3 className="text-[11px] sm:text-xs font-semibold text-gray-900">Customer Purchase Ranking</h3>
+          <h3 className="text-[11px] sm:text-xs font-semibold text-gray-900">{isFr ? 'Classement des clients' : 'Customer Purchase Ranking'}</h3>
           <div className="relative w-full sm:w-56">
             <Search className="w-3 h-3 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" />
             <input
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
-              placeholder="Search customer name..."
+              placeholder={isFr ? 'Rechercher un client...' : 'Search customer name...'}
               className="w-full pl-6 pr-2 py-1 text-[11px] border border-gray-200 rounded-md focus:ring-1 focus:ring-amber-100 focus:border-amber-300"
             />
           </div>
@@ -275,16 +278,16 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
             const priceBreakdown = Object.entries(c.pricePointTrays)
               .filter(([price]) => price !== '0')
               .sort((a, b) => Number(a[0]) - Number(b[0]))
-              .map(([price, trays]) => `${Math.round(trays).toLocaleString()} trays @ ${Number(price).toLocaleString()} ${currency}`)
+              .map(([price, trays]) => `${Math.round(trays).toLocaleString()} ${isFr ? 'plateaux' : 'trays'} @ ${Number(price).toLocaleString()} ${currency}`)
               .join(', ');
             return (
               <div key={c.name} className="p-1 rounded-md bg-gray-50 border border-gray-200">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[11px] font-semibold text-gray-900 truncate">{c.name}</div>
-                  <div className="text-[11px] font-semibold text-amber-700">{Math.round(c.totalTrays).toLocaleString()} trays</div>
+                  <div className="text-[11px] font-semibold text-amber-700">{Math.round(c.totalTrays).toLocaleString()} {isFr ? 'plateaux' : 'trays'}</div>
                 </div>
                 <div className="text-[10px] text-gray-600 mt-0.5">
-                  Purchases: {c.purchases}
+                  {isFr ? 'Achats' : 'Purchases'}: {c.purchases}
                   {!hideFinancials && (
                     <span> • Total: {c.totalAmount.toLocaleString()} {currency}</span>
                   )}
@@ -296,13 +299,13 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
             );
           })}
           {customerSummaries.length === 0 && (
-            <div className="text-[11px] text-gray-500 py-1 text-center">No customer matches found.</div>
+            <div className="text-[11px] text-gray-500 py-1 text-center">{isFr ? 'Aucun client correspondant.' : 'No customer matches found.'}</div>
           )}
         </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-medium text-gray-700">Group sales by:</span>
+        <span className="text-sm font-medium text-gray-700">{isFr ? 'Grouper les ventes par :' : 'Group sales by:'}</span>
         {(['month', 'week', 'day'] as const).map((mode) => (
           <button
             key={mode}
@@ -311,7 +314,12 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
               groupBy === mode ? 'bg-amber-200 text-gray-900' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {mode.charAt(0).toUpperCase() + mode.slice(1)}
+            {(() => {
+              const labels = isFr
+                ? { month: 'Mois', week: 'Semaine', day: 'Jour' }
+                : { month: 'Month', week: 'Week', day: 'Day' };
+              return labels[mode];
+            })()}
           </button>
         ))}
       </div>
@@ -332,10 +340,10 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
                 <div className="flex items-center gap-2 min-w-0">
                   {expanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
                   <span className="text-sm font-semibold text-gray-900">{groupLabel(groupKey, groupBy)}</span>
-                  <span className="text-xs text-gray-500">({records.length} sales)</span>
+                  <span className="text-xs text-gray-500">({records.length} {isFr ? 'ventes' : 'sales'})</span>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-700">{Math.round(groupTrays).toLocaleString()} trays</div>
+                  <div className="text-xs text-gray-700">{Math.round(groupTrays).toLocaleString()} {isFr ? 'plateaux' : 'trays'}</div>
                   {!hideFinancials && (
                     <div className="text-xs font-semibold text-green-700">{groupRevenue.toLocaleString()} {currency}</div>
                   )}
@@ -372,11 +380,11 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
                           <div className="text-xs sm:text-sm text-gray-500 flex items-center gap-3 flex-wrap mt-1">
                             <span className="inline-flex items-center gap-1">
                               <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                              {saleDate ? new Date(saleDate + 'T12:00:00').toLocaleDateString() : 'N/A'}
+                              {saleDate ? new Date(saleDate + 'T12:00:00').toLocaleDateString(isFr ? 'fr' : 'en') : 'N/A'}
                             </span>
                             <span className="inline-flex items-center gap-1">
                               <User className="w-3 h-3 sm:w-4 sm:h-4" />
-                              {sale.customer_name?.trim() || 'Unknown'}
+                              {sale.customer_name?.trim() || (isFr ? 'Inconnu' : 'Unknown')}
                             </span>
                           </div>
                           {sale.notes && <p className="text-xs text-gray-600 mt-1 truncate">{sale.notes}</p>}
@@ -390,7 +398,7 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
                               </div>
                               {equivalentTrays > 0 && (
                                 <div className="text-[11px] sm:text-xs text-gray-500">
-                                  {Math.round(pricePerTray).toLocaleString()} {currency}/tray
+                                  {Math.round(pricePerTray).toLocaleString()} {currency}/{isFr ? 'plateau' : 'tray'}
                                 </div>
                               )}
                             </div>
@@ -401,7 +409,7 @@ export function EggSalesList({ refreshTrigger }: EggSalesListProps) {
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-lg text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50"
                           >
                             <Edit3 className="w-4 h-4" />
-                            Edit
+                            {isFr ? 'Modifier' : 'Edit'}
                           </button>
                         </div>
                       </div>
