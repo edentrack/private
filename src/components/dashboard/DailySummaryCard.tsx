@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useRealtimeSubscription } from '../../contexts/RealtimeContext';
 import { formatEggsWithTotal } from '../../utils/eggFormatting';
 import { useTranslation } from 'react-i18next';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 // Recharts imports were dead — chart was extracted into a sub-component.
 
 interface FeedPrediction {
@@ -51,6 +52,10 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
   const { currentFarm } = useAuth();
   const { subscribeToTable } = useRealtimeSubscription();
   const { t } = useTranslation();
+  // Species-aware vocab — pre-fix the Daily Farm Summary cards said
+  // "Mortality: 0 birds" and "Feed Used: 0.0 bags" on a tilapia farm.
+  // Greg's audit, May 8 2026.
+  const farmSpecies = useFarmSpecies();
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const summaryRef = useRef<DailySummary | null>(null);
@@ -825,7 +830,11 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-base font-bold text-orange-600">{summary.feedUsedBags.toFixed(1)}</span>
-            <span className="text-xs text-gray-600">bags</span>
+            <span className="text-xs text-gray-600">
+              {/* Aquaculture feed is dispensed in kg, poultry/rabbits in
+                  bags. The summary card was hardcoded "bags" pre-fix. */}
+              {farmSpecies.id === 'aquaculture' ? 'kg' : 'bags'}
+            </span>
           </div>
         </div>
 
@@ -838,7 +847,8 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-lg font-bold text-red-600">{summary.mortalityCount}</span>
-            <span className="text-xs text-gray-600">birds</span>
+            {/* "birds" was hardcoded — wrong on fish/rabbit farms. */}
+            <span className="text-xs text-gray-600">{farmSpecies.animalTermPlural.toLowerCase()}</span>
           </div>
         </div>
 
