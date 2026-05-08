@@ -831,7 +831,7 @@ export function ExpenseTracking() {
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Flock', 'Total', 'Records', 'Avg', '%']],
+      head: [[farmSpecies.groupTerm, 'Total', 'Records', 'Avg', '%']],
       body: flockData,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 },
@@ -876,7 +876,7 @@ export function ExpenseTracking() {
 
       autoTable(doc, {
         startY: yPos,
-        head: [['Date', 'Category', 'Description', 'Amount', 'Flock', 'From Profit']],
+        head: [['Date', 'Category', 'Description', 'Amount', farmSpecies.groupTerm, 'From Profit']],
         body: monthTableData,
         theme: 'grid',
         styles: { fontSize: 7, cellPadding: 1.5 },
@@ -913,7 +913,7 @@ export function ExpenseTracking() {
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Rank', 'Date', 'Category', 'Description', 'Amount', 'Flock', 'From Profit']],
+      head: [['Rank', 'Date', 'Category', 'Description', 'Amount', farmSpecies.groupTerm, 'From Profit']],
       body: topExpensesData,
       theme: 'grid',
       styles: { fontSize: 7, cellPadding: 1.5 },
