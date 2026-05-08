@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellOff, AlertCircle } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import {
   subscribeToPushNotifications,
   unsubscribeFromPushNotifications,
@@ -20,6 +21,13 @@ type Status = 'unknown' | 'unsupported' | 'denied' | 'inactive' | 'active';
 
 export function PushNotificationsSettings() {
   const toast = useToast();
+  const farmSpecies = useFarmSpecies();
+  // The "Pond emergencies" example was aqua-specific. Pick a species-
+  // relevant emergency keyword so the description reads naturally.
+  const emergencyExample =
+    farmSpecies.id === 'aquaculture' ? 'Pond emergencies'
+    : farmSpecies.id === 'rabbits' ? 'Health alerts'
+    : 'Mortality spikes';
   const [status, setStatus] = useState<Status>('unknown');
   const [working, setWorking] = useState(false);
 
@@ -75,8 +83,7 @@ export function PushNotificationsSettings() {
         <h2 className="font-semibold text-gray-900">Push notifications (this device)</h2>
       </div>
       <p className="text-xs text-gray-500 mb-4">
-        Real-time alerts on this browser/phone. Pond emergencies, overdue tasks, vaccinations
-        due — delivered as native notifications even when EdenTrack is closed.
+        {`Real-time alerts on this browser/phone. ${emergencyExample}, overdue tasks, vaccinations due — delivered as native notifications even when EdenTrack is closed.`}
       </p>
 
       {status === 'unsupported' && (
