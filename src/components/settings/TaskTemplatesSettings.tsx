@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Clock, Plus, Trash2, Save, X, ToggleLeft, ToggleRight, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface TaskTemplate {
   id: string;
@@ -15,6 +16,9 @@ interface TaskTemplate {
 }
 
 export function TaskTemplatesSettings() {
+  const farmSpecies = useFarmSpecies();
+  const groupTermPluralLower = farmSpecies.groupTermPlural.toLowerCase();
+  const groupTermLower = farmSpecies.groupTerm.toLowerCase();
   const { currentFarm } = useAuth();
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -235,7 +239,7 @@ export function TaskTemplatesSettings() {
               className="w-4 h-4 text-green-600 rounded"
             />
             <label htmlFor="applies-to-all" className="text-sm text-gray-700">
-              Apply to all flocks (don't duplicate per flock)
+              {`Apply to all ${groupTermPluralLower} (don't duplicate per ${groupTermLower})`}
             </label>
           </div>
 
