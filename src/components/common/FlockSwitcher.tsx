@@ -79,10 +79,10 @@ export function FlockSwitcher({
         onClick={() => setIsOpen(!isOpen)}
         className="px-4 py-2.5 bg-white border border-gray-200 rounded-full flex items-center gap-3 hover:border-gray-300 hover:shadow-sm transition-all duration-200 group relative z-10"
       >
-        <img 
-          src="/layer.jpg" 
-          alt="Chicken" 
-          className="w-4 h-4 object-contain mix-blend-multiply" 
+        <img
+          src="/layer.jpg"
+          alt={farmSpecies.animalTerm}
+          className="w-4 h-4 object-contain mix-blend-multiply"
           style={{ backgroundColor: 'transparent' }}
         />
         <span className="text-gray-900 font-medium">
