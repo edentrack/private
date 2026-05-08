@@ -223,6 +223,11 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
         amountPaid: paymentStatus === 'partial' ? parseFloat(amountPaid) : totalAmount,
         notes,
         currency,
+        // currencyLabel: human symbol ("CFA") for on-screen confirmation.
+        // currency stays as ISO ("XAF") for printable receipts and WhatsApp
+        // text where the ISO code is more useful for downstream consumers
+        // (banks, accounting tools).
+        currencyLabel,
       });
 
       setShowSuccess(true);
@@ -278,7 +283,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
       <div className="text-6xl mb-4">✅</div>
       <h3 className="text-2xl font-bold mb-2">Sale Recorded!</h3>
       <p className="text-gray-600 mb-8">
-        {lastSaleDetails.birdsSold} {animalTermPluralLower} sold for {lastSaleDetails.totalAmount.toLocaleString()} {lastSaleDetails.currency}
+        {lastSaleDetails.birdsSold} {animalTermPluralLower} sold for {lastSaleDetails.totalAmount.toLocaleString()} {lastSaleDetails.currencyLabel || lastSaleDetails.currency}
       </p>
 
       <div className="max-w-md mx-auto space-y-3">

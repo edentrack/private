@@ -299,6 +299,12 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
         totalEggs,
         totalAmount,
         currencyCode,
+        // Same reasoning as RecordBirdSaleModal: ISO ('XAF') for printable
+        // receipts and WhatsApp text; symbol ('CFA') for the on-screen
+        // confirmation. Greg flagged "sold for 25,000 XAF" in the receipt
+        // confirmation card on May 8, 2026 — same currency was being
+        // shown two ways on the same screen.
+        currencyLabel,
         sale_date: formData.sale_date,
         customer_name: formData.customer_name,
         customer_phone: formData.customer_phone,
@@ -448,7 +454,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
           <div className="text-6xl mb-4">✅</div>
           <h3 className="text-2xl font-bold mb-2">{t('sales.sale_recorded') || 'Sale Recorded!'}</h3>
           <p className="text-gray-600 mb-8">
-            {lastSaleDetails.totalEggs} {t('sales.eggs').toLowerCase()} {t('sales.sold_for') || 'sold for'} {lastSaleDetails.totalAmount.toLocaleString()} {lastSaleDetails.currencyCode}
+            {lastSaleDetails.totalEggs} {t('sales.eggs').toLowerCase()} {t('sales.sold_for') || 'sold for'} {lastSaleDetails.totalAmount.toLocaleString()} {lastSaleDetails.currencyLabel || lastSaleDetails.currencyCode}
           </p>
 
           <div className="max-w-md mx-auto space-y-3">
