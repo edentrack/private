@@ -486,7 +486,24 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-soft p-6">
+    // noValidate is critical: pre-fix, the form's number inputs had
+    // `max={inventory?.medium_eggs || 0}` and similar caps. When the
+    // user had no inventory yet, max evaluated to 0, so any quantity
+    // entered failed HTML5 validation with "Value must be 0". The
+    // browser then SILENTLY aborted the submit event (didn't fire
+    // onSubmit at all), so handleSubmit never ran, no error rendered,
+    // no toast — looked like the button did nothing. The validation
+    // popover would have rendered near the offending input, but the
+    // input was off-screen at the top of the form by the time the user
+    // clicked submit at the bottom. Greg flagged it as launch-blocker
+    // BUG #10 in his May 2026 audit. Even calling form.requestSubmit()
+    // programmatically failed for the same reason — HTML5 validation
+    // runs first.
+    //
+    // Disabling browser validation lets handleSubmit run; the JS
+    // validation inside (with the May 2026 scroll-into-view + persistent
+    // banner) now actually shows up.
+    <form onSubmit={handleSubmit} noValidate className="bg-white rounded-2xl shadow-soft p-6">
       {successMessage && (
         <div className="mb-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl flex items-start gap-3 animate-fade-in">
           <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -821,7 +838,6 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
               <input
                 type="number"
                 min="0"
-                max={inventory?.small_eggs || 0}
                 value={formData.small_eggs_sold}
                 onChange={(e) => setFormData({ ...formData, small_eggs_sold: Number(e.target.value) })}
                 className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm text-gray-900 bg-white"
@@ -849,7 +865,6 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
               <input
                 type="number"
                 min="0"
-                max={inventory?.medium_eggs || 0}
                 value={formData.medium_eggs_sold}
                 onChange={(e) => setFormData({ ...formData, medium_eggs_sold: Number(e.target.value) })}
                 className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm text-gray-900 bg-white"
@@ -877,7 +892,6 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
               <input
                 type="number"
                 min="0"
-                max={inventory?.large_eggs || 0}
                 value={formData.large_eggs_sold}
                 onChange={(e) => setFormData({ ...formData, large_eggs_sold: Number(e.target.value) })}
                 className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm text-gray-900 bg-white"
@@ -905,7 +919,6 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
               <input
                 type="number"
                 min="0"
-                max={inventory?.jumbo_eggs || 0}
                 value={formData.jumbo_eggs_sold}
                 onChange={(e) => setFormData({ ...formData, jumbo_eggs_sold: Number(e.target.value) })}
                 className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm text-gray-900 bg-white"

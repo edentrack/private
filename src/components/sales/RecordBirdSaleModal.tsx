@@ -8,6 +8,7 @@ import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { CustomerLookup } from '../customers/CustomerLookup';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { todayLocal } from '../../utils/dateUtils';
+import { getCurrencySymbol } from '../../utils/currency';
 
 interface RecordBirdSaleModalProps {
   flock?: Flock | null;
@@ -46,7 +47,13 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastSaleDetails, setLastSaleDetails] = useState<any>(null);
 
+  // ISO code for DB (currency column expects 'XAF', not 'CFA').
   const currency = profile?.currency_preference || currentFarm?.currency_code || 'XAF';
+  // Human symbol for UI labels so form parentheticals match the totals
+  // row and Sales summary card. Pre-fix the form said "(XAF)" while
+  // everything else said "CFA" on the same screen. Greg flagged in his
+  // May 2026 audit (BUG #11).
+  const currencyLabel = getCurrencySymbol(currency);
 
   useEffect(() => {
     loadFlocks();
@@ -312,7 +319,12 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
       </div>
     </div>
   ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          // noValidate: same HTML5-validation hazard as RecordEggSale.
+          // Number inputs below have max={birdsAvailable}; entering a
+          // larger value silently blocks form submit — onSubmit never
+          // fires, no error shows. JS check in handleSubmit covers it.
+          // (BUG #10 follow-up, May 2026.)
+          <form onSubmit={handleSubmit} noValidate className="p-6 space-y-6">
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -412,7 +424,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
 
           {saleMethod === 'per_bird' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{`Price per ${animalTerm}`} ({currency})</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{`Price per ${animalTerm}`} ({currencyLabel})</label>
               <input
                 type="number"
                 value={pricePerBird}
@@ -437,7 +449,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.price_per_kg')} ({currency})</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.price_per_kg')} ({currencyLabel})</label>
                 <input
                   type="number"
                   value={pricePerKg}
@@ -451,7 +463,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
 
           {saleMethod === 'lump_sum' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.total_amount')} ({currency})</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.total_amount')} ({currencyLabel})</label>
               <input
                 type="number"
                 value={lumpSumAmount}
@@ -550,7 +562,7 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
 
           {paymentStatus === 'partial' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.amount_paid')} ({currency})</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('sales.amount_paid')} ({currencyLabel})</label>
               <input
                 type="number"
                 value={amountPaid}
