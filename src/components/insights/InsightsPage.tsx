@@ -576,8 +576,8 @@ export function InsightsPage() {
 
     const csvContent: string[][] = [
       ['Insights Report'],
-      ['Flock Name', selectedFlock.name],
-      ['Flock Type', selectedFlock.type],
+      [`${species.groupTerm} Name`, selectedFlock.name],
+      [`${species.groupTerm} Type`, selectedFlock.type],
       ['Report Date', new Date().toLocaleDateString()],
       [''],
       ['Financial Summary'],
@@ -586,7 +586,7 @@ export function InsightsPage() {
       ['Total Revenue', metrics.totalRevenue.toString(), currencyCode],
       ['Net Profit', metrics.netProfit.toString(), currencyCode],
       ['Profit Margin', `${metrics.profitMargin}%`, ''],
-      ['Cost per Bird', metrics.costPerBird.toString(), currencyCode],
+      [`Cost per ${species.animalTerm}`, metrics.costPerBird.toString(), currencyCode],
       ['Daily Average Cost', metrics.dailyAvgCost.toString(), currencyCode],
       [''],
       ['Production Metrics'],
@@ -594,7 +594,7 @@ export function InsightsPage() {
       ['Current Age', `${metrics.ageWeeks} weeks (${metrics.ageDays} days)`, ''],
       [`${species.animalTermPlural} Alive`, `${metrics.birdsAlive}/${metrics.initialCount}`, species.animalTermPlural.toLowerCase()],
       ['Survival Rate', `${metrics.survivalRate}%`, ''],
-      ['Mortality', `${metrics.totalMortality} (${metrics.mortalityRate}%)`, species.animalTermPlural.toLowerCase()],
+      [species.lossNounPlural, `${metrics.totalMortality} (${metrics.mortalityRate}%)`, species.animalTermPlural.toLowerCase()],
       ['Feed Consumed', feedBagsUsed.toString(), 'kg'],
     ];
 
@@ -618,12 +618,12 @@ export function InsightsPage() {
     csvContent.push([''], ['Week-by-Week Breakdown']);
 
     if (isLayerFlock) {
-      csvContent.push(['Week', `Expenses (${currencyCode})`, 'Eggs', 'Deaths']);
+      csvContent.push(['Week', `Expenses (${currencyCode})`, 'Eggs', species.lossNounPlural]);
       weeklyData.forEach(w => {
         csvContent.push([`Week ${w.week}`, w.expenses.toString(), w.eggs.toString(), w.deaths.toString()]);
       });
     } else {
-      csvContent.push(['Week', `Expenses (${currencyCode})`, 'Avg Weight (kg)', 'Deaths']);
+      csvContent.push(['Week', `Expenses (${currencyCode})`, 'Avg Weight (kg)', species.lossNounPlural]);
       weeklyData.forEach(w => {
         csvContent.push([`Week ${w.week}`, w.expenses.toString(), w.avgWeight.toFixed(2), w.deaths.toString()]);
       });
@@ -642,12 +642,21 @@ export function InsightsPage() {
   const handleWhatsAppShare = () => {
     if (!selectedFlock || !currentFarm) return;
 
+    const emoji =
+      species.id === 'aquaculture' ? '🐟' : species.id === 'rabbits' ? '🐰' : '🐔';
     const message = formatInsightsForWhatsApp(
       metrics,
       { name: selectedFlock.name, type: selectedFlock.type },
       currentFarm.name || 'My Farm',
       currencyCode,
-      eggsPerTray
+      eggsPerTray,
+      {
+        groupTerm: species.groupTerm,
+        animalTerm: species.animalTerm,
+        animalTermPlural: species.animalTermPlural,
+        lossNounPlural: species.lossNounPlural,
+        emoji,
+      }
     );
 
     shareViaWhatsApp(message);

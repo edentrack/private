@@ -192,12 +192,21 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
       feedConversion: kpis.ffcd.toFixed(2),
     };
 
+    const emoji =
+      species.id === 'aquaculture' ? '🐟' : species.id === 'rabbits' ? '🐰' : '🐔';
     const message = formatInsightsForWhatsApp(
       metrics,
       { name: currentFlock.name, type: currentFlock.type || 'Broiler' },
       currentFarm.name || 'My Farm',
       profile?.currency_preference || 'XAF',
-      farm?.eggs_per_tray
+      farm?.eggs_per_tray,
+      {
+        groupTerm: species.groupTerm,
+        animalTerm: species.animalTerm,
+        animalTermPlural: species.animalTermPlural,
+        lossNounPlural: species.lossNounPlural,
+        emoji,
+      }
     );
 
     shareViaWhatsApp(message);

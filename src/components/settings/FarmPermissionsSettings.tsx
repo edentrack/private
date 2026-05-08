@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Shield, Save, Users, HardHat, Eye } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../contexts/PermissionsContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { FarmPermissions } from '../../types/database';
 
 type RoleTab = 'manager' | 'worker' | 'viewer';
@@ -44,72 +45,96 @@ interface PermissionGroup {
   }[];
 }
 
-const MANAGER_GROUPS: PermissionGroup[] = [
-  {
-    title: 'Financial Access',
-    description: 'What financial data and operations managers can see and perform',
-    permissions: [
-      { key: 'managers_can_view_financials', label: 'View Expenses & Sales', description: 'See expense records, sales, revenue and P&L data' },
-      { key: 'managers_can_view_analytics', label: 'View Analytics & Insights', description: 'Access the Analytics dashboard, KPIs, and Insights page' },
-      { key: 'managers_can_create_expenses', label: 'Add & Edit Expenses', description: 'Create and modify expense records on behalf of the farm' },
-      { key: 'managers_can_create_sales', label: 'Record Sales & Receipts', description: 'Create bird sales, egg sales and print receipts' },
-      { key: 'managers_can_edit_flock_costs', label: 'Edit Flock Purchase Costs', description: 'Modify the initial cost and transport cost of a flock' },
-    ],
-  },
-  {
-    title: 'Operations',
-    description: 'Day-to-day farm operations the manager can control',
-    permissions: [
-      { key: 'managers_can_manage_inventory', label: 'Manage Inventory', description: 'Add feed types, adjust stock levels, and log usage' },
-      { key: 'managers_can_edit_shift_templates', label: 'Edit Shift Templates', description: 'Create and modify recurring shift schedules' },
-      { key: 'managers_can_mark_vaccinations', label: 'Record Vaccinations', description: 'Mark vaccinations as administered and add vet log entries' },
-      { key: 'managers_can_edit_feed_water', label: 'Edit Feed & Water Records', description: 'Adjust weekly feed and water consumption logs' },
-      { key: 'managers_can_edit_eggs', label: 'Edit Egg Records', description: 'Correct egg collection and egg sale records' },
-      { key: 'managers_can_use_smart_import', label: 'Use Smart Import', description: 'Upload receipts and documents to auto-import records' },
-      { key: 'managers_can_use_eden_ai', label: 'Use Eden AI', description: 'Chat with Eden for health advice, diagnostics, and quick logging' },
-    ],
-  },
-  {
-    title: 'Team & Payroll',
-    description: 'Sensitive people-management permissions',
-    permissions: [
-      { key: 'managers_can_manage_team', label: 'Manage Team Members', description: 'Invite workers, change roles, deactivate members' },
-      { key: 'managers_can_manage_payroll', label: 'Process Payroll', description: 'Run payroll, adjust salaries, and record payments' },
-    ],
-  },
-  {
-    title: 'Data Danger Zone',
-    description: 'Irreversible operations — grant with care',
-    permissions: [
-      {
-        key: 'managers_can_delete_records',
-        label: 'Delete Records',
-        description: 'Permanently delete expenses, sales, flocks, and other records',
-        warning: 'Deletions cannot be undone',
-      },
-    ],
-  },
-];
+interface PermissionVocab {
+  groupTerm: string;       // "Flock", "Pond", "Rabbitry"
+  groupTermLower: string;  // "flock", "pond", "rabbitry"
+  animalTerm: string;      // "Bird", "Fish", "Rabbit"
+  animalTermLower: string; // "bird", "fish", "rabbit"
+  animalTermPluralLower: string;
+  isPoultry: boolean;
+}
 
-const WORKER_GROUPS: PermissionGroup[] = [
-  {
-    title: 'Data Logging',
-    description: 'What workers can record directly from their phone',
-    permissions: [
-      { key: 'workers_can_log_mortality', label: 'Log Mortality', description: 'Workers can report dead birds and enter cause of death' },
-      { key: 'workers_can_log_eggs', label: 'Log Egg Collections', description: 'Workers can record daily egg counts by size and damage' },
-      { key: 'workers_can_log_weight', label: 'Log Bird Weights', description: 'Workers can record weight samples for FCR tracking' },
-    ],
-  },
-  {
-    title: 'Tools & Visibility',
-    description: 'Features and data workers can access',
-    permissions: [
-      { key: 'workers_can_use_eden_ai', label: 'Use Eden AI', description: 'Workers can chat with Eden for health advice and quick logging' },
-      { key: 'workers_can_view_financials', label: 'View Financial Data', description: 'Workers can see expenses, sales, and profit figures' },
-    ],
-  },
-];
+function buildManagerGroups(v: PermissionVocab): PermissionGroup[] {
+  // Egg-related permissions only show on poultry — for rabbits/aqua we
+  // collapse the bird/egg salescript to a single species-aware sentence.
+  const salesDescription = v.isPoultry
+    ? 'Create bird sales, egg sales and print receipts'
+    : `Create ${v.animalTermLower} sales and print receipts`;
+  return [
+    {
+      title: 'Financial Access',
+      description: 'What financial data and operations managers can see and perform',
+      permissions: [
+        { key: 'managers_can_view_financials', label: 'View Expenses & Sales', description: 'See expense records, sales, revenue and P&L data' },
+        { key: 'managers_can_view_analytics', label: 'View Analytics & Insights', description: 'Access the Analytics dashboard, KPIs, and Insights page' },
+        { key: 'managers_can_create_expenses', label: 'Add & Edit Expenses', description: 'Create and modify expense records on behalf of the farm' },
+        { key: 'managers_can_create_sales', label: 'Record Sales & Receipts', description: salesDescription },
+        { key: 'managers_can_edit_flock_costs', label: `Edit ${v.groupTerm} Purchase Costs`, description: `Modify the initial cost and transport cost of a ${v.groupTermLower}` },
+      ],
+    },
+    {
+      title: 'Operations',
+      description: 'Day-to-day farm operations the manager can control',
+      permissions: [
+        { key: 'managers_can_manage_inventory', label: 'Manage Inventory', description: 'Add feed types, adjust stock levels, and log usage' },
+        { key: 'managers_can_edit_shift_templates', label: 'Edit Shift Templates', description: 'Create and modify recurring shift schedules' },
+        { key: 'managers_can_mark_vaccinations', label: 'Record Vaccinations', description: 'Mark vaccinations as administered and add vet log entries' },
+        { key: 'managers_can_edit_feed_water', label: 'Edit Feed & Water Records', description: 'Adjust weekly feed and water consumption logs' },
+        // Egg edit toggle still exists in DB but only meaningful on poultry farms.
+        ...(v.isPoultry
+          ? ([{ key: 'managers_can_edit_eggs' as const, label: 'Edit Egg Records', description: 'Correct egg collection and egg sale records' }])
+          : []),
+        { key: 'managers_can_use_smart_import', label: 'Use Smart Import', description: 'Upload receipts and documents to auto-import records' },
+        { key: 'managers_can_use_eden_ai', label: 'Use Eden AI', description: 'Chat with Eden for health advice, diagnostics, and quick logging' },
+      ],
+    },
+    {
+      title: 'Team & Payroll',
+      description: 'Sensitive people-management permissions',
+      permissions: [
+        { key: 'managers_can_manage_team', label: 'Manage Team Members', description: 'Invite workers, change roles, deactivate members' },
+        { key: 'managers_can_manage_payroll', label: 'Process Payroll', description: 'Run payroll, adjust salaries, and record payments' },
+      ],
+    },
+    {
+      title: 'Data Danger Zone',
+      description: 'Irreversible operations — grant with care',
+      permissions: [
+        {
+          key: 'managers_can_delete_records',
+          label: 'Delete Records',
+          description: `Permanently delete expenses, sales, ${v.groupTermLower}s, and other records`,
+          warning: 'Deletions cannot be undone',
+        },
+      ],
+    },
+  ];
+}
+
+function buildWorkerGroups(v: PermissionVocab): PermissionGroup[] {
+  return [
+    {
+      title: 'Data Logging',
+      description: 'What workers can record directly from their phone',
+      permissions: [
+        { key: 'workers_can_log_mortality', label: 'Log Mortality', description: `Workers can report dead ${v.animalTermPluralLower} and enter cause of death` },
+        // Egg-collection logging only on poultry.
+        ...(v.isPoultry
+          ? ([{ key: 'workers_can_log_eggs' as const, label: 'Log Egg Collections', description: 'Workers can record daily egg counts by size and damage' }])
+          : []),
+        { key: 'workers_can_log_weight', label: `Log ${v.animalTerm} Weights`, description: `Workers can record weight samples for ${v.isPoultry ? 'FCR tracking' : 'growth tracking'}` },
+      ],
+    },
+    {
+      title: 'Tools & Visibility',
+      description: 'Features and data workers can access',
+      permissions: [
+        { key: 'workers_can_use_eden_ai', label: 'Use Eden AI', description: 'Workers can chat with Eden for health advice and quick logging' },
+        { key: 'workers_can_view_financials', label: 'View Financial Data', description: 'Workers can see expenses, sales, and profit figures' },
+      ],
+    },
+  ];
+}
 
 // Viewer role is always read-only everywhere — no toggles needed, just show a summary
 const VIEWER_INFO = [
@@ -130,6 +155,17 @@ export function FarmPermissionsSettings() {
   const { t } = useTranslation();
   const { currentFarm, currentRole } = useAuth();
   const { farmPermissions, refreshPermissions } = usePermissions();
+  const farmSpecies = useFarmSpecies();
+  const permVocab: PermissionVocab = useMemo(() => ({
+    groupTerm: farmSpecies.groupTerm,
+    groupTermLower: farmSpecies.groupTerm.toLowerCase(),
+    animalTerm: farmSpecies.animalTerm,
+    animalTermLower: farmSpecies.animalTerm.toLowerCase(),
+    animalTermPluralLower: farmSpecies.animalTermPlural.toLowerCase(),
+    isPoultry: farmSpecies.id === 'poultry',
+  }), [farmSpecies.id]);
+  const managerGroups = useMemo(() => buildManagerGroups(permVocab), [permVocab]);
+  const workerGroups = useMemo(() => buildWorkerGroups(permVocab), [permVocab]);
   const [local, setLocal] = useState<Partial<FarmPermissions>>(DEFAULTS);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -244,7 +280,7 @@ export function FarmPermissionsSettings() {
     { id: 'viewer',  label: 'Viewer',  icon: <Eye className="w-4 h-4" />,    color: 'gray' },
   ];
 
-  const activeGroups = activeTab === 'manager' ? MANAGER_GROUPS : activeTab === 'worker' ? WORKER_GROUPS : [];
+  const activeGroups = activeTab === 'manager' ? managerGroups : activeTab === 'worker' ? workerGroups : [];
 
   return (
     <div className="bg-white rounded-3xl p-6">

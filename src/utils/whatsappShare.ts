@@ -166,21 +166,45 @@ interface FlockInfo {
   type: string;
 }
 
+/**
+ * Optional species terminology used by the insights/analytics share
+ * formatter. When omitted, defaults to poultry-shaped vocab (legacy
+ * behaviour). Pass values from `useFarmSpecies()` to get correct
+ * labels on rabbits / aqua farms.
+ */
+export interface SpeciesVocab {
+  groupTerm: string;        // "Flock", "Pond", "Rabbitry"
+  animalTerm: string;       // "Bird", "Fish", "Rabbit"
+  animalTermPlural: string; // "Birds", "Fish", "Rabbits"
+  lossNounPlural: string;   // "Mortality", "Losses", "Deaths"
+  emoji: string;            // 🐔 / 🐟 / 🐰
+}
+
+const DEFAULT_VOCAB: SpeciesVocab = {
+  groupTerm: 'Flock',
+  animalTerm: 'Bird',
+  animalTermPlural: 'Birds',
+  lossNounPlural: 'Mortality',
+  emoji: '🐔',
+};
+
 export function formatInsightsForWhatsApp(
   metrics: InsightsMetrics,
   flock: FlockInfo,
   farmName: string,
   currencyCode: string,
-  eggsPerTray?: number
+  eggsPerTray?: number,
+  vocab: SpeciesVocab = DEFAULT_VOCAB
 ): string {
   const isLayer = flock.type.toLowerCase() === 'layer';
   const isBroiler = flock.type.toLowerCase() === 'broiler';
+  const animalLower = vocab.animalTerm.toLowerCase();
 
-  let message = `*📊 FLOCK INSIGHTS REPORT*\n`;
+  let message = `*📊 ${vocab.groupTerm.toUpperCase()} INSIGHTS REPORT*\n`;
   message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
   message += `*Farm:* ${farmName}\n`;
-  message += `*Flock:* ${flock.name} (${flock.type})\n`;
+  message += `*${vocab.groupTerm}:* ${flock.name} (${flock.type})\n`;
   message += `*Report Date:* ${new Date().toLocaleDateString()}\n\n`;
 
   message += `*💰 FINANCIAL OVERVIEW*\n`;
@@ -188,14 +212,14 @@ export function formatInsightsForWhatsApp(
   message += `- Total Revenue: *${metrics.totalRevenue.toLocaleString()} ${currencyCode}*\n`;
   message += `- Net Profit: *${metrics.netProfit.toLocaleString()} ${currencyCode}*\n`;
   message += `- Profit Margin: ${metrics.profitMargin}%\n`;
-  message += `- Cost per Bird: ${metrics.costPerBird.toLocaleString()} ${currencyCode}\n`;
+  message += `- Cost per ${vocab.animalTerm}: ${metrics.costPerBird.toLocaleString()} ${currencyCode}\n`;
   message += `- Daily Average Cost: ${metrics.dailyAvgCost.toLocaleString()} ${currencyCode}\n\n`;
 
-  message += `*🐔 PRODUCTION METRICS*\n`;
+  message += `*${vocab.emoji} PRODUCTION METRICS*\n`;
   message += `- Current Age: *Week ${metrics.ageWeeks}* (${metrics.ageDays} days)\n`;
-  message += `- Birds Alive: *${metrics.birdsAlive.toLocaleString()}/${metrics.initialCount.toLocaleString()}*\n`;
+  message += `- ${vocab.animalTermPlural} Alive: *${metrics.birdsAlive.toLocaleString()}/${metrics.initialCount.toLocaleString()}*\n`;
   message += `- Survival Rate: *${metrics.survivalRate}%*\n`;
-  message += `- Mortality: ${metrics.totalMortality} birds (${metrics.mortalityRate}%)\n`;
+  message += `- ${vocab.lossNounPlural}: ${metrics.totalMortality} ${vocab.animalTermPlural.toLowerCase()} (${metrics.mortalityRate}%)\n`;
 
   if (isLayer && metrics.totalEggs !== undefined) {
     const trays = eggsPerTray ? Math.floor(metrics.totalEggs / eggsPerTray) : 0;
@@ -219,7 +243,7 @@ export function formatInsightsForWhatsApp(
   } else {
     message += `\n`;
   }
-  message += `- Cost Efficiency: ${metrics.costPerBird.toLocaleString()} ${currencyCode}/bird\n`;
+  message += `- Cost Efficiency: ${metrics.costPerBird.toLocaleString()} ${currencyCode}/${animalLower}\n`;
 
   message += `\n━━━━━━━━━━━━━━━━━━━━\n`;
   message += `Sent via Edentrack\n`;
