@@ -244,26 +244,37 @@ export function SalesManagement() {
       ? 'All Time'
       : `Last ${timePeriod}`;
 
-    const csvContent = [
+    // Species-aware labels. On poultry we keep the broiler/layer split +
+    // egg lines. On rabbits/aqua those are always zero, so we drop them
+    // and use the species term for the single sales line.
+    const isPoultry = species.id === 'poultry';
+    const saleRevenueLabel = isPoultry ? 'Bird Sale Revenue' : `${species.animalTermPlural} Sale Revenue`;
+
+    const rows: string[][] = [
       ['Sales Report', currentFarm?.name || ''],
       ['Date Range', dateRangeText],
       ['Generated', new Date().toLocaleDateString()],
       [''],
       ['Metric', 'Value'],
-      ['Broiler Birds Sold', stats.broilerBirdsSold.toString()],
-      ['Layer Birds Sold', stats.layerBirdsSold.toString()],
-      ['Total Eggs Sold', stats.totalEggsSold.toString()],
-      ['Total Customers', stats.totalCustomers.toString()],
-      ...(!hideFinancials ? [
-        ['Bird Sale Revenue', `${profile?.currency_preference || ''} ${stats.birdSaleRevenue.toLocaleString()}`],
-        ['Egg Sale Revenue', `${profile?.currency_preference || ''} ${stats.eggSaleRevenue.toLocaleString()}`],
-        ['Total Revenue', `${profile?.currency_preference || ''} ${stats.totalRevenue.toLocaleString()}`],
-        ['Pending Invoices', stats.pendingInvoices.toString()],
-        ['Paid Invoices', stats.paidInvoices.toString()],
-      ] : []),
-    ]
-      .map(row => row.join(','))
-      .join('\n');
+    ];
+    if (isPoultry) {
+      rows.push(['Broiler Birds Sold', stats.broilerBirdsSold.toString()]);
+      rows.push(['Layer Birds Sold', stats.layerBirdsSold.toString()]);
+      rows.push(['Total Eggs Sold', stats.totalEggsSold.toString()]);
+    } else {
+      rows.push([`${species.animalTermPlural} Sold`, (stats.broilerBirdsSold + stats.layerBirdsSold).toString()]);
+    }
+    rows.push(['Total Customers', stats.totalCustomers.toString()]);
+    if (!hideFinancials) {
+      rows.push([saleRevenueLabel, `${profile?.currency_preference || ''} ${stats.birdSaleRevenue.toLocaleString()}`]);
+      if (isPoultry) {
+        rows.push(['Egg Sale Revenue', `${profile?.currency_preference || ''} ${stats.eggSaleRevenue.toLocaleString()}`]);
+      }
+      rows.push(['Total Revenue', `${profile?.currency_preference || ''} ${stats.totalRevenue.toLocaleString()}`]);
+      rows.push(['Pending Invoices', stats.pendingInvoices.toString()]);
+      rows.push(['Paid Invoices', stats.paidInvoices.toString()]);
+    }
+    const csvContent = rows.map(row => row.join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -283,18 +294,31 @@ export function SalesManagement() {
       ? 'All Time'
       : `Last ${timePeriod.charAt(0).toUpperCase() + timePeriod.slice(1)}`;
 
+    // Species-aware sales summary. Poultry keeps broiler/layer + eggs;
+    // rabbits/aqua use a single line with the species term.
+    const isPoultry = species.id === 'poultry';
+    const animalEmoji = isPoultry ? '🐔' : species.id === 'aquaculture' ? '🐟' : '🐰';
+
     let message = `*Sales Report - ${currentFarm?.name || 'Farm'}*\n`;
     message += `📅 Period: ${dateRangeText}\n\n`;
     message += `*Sales Summary:*\n`;
-    message += `🐔 Broiler Birds Sold: ${stats.broilerBirdsSold.toLocaleString()}\n`;
-    message += `🐔 Layer Birds Sold: ${stats.layerBirdsSold.toLocaleString()}\n`;
-    message += `🥚 Eggs Sold: ${stats.totalEggsSold.toLocaleString()}\n`;
+    if (isPoultry) {
+      message += `${animalEmoji} Broiler Birds Sold: ${stats.broilerBirdsSold.toLocaleString()}\n`;
+      message += `${animalEmoji} Layer Birds Sold: ${stats.layerBirdsSold.toLocaleString()}\n`;
+      message += `🥚 Eggs Sold: ${stats.totalEggsSold.toLocaleString()}\n`;
+    } else {
+      const totalSold = stats.broilerBirdsSold + stats.layerBirdsSold;
+      message += `${animalEmoji} ${species.animalTermPlural} Sold: ${totalSold.toLocaleString()}\n`;
+    }
     message += `👥 Total Customers: ${stats.totalCustomers}\n`;
 
     if (!hideFinancials) {
       message += `\n*Revenue:*\n`;
-      message += `💰 Bird Sales: ${profile?.currency_preference || ''} ${stats.birdSaleRevenue.toLocaleString()}\n`;
-      message += `💰 Egg Sales: ${profile?.currency_preference || ''} ${stats.eggSaleRevenue.toLocaleString()}\n`;
+      const saleLabel = isPoultry ? 'Bird Sales' : `${species.animalTermPlural} Sales`;
+      message += `💰 ${saleLabel}: ${profile?.currency_preference || ''} ${stats.birdSaleRevenue.toLocaleString()}\n`;
+      if (isPoultry) {
+        message += `💰 Egg Sales: ${profile?.currency_preference || ''} ${stats.eggSaleRevenue.toLocaleString()}\n`;
+      }
       message += `💰 Total Revenue: ${profile?.currency_preference || ''} ${stats.totalRevenue.toLocaleString()}\n`;
       message += `\n📄 Pending Invoices: ${stats.pendingInvoices}\n`;
       message += `✅ Paid Invoices: ${stats.paidInvoices}`;
