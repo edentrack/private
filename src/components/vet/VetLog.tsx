@@ -261,7 +261,11 @@ export function VetLog() {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Withdrawal Period (days)</label>
                 <input type="number" min="0" value={form.withdrawal_period_days} onChange={e => setForm(p => ({ ...p, withdrawal_period_days: e.target.value }))}
                   placeholder="0 = none" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                <p className="text-xs text-gray-400 mt-1">Days after last treatment before eggs/birds can be sold</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {farmSpecies.id === 'poultry'
+                    ? 'Days after last treatment before eggs/birds can be sold'
+                    : `Days after last treatment before ${farmSpecies.animalTermPlural.toLowerCase()} can be sold`}
+                </p>
               </div>
 
               <div>

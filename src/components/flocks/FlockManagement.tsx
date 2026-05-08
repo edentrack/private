@@ -533,7 +533,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         <ul className="list-disc list-inside space-y-0.5 ml-1">
                           <li>All expenses</li>
                           <li>All tasks</li>
-                          <li>Mortality records</li>
+                          <li>{farmSpecies.lossNounPlural} records</li>
                           <li>Weight checks</li>
                           <li>All other records</li>
                         </ul>

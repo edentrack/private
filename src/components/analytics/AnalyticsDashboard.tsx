@@ -409,7 +409,7 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
 
           <div>
             <div className="flex justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Mortality Rate</span>
+              <span className="text-sm font-medium text-gray-700">{`${species.lossNoun} Rate`}</span>
               <span className="text-sm font-bold text-gray-900">{kpis.mortality.toFixed(1)}%</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-3">
