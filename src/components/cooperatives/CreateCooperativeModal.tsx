@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Building2, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 
 interface Props {
@@ -21,6 +22,8 @@ function slugify(s: string): string {
 
 export function CreateCooperativeModal({ onClose, onCreated }: Props) {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { showToast } = useToast();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -37,11 +40,11 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
   const submit = async () => {
     if (!user) return;
     if (!name.trim()) {
-      showToast('Name is required', 'error');
+      showToast(isFr ? 'Le nom est requis' : 'Name is required', 'error');
       return;
     }
     if (!finalSlug) {
-      showToast('Slug is required', 'error');
+      showToast(isFr ? 'Le slug est requis' : 'Slug is required', 'error');
       return;
     }
     setSubmitting(true);
@@ -62,12 +65,12 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
     setSubmitting(false);
     if (error) {
       const msg = error.message.includes('cooperatives_slug_key')
-        ? 'That slug is already taken. Pick another.'
-        : `Failed to create: ${error.message}`;
+        ? (isFr ? 'Ce slug est déjà utilisé. Choisissez-en un autre.' : 'That slug is already taken. Pick another.')
+        : (isFr ? `Échec de la création : ${error.message}` : `Failed to create: ${error.message}`);
       showToast(msg, 'error');
       return;
     }
-    showToast('Cooperative created. You are the first admin.', 'success');
+    showToast(isFr ? 'Coopérative créée. Vous êtes le premier administrateur.' : 'Cooperative created. You are the first admin.', 'success');
     onCreated(data.id);
   };
 
@@ -77,7 +80,7 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
         <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-emerald-600" />
-            <h2 className="font-semibold text-gray-900">Create cooperative</h2>
+            <h2 className="font-semibold text-gray-900">{isFr ? 'Créer une coopérative' : 'Create cooperative'}</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
             <X className="w-5 h-5 text-gray-500" />
@@ -86,24 +89,25 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
 
         <div className="p-5 space-y-4">
           <p className="text-sm text-gray-600">
-            A cooperative is a parent organisation (NGO, federation, dairy union, hatchery network) with many member
-            farms under it. You'll be the first admin — invite more after.
+            {isFr
+              ? 'Une coopérative est une organisation mère (ONG, fédération, union laitière, réseau d\'écloseries) avec de nombreuses fermes membres. Vous serez le premier administrateur — invitez-en d\'autres ensuite.'
+              : 'A cooperative is a parent organisation (NGO, federation, dairy union, hatchery network) with many member farms under it. You\'ll be the first admin — invite more after.'}
           </p>
 
-          <Field label="Cooperative name" required>
+          <Field label={isFr ? 'Nom de la coopérative' : 'Cooperative name'} required>
             <input
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 if (!slugTouched) setSlug(slugify(e.target.value));
               }}
-              placeholder="e.g. Kwara Catfish Farmers Union"
+              placeholder={isFr ? 'ex. Union des éleveurs de poissons-chats du Kwara' : 'e.g. Kwara Catfish Farmers Union'}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               disabled={submitting}
             />
           </Field>
 
-          <Field label="URL slug" required hint="Lowercase, hyphens only. Used for public co-op pages.">
+          <Field label={isFr ? 'Slug URL' : 'URL slug'} required hint={isFr ? 'Minuscules, tirets uniquement. Utilisé pour les pages publiques de la coopérative.' : 'Lowercase, hyphens only. Used for public co-op pages.'}>
             <input
               value={finalSlug}
               onChange={(e) => setSlug(slugify(e.target.value))}
@@ -114,16 +118,16 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Country">
+            <Field label={isFr ? 'Pays' : 'Country'}>
               <input
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                placeholder="Nigeria"
+                placeholder={isFr ? 'Nigéria' : 'Nigeria'}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                 disabled={submitting}
               />
             </Field>
-            <Field label="Region / state">
+            <Field label={isFr ? 'Région / état' : 'Region / state'}>
               <input
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
@@ -134,7 +138,7 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
             </Field>
           </div>
 
-          <Field label="Contact email">
+          <Field label={isFr ? 'Email de contact' : 'Contact email'}>
             <input
               type="email"
               value={contactEmail}
@@ -145,7 +149,7 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
             />
           </Field>
 
-          <Field label="Contact phone">
+          <Field label={isFr ? 'Téléphone de contact' : 'Contact phone'}>
             <input
               value={contactPhone}
               onChange={(e) => setContactPhone(e.target.value)}
@@ -155,11 +159,11 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
             />
           </Field>
 
-          <Field label="Description">
+          <Field label={isFr ? 'Description' : 'Description'}>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this cooperative does and who it serves."
+              placeholder={isFr ? 'Ce que fait cette coopérative et qui elle sert.' : 'What this cooperative does and who it serves.'}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
               disabled={submitting}
@@ -173,7 +177,7 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
             disabled={submitting}
             className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
           >
-            Cancel
+            {isFr ? 'Annuler' : 'Cancel'}
           </button>
           <button
             onClick={submit}
@@ -181,7 +185,7 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
             className="px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 inline-flex items-center gap-2"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            Create
+            {isFr ? 'Créer' : 'Create'}
           </button>
         </div>
       </div>

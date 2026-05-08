@@ -3,6 +3,7 @@ import { Download, Activity, MessageCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Flock, Farm } from '../../types/database';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { FlockSwitcher } from '../common/FlockSwitcher';
@@ -35,6 +36,8 @@ interface KPIData {
 export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
   const { t } = useTranslation();
   const { profile, currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const species = useFarmSpecies();
   const { showToast } = useToast();
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(flock?.id || null);
@@ -219,7 +222,7 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading analytics...</div>
+        <div className="text-gray-500">{isFr ? 'Chargement des analyses...' : 'Loading analytics...'}</div>
       </div>
     );
   }

@@ -6,6 +6,7 @@ import { useRealtimeSubscription } from '../../contexts/RealtimeContext';
 import { formatEggsWithTotal } from '../../utils/eggFormatting';
 import { useTranslation } from 'react-i18next';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 // Recharts imports were dead — chart was extracted into a sub-component.
 
 interface FeedPrediction {
@@ -52,6 +53,8 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
   const { currentFarm } = useAuth();
   const { subscribeToTable } = useRealtimeSubscription();
   const { t } = useTranslation();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   // Species-aware vocab — pre-fix the Daily Farm Summary cards said
   // "Mortality: 0 birds" and "Feed Used: 0.0 bags" on a tilapia farm.
   // Greg's audit, May 8 2026.
@@ -714,7 +717,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
   if (loading) {
     return (
       <div className="rounded-3xl px-0 py-1">
-        <div className="text-center text-gray-500">Loading summary...</div>
+        <div className="text-center text-gray-500">{isFr ? 'Chargement du résumé...' : 'Loading summary...'}</div>
       </div>
     );
   }
@@ -722,7 +725,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
   if (!summary) {
     return (
       <div className="rounded-3xl px-0 py-1">
-        <div className="text-center text-gray-500">No data available</div>
+        <div className="text-center text-gray-500">{isFr ? 'Aucune donnée disponible' : 'No data available'}</div>
       </div>
     );
   }
@@ -733,7 +736,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
   return (
     <div className="rounded-3xl px-0 py-1 animate-fade-in">
       <div className="flex items-center justify-between mb-0.5">
-        <div className="text-sm font-semibold text-gray-900">Daily Farm Summary</div>
+        <div className="text-sm font-semibold text-gray-900">{isFr ? 'Résumé quotidien de la ferme' : 'Daily Farm Summary'}</div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSelectedDate(getToday())}
@@ -746,7 +749,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
           <button
             onClick={goToPreviousDay}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Previous day"
+            title={isFr ? 'Jour précédent' : 'Previous day'}
           >
             <ChevronLeft className="w-4 h-4 text-gray-600" />
           </button>
@@ -772,7 +775,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
             className={`p-1.5 rounded-lg transition-colors ${
               canGoNext ? 'hover:bg-gray-100' : 'opacity-50 cursor-not-allowed'
             }`}
-            title="Next day"
+            title={isFr ? 'Jour suivant' : 'Next day'}
           >
             <ChevronRight className="w-4 h-4 text-gray-600" />
           </button>
@@ -833,7 +836,7 @@ export function DailySummaryCard({ refreshTrigger }: DailySummaryCardProps) {
             <span className="text-xs text-gray-600">
               {/* Aquaculture feed is dispensed in kg, poultry/rabbits in
                   bags. The summary card was hardcoded "bags" pre-fix. */}
-              {farmSpecies.id === 'aquaculture' ? 'kg' : 'bags'}
+              {farmSpecies.id === 'aquaculture' ? 'kg' : (isFr ? 'sacs' : 'bags')}
             </span>
           </div>
         </div>

@@ -869,8 +869,8 @@ export function InsightsPage() {
         </div>
         <div className="section-card text-center py-12">
           <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No {farmSpecies.groupTermPlural} Available</h3>
-          <p className="text-gray-500 mb-6">Create your first {farmSpecies.groupTerm.toLowerCase()} to see insights</p>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">{isFr ? `Aucun ${farmSpecies.groupTermPlural.toLowerCase()} disponible` : `No ${farmSpecies.groupTermPlural} Available`}</h3>
+          <p className="text-gray-500 mb-6">{isFr ? `Créez votre premier ${farmSpecies.groupTerm.toLowerCase()} pour voir les insights` : `Create your first ${farmSpecies.groupTerm.toLowerCase()} to see insights`}</p>
           {/* Inline CTA — audit flagged that the empty state was text-only and
               forced users to bounce back to the nav. */}
           {currentRole && currentRole !== 'viewer' && (
@@ -879,7 +879,7 @@ export function InsightsPage() {
               onClick={() => { window.location.hash = '#/flocks'; }}
               className="btn-primary inline-flex items-center"
             >
-              Create {farmSpecies.groupTerm}
+              {isFr ? `Créer un ${farmSpecies.groupTerm.toLowerCase()}` : `Create ${farmSpecies.groupTerm}`}
             </button>
           )}
         </div>
@@ -917,14 +917,14 @@ export function InsightsPage() {
             <button
               onClick={handlePDFExport}
               className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              title="Export PDF"
+              title={isFr ? 'Exporter en PDF' : 'Export PDF'}
             >
               <FileText className="w-5 h-5 text-gray-600" />
             </button>
             <button
               onClick={handleCSVExport}
               className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-              title="Export CSV"
+              title={isFr ? 'Exporter en CSV' : 'Export CSV'}
             >
               <Download className="w-5 h-5 text-gray-600" />
             </button>
@@ -932,11 +932,11 @@ export function InsightsPage() {
               <button
                 onClick={() => setShowShareMenu(v => !v)}
                 className="flex items-center gap-1.5 px-3 py-2.5 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-xl transition-colors text-sm font-medium"
-                title="Share via WhatsApp"
+                title={isFr ? 'Partager via WhatsApp' : 'Share via WhatsApp'}
                 disabled={!selectedFlock}
               >
                 <MessageCircle className="w-4 h-4" />
-                Share
+                {isFr ? 'Partager' : 'Share'}
               </button>
               {showShareMenu && (
                 <>
@@ -944,10 +944,10 @@ export function InsightsPage() {
                   <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-48">
                     <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">{isFr ? 'Envoyer via WhatsApp' : 'Send via WhatsApp'}</p>
                     {([
-                      { key: 'daily', label: "📅 Today's Report" },
-                      { key: 'weekly', label: '📆 Weekly Report' },
-                      { key: 'monthly', label: '🗓️ Monthly Report' },
-                      { key: 'cycle', label: '📊 Full Cycle Report' },
+                      { key: 'daily', label: isFr ? "📅 Rapport du jour" : "📅 Today's Report" },
+                      { key: 'weekly', label: isFr ? '📆 Rapport hebdomadaire' : '📆 Weekly Report' },
+                      { key: 'monthly', label: isFr ? '🗓️ Rapport mensuel' : '🗓️ Monthly Report' },
+                      { key: 'cycle', label: isFr ? '📊 Rapport de cycle complet' : '📊 Full Cycle Report' },
                     ] as const).map(opt => (
                       <button
                         key={opt.key}
@@ -1174,7 +1174,7 @@ export function InsightsPage() {
                   </div>
                 )}
                 <div className={`col-span-2 md:col-span-4 rounded-xl border p-4 ${sellKeepSignal.tone}`}>
-                  <p className="text-xs uppercase tracking-wide mb-1">Sell/Keep signal</p>
+                  <p className="text-xs uppercase tracking-wide mb-1">{isFr ? 'Signal Vendre/Garder' : 'Sell/Keep signal'}</p>
                   <p className="text-lg font-bold">{sellKeepSignal.label}</p>
                   <p className="text-sm opacity-90 mt-0.5">{sellKeepSignal.reason}</p>
                 </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Loader2, Navigation, CheckCircle, X, Mic, MicOff, Camera, Bot, Paperclip, FileSpreadsheet, Volume2, VolumeX, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 import { useToast } from '../../contexts/ToastContext';
@@ -243,6 +244,8 @@ function persistedToDisplay(row: EdenChatMessage): ChatMessage {
 
 export function AIAssistantPage() {
   const { currentFarm, user, profile, allFarms, switchFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { showToast } = useToast();
   useTranslation(); // i18n side-effect; translations resolved inline elsewhere
   const farmSpecies = useFarmSpecies();
@@ -2097,7 +2100,7 @@ export function AIAssistantPage() {
                         </p>
                       ) : (
                         <div className="bg-green-50 rounded-xl p-3 space-y-2">
-                          <p className="text-xs font-semibold text-green-900">Save to Farm Setup?</p>
+                          <p className="text-xs font-semibold text-green-900">{isFr ? 'Enregistrer dans la configuration de la ferme ?' : 'Save to Farm Setup?'}</p>
                           <div className="text-xs text-green-800 space-y-0.5">
                             {message.saveConfigAction.egg_prices && Object.keys(message.saveConfigAction.egg_prices).length > 0 && (
                               <p><strong>Egg prices:</strong> {Object.entries(message.saveConfigAction.egg_prices).map(([k, v]) => `${k}: ${v}`).join(', ')}</p>
@@ -2182,7 +2185,7 @@ export function AIAssistantPage() {
                         </p>
                       ) : (
                         <div className="bg-indigo-50 rounded-xl p-3 space-y-2">
-                          <p className="text-xs font-semibold text-indigo-900">Add Worker to Farm?</p>
+                          <p className="text-xs font-semibold text-indigo-900">{isFr ? "Ajouter un ouvrier à la ferme ?" : 'Add Worker to Farm?'}</p>
                           <div className="text-xs text-indigo-800 space-y-0.5">
                             <p><strong>Name:</strong> {message.logWorkerAction.name}</p>
                             <p><strong>Role:</strong> {message.logWorkerAction.role || 'worker'}</p>

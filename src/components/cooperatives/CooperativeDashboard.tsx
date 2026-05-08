@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 
 interface Cooperative {
@@ -60,9 +61,9 @@ interface PerFarmStats {
 }
 
 const RANGE_OPTIONS = [
-  { id: '30d', label: 'Last 30 days', days: 30 },
-  { id: '90d', label: 'Last 90 days', days: 90 },
-  { id: 'ytd', label: 'Year to date', days: 0 },
+  { id: '30d', label: 'Last 30 days', labelFr: '30 derniers jours', days: 30 },
+  { id: '90d', label: 'Last 90 days', labelFr: '90 derniers jours', days: 90 },
+  { id: 'ytd', label: 'Year to date', labelFr: 'Année en cours', days: 0 },
 ] as const;
 
 type RangeId = (typeof RANGE_OPTIONS)[number]['id'];
@@ -86,6 +87,8 @@ interface Props {
 
 export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
   const { user } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [coop, setCoop] = useState<Cooperative | null>(null);
@@ -113,7 +116,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
     ]);
 
     if (coopRes.error) {
-      showToast(`Failed to load: ${coopRes.error.message}`, 'error');
+      showToast(isFr ? `Échec du chargement : ${coopRes.error.message}` : `Failed to load: ${coopRes.error.message}`, 'error');
       setLoading(false);
       return;
     }
@@ -251,21 +254,21 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
     if (newStatus === 'active') patch.joined_at = new Date().toISOString();
     const { error } = await supabase.from('cooperative_members').update(patch).eq('id', memberId);
     if (error) {
-      showToast(`Failed: ${error.message}`, 'error');
+      showToast(isFr ? `Échec : ${error.message}` : `Failed: ${error.message}`, 'error');
       return;
     }
-    showToast(newStatus === 'active' ? 'Approved' : 'Suspended', 'success');
+    showToast(newStatus === 'active' ? (isFr ? 'Approuvé' : 'Approved') : (isFr ? 'Suspendu' : 'Suspended'), 'success');
     loadCoop();
   };
 
   const removeMember = async (memberId: string) => {
-    if (!confirm('Remove this farm from the cooperative?')) return;
+    if (!confirm(isFr ? 'Retirer cette ferme de la coopérative ?' : 'Remove this farm from the cooperative?')) return;
     const { error } = await supabase.from('cooperative_members').delete().eq('id', memberId);
     if (error) {
-      showToast(`Failed: ${error.message}`, 'error');
+      showToast(isFr ? `Échec : ${error.message}` : `Failed: ${error.message}`, 'error');
       return;
     }
-    showToast('Removed', 'success');
+    showToast(isFr ? 'Retiré' : 'Removed', 'success');
     loadCoop();
   };
 
@@ -280,9 +283,9 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
   if (!coop) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 text-center">
-        <p className="text-gray-600">Cooperative not found.</p>
+        <p className="text-gray-600">{isFr ? 'Coopérative introuvable.' : 'Cooperative not found.'}</p>
         <button onClick={onBack} className="mt-4 text-sm text-emerald-600">
-          ← Back
+          ← {isFr ? 'Retour' : 'Back'}
         </button>
       </div>
     );
@@ -298,7 +301,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
         className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 mb-3"
       >
         <ArrowLeft className="w-4 h-4" />
-        All cooperatives
+        {isFr ? 'Toutes les coopératives' : 'All cooperatives'}
       </button>
 
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -309,7 +312,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
             {isAdmin && (
               <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <ShieldCheck className="w-3 h-3" />
-                Admin
+                {isFr ? 'Administrateur' : 'Admin'}
               </span>
             )}
           </h1>
@@ -331,7 +334,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
-              {id === 'rollup' ? 'Rollup' : id === 'members' ? `Members (${activeMembers.length})` : 'About'}
+              {id === 'rollup' ? (isFr ? 'Synthèse' : 'Rollup') : id === 'members' ? `${isFr ? 'Membres' : 'Members'} (${activeMembers.length})` : (isFr ? 'À propos' : 'About')}
               {id === 'members' && pendingMembers.length > 0 && (
                 <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">
                   {pendingMembers.length}
@@ -355,13 +358,14 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                {r.label}
+                {isFr ? r.labelFr : r.label}
               </button>
             ))}
             {aggregateOnlyCount > 0 && (
               <span className="text-xs text-gray-500 ml-2">
-                ({aggregateOnlyCount} member{aggregateOnlyCount !== 1 ? 's' : ''} sharing aggregates only — excluded
-                from rollup)
+                {isFr
+                  ? `(${aggregateOnlyCount} membre${aggregateOnlyCount !== 1 ? 's' : ''} ne partageant que des agrégats — exclu${aggregateOnlyCount !== 1 ? 's' : ''} de la synthèse)`
+                  : `(${aggregateOnlyCount} member${aggregateOnlyCount !== 1 ? 's' : ''} sharing aggregates only — excluded from rollup)`}
               </span>
             )}
           </div>
@@ -372,31 +376,31 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
             </div>
           ) : stats.length === 0 ? (
             <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-600">
-              No active member farms with full data sharing yet.
+              {isFr ? "Aucune ferme membre active avec partage complet des données pour le moment." : 'No active member farms with full data sharing yet.'}
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
-                <KpiCard label="Member farms" value={`${stats.length}`} icon={<Users className="w-4 h-4" />} />
+                <KpiCard label={isFr ? 'Fermes membres' : 'Member farms'} value={`${stats.length}`} icon={<Users className="w-4 h-4" />} />
                 <KpiCard
-                  label="Total animals"
+                  label={isFr ? 'Total animaux' : 'Total animals'}
                   value={fmtMoney(totals.animals)}
                   icon={<TrendingUp className="w-4 h-4" />}
                 />
                 <KpiCard
-                  label="Mortality (period)"
+                  label={isFr ? 'Mortalité (période)' : 'Mortality (period)'}
                   value={fmtMoney(totals.mortality)}
                   icon={<HeartOff className="w-4 h-4" />}
                   tone="warn"
                 />
                 <KpiCard
-                  label="Revenue (period)"
+                  label={isFr ? 'Revenus (période)' : 'Revenue (period)'}
                   value={fmtMoney(totals.revenue)}
                   icon={<DollarSign className="w-4 h-4" />}
                   tone="good"
                 />
                 <KpiCard
-                  label="Net (period)"
+                  label={isFr ? 'Net (période)' : 'Net (period)'}
                   value={fmtMoney(totals.net)}
                   icon={totals.net >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   tone={totals.net >= 0 ? 'good' : 'bad'}
@@ -405,20 +409,20 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
 
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="font-medium text-gray-900">Per-farm breakdown</h2>
-                  <span className="text-xs text-gray-500">Sorted by net result</span>
+                  <h2 className="font-medium text-gray-900">{isFr ? 'Détail par ferme' : 'Per-farm breakdown'}</h2>
+                  <span className="text-xs text-gray-500">{isFr ? 'Trié par résultat net' : 'Sorted by net result'}</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
                       <tr>
-                        <th className="px-4 py-2 text-left">Farm</th>
-                        <th className="px-4 py-2 text-right">Animals</th>
-                        <th className="px-4 py-2 text-right">Flocks/Ponds</th>
-                        <th className="px-4 py-2 text-right">Mortality</th>
-                        <th className="px-4 py-2 text-right">Revenue</th>
-                        <th className="px-4 py-2 text-right">Expenses</th>
-                        <th className="px-4 py-2 text-right">Net</th>
+                        <th className="px-4 py-2 text-left">{isFr ? 'Ferme' : 'Farm'}</th>
+                        <th className="px-4 py-2 text-right">{isFr ? 'Animaux' : 'Animals'}</th>
+                        <th className="px-4 py-2 text-right">{isFr ? 'Troupeaux/Étangs' : 'Flocks/Ponds'}</th>
+                        <th className="px-4 py-2 text-right">{isFr ? 'Mortalité' : 'Mortality'}</th>
+                        <th className="px-4 py-2 text-right">{isFr ? 'Revenus' : 'Revenue'}</th>
+                        <th className="px-4 py-2 text-right">{isFr ? 'Dépenses' : 'Expenses'}</th>
+                        <th className="px-4 py-2 text-right">{isFr ? 'Net' : 'Net'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -467,7 +471,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
               >
                 <span className="font-medium text-amber-900 flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  {pendingMembers.length} pending request{pendingMembers.length !== 1 ? 's' : ''}
+                  {isFr ? `${pendingMembers.length} demande${pendingMembers.length !== 1 ? 's' : ''} en attente` : `${pendingMembers.length} pending request${pendingMembers.length !== 1 ? 's' : ''}`}
                 </span>
                 {showPending ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -489,14 +493,14 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
                             className="text-xs font-medium px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 inline-flex items-center gap-1"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            Approve
+                            {isFr ? 'Approuver' : 'Approve'}
                           </button>
                           <button
                             onClick={() => removeMember(m.id)}
                             className="text-xs font-medium px-3 py-1.5 rounded-md bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1"
                           >
                             <XCircle className="w-3.5 h-3.5" />
-                            Decline
+                            {isFr ? 'Refuser' : 'Decline'}
                           </button>
                         </div>
                       </li>
@@ -509,10 +513,10 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
 
           <div className="bg-white border border-gray-200 rounded-xl">
             <div className="px-4 py-3 border-b border-gray-200">
-              <h2 className="font-medium text-gray-900">Active members</h2>
+              <h2 className="font-medium text-gray-900">{isFr ? 'Membres actifs' : 'Active members'}</h2>
             </div>
             {activeMembers.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-500">No active members yet.</div>
+              <div className="px-4 py-8 text-center text-sm text-gray-500">{isFr ? 'Aucun membre actif pour le moment.' : 'No active members yet.'}</div>
             ) : (
               <ul className="divide-y divide-gray-100">
                 {activeMembers.map((m) => {
@@ -524,7 +528,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
                           {f?.name ?? m.farm_id}
                           {m.data_sharing === 'aggregate-only' && (
                             <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
-                              Aggregate-only
+                              {isFr ? 'Agrégats uniquement' : 'Aggregate-only'}
                             </span>
                           )}
                         </div>
@@ -532,7 +536,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
                           {[f?.farm_type, f?.location].filter(Boolean).join(' · ')}
                           {m.joined_at && (
                             <span className="ml-2">
-                              · joined {new Date(m.joined_at).toLocaleDateString()}
+                              {isFr ? `· rejoint le ${new Date(m.joined_at).toLocaleDateString()}` : `· joined ${new Date(m.joined_at).toLocaleDateString()}`}
                             </span>
                           )}
                         </div>
@@ -543,13 +547,13 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
                             onClick={() => updateMemberStatus(m.id, 'suspended')}
                             className="text-xs px-3 py-1.5 rounded-md bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                           >
-                            Suspend
+                            {isFr ? 'Suspendre' : 'Suspend'}
                           </button>
                           <button
                             onClick={() => removeMember(m.id)}
                             className="text-xs px-3 py-1.5 rounded-md bg-white text-red-600 border border-red-200 hover:bg-red-50"
                           >
-                            Remove
+                            {isFr ? 'Retirer' : 'Remove'}
                           </button>
                         </div>
                       )}
@@ -567,12 +571,12 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
           {coop.description ? (
             <p className="whitespace-pre-wrap">{coop.description}</p>
           ) : (
-            <p className="text-gray-500 italic">No description.</p>
+            <p className="text-gray-500 italic">{isFr ? 'Aucune description.' : 'No description.'}</p>
           )}
           <dl className="grid sm:grid-cols-2 gap-3 pt-3 border-t border-gray-100">
             {coop.contact_email && (
               <div>
-                <dt className="text-xs uppercase tracking-wide text-gray-500">Contact email</dt>
+                <dt className="text-xs uppercase tracking-wide text-gray-500">{isFr ? 'Email de contact' : 'Contact email'}</dt>
                 <dd>
                   <a href={`mailto:${coop.contact_email}`} className="text-emerald-600 hover:underline">
                     {coop.contact_email}
@@ -582,16 +586,16 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
             )}
             {coop.contact_phone && (
               <div>
-                <dt className="text-xs uppercase tracking-wide text-gray-500">Contact phone</dt>
+                <dt className="text-xs uppercase tracking-wide text-gray-500">{isFr ? 'Téléphone de contact' : 'Contact phone'}</dt>
                 <dd>{coop.contact_phone}</dd>
               </div>
             )}
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-500">URL slug</dt>
+              <dt className="text-xs uppercase tracking-wide text-gray-500">{isFr ? 'Slug URL' : 'URL slug'}</dt>
               <dd className="font-mono text-gray-900">{coop.slug}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-500">Region</dt>
+              <dt className="text-xs uppercase tracking-wide text-gray-500">{isFr ? 'Région' : 'Region'}</dt>
               <dd>{[coop.region, coop.country].filter(Boolean).join(', ') || '—'}</dd>
             </div>
           </dl>

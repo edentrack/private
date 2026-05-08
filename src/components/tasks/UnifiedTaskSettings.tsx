@@ -121,7 +121,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
   };
 
   const handleDelete = async (templateId: string) => {
-    if (!confirm('Delete this task template? This cannot be undone.')) return;
+    if (!confirm(isFr ? 'Supprimer ce modèle de tâche ? Cette action est irréversible.' : 'Delete this task template? This cannot be undone.')) return;
     try {
       const { error } = await supabase
         .from('task_templates')
@@ -393,8 +393,8 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
               <Settings className="w-5 h-5 text-[#3D5F42]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Task Settings</h2>
-              <p className="text-sm text-gray-500">Manage task templates</p>
+              <h2 className="text-lg font-bold text-gray-900">{isFr ? 'Paramètres des tâches' : 'Task Settings'}</h2>
+              <p className="text-sm text-gray-500">{isFr ? 'Gérer les modèles de tâches' : 'Manage task templates'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -404,7 +404,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
               className="btn-primary inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Add Task
+              {isFr ? 'Ajouter une tâche' : 'Add Task'}
             </button>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg touch-target">
               <X className="w-5 h-5 text-gray-500" />
@@ -429,7 +429,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
                     : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
                 }`}
               >
-                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+                {f === 'all' ? (isFr ? 'Tout' : 'All') : (isFr ? (f === 'general' ? 'Général' : f === 'broiler' ? 'Poulet de chair' : f === 'layer' ? 'Pondeuse' : f) : f.charAt(0).toUpperCase() + f.slice(1))}
               </button>
             ))}
           </div>
@@ -477,7 +477,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
               {systemTemplates.length > 0 && (
                 <div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    System Templates ({systemTemplates.length})
+                    {isFr ? 'Modèles système' : 'System Templates'} ({systemTemplates.length})
                   </h3>
                   <div className="space-y-1">
                     {systemTemplates.map((template) => (
@@ -502,7 +502,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
               {customTemplates.length > 0 && (
                 <div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                    Custom Templates ({customTemplates.length})
+                    {isFr ? 'Modèles personnalisés' : 'Custom Templates'} ({customTemplates.length})
                   </h3>
                   <div className="space-y-1">
                     {customTemplates.map((template) => (
@@ -528,7 +528,7 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
         </div>
 
         <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
-          <button onClick={onClose} className="btn-secondary">Close</button>
+          <button onClick={onClose} className="btn-secondary">{isFr ? 'Fermer' : 'Close'}</button>
         </div>
       </div>
 
