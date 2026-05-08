@@ -244,6 +244,19 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
           : action.bird_type || 'Broiler';
       const initialCount = Number(action.count) || 0;
       const today = new Date().toISOString().slice(0, 10);
+      // Accept any of the date aliases Eden might emit when the user
+      // gives the arrival date inline ("100 layers, arrived 3 months ago").
+      // Pre-fix this file hardcoded today, which contradicted the PR #50
+      // fix in AIAssistantPage and made the system-prompt INLINE DATE RULE
+      // useless for the onboarding flow. Greg's audit (May 8, 2026) caught
+      // it: a flock created with "arrived 3 months ago" still showed
+      // "1 week old" on the Flocks page.
+      const stockedDate =
+        (action as any).arrival_date ||
+        (action as any).arrived_at ||
+        (action as any).stocked_date ||
+        (action as any).stocked_at ||
+        today;
       const { error } = await supabase.from('flocks').insert({
         farm_id: farm.id,
         user_id: user.id,
@@ -251,8 +264,8 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         type: flockType,
         initial_count: initialCount,
         current_count: initialCount,
-        start_date: today,
-        arrival_date: today,
+        start_date: stockedDate,
+        arrival_date: stockedDate,
         status: 'active',
       });
       if (error) {

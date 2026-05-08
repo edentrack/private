@@ -11,6 +11,7 @@ import { formatEggsWithTotal, formatEggsForExport } from '../../utils/eggFormatt
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp, formatInsightsForWhatsApp } from '../../utils/whatsappShare';
+import { getCurrencySymbol } from '../../utils/currency';
 import { InsightsSkeleton } from '../common/Skeleton';
 import { ComprehensiveFarmReport } from '../analytics/ComprehensiveFarmReport';
 import { FlockSwitcher } from '../common/FlockSwitcher';
@@ -86,7 +87,13 @@ export function InsightsPage() {
   const [showShareMenu, setShowShareMenu] = useState(false);
 
   const hideFinancials = shouldHideFinancialData(currentRole, farmPermissions);
+  // ISO code is what the DB stores ('XAF', 'NGN', etc) and what CSVs/
+  // WhatsApp messages should show (machine-friendly). Symbol is what
+  // human eyes expect on UI cards (CFA / NGN / KSh). Greg's audit (May
+  // 8 2026) flagged Insights showing "XAF" while Sales summary said
+  // "CFA" — same currency, two strings on one screen. Use both.
   const currencyCode = currentFarm?.currency_code || 'XAF';
+  const currencyLabel = getCurrencySymbol(currencyCode);
   const eggsPerTray = (currentFarm as any)?.eggs_per_tray || 0;
 
   const flockKind = selectedFlock?.type || (selectedFlock as any)?.purpose;
@@ -991,26 +998,26 @@ export function InsightsPage() {
                   <div className="bg-white/60 rounded-xl p-4 text-center">
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.expenses')}</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics.totalExpenses.toLocaleString()}</p>
-                    <p className="text-sm text-gray-500">{currencyCode}</p>
+                    <p className="text-sm text-gray-500">{currencyLabel}</p>
                   </div>
                   <div className="bg-white/60 rounded-xl p-4 text-center">
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.revenue')}</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics.totalRevenue.toLocaleString()}</p>
-                    <p className="text-sm text-gray-500">{currencyCode}</p>
+                    <p className="text-sm text-gray-500">{currencyLabel}</p>
                   </div>
                   <div className="bg-white/60 rounded-xl p-4 text-center">
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.net_profit')}</p>
                     <p className={`text-2xl font-bold ${metrics.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {metrics.netProfit.toLocaleString()}
                     </p>
-                    <p className="text-sm text-gray-500">{currencyCode}</p>
+                    <p className="text-sm text-gray-500">{currencyLabel}</p>
                   </div>
                   <div className="bg-white/60 rounded-xl p-4 text-center">
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Revenue Balance Left</p>
                     <p className={`text-2xl font-bold ${remainingProfitBalance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
                       {remainingProfitBalance.toLocaleString()}
                     </p>
-                    <p className="text-sm text-gray-500">{currencyCode}</p>
+                    <p className="text-sm text-gray-500">{currencyLabel}</p>
                   </div>
                 </div>
 
@@ -1025,7 +1032,7 @@ export function InsightsPage() {
                         ? t('insights.cost_per_bird_alive')
                         : `Cost per ${species.animalTerm} Alive`}
                     </p>
-                    <p className="text-lg font-semibold text-gray-900">{metrics.costPerBird.toLocaleString()} {currencyCode}</p>
+                    <p className="text-lg font-semibold text-gray-900">{metrics.costPerBird.toLocaleString()} {currencyLabel}</p>
                   </div>
                 </div>
               </div>
@@ -1131,7 +1138,7 @@ export function InsightsPage() {
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.cost_efficiency')}</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics.costPerBird.toLocaleString()}</p>
                     <p className="text-sm text-gray-500">
-                      {currencyCode}/{isAquaFlock ? species.animalTerm.toLowerCase() : t('dashboard.birds')}
+                      {currencyLabel}/{isAquaFlock ? species.animalTerm.toLowerCase() : t('dashboard.birds')}
                     </p>
                   </div>
                 )}
@@ -1143,7 +1150,7 @@ export function InsightsPage() {
                   <div className="bg-white/60 rounded-xl p-4">
                     <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{t('insights.daily_avg_cost')}</p>
                     <p className="text-2xl font-bold text-gray-900">{metrics.dailyAvgCost.toLocaleString()}</p>
-                    <p className="text-sm text-gray-500">{currencyCode}/{t('insights.per_day')}</p>
+                    <p className="text-sm text-gray-500">{currencyLabel}/{t('insights.per_day')}</p>
                   </div>
                 )}
                 {isBroilerFlock && (
@@ -1174,7 +1181,7 @@ export function InsightsPage() {
                       <tr className="border-b border-gray-100">
                         <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">{t('insights.week')}</th>
                         {!hideFinancials && (
-                          <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">{t('insights.expenses')} ({currencyCode})</th>
+                          <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">{t('insights.expenses')} ({currencyLabel})</th>
                         )}
                         {isLayerFlock && (
                           <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">{t('dashboard.eggs')}</th>
