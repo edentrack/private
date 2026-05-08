@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Fish, X, Scale, Banknote, CheckCircle, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 import type { HarvestRecord } from '../../types/database';
@@ -24,6 +25,8 @@ function formatCurrency(amount: number, code: string) {
 
 export function HarvestPage() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
   const currency = currentFarm?.currency_code ?? 'XAF';
 
@@ -83,7 +86,7 @@ export function HarvestPage() {
       .eq('farm_id', currentFarm!.id)
       .order('harvested_at', { ascending: false });
     if (error) {
-      toast.error('Failed to load harvest records');
+      toast.error(isFr ? 'Échec du chargement des récoltes' : 'Failed to load harvest records');
     } else {
       setRecords(data || []);
     }
@@ -103,16 +106,16 @@ export function HarvestPage() {
 
   const handleSubmit = async () => {
     if (!formFlockId) {
-      toast.error('Please select a pond/flock');
+      toast.error(isFr ? 'Veuillez sélectionner un étang' : 'Please select a pond/flock');
       return;
     }
     if (!formDate) {
-      toast.error('Please select a harvest date');
+      toast.error(isFr ? 'Veuillez sélectionner une date de récolte' : 'Please select a harvest date');
       return;
     }
     const weight = parseFloat(formWeight);
     if (!formWeight || isNaN(weight) || weight <= 0) {
-      toast.error('Please enter a valid weight');
+      toast.error(isFr ? 'Veuillez entrer un poids valide' : 'Please enter a valid weight');
       return;
     }
 
@@ -136,16 +139,16 @@ export function HarvestPage() {
     setSubmitting(false);
 
     if (error) {
-      toast.error('Failed to save harvest record');
+      toast.error(isFr ? "Échec de l'enregistrement de la récolte" : 'Failed to save harvest record');
     } else {
-      toast.success('Harvest record saved');
+      toast.success(isFr ? 'Récolte enregistrée' : 'Harvest record saved');
       resetForm();
       setShowForm(false);
       loadRecords();
     }
   };
 
-  const getFlockName = (id: string) => flocks.find(f => f.id === id)?.name ?? 'Unknown pond';
+  const getFlockName = (id: string) => flocks.find(f => f.id === id)?.name ?? (isFr ? 'Étang inconnu' : 'Unknown pond');
 
   // Summary stats
   const totalKg = records.reduce((s, r) => s + Number(r.total_weight_kg || 0), 0);
@@ -160,8 +163,8 @@ export function HarvestPage() {
             <Fish className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Harvest Records</h1>
-            <p className="text-sm text-gray-500">Track fish harvests, weights, and revenue.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Enregistrements de récolte' : 'Harvest Records'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? 'Suivez les récoltes de poisson, les poids et les revenus.' : 'Track fish harvests, weights, and revenue.'}</p>
           </div>
         </div>
         <button
@@ -169,7 +172,7 @@ export function HarvestPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'Log Harvest'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Enregistrer une récolte' : 'Log Harvest')}
         </button>
       </div>
 
@@ -179,14 +182,14 @@ export function HarvestPage() {
           <div className="section-card text-center">
             <div className="flex items-center justify-center gap-1 mb-1 text-gray-500">
               <Scale className="w-4 h-4" />
-              <span className="text-xs font-medium">Total Harvested</span>
+              <span className="text-xs font-medium">{isFr ? 'Total récolté' : 'Total Harvested'}</span>
             </div>
             <p className="text-2xl font-bold text-gray-900">{totalKg.toLocaleString()} kg</p>
           </div>
           <div className="section-card text-center">
             <div className="flex items-center justify-center gap-1 mb-1 text-gray-500">
               <Banknote className="w-4 h-4" />
-              <span className="text-xs font-medium">Total Revenue</span>
+              <span className="text-xs font-medium">{isFr ? 'Revenus totaux' : 'Total Revenue'}</span>
             </div>
             <p className="text-2xl font-bold text-[#3D5F42]">
               {totalRevenue > 0 ? formatCurrency(totalRevenue, currency) : '—'}
@@ -198,12 +201,12 @@ export function HarvestPage() {
       {/* Inline Add Form */}
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">New Harvest Record</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Nouvel enregistrement de récolte' : 'New Harvest Record'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Pond / Flock *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étang *' : 'Pond *'}</label>
               {flocks.length === 0 ? (
-                <p className="text-xs text-amber-600">No active aquaculture flocks found.</p>
+                <p className="text-xs text-amber-600">{isFr ? 'Aucun étang actif trouvé.' : 'No active aquaculture flocks found.'}</p>
               ) : (
                 <select
                   value={formFlockId}
@@ -217,7 +220,7 @@ export function HarvestPage() {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Harvest Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date de récolte *' : 'Harvest Date *'}</label>
               <input
                 type="date"
                 value={formDate}
@@ -227,7 +230,7 @@ export function HarvestPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Total Weight (kg) *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Poids total (kg) *' : 'Total Weight (kg) *'}</label>
               <input
                 type="number"
                 step="0.1"
@@ -239,7 +242,7 @@ export function HarvestPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Price per kg ({currency}) <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? `Prix par kg (${currency})` : `Price per kg (${currency})`} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="number"
                 step="1"
@@ -252,8 +255,8 @@ export function HarvestPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Total Amount ({currency})
-                {autoTotal && <span className="ml-1 text-xs text-[#3D5F42] font-normal">(auto-calculated)</span>}
+                {isFr ? `Montant total (${currency})` : `Total Amount (${currency})`}
+                {autoTotal && <span className="ml-1 text-xs text-[#3D5F42] font-normal">{isFr ? '(calculé automatiquement)' : '(auto-calculated)'}</span>}
               </label>
               <input
                 type="number"
@@ -274,17 +277,17 @@ export function HarvestPage() {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Buyer Name <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? "Nom de l'acheteur" : 'Buyer Name'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. Market vendor"
+                placeholder={isFr ? 'ex. Vendeur du marché' : 'e.g. Market vendor'}
                 value={formBuyer}
                 onChange={e => setFormBuyer(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Payment Status</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Statut de paiement' : 'Payment Status'}</label>
               <div className="flex gap-3">
                 {(['pending', 'paid'] as const).map(s => (
                   <button
@@ -299,16 +302,16 @@ export function HarvestPage() {
                         : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                     }`}
                   >
-                    {s === 'paid' ? 'Paid' : 'Pending'}
+                    {isFr ? (s === 'paid' ? 'Payé' : 'En attente') : (s === 'paid' ? 'Paid' : 'Pending')}
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes <span className="text-gray-400 font-normal">optional</span></label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'} <span className="text-gray-400 font-normal">{isFr ? 'optionnel' : 'optional'}</span></label>
               <input
                 type="text"
-                placeholder="e.g. Mixed sizes, pond 2"
+                placeholder={isFr ? 'ex. Tailles mixtes, étang 2' : 'e.g. Mixed sizes, pond 2'}
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
@@ -321,7 +324,7 @@ export function HarvestPage() {
               disabled={submitting || flocks.length === 0}
               className="px-5 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Saving...' : 'Save Harvest'}
+              {submitting ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer la récolte' : 'Save Harvest')}
             </button>
           </div>
         </div>
@@ -338,16 +341,18 @@ export function HarvestPage() {
             <div className="w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center mb-3">
               <Fish className="w-7 h-7 text-teal-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-1">No harvest records yet</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Aucune récolte enregistrée pour le moment' : 'No harvest records yet'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
-              Log your first harvest to start tracking fish sales and revenue.
+              {isFr
+                ? 'Enregistrez votre première récolte pour commencer le suivi des ventes et revenus.'
+                : 'Log your first harvest to start tracking fish sales and revenue.'}
             </p>
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Log First Harvest
+              {isFr ? 'Enregistrer la première récolte' : 'Log First Harvest'}
             </button>
           </div>
         ) : (
@@ -368,7 +373,7 @@ export function HarvestPage() {
                       {record.payment_status === 'paid'
                         ? <CheckCircle className="w-3 h-3" />
                         : <Clock className="w-3 h-3" />}
-                      {record.payment_status === 'paid' ? 'Paid' : 'Pending'}
+                      {record.payment_status === 'paid' ? (isFr ? 'Payé' : 'Paid') : (isFr ? 'En attente' : 'Pending')}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-1.5">
