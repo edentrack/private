@@ -200,8 +200,21 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
 
   // PHASE 3: bucket-by-flock so the per-flock summary doesn't need its own
   // round-trips.
+  //
+  // CRITICAL: every egg sale and bird sale gets written to TWO tables —
+  // the canonical detail row in `egg_sales`/`bird_sales`, and a shadow
+  // row in `revenues` with `source_type` set to 'egg_sale'/'bird_sale'.
+  // If we sum both naively, every sale is double-counted. The legacy
+  // `reportGenerator.ts:462` filter already excludes the shadow rows.
+  // We do the same here. Without this filter, a 800k egg sale shows up
+  // as 1.6M revenue in the report — Greg's "800k income vs 1.2m profit"
+  // bug.
+  const otherRevenuesOnly = (revenuesRes.data || []).filter((r: any) =>
+    r.source_type !== 'egg_sale' && r.source_type !== 'bird_sale',
+  );
+
   const expensesByFlock = sumByFlockId<any>(expensesRes.data, r => r.amount);
-  const revenuesByFlock = sumByFlockId<any>(revenuesRes.data, r => r.amount);
+  const revenuesByFlock = sumByFlockId<any>(otherRevenuesOnly, r => r.amount);
   const eggSalesByFlock = sumByFlockId<any>(eggSalesRes.data, r => r.total_amount);
   const birdSalesByFlock = sumByFlockId<any>(birdSalesRes.data, r => r.total_amount);
   const feedByFlock = sumByFlockId<any>(feedRes.data, r => r.quantity_given);
@@ -241,10 +254,12 @@ export async function assembleFarmReport(input: FarmReportInput): Promise<FarmRe
   });
 
   // PHASE 4: top-level totals + category aggregations.
+  // `otherRevenuesOnly` excludes egg_sale/bird_sale shadow rows — see the
+  // comment in PHASE 3 for why.
   const totalExpenses = (expensesRes.data || []).reduce((s, r: any) => s + Number(r.amount || 0), 0);
   const totalEggSales = (eggSalesRes.data || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
   const totalBirdSales = (birdSalesRes.data || []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
-  const totalOtherRevenue = (revenuesRes.data || []).reduce((s, r: any) => s + Number(r.amount || 0), 0);
+  const totalOtherRevenue = otherRevenuesOnly.reduce((s, r: any) => s + Number(r.amount || 0), 0);
   const totalRevenue = totalEggSales + totalBirdSales + totalOtherRevenue;
   const netProfit = totalRevenue - totalExpenses;
 
