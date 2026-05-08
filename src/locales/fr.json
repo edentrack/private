@@ -486,6 +486,8 @@
     "feed_quantity_per_bag": "Poids par sac (kg)",
     "feed_quantity_per_bag_desc": "Un sac équivaut à ce nombre de kilogrammes. Entrez 50 pour des sacs de 50 kg, 25 pour des sacs de 25 kg, etc. Tous les calculs internes utilisent des grammes.",
     "save_failed": "Échec de l'enregistrement des paramètres",
+    "run_migrations_feed_intake": "Exécutez les migrations de la base de données pour activer les objectifs de consommation. Valeurs par défaut utilisées pour le moment.",
+    "feed_intake_columns_missing": "Colonnes de consommation introuvables. Exécutez « supabase db push » ou appliquez la migration pour les ajouter.",
     "change_to_english": "Changer en anglais",
     "change_to_french": "Changer en français",
     "loading_permissions": "Chargement des autorisations...",

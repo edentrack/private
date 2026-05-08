@@ -131,7 +131,7 @@ export function FlockTargetsSettings() {
           setLayerDuration(d.layer_total_duration_weeks || 72);
           setBroilerPhases(d.broiler_phases && Array.isArray(d.broiler_phases) && d.broiler_phases.length > 0 ? d.broiler_phases : DEFAULT_BROILER_PHASES);
           setLayerPhases(d.layer_phases && Array.isArray(d.layer_phases) && d.layer_phases.length > 0 ? d.layer_phases : DEFAULT_LAYER_PHASES);
-          setMessage('Run database migrations to enable feed intake targets. Using defaults for now.');
+          setMessage(t('settings.run_migrations_feed_intake') || 'Run database migrations to enable feed intake targets. Using defaults for now.');
           setTimeout(() => setMessage(''), 5000);
         }
         return;
@@ -226,7 +226,7 @@ export function FlockTargetsSettings() {
       console.error('Error saving settings:', error);
       const errMsg = error?.message || '';
       if (errMsg.includes('broiler_feed_intake_targets') || errMsg.includes('layer_feed_intake_targets') || errMsg.includes('schema cache')) {
-        setMessage('Feed intake columns not found. Run "supabase db push" or apply the migration to add them.');
+        setMessage(t('settings.feed_intake_columns_missing') || 'Feed intake columns not found. Run "supabase db push" or apply the migration to add them.');
       } else {
         setMessage(errMsg || t('settings.save_failed') || 'Failed to save settings');
       }

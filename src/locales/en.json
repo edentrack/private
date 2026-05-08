@@ -1596,6 +1596,8 @@
     "feed_quantity_per_bag": "Weight per Bag (kg)",
     "feed_quantity_per_bag_desc": "One bag equals this many kilograms. Enter 50 for 50 kg bags, 25 for 25 kg bags, etc. All internal calculations use grams. This setting converts bags to kg for display.",
     "save_failed": "Failed to save settings",
+    "run_migrations_feed_intake": "Run database migrations to enable feed intake targets. Using defaults for now.",
+    "feed_intake_columns_missing": "Feed intake columns not found. Run \"supabase db push\" or apply the migration to add them.",
     "change_to_english": "Change to English",
     "change_to_french": "Changer en français",
     "loading_permissions": "Loading permissions...",
