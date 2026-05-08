@@ -272,7 +272,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
       if (!flockName) return { pill: null, complete: false, switchToForm: false };
       const { data: flock } = await supabase
         .from('flocks')
-        .select('id, farm_id')
+        .select('id, farm_id, type')
         .ilike('name', flockName)
         .limit(1)
         .maybeSingle();
@@ -285,7 +285,15 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         species: action.species || 'other',
         fingerling_count: action.fingerling_count || 0,
       });
-      return { pill: `✓ Logged stocking on ${stockedAt}`, complete: false, switchToForm: false };
+      // BUG-fix (Greg's audit, May 2026): "stocking" is fish/aquaculture
+      // vocab. For poultry we say "Delivered". For rabbits, "Acquired".
+      // Always use the species-correct verb for the pill.
+      const flockType = String((flock as any).type || '').toLowerCase();
+      const verb =
+        flockType === 'rabbitry' ? 'Acquired'
+        : ['catfish', 'tilapia', 'salmon', 'trout', 'carp', 'shrimp', 'clarias', 'other fish'].includes(flockType) ? 'Stocked'
+        : 'Delivered';
+      return { pill: `✓ ${verb} on ${stockedAt}`, complete: false, switchToForm: false };
     }
 
     if (action.type === 'LOG_MORTALITY') {

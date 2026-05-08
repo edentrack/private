@@ -66,13 +66,28 @@ async function computeHealthScore(farmId: string): Promise<HealthScoreResult> {
   const feedItems = get(feedRes).data || [];
   const hasFeed = feedItems.some((f: any) => (f.current_stock_bags || f.bags_in_stock || 0) > 0);
 
+  const hasExpenses = (get(expensesRes).data?.length || 0) > 0;
+  const hasEggColl = (get(eggCollRes).data?.length || 0) > 0;
+  const hasMortality = totalMortality > 0;
+
+  // BUG-fix (Greg's audit, May 2026): a farm with one flock but zero
+  // events ("just signed up") was scoring ~23% INACTIVE on day one
+  // because almost every check failed. The fix: stay in setup mode
+  // until at least one operational event lands (egg collection, expense,
+  // mortality entry, etc.). The "you have a flock but no data" state
+  // is exactly setup mode, not unhealthy.
+  const hasAnyEvent = hasExpenses || hasEggColl || hasMortality;
+  if (!hasAnyEvent) {
+    return { mode: 'setup' };
+  }
+
   const checks = [
     !!flock,
     (get(workersRes).data?.length || 0) > 0,
     (get(workersWithPayRes).data?.length || 0) > 0,
     Object.keys(get(configRes).data?.egg_prices || {}).length > 0,
-    (get(expensesRes).data?.length || 0) > 0,
-    (get(eggCollRes).data?.length || 0) > 0,
+    hasExpenses,
+    hasEggColl,
     mortalityOk,
     tasksOk,
     hasFeed,

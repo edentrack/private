@@ -3,7 +3,7 @@ import { DollarSign, CheckCircle, AlertTriangle, Package, Printer, Send } from '
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 
 interface RecordEggSaleProps {
@@ -136,35 +136,61 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
     setLoading(true);
     setErrorMessage(null);
 
+    // Helper: surface the validation error and scroll it into view. The
+    // form is tall, the user is at the bottom clicking Submit, the error
+    // banner is at the top — without scrolling them up the form looks
+    // dead. Greg's audit (May 2026) called this out as "egg sales submit
+    // silently fails" because he saw exactly that: click, no feedback.
+    const failWith = (msg: string) => {
+      setErrorMessage(msg);
+      setLoading(false);
+      // Don't auto-dismiss validation errors — they're persistent state,
+      // not transient toasts. The user needs them visible while they fix
+      // the form. (Success messages still auto-dismiss elsewhere.)
+      // Scroll the error banner into view; the form's outer wrapper has
+      // the banner at the top.
+      requestAnimationFrame(() => {
+        const banner = document.querySelector('[data-egg-sale-error]');
+        if (banner) banner.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    };
+
     try {
       if (!farmId) {
-        setErrorMessage('Farm not loaded. Please refresh the page and try again.');
-        setLoading(false);
+        failWith('Farm not loaded. Please refresh the page and try again.');
         return;
       }
 
+      // Inventory checks — refined messages now point the user to the
+      // fix (record collections first) instead of just saying "not enough".
+      const noInventory = !inventory ||
+        ((inventory.small_eggs || 0) +
+         (inventory.medium_eggs || 0) +
+         (inventory.large_eggs || 0) +
+         (inventory.jumbo_eggs || 0)) === 0;
+
       if (formData.small_eggs_sold > (inventory?.small_eggs || 0)) {
-        setErrorMessage(`Not enough small eggs! Only ${inventory?.small_eggs || 0} in stock`);
-        setTimeout(() => setErrorMessage(null), 3000);
-        setLoading(false);
+        failWith(noInventory
+          ? "You have 0 eggs in inventory. Record an egg collection from the Dashboard first, then come back here to sell."
+          : `Not enough small eggs. Only ${inventory?.small_eggs || 0} in stock.`);
         return;
       }
       if (formData.medium_eggs_sold > (inventory?.medium_eggs || 0)) {
-        setErrorMessage(`Not enough medium eggs! Only ${inventory?.medium_eggs || 0} in stock`);
-        setTimeout(() => setErrorMessage(null), 3000);
-        setLoading(false);
+        failWith(noInventory
+          ? "You have 0 eggs in inventory. Record an egg collection from the Dashboard first, then come back here to sell."
+          : `Not enough medium eggs. Only ${inventory?.medium_eggs || 0} in stock.`);
         return;
       }
       if (formData.large_eggs_sold > (inventory?.large_eggs || 0)) {
-        setErrorMessage(`Not enough large eggs! Only ${inventory?.large_eggs || 0} in stock`);
-        setTimeout(() => setErrorMessage(null), 3000);
-        setLoading(false);
+        failWith(noInventory
+          ? "You have 0 eggs in inventory. Record an egg collection from the Dashboard first, then come back here to sell."
+          : `Not enough large eggs. Only ${inventory?.large_eggs || 0} in stock.`);
         return;
       }
       if (formData.jumbo_eggs_sold > (inventory?.jumbo_eggs || 0)) {
-        setErrorMessage(`Not enough jumbo eggs! Only ${inventory?.jumbo_eggs || 0} in stock`);
-        setTimeout(() => setErrorMessage(null), 3000);
-        setLoading(false);
+        failWith(noInventory
+          ? "You have 0 eggs in inventory. Record an egg collection from the Dashboard first, then come back here to sell."
+          : `Not enough jumbo eggs. Only ${inventory?.jumbo_eggs || 0} in stock.`);
         return;
       }
 
@@ -181,9 +207,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
         formData.jumbo_eggs_sold;
 
       if (totalEggs === 0) {
-        setErrorMessage('Please enter at least some eggs to sell');
-        setTimeout(() => setErrorMessage(null), 3000);
-        setLoading(false);
+        failWith('Please enter at least some eggs to sell.');
         return;
       }
 
@@ -347,6 +371,11 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
   };
 
   const currencyCode = currentFarm?.currency_code || 'XAF';
+  // Use the user-facing symbol on form labels (e.g. "CFA" for XAF) so it
+  // matches the totals row at the bottom and the Sales summary card.
+  // Pre-fix: form labels showed "(XAF)" while totals showed "CFA" — same
+  // currency, two different strings on the same screen. Greg flagged it.
+  const currencyLabel = getCurrencySymbol(currencyCode);
 
   const handlePrintReceipt = () => {
     if (!lastSaleDetails) return;
@@ -466,9 +495,26 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
       )}
 
       {errorMessage && (
-        <div className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 animate-fade-in">
+        <div
+          data-egg-sale-error
+          className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-start gap-3 animate-fade-in"
+        >
           <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm font-medium text-red-900">{errorMessage}</p>
+        </div>
+      )}
+
+      {/* Persistent warning when there's nothing to sell — prevents the
+          user from filling out the form, clicking submit, and getting
+          a stale-looking error. Shows up the moment the page loads. */}
+      {inventory !== null &&
+       (inventory.small_eggs + inventory.medium_eggs + inventory.large_eggs + inventory.jumbo_eggs) === 0 && (
+        <div className="mb-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-900">
+            <p className="font-semibold mb-1">No eggs in inventory yet</p>
+            <p>You can't record a sale until you have eggs to sell. Open the Dashboard and record an egg collection first — then come back here.</p>
+          </div>
         </div>
       )}
 
@@ -783,7 +829,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                {t('sales.price_per_egg')} ({currencyCode})
+                {t('sales.price_per_egg')} ({currencyLabel})
               </label>
               <input
                 type="number"
@@ -811,7 +857,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                {t('sales.price_per_egg')} ({currencyCode})
+                {t('sales.price_per_egg')} ({currencyLabel})
               </label>
               <input
                 type="number"
@@ -839,7 +885,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                {t('sales.price_per_egg')} ({currencyCode})
+                {t('sales.price_per_egg')} ({currencyLabel})
               </label>
               <input
                 type="number"
@@ -867,7 +913,7 @@ export function RecordEggSale({ farmId, onSuccess }: RecordEggSaleProps) {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                {t('sales.price_per_egg')} ({currencyCode})
+                {t('sales.price_per_egg')} ({currencyLabel})
               </label>
               <input
                 type="number"
