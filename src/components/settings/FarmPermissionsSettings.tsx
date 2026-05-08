@@ -46,10 +46,12 @@ interface PermissionGroup {
 }
 
 interface PermissionVocab {
-  groupTerm: string;       // "Flock", "Pond", "Rabbitry"
-  groupTermLower: string;  // "flock", "pond", "rabbitry"
-  animalTerm: string;      // "Bird", "Fish", "Rabbit"
-  animalTermLower: string; // "bird", "fish", "rabbit"
+  groupTerm: string;            // "Flock", "Pond", "Rabbitry"
+  groupTermPlural: string;      // "Flocks", "Ponds", "Rabbitries"
+  groupTermLower: string;       // "flock", "pond", "rabbitry"
+  groupTermPluralLower: string; // "flocks", "ponds", "rabbitries"
+  animalTerm: string;           // "Bird", "Fish", "Rabbit"
+  animalTermLower: string;      // "bird", "fish", "rabbit"
   animalTermPluralLower: string;
   isPoultry: boolean;
 }
@@ -103,7 +105,7 @@ function buildManagerGroups(v: PermissionVocab): PermissionGroup[] {
         {
           key: 'managers_can_delete_records',
           label: 'Delete Records',
-          description: `Permanently delete expenses, sales, ${v.groupTermLower}s, and other records`,
+          description: `Permanently delete expenses, sales, ${v.groupTermPluralLower}, and other records`,
           warning: 'Deletions cannot be undone',
         },
       ],
@@ -137,19 +139,21 @@ function buildWorkerGroups(v: PermissionVocab): PermissionGroup[] {
 }
 
 // Viewer role is always read-only everywhere — no toggles needed, just show a summary
-const VIEWER_INFO = [
-  { label: 'Dashboard & Flocks', access: 'Read only' },
-  { label: 'Tasks & Shifts', access: 'Read only' },
-  { label: 'Expenses & Sales', access: 'Read only' },
-  { label: 'Inventory & Feed', access: 'Read only' },
-  { label: 'Mortality & Weight', access: 'Read only' },
-  { label: 'Vaccinations & Vet Log', access: 'Read only' },
-  { label: 'Analytics & Insights', access: 'Read only' },
-  { label: 'Eden AI', access: 'Full access' },
-  { label: 'Team & Payroll', access: 'No access' },
-  { label: 'Settings & Billing', access: 'No access' },
-  { label: 'Smart Import', access: 'No access' },
-];
+function buildViewerInfo(v: PermissionVocab): { label: string; access: string }[] {
+  return [
+    { label: `Dashboard & ${v.groupTermPlural}`, access: 'Read only' },
+    { label: 'Tasks & Shifts', access: 'Read only' },
+    { label: 'Expenses & Sales', access: 'Read only' },
+    { label: 'Inventory & Feed', access: 'Read only' },
+    { label: 'Mortality & Weight', access: 'Read only' },
+    { label: 'Vaccinations & Vet Log', access: 'Read only' },
+    { label: 'Analytics & Insights', access: 'Read only' },
+    { label: 'Eden AI', access: 'Full access' },
+    { label: 'Team & Payroll', access: 'No access' },
+    { label: 'Settings & Billing', access: 'No access' },
+    { label: 'Smart Import', access: 'No access' },
+  ];
+}
 
 export function FarmPermissionsSettings() {
   const { t } = useTranslation();
@@ -158,7 +162,9 @@ export function FarmPermissionsSettings() {
   const farmSpecies = useFarmSpecies();
   const permVocab: PermissionVocab = useMemo(() => ({
     groupTerm: farmSpecies.groupTerm,
+    groupTermPlural: farmSpecies.groupTermPlural,
     groupTermLower: farmSpecies.groupTerm.toLowerCase(),
+    groupTermPluralLower: farmSpecies.groupTermPlural.toLowerCase(),
     animalTerm: farmSpecies.animalTerm,
     animalTermLower: farmSpecies.animalTerm.toLowerCase(),
     animalTermPluralLower: farmSpecies.animalTermPlural.toLowerCase(),
@@ -166,6 +172,7 @@ export function FarmPermissionsSettings() {
   }), [farmSpecies.id]);
   const managerGroups = useMemo(() => buildManagerGroups(permVocab), [permVocab]);
   const workerGroups = useMemo(() => buildWorkerGroups(permVocab), [permVocab]);
+  const viewerInfo = useMemo(() => buildViewerInfo(permVocab), [permVocab]);
   const [local, setLocal] = useState<Partial<FarmPermissions>>(DEFAULTS);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -230,14 +237,18 @@ export function FarmPermissionsSettings() {
   };
 
   const applyWorkerPreset = (preset: 'basic' | 'full') => {
+    // workers_can_log_eggs only matters on poultry; toggle stays false on
+    // rabbits/aqua so the underlying column reflects what's actually
+    // grantable in the UI.
+    const allowEggs = permVocab.isPoultry;
     if (preset === 'basic') {
       setLocal(prev => ({ ...prev,
-        workers_can_log_mortality: true, workers_can_log_eggs: true,
+        workers_can_log_mortality: true, workers_can_log_eggs: allowEggs,
         workers_can_log_weight: false, workers_can_use_eden_ai: false, workers_can_view_financials: false,
       }));
     } else {
       setLocal(prev => ({ ...prev,
-        workers_can_log_mortality: true, workers_can_log_eggs: true,
+        workers_can_log_mortality: true, workers_can_log_eggs: allowEggs,
         workers_can_log_weight: true, workers_can_use_eden_ai: true, workers_can_view_financials: false,
       }));
     }
@@ -353,12 +364,18 @@ export function FarmPermissionsSettings() {
               <button onClick={() => applyWorkerPreset('basic')}
                 className="px-3 py-2 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-800 text-xs font-semibold hover:bg-gray-100 transition-colors text-left">
                 <div className="font-bold">Basic</div>
-                <div className="text-gray-500 font-normal mt-0.5">Eggs & mortality only</div>
+                <div className="text-gray-500 font-normal mt-0.5">
+                  {permVocab.isPoultry ? 'Eggs & mortality only' : 'Mortality only'}
+                </div>
               </button>
               <button onClick={() => applyWorkerPreset('full')}
                 className="px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors text-left">
                 <div className="font-bold">Full Worker</div>
-                <div className="text-amber-600 font-normal mt-0.5">Eggs, mortality, weight & Eden AI</div>
+                <div className="text-amber-600 font-normal mt-0.5">
+                  {permVocab.isPoultry
+                    ? 'Eggs, mortality, weight & Eden AI'
+                    : 'Mortality, weight & Eden AI'}
+                </div>
               </button>
             </div>
             <p className="text-xs text-gray-400 mt-2">Applying a preset fills in toggles below — adjust individually after if needed.</p>
@@ -383,7 +400,7 @@ export function FarmPermissionsSettings() {
       {/* Viewer — static summary */}
       {activeTab === 'viewer' && (
         <div className="space-y-2">
-          {VIEWER_INFO.map(item => (
+          {viewerInfo.map(item => (
             <div key={item.label} className="flex items-center justify-between py-3 px-4 border border-gray-100 rounded-xl">
               <span className="text-sm font-medium text-gray-800">{item.label}</span>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
