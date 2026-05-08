@@ -3,6 +3,7 @@ import { TrendingUp, Download, RefreshCcw, Loader2, FileText, CheckCircle2, Aler
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { buildCreditScore, CreditScoreResult } from '../../utils/creditScore';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { getCurrencySymbol } from '../../utils/currency';
@@ -20,6 +21,8 @@ const TIER_COLORS: Record<CreditScoreResult['tier'], { bg: string; ring: string;
 export function CreditScorePage() {
   const { user, profile, currentFarm } = useAuth();
   const { showToast } = useToast();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState<CreditScoreResult | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -32,15 +35,15 @@ export function CreditScorePage() {
     if (!currentFarm) return;
     setLoading(true);
     try {
-      const result = await buildCreditScore({ farmId: currentFarm.id, supabase });
+      const result = await buildCreditScore({ farmId: currentFarm.id, supabase, language: isFr ? 'fr' : 'en' });
       setScore(result);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      showToast(`Failed to compute score: ${msg}`, 'error');
+      showToast(isFr ? `Échec du calcul du score : ${msg}` : `Failed to compute score: ${msg}`, 'error');
     } finally {
       setLoading(false);
     }
-  }, [currentFarm, showToast]);
+  }, [currentFarm, showToast, isFr]);
 
   useEffect(() => {
     compute();
@@ -59,10 +62,10 @@ export function CreditScorePage() {
         currencyCode: currentFarm.currency_code || currentFarm.currency || 'USD',
         score,
       });
-      showToast('PDF downloaded — submit to your bank.', 'success');
+      showToast(isFr ? 'PDF téléchargé — à soumettre à votre banque.' : 'PDF downloaded — submit to your bank.', 'success');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      showToast(`Download failed: ${msg}`, 'error');
+      showToast(isFr ? `Échec du téléchargement : ${msg}` : `Download failed: ${msg}`, 'error');
     } finally {
       setDownloading(false);
     }
@@ -71,7 +74,7 @@ export function CreditScorePage() {
   if (!currentFarm) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 text-center text-gray-600">
-        Select a farm to compute your credit score.
+        {isFr ? 'Sélectionnez une ferme pour calculer votre score de crédit.' : 'Select a farm to compute your credit score.'}
       </div>
     );
   }
@@ -87,9 +90,9 @@ export function CreditScorePage() {
   if (!score) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 text-center text-gray-600">
-        Could not compute score. Try again.
+        {isFr ? 'Impossible de calculer le score. Veuillez réessayer.' : 'Could not compute score. Try again.'}
         <button onClick={compute} className="block mx-auto mt-3 text-sm text-emerald-600">
-          Retry
+          {isFr ? 'Réessayer' : 'Retry'}
         </button>
       </div>
     );
@@ -105,10 +108,12 @@ export function CreditScorePage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <TrendingUp className="w-6 h-6 text-emerald-600" />
-            Creditworthiness
+            {isFr ? 'Solvabilité' : 'Creditworthiness'}
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            A score banks and lenders can use to assess your farm. Built from your operational and financial records.
+            {isFr
+              ? "Un score que les banques et les prêteurs peuvent utiliser pour évaluer votre ferme. Construit à partir de vos données opérationnelles et financières."
+              : 'A score banks and lenders can use to assess your farm. Built from your operational and financial records.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -117,7 +122,7 @@ export function CreditScorePage() {
             className="inline-flex items-center gap-2 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-3 py-2 rounded-lg text-sm font-medium"
           >
             <RefreshCcw className="w-4 h-4" />
-            Refresh
+            {isFr ? 'Actualiser' : 'Refresh'}
           </button>
           <button
             onClick={handleDownload}
@@ -125,14 +130,14 @@ export function CreditScorePage() {
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
           >
             {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Download PDF for bank
+            {isFr ? 'Télécharger le PDF pour la banque' : 'Download PDF for bank'}
           </button>
         </div>
       </div>
 
       <div className={`${tone.bg} rounded-2xl ring-1 ${tone.ring} p-6 mb-6 flex flex-wrap items-center justify-between gap-4`}>
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Overall score</div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{isFr ? 'Score global' : 'Overall score'}</div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-5xl font-bold text-gray-900 tabular-nums">{score.total}</span>
             <span className="text-gray-500">/ 100</span>
@@ -142,8 +147,8 @@ export function CreditScorePage() {
         <div className="flex items-center gap-2 text-sm text-gray-700">
           <FileText className="w-5 h-5 text-gray-500" />
           <div>
-            <div className="font-medium text-gray-900">Bank-ready PDF</div>
-            <div className="text-xs text-gray-500">Includes score, breakdown, and operational summary</div>
+            <div className="font-medium text-gray-900">{isFr ? 'PDF prêt pour la banque' : 'Bank-ready PDF'}</div>
+            <div className="text-xs text-gray-500">{isFr ? 'Inclut le score, le détail et le résumé opérationnel' : 'Includes score, breakdown, and operational summary'}</div>
           </div>
         </div>
       </div>
@@ -171,7 +176,7 @@ export function CreditScorePage() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-        <h2 className="font-medium text-gray-900 mb-3">Your operations summary</h2>
+        <h2 className="font-medium text-gray-900 mb-3">{isFr ? 'Résumé de vos opérations' : 'Your operations summary'}</h2>
         <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
           {(() => {
             // Use the human currency symbol on UI (CFA, NGN). The PDF
@@ -180,27 +185,31 @@ export function CreditScorePage() {
             // Species-correct labels: poultry → "Active flocks", aquaculture
             // → "Active ponds", rabbits → "Active rabbitries". And the
             // "animals" tile uses the species term.
-            const groupLabel = `Active ${farmSpecies.groupTermPlural.toLowerCase()}`;
-            const animalsLabel = `${farmSpecies.animalTermPlural} on farm`;
+            const groupLabel = isFr
+              ? `${farmSpecies.groupTermPlural} actifs`
+              : `Active ${farmSpecies.groupTermPlural.toLowerCase()}`;
+            const animalsLabel = isFr
+              ? `${farmSpecies.animalTermPlural} dans la ferme`
+              : `${farmSpecies.animalTermPlural} on farm`;
             return (
               <>
-                <Stat label="Days on platform" value={`${score.metrics.daysOnPlatform}`} />
+                <Stat label={isFr ? 'Jours sur la plateforme' : 'Days on platform'} value={`${score.metrics.daysOnPlatform}`} />
                 <Stat label={groupLabel} value={`${score.metrics.activeFlockCount}`} />
                 <Stat label={animalsLabel} value={fmt(score.metrics.totalAnimals)} />
-                <Stat label="Revenue (12mo)" value={`${currencyLabel} ${fmt(score.metrics.totalRevenueLast12mo)}`} />
-                <Stat label="Expenses (12mo)" value={`${currencyLabel} ${fmt(score.metrics.totalExpensesLast12mo)}`} />
+                <Stat label={isFr ? 'Revenus (12 mois)' : 'Revenue (12mo)'} value={`${currencyLabel} ${fmt(score.metrics.totalRevenueLast12mo)}`} />
+                <Stat label={isFr ? 'Dépenses (12 mois)' : 'Expenses (12mo)'} value={`${currencyLabel} ${fmt(score.metrics.totalExpensesLast12mo)}`} />
                 <Stat
-                  label="Net result (12mo)"
+                  label={isFr ? 'Résultat net (12 mois)' : 'Net result (12mo)'}
                   value={`${currencyLabel} ${fmt(score.metrics.netLast12mo)}`}
                   tone={score.metrics.netLast12mo >= 0 ? 'good' : 'bad'}
                 />
               </>
             );
           })()}
-          <Stat label="Sales records" value={`${score.metrics.salesEntryCount}`} />
-          <Stat label="Expense records" value={`${score.metrics.expenseEntryCount}`} />
+          <Stat label={isFr ? 'Enregistrements de ventes' : 'Sales records'} value={`${score.metrics.salesEntryCount}`} />
+          <Stat label={isFr ? 'Enregistrements de dépenses' : 'Expense records'} value={`${score.metrics.expenseEntryCount}`} />
           <Stat
-            label={`${farmSpecies.lossNoun} rate`}
+            label={isFr ? `Taux de ${farmSpecies.lossNoun.toLowerCase()}` : `${farmSpecies.lossNoun} rate`}
             value={`${score.metrics.mortalityRatePct.toFixed(1)}%`}
             tone={score.metrics.mortalityRatePct < 5 ? 'good' : score.metrics.mortalityRatePct < 15 ? undefined : 'bad'}
           />
@@ -210,29 +219,28 @@ export function CreditScorePage() {
       <div className="grid md:grid-cols-2 gap-3 mb-6">
         <Tip
           icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
-          title="What's already strong"
+          title={isFr ? 'Ce qui est déjà solide' : "What's already strong"}
           items={score.components.filter((c) => c.score / c.maxScore >= 0.8).map((c) => c.label)}
-          emptyMsg="Build up more components to see strengths."
+          emptyMsg={isFr ? "Renforcez d'autres composants pour voir vos points forts." : 'Build up more components to see strengths.'}
         />
         <Tip
           icon={<AlertCircle className="w-4 h-4 text-amber-600" />}
-          title="Where to improve"
+          title={isFr ? 'À améliorer' : 'Where to improve'}
           items={score.components
             .filter((c) => c.score / c.maxScore < 0.6)
             .map((c) => `${c.label} — ${c.detail}`)}
-          emptyMsg="No weak areas. Keep going."
+          emptyMsg={isFr ? 'Aucun point faible. Continuez.' : 'No weak areas. Keep going.'}
         />
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900 flex gap-3">
         <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <div>
-          <div className="font-medium mb-1">How banks use this</div>
+          <div className="font-medium mb-1">{isFr ? "Comment les banques l'utilisent" : 'How banks use this'}</div>
           <p className="text-blue-800">
-            Smallholder farmers in Africa rarely qualify for loans because they lack a formal credit history. This
-            report turns your day-to-day record-keeping into evidence: regular logging proves operational discipline,
-            stable production proves capability, and financial logging proves cash-flow visibility. Submit alongside
-            your bank's standard application.
+            {isFr
+              ? "Les petits agriculteurs d'Afrique sont rarement éligibles aux prêts car ils n'ont pas d'historique de crédit formel. Ce rapport transforme votre tenue de registres quotidienne en preuves : un enregistrement régulier prouve la discipline opérationnelle, une production stable prouve la capacité, et un suivi financier prouve la visibilité de la trésorerie. À soumettre avec votre demande bancaire standard."
+              : "Smallholder farmers in Africa rarely qualify for loans because they lack a formal credit history. This report turns your day-to-day record-keeping into evidence: regular logging proves operational discipline, stable production proves capability, and financial logging proves cash-flow visibility. Submit alongside your bank's standard application."}
           </p>
         </div>
       </div>
