@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Syringe, Calendar, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { Flock, Vaccination } from '../../types/database';
 
 interface NextVaccinationCardProps {
@@ -8,6 +9,7 @@ interface NextVaccinationCardProps {
 }
 
 export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
+  const farmSpecies = useFarmSpecies();
   const [nextVaccination, setNextVaccination] = useState<Vaccination | null>(null);
   const [loading, setLoading] = useState(true);
   const [daysUntil, setDaysUntil] = useState<number | null>(null);
@@ -100,7 +102,7 @@ export function NextVaccinationCard({ flock }: NextVaccinationCardProps) {
         <div className="text-center py-8">
           <p className="text-gray-500 mb-2">No upcoming vaccinations</p>
           <p className="text-sm text-gray-400">
-            Schedule vaccinations to keep your flock healthy
+            {`Schedule vaccinations to keep your ${farmSpecies.groupTerm.toLowerCase()} healthy`}
           </p>
         </div>
       </div>
