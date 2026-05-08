@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FileText, Download, FileSpreadsheet, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 import { assembleFarmReport, type FarmReportData } from '../../utils/farmReportAssembler';
 import { downloadFarmReportPDF } from '../../utils/farmReportPDF';
@@ -45,6 +46,7 @@ function startOfYear(): string {
 
 export function ReportsPage() {
   const { currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
   const toast = useToast();
 
   const [startDate, setStartDate] = useState<string>(startOfMonth());
@@ -225,7 +227,7 @@ export function ReportsPage() {
               <div><div className="text-xs text-gray-500">Expenses</div><div className="font-bold text-gray-900">{fmt(data.totalExpenses)} {previewLabel}</div></div>
               <div><div className="text-xs text-gray-500">Net profit</div><div className={`font-bold ${data.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{data.netProfit >= 0 ? '+' : ''}{fmt(data.netProfit)} {previewLabel}</div></div>
               <div><div className="text-xs text-gray-500">Margin</div><div className="font-bold text-gray-900">{data.marginPercent.toFixed(1)}%</div></div>
-              <div><div className="text-xs text-gray-500">Mortality</div><div className="font-bold text-gray-900">{data.totalMortality}</div></div>
+              <div><div className="text-xs text-gray-500">{farmSpecies.lossNounPlural}</div><div className="font-bold text-gray-900">{data.totalMortality}</div></div>
               <div><div className="text-xs text-gray-500">Feed used</div><div className="font-bold text-gray-900">{fmt(data.totalFeedKg)} kg</div></div>
             </div>
           </div>

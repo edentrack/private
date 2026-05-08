@@ -3,6 +3,7 @@ import { ArrowLeft, Download, Trophy, Heart, TrendingUp, Lightbulb, ChevronDown,
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { Flock, Expense, MortalityLog } from '../../types/database';
 import { getCurrencySymbol } from '../../utils/currency';
 
@@ -27,6 +28,7 @@ interface FlockMetrics {
 }
 
 export function ComparePage({ onNavigate }: ComparePageProps) {
+  const farmSpecies = useFarmSpecies();
   const { t } = useTranslation();
   const { currentFarm } = useAuth();
   const [flocks, setFlocks] = useState<Flock[]>([]);
@@ -307,7 +309,7 @@ export function ComparePage({ onNavigate }: ComparePageProps) {
         text: t('compare.insight_variance', { 
           spread: formatCurrency(spread),
           pct: spreadPct
-        }) || `Cost per bird varies by ${formatCurrency(spread)} (${spreadPct}% range) across all flocks`
+        }) || `Cost per ${farmSpecies.animalTerm.toLowerCase()} varies by ${formatCurrency(spread)} (${spreadPct}% range) across all ${farmSpecies.groupTermPlural.toLowerCase()}`
       });
     }
 
@@ -394,10 +396,10 @@ export function ComparePage({ onNavigate }: ComparePageProps) {
         avg: (statistics?.avgCostPerWeek ? selectedMetrics.reduce((sum, m) => sum + m.ageWeeks, 0) / selectedMetrics.length : 0).toFixed(1) },
       { label: 'Initial Count', values: selectedMetrics.map(m => m.flock.initial_count.toString()) },
       { label: 'Current Count', values: selectedMetrics.map(m => m.flock.current_count.toString()) },
-      { label: 'Mortality', values: selectedMetrics.map(m => `${m.totalMortality} (${m.mortalityRate.toFixed(1)}%)`) },
+      { label: farmSpecies.lossNounPlural, values: selectedMetrics.map(m => `${m.totalMortality} (${m.mortalityRate.toFixed(1)}%)`) },
       { label: `Total Expenses (${currencyCode})`, values: selectedMetrics.map(m => m.totalExpenses.toString()),
         avg: statistics?.avgTotalExpenses.toFixed(2) || '0' },
-      { label: `Cost per Bird (${currencyCode})`, values: selectedMetrics.map(m => Math.round(m.costPerBird).toString()),
+      { label: `Cost per ${farmSpecies.animalTerm} (${currencyCode})`, values: selectedMetrics.map(m => Math.round(m.costPerBird).toString()),
         avg: statistics?.avgCostPerBird.toFixed(2) || '0',
         best: statistics?.bestCostPerBird ? Math.round(statistics.bestCostPerBird.costPerBird).toString() : '',
         worst: statistics?.worstCostPerBird ? Math.round(statistics.worstCostPerBird.costPerBird).toString() : '' },
@@ -737,7 +739,7 @@ export function ComparePage({ onNavigate }: ComparePageProps) {
                     </td>
                   </tr>
                   <tr className="hover:bg-gray-50/50">
-                    <td className="px-6 py-3 text-sm text-gray-600 sticky left-0 bg-white z-10">{t('compare.mortality') || 'Mortality'}</td>
+                    <td className="px-6 py-3 text-sm text-gray-600 sticky left-0 bg-white z-10">{farmSpecies.id === 'poultry' ? (t('compare.mortality') || 'Mortality') : farmSpecies.lossNounPlural}</td>
                     {selectedMetrics.map((metrics, idx) => (
                       <td key={idx} className="px-6 py-3 text-sm text-center font-medium text-gray-900">
                         {metrics.totalMortality} ({metrics.mortalityRate.toFixed(1)}%)
