@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { Expense, ExpenseCategory, Flock } from '../../types/database';
 
@@ -19,6 +20,8 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = ['feed', 'medication', 'equipment'
 
 export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpenseModalProps) {
   const { user, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const farmSpecies = useFarmSpecies();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
@@ -61,13 +64,13 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
 
   const handleSubmit = async () => {
     if (!amount || !date || !selectedFlock || !description) {
-      setError('Please fill in all required fields');
+      setError(isFr ? 'Veuillez remplir tous les champs obligatoires' : 'Please fill in all required fields');
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (amountNum <= 0 || isNaN(amountNum)) {
-      setError('Amount must be greater than 0');
+      setError(isFr ? 'Le montant doit être supérieur à 0' : 'Amount must be greater than 0');
       return;
     }
 
@@ -115,11 +118,17 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
         // Show more specific error message
         const dbErrorMessage = updateError.message || updateError.code || 'Failed to update expense';
         if (dbErrorMessage.includes('check constraint') || dbErrorMessage.includes('category') || dbErrorMessage.includes('invalid input value')) {
-          setError(`Invalid category: "${normalizedCategory}". The migration may not have been run yet. Please run the migration first.`);
+          setError(isFr
+            ? `Catégorie invalide : « ${normalizedCategory} ». La migration n'a peut-être pas encore été exécutée. Veuillez d'abord exécuter la migration.`
+            : `Invalid category: "${normalizedCategory}". The migration may not have been run yet. Please run the migration first.`);
         } else if (dbErrorMessage.includes('foreign key') || dbErrorMessage.includes('flock_id')) {
-          setError('Invalid flock selected. Please select a valid flock.');
+          setError(isFr
+            ? `${farmSpecies.groupTerm === 'Pond' ? 'Étang' : 'Troupeau'} invalide sélectionné. Veuillez sélectionner un ${farmSpecies.groupTerm === 'Pond' ? 'étang' : 'troupeau'} valide.`
+            : 'Invalid flock selected. Please select a valid flock.');
         } else {
-          setError(`Failed to update expense: ${dbErrorMessage}`);
+          setError(isFr
+            ? `Échec de la mise à jour de la dépense : ${dbErrorMessage}`
+            : `Failed to update expense: ${dbErrorMessage}`);
         }
         errorMessageSet = true;
         throw updateError;
@@ -149,7 +158,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
         if (err instanceof Error && err.message) {
           setError(err.message);
         } else {
-          setError('Failed to update expense. Please try again.');
+          setError(isFr ? 'Échec de la mise à jour de la dépense. Veuillez réessayer.' : 'Failed to update expense. Please try again.');
         }
       }
     } finally {
@@ -167,7 +176,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
             <div className="p-2 bg-[#3D5F42]/10 rounded-xl">
               <DollarSign className="w-5 h-5 text-[#3D5F42]" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Edit Expense</h2>
+            <h2 className="text-xl font-bold text-gray-900">{isFr ? 'Modifier la dépense' : 'Edit Expense'}</h2>
           </div>
           <button
             onClick={onClose}
@@ -187,7 +196,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Flock <span className="text-red-500">*</span>
+                {isFr ? (farmSpecies.groupTerm === 'Pond' ? 'Étang' : 'Troupeau') : farmSpecies.groupTerm} <span className="text-red-500">*</span>
               </label>
               <select
                 value={selectedFlock}
@@ -195,7 +204,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
                 required
                 className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all text-sm"
               >
-                <option value="">{`Select a ${farmSpecies.groupTerm.toLowerCase()}`}</option>
+                <option value="">{isFr ? `Sélectionner un ${farmSpecies.groupTerm === 'Pond' ? 'étang' : 'troupeau'}` : `Select a ${farmSpecies.groupTerm.toLowerCase()}`}</option>
                 {flocks.map((flock) => (
                   <option key={flock.id} value={flock.id}>
                     {flock.name} ({flock.type} - {flock.current_count} {farmSpecies.animalTermPlural.toLowerCase()})
@@ -206,25 +215,36 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
+                {isFr ? 'Catégorie' : 'Category'}
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
                 className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all text-sm"
               >
-                {EXPENSE_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
+                {EXPENSE_CATEGORIES.map((cat) => {
+                  const frLabels: Record<ExpenseCategory, string> = {
+                    'feed': 'aliments',
+                    'medication': 'médicaments',
+                    'equipment': 'équipement',
+                    'labor': 'main-d’œuvre',
+                    'chicks purchase': 'achat de poussins',
+                    'transport': 'transport',
+                    'other': 'autre',
+                  };
+                  return (
+                    <option key={cat} value={cat}>
+                      {isFr ? frLabels[cat] : cat}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Amount ({expense.currency}) <span className="text-red-500">*</span>
+                  {isFr ? 'Montant' : 'Amount'} ({expense.currency}) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -240,7 +260,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date <span className="text-red-500">*</span>
+                  {isFr ? 'Date' : 'Date'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -254,7 +274,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description <span className="text-red-500">*</span>
+                {isFr ? 'Description' : 'Description'} <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={description}
@@ -262,7 +282,7 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
                 required
                 className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all text-sm"
                 rows={2}
-                placeholder="Details about this expense..."
+                placeholder={isFr ? 'Détails à propos de cette dépense...' : 'Details about this expense...'}
               />
             </div>
 
@@ -274,8 +294,8 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
                 className="w-4 h-4"
               />
               <div>
-                <div className="text-sm font-medium text-gray-900">Paid from revenue balance</div>
-                <div className="text-xs text-gray-600">Checked expenses reduce the tracked revenue balance.</div>
+                <div className="text-sm font-medium text-gray-900">{isFr ? 'Payé depuis le solde des revenus' : 'Paid from revenue balance'}</div>
+                <div className="text-xs text-gray-600">{isFr ? 'Les dépenses cochées réduisent le solde des revenus suivis.' : 'Checked expenses reduce the tracked revenue balance.'}</div>
               </div>
             </label>
           </div>
@@ -287,14 +307,14 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
             disabled={loading}
             className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-white transition-colors disabled:opacity-50"
           >
-            Cancel
+            {isFr ? 'Annuler' : 'Cancel'}
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading || !amount || !selectedFlock || !description || !date}
             className="flex-1 bg-[#3D5F42] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#2F4A34] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Saving...' : 'Save Changes'}
+            {loading ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer les modifications' : 'Save Changes')}
           </button>
         </div>
       </div>

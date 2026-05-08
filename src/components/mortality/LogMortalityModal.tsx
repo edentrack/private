@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Flock } from '../../types/database';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { useFarmSpecies } from '../../hooks/useSpecies';
@@ -18,6 +19,8 @@ interface LogMortalityModalProps {
 
 export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess, createTaskRecord = false }: LogMortalityModalProps) {
   const { user, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const species = useFarmSpecies();
   const animalTerm = species.animalTermPlural.toLowerCase();
   const groupTerm = species.groupTerm.toLowerCase();
@@ -72,12 +75,12 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
     const mortalityCount = parseInt(count);
 
     if (mortalityCount <= 0) {
-      setError(`Number of dead ${animalTerm} must be greater than 0`);
+      setError(isFr ? `Le nombre de ${animalTerm} morts doit être supérieur à 0` : `Number of dead ${animalTerm} must be greater than 0`);
       return;
     }
 
     if (mortalityCount > currentFlock.current_count) {
-      setError(`Cannot exceed current ${groupTerm} count of ${currentFlock.current_count} ${animalTerm}`);
+      setError(isFr ? `Ne peut pas dépasser l'effectif actuel de ${currentFlock.current_count} ${animalTerm}` : `Cannot exceed current ${groupTerm} count of ${currentFlock.current_count} ${animalTerm}`);
       return;
     }
 
@@ -156,7 +159,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to log mortality');
+      setError(err instanceof Error ? err.message : (isFr ? `Échec de l'enregistrement de la ${species.lossNoun.toLowerCase()}` : 'Failed to log mortality'));
     } finally {
       setLoading(false);
     }
@@ -172,7 +175,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
             <div className="p-2 bg-red-50 rounded-xl">
               <AlertTriangle className="w-6 h-6 text-red-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">{`Record ${species.lossNoun}`}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{isFr ? `Enregistrer une ${species.lossNoun.toLowerCase()}` : `Record ${species.lossNoun}`}</h2>
           </div>
           <button
             onClick={onClose}
@@ -196,14 +199,14 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
             <div className="px-4 py-3 bg-gray-50 rounded-xl text-gray-900 font-medium">
               {currentFlock.name}
               <span className="text-sm text-gray-500 ml-2">
-                (Current: {currentFlock.current_count} {animalTerm})
+                ({isFr ? 'Actuel' : 'Current'}: {currentFlock.current_count} {animalTerm})
               </span>
             </div>
           </div>
 
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-              Date
+              {isFr ? 'Date' : 'Date'}
             </label>
             <input
               id="date"
@@ -218,7 +221,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
           <div>
             <label htmlFor="count" className="block text-sm font-medium text-gray-700 mb-2">
-              {`Number of ${species.animalTermPlural} Lost`}
+              {isFr ? `Nombre de ${species.animalTermPlural.toLowerCase()} perdus` : `Number of ${species.animalTermPlural} Lost`}
             </label>
             <input
               id="count"
@@ -235,7 +238,7 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
           <div>
             <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-              Cause of Mortality
+              {isFr ? `Cause de ${species.lossNoun.toLowerCase()}` : 'Cause of Mortality'}
             </label>
             <select
               id="reason"
@@ -252,14 +255,14 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-              Additional Notes (Optional)
+              {isFr ? 'Notes supplémentaires (Optionnel)' : 'Additional Notes (Optional)'}
             </label>
             <textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Any additional details..."
+              placeholder={isFr ? 'Tout détail supplémentaire...' : 'Any additional details...'}
               className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none text-sm"
             />
           </div>
@@ -270,14 +273,14 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
               onClick={onClose}
               className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 bg-red-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Saving…' : `Record ${species.lossNoun}`}
+              {loading ? (isFr ? 'Enregistrement…' : 'Saving…') : (isFr ? `Enregistrer ${species.lossNoun.toLowerCase()}` : `Record ${species.lossNoun}`)}
             </button>
           </div>
         </form>

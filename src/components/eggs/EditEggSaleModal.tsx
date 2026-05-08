@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, DollarSign, AlertTriangle, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export interface EggSaleRecord {
   id: string;
@@ -37,6 +38,8 @@ interface EditEggSaleModalProps {
 
 export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSuccess }: EditEggSaleModalProps) {
   const { profile } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [eggsPerTray, setEggsPerTray] = useState(30);
@@ -98,7 +101,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
   }, [seededFromRecord, eggsPerTray, recordTotalEggs, recordPricePerTray]);
 
   async function handleDelete() {
-    if (!window.confirm('Delete this egg sale? This cannot be undone.')) return;
+    if (!window.confirm(isFr ? 'Supprimer cette vente d\'œufs ? Cette action est irréversible.' : 'Delete this egg sale? This cannot be undone.')) return;
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -143,7 +146,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to delete sale');
+      setErrorMessage(err instanceof Error ? err.message : (isFr ? 'Échec de la suppression de la vente' : 'Failed to delete sale'));
     } finally {
       setLoading(false);
     }
@@ -155,7 +158,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
     setErrorMessage(null);
 
     if (totalEggs === 0) {
-      setErrorMessage('Please enter at least some eggs sold');
+      setErrorMessage(isFr ? 'Veuillez saisir au moins quelques œufs vendus' : 'Please enter at least some eggs sold');
       setLoading(false);
       return;
     }
@@ -232,8 +235,8 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
             amount: totalAmount,
             revenue_date: formData.sale_date,
             description: formData.customer_name
-              ? `Egg sale to ${formData.customer_name} - ${totalEggs} eggs`
-              : `Egg sale - ${totalEggs} eggs`,
+              ? (isFr ? `Vente d'œufs à ${formData.customer_name} - ${totalEggs} œufs` : `Egg sale to ${formData.customer_name} - ${totalEggs} eggs`)
+              : (isFr ? `Vente d'œufs - ${totalEggs} œufs` : `Egg sale - ${totalEggs} eggs`),
           })
           .eq('id', record.revenue_id);
       }
@@ -241,7 +244,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
       onSuccess();
       onClose();
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to update sale');
+      setErrorMessage(err?.message || (isFr ? 'Échec de la mise à jour de la vente' : 'Failed to update sale'));
     } finally {
       setLoading(false);
     }
@@ -253,7 +256,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <DollarSign className="w-6 h-6 text-green-600" />
-            <h2 className="text-xl font-bold text-gray-900">Edit Egg Sale</h2>
+            <h2 className="text-xl font-bold text-gray-900">{isFr ? 'Modifier la vente d\'œufs' : 'Edit Egg Sale'}</h2>
           </div>
           <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
             <X className="w-5 h-5 text-gray-500" />
@@ -269,7 +272,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Sale Date</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Date de vente' : 'Sale Date'}</label>
             <input
               type="date"
               value={formData.sale_date}
@@ -280,29 +283,29 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Customer name</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Nom de l\'acheteur' : 'Customer name'}</label>
             <input
               type="text"
               value={formData.customer_name}
               onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-              placeholder="Optional"
+              placeholder={isFr ? 'Optionnel' : 'Optional'}
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Customer phone</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Téléphone de l\'acheteur' : 'Customer phone'}</label>
             <input
               type="text"
               value={formData.customer_phone}
               onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-              placeholder="Optional"
+              placeholder={isFr ? 'Optionnel' : 'Optional'}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Small eggs</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Petits œufs' : 'Small eggs'}</label>
               <input
                 type="number"
                 min={0}
@@ -318,7 +321,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Medium eggs</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Œufs moyens' : 'Medium eggs'}</label>
               <input
                 type="number"
                 min={0}
@@ -334,7 +337,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Large eggs</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Grands œufs' : 'Large eggs'}</label>
               <input
                 type="number"
                 min={0}
@@ -350,7 +353,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Jumbo eggs</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Œufs jumbo' : 'Jumbo eggs'}</label>
               <input
                 type="number"
                 min={0}
@@ -368,7 +371,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Price per tray</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Prix par plateau' : 'Price per tray'}</label>
             <input
               type="number"
               min={0}
@@ -386,34 +389,34 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
 
           <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex justify-between text-sm">
             <span className="font-semibold text-green-900">
-              Quantity: {eggsPerTray > 0 ? `${trays} trays + ${looseEggs} eggs` : `${totalEggs} eggs`}
+              {isFr ? 'Quantité :' : 'Quantity:'} {eggsPerTray > 0 ? (isFr ? `${trays} plateaux + ${looseEggs} œufs` : `${trays} trays + ${looseEggs} eggs`) : (isFr ? `${totalEggs} œufs` : `${totalEggs} eggs`)}
             </span>
             <span className="font-semibold text-green-900">
-              Amount: {totalAmount.toLocaleString()} {currencyCode}
+              {isFr ? 'Montant :' : 'Amount:'} {totalAmount.toLocaleString()} {currencyCode}
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Payment status</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Statut de paiement' : 'Payment status'}</label>
               <select
                 value={formData.payment_status}
                 onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
               >
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-                <option value="partial">Partial</option>
+                <option value="paid">{isFr ? 'Payé' : 'Paid'}</option>
+                <option value="pending">{isFr ? 'En attente' : 'Pending'}</option>
+                <option value="partial">{isFr ? 'Partiel' : 'Partial'}</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Payment method</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Mode de paiement' : 'Payment method'}</label>
               <input
                 type="text"
                 value={formData.payment_method}
                 onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
-                placeholder="e.g. cash"
+                placeholder={isFr ? 'ex. espèces' : 'e.g. cash'}
               />
             </div>
           </div>
@@ -425,7 +428,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm resize-none"
-              placeholder="Optional..."
+              placeholder={isFr ? 'Optionnel...' : 'Optional...'}
             />
           </div>
 
@@ -436,14 +439,14 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
                 onClick={onClose}
                 className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
               >
-                Cancel
+                {isFr ? 'Annuler' : 'Cancel'}
               </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Save changes'}
+                {loading ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer les modifications' : 'Save changes')}
               </button>
             </div>
             <button
@@ -453,7 +456,7 @@ export function EditEggSaleModal({ record, currencyCode = 'XAF', onClose, onSucc
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
-              Delete sale
+              {isFr ? 'Supprimer la vente' : 'Delete sale'}
             </button>
           </div>
         </form>

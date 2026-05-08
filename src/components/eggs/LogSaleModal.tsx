@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { CustomerLookup } from '../customers/CustomerLookup';
 
 interface LogSaleModalProps {
@@ -13,6 +14,8 @@ interface LogSaleModalProps {
 
 export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSaleModalProps) {
   const { user, profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [date, setDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -91,12 +94,12 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
     const transportNum = parseFloat(transportCost) || 0;
 
     if (isNaN(traysNum) || traysNum <= 0) {
-      setError('Please enter a valid number of trays');
+      setError(isFr ? 'Veuillez entrer un nombre valide de plateaux' : 'Please enter a valid number of trays');
       return;
     }
 
     if (isNaN(priceNum) || priceNum <= 0) {
-      setError('Please enter a valid unit price');
+      setError(isFr ? 'Veuillez entrer un prix unitaire valide' : 'Please enter a valid unit price');
       return;
     }
 
@@ -189,7 +192,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
         .select('id');
 
       if (saleError) throw saleError;
-      if (!saleData || saleData.length === 0) throw new Error('Sale was not saved. Please check your connection and try again.');
+      if (!saleData || saleData.length === 0) throw new Error(isFr ? "La vente n'a pas été enregistrée. Veuillez vérifier votre connexion et réessayer." : 'Sale was not saved. Please check your connection and try again.');
 
       const { data: inventory } = await supabase
         .from('egg_inventory')
@@ -245,7 +248,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
 
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to log sale');
+      setError(err instanceof Error ? err.message : (isFr ? "Échec de l'enregistrement de la vente" : 'Failed to log sale'));
     } finally {
       setLoading(false);
     }
@@ -255,7 +258,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-3xl max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Log Egg Sale</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{isFr ? 'Enregistrer la vente d\'œufs' : 'Log Egg Sale'}</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -273,7 +276,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
 
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-              Date
+              {isFr ? 'Date' : 'Date'}
             </label>
             <input
               id="date"
@@ -287,7 +290,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
 
           <div>
             <label htmlFor="egg-type" className="block text-sm font-medium text-gray-700 mb-2">
-              Egg Size
+              {isFr ? 'Taille des œufs' : 'Egg Size'}
             </label>
             <select
               id="egg-type"
@@ -295,18 +298,18 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
               onChange={(e) => setTrayEggType(e.target.value as 'small' | 'medium' | 'large' | 'jumbo' | 'mixed')}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all"
             >
-              <option value="small">Small Eggs Only</option>
-              <option value="medium">Medium Eggs Only</option>
-              <option value="large">Large Eggs Only</option>
-              <option value="jumbo">Jumbo Eggs Only</option>
-              <option value="mixed">Mixed Sizes</option>
+              <option value="small">{isFr ? 'Petits œufs uniquement' : 'Small Eggs Only'}</option>
+              <option value="medium">{isFr ? 'Œufs moyens uniquement' : 'Medium Eggs Only'}</option>
+              <option value="large">{isFr ? 'Grands œufs uniquement' : 'Large Eggs Only'}</option>
+              <option value="jumbo">{isFr ? 'Œufs jumbo uniquement' : 'Jumbo Eggs Only'}</option>
+              <option value="mixed">{isFr ? 'Tailles mixtes' : 'Mixed Sizes'}</option>
             </select>
           </div>
 
           {trayEggType === 'mixed' && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
               <label className="block text-sm font-medium text-gray-700">
-                Mixed Eggs Distribution
+                {isFr ? 'Répartition des œufs mixtes' : 'Mixed Eggs Distribution'}
               </label>
               <div className="flex gap-2">
                 <button
@@ -318,7 +321,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                       : 'text-gray-600 hover:text-gray-900 border border-transparent'
                   }`}
                 >
-                  Auto (Equal)
+                  {isFr ? 'Auto (Égal)' : 'Auto (Equal)'}
                 </button>
                 <button
                   type="button"
@@ -329,16 +332,16 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                       : 'text-gray-600 hover:text-gray-900 border border-transparent'
                   }`}
                 >
-                  Custom Ratio
+                  {isFr ? 'Ratio personnalisé' : 'Custom Ratio'}
                 </button>
               </div>
 
               {mixedRatioMode === 'custom' && (
                 <div className="space-y-2 mt-3">
-                  <p className="text-xs text-gray-600 font-medium">Ratio (percentages)</p>
+                  <p className="text-xs text-gray-600 font-medium">{isFr ? 'Ratio (pourcentages)' : 'Ratio (percentages)'}</p>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-600 mb-1">Small %</label>
+                      <label className="block text-xs text-gray-600 mb-1">{isFr ? 'Petit %' : 'Small %'}</label>
                       <input
                         type="number"
                         min="0"
@@ -349,7 +352,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 mb-1">Medium %</label>
+                      <label className="block text-xs text-gray-600 mb-1">{isFr ? 'Moyen %' : 'Medium %'}</label>
                       <input
                         type="number"
                         min="0"
@@ -360,7 +363,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 mb-1">Large %</label>
+                      <label className="block text-xs text-gray-600 mb-1">{isFr ? 'Grand %' : 'Large %'}</label>
                       <input
                         type="number"
                         min="0"
@@ -371,7 +374,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 mb-1">Jumbo %</label>
+                      <label className="block text-xs text-gray-600 mb-1">{isFr ? 'Jumbo %' : 'Jumbo %'}</label>
                       <input
                         type="number"
                         min="0"
@@ -383,28 +386,28 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                     </div>
                   </div>
                   <p className="text-xs text-gray-600 mt-1">
-                    Total: {customRatios.small + customRatios.medium + customRatios.large + customRatios.jumbo}%
+                    {isFr ? 'Total' : 'Total'}: {customRatios.small + customRatios.medium + customRatios.large + customRatios.jumbo}%
                   </p>
                 </div>
               )}
 
               <div className="bg-white rounded-lg p-3 mt-2">
-                <p className="text-xs font-medium text-gray-700 mb-2">Distribution Preview:</p>
+                <p className="text-xs font-medium text-gray-700 mb-2">{isFr ? 'Aperçu de la répartition :' : 'Distribution Preview:'}</p>
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   <div>
-                    <p className="text-gray-600">Small</p>
+                    <p className="text-gray-600">{isFr ? 'Petit' : 'Small'}</p>
                     <p className="font-bold text-gray-900">{distribution.small}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Medium</p>
+                    <p className="text-gray-600">{isFr ? 'Moyen' : 'Medium'}</p>
                     <p className="font-bold text-gray-900">{distribution.medium}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Large</p>
+                    <p className="text-gray-600">{isFr ? 'Grand' : 'Large'}</p>
                     <p className="font-bold text-gray-900">{distribution.large}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600">Jumbo</p>
+                    <p className="text-gray-600">{isFr ? 'Jumbo' : 'Jumbo'}</p>
                     <p className="font-bold text-gray-900">{distribution.jumbo}</p>
                   </div>
                 </div>
@@ -414,7 +417,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
 
           <div>
             <label htmlFor="trays" className="block text-sm font-medium text-gray-700 mb-2">
-              Trays Sold
+              {isFr ? 'Plateaux vendus' : 'Trays Sold'}
             </label>
             <input
               id="trays"
@@ -423,17 +426,17 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
               value={traysSold}
               onChange={(e) => setTraysSold(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all"
-              placeholder="Enter number of trays"
+              placeholder={isFr ? 'Entrez le nombre de plateaux' : 'Enter number of trays'}
               required
             />
             <p className="text-xs text-gray-600 mt-1">
-              Total eggs: {distribution.small + distribution.medium + distribution.large + distribution.jumbo}
+              {isFr ? "Total d'œufs" : 'Total eggs'}: {distribution.small + distribution.medium + distribution.large + distribution.jumbo}
             </p>
           </div>
 
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-              Price per Egg
+              {isFr ? "Prix par œuf" : 'Price per Egg'}
             </label>
             <input
               id="price"
@@ -442,7 +445,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
               value={unitPrice}
               onChange={(e) => setUnitPrice(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all"
-              placeholder="Price per egg"
+              placeholder={isFr ? "Prix par œuf" : 'Price per egg'}
               required
             />
           </div>
@@ -470,7 +473,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="buyer-name" className="block text-sm font-medium text-gray-700 mb-2">
-                Customer Name
+                {isFr ? 'Nom du client' : 'Customer Name'}
               </label>
               <input
                 id="buyer-name"
@@ -478,13 +481,13 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                 value={buyerName}
                 onChange={(e) => setBuyerName(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                placeholder="Enter name"
+                placeholder={isFr ? 'Entrez le nom' : 'Enter name'}
               />
             </div>
 
             <div>
               <label htmlFor="buyer-address" className="block text-sm font-medium text-gray-700 mb-2">
-                Address (Optional)
+                {isFr ? 'Adresse (Optionnel)' : 'Address (Optional)'}
               </label>
               <input
                 id="buyer-address"
@@ -492,14 +495,14 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
                 value={buyerAddress}
                 onChange={(e) => setBuyerAddress(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                placeholder="Customer address"
+                placeholder={isFr ? 'Adresse du client' : 'Customer address'}
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="transport" className="block text-sm font-medium text-gray-700 mb-2">
-              Transport Cost
+              {isFr ? 'Coût du transport' : 'Transport Cost'}
             </label>
             <input
               id="transport"
@@ -514,7 +517,7 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
 
           <div>
             <label htmlFor="payment-method" className="block text-sm font-medium text-gray-700 mb-2">
-              Payment Method
+              {isFr ? 'Méthode de paiement' : 'Payment Method'}
             </label>
             <select
               id="payment-method"
@@ -522,16 +525,16 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all"
             >
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="mobile_money">Mobile Money</option>
-              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cash">{isFr ? 'Espèces' : 'Cash'}</option>
+              <option value="card">{isFr ? 'Carte' : 'Card'}</option>
+              <option value="mobile_money">{isFr ? 'Mobile Money' : 'Mobile Money'}</option>
+              <option value="bank_transfer">{isFr ? 'Virement bancaire' : 'Bank Transfer'}</option>
             </select>
           </div>
 
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (Optional)
+              {isFr ? 'Notes (Optionnel)' : 'Notes (Optional)'}
             </label>
             <textarea
               id="notes"
@@ -539,18 +542,18 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all resize-none"
-              placeholder="Any additional notes..."
+              placeholder={isFr ? 'Notes supplémentaires...' : 'Any additional notes...'}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Photo (Optional)
+              {isFr ? 'Photo (Optionnel)' : 'Photo (Optional)'}
             </label>
             <label className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#3D5F42] transition-colors cursor-pointer">
               <Camera className="w-5 h-5 text-gray-400" />
               <span className="text-sm text-gray-600">
-                {photo ? photo.name : 'Upload photo'}
+                {photo ? photo.name : (isFr ? 'Téléverser une photo' : 'Upload photo')}
               </span>
               <input
                 type="file"
@@ -567,14 +570,14 @@ export function LogSaleModal({ flockId, eggsPerTray, onClose, onSuccess }: LogSa
               onClick={onClose}
               className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-medium"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 px-6 py-3 bg-[#3D5F42] text-white rounded-xl hover:bg-[#2d4632] transition-colors font-medium disabled:opacity-50"
             >
-              {loading ? 'Logging...' : 'Log Sale'}
+              {loading ? (isFr ? 'Enregistrement...' : 'Logging...') : (isFr ? 'Enregistrer la vente' : 'Log Sale')}
             </button>
           </div>
         </form>

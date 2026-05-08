@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Egg, AlertTriangle, Trash2, ChevronLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Flock {
   id: string;
@@ -41,6 +42,8 @@ interface EditEggCollectionModalProps {
 
 export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onBack }: EditEggCollectionModalProps) {
   const { profile } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [loading, setLoading] = useState(false);
   const [eggsPerTray, setEggsPerTray] = useState(30);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -118,7 +121,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
       : totalEggs;
 
   async function handleDelete() {
-    if (!window.confirm('Delete this egg collection? This cannot be undone.')) return;
+    if (!window.confirm(isFr ? 'Supprimer cette collecte d\'œufs ? Cette action est irréversible.' : 'Delete this egg collection? This cannot be undone.')) return;
     setLoading(true);
     setErrorMessage(null);
     try {
@@ -153,7 +156,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to delete collection');
+      setErrorMessage(err instanceof Error ? err.message : (isFr ? 'Échec de la suppression de la collecte' : 'Failed to delete collection'));
     } finally {
       setLoading(false);
     }
@@ -168,14 +171,14 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
       const badLoose =
         [looseBySize.small, looseBySize.medium, looseBySize.large, looseBySize.jumbo].some((v) => Number(v) >= eggsPerTray);
       if (badLoose) {
-        setErrorMessage(`Loose eggs for each size must be less than ${eggsPerTray}.`);
+        setErrorMessage(isFr ? `Les œufs en vrac pour chaque taille doivent être inférieurs à ${eggsPerTray}.` : `Loose eggs for each size must be less than ${eggsPerTray}.`);
         setLoading(false);
         return;
       }
     }
 
     if (totalEggsForMode === 0) {
-      setErrorMessage('Please enter at least some eggs collected');
+      setErrorMessage(isFr ? 'Veuillez saisir au moins quelques œufs collectés' : 'Please enter at least some eggs collected');
       setLoading(false);
       return;
     }
@@ -251,7 +254,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
       onSuccess();
       onClose();
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to update collection');
+      setErrorMessage(err?.message || (isFr ? 'Échec de la mise à jour de la collecte' : 'Failed to update collection'));
     } finally {
       setLoading(false);
     }
@@ -291,13 +294,13 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
               type="button"
               onClick={() => (onBack ? onBack() : onClose())}
               className="inline-flex items-center gap-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50"
-              aria-label="Back to collections list"
+              aria-label={isFr ? 'Retour à la liste des collectes' : 'Back to collections list'}
             >
               <ChevronLeft className="w-4 h-4" />
-              Back
+              {isFr ? 'Retour' : 'Back'}
             </button>
             <Egg className="w-6 h-6 text-amber-600" />
-            <h2 className="text-xl font-bold text-gray-900">Edit Egg Collection</h2>
+            <h2 className="text-xl font-bold text-gray-900">{isFr ? 'Modifier la collecte d\'œufs' : 'Edit Egg Collection'}</h2>
           </div>
           <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
             <X className="w-5 h-5 text-gray-500" />
@@ -313,13 +316,13 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Layer Flock (optional)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Troupeau de pondeuses (optionnel)' : 'Layer Flock (optional)'}</label>
             <select
               value={formData.flock_id}
               onChange={(e) => setFormData({ ...formData, flock_id: e.target.value })}
               className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 text-sm"
             >
-              <option value="">All flocks combined</option>
+              <option value="">{isFr ? 'Tous les troupeaux combinés' : 'All flocks combined'}</option>
               {layerFlocks.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
@@ -329,7 +332,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Collection Date</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Date de collecte' : 'Collection Date'}</label>
             <input
               type="date"
               value={formData.collection_date}
@@ -342,11 +345,11 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
           {(intervalTimeLabel || lastEditedLabel) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="text-[11px] text-gray-500">Interval time</div>
+                <div className="text-[11px] text-gray-500">{isFr ? 'Heure de l\'intervalle' : 'Interval time'}</div>
                 <div className="text-sm font-semibold text-gray-900">{intervalTimeLabel || 'N/A'}</div>
               </div>
               <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="text-[11px] text-gray-500">Last edited</div>
+                <div className="text-[11px] text-gray-500">{isFr ? 'Dernière modification' : 'Last edited'}</div>
                 <div className="text-sm font-semibold text-gray-900">{lastEditedLabel || 'N/A'}</div>
               </div>
             </div>
@@ -360,7 +363,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
                 inputMode === 'eggs' ? 'bg-white text-amber-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              By eggs
+              {isFr ? 'Par œufs' : 'By eggs'}
             </button>
             <button
               type="button"
@@ -369,16 +372,23 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
                 inputMode === 'trays' ? 'bg-white text-amber-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              By trays
+              {isFr ? 'Par plateaux' : 'By trays'}
             </button>
           </div>
 
           {inputMode === 'eggs' ? (
             <div className="grid grid-cols-2 gap-3">
-              {(['small_eggs', 'medium_eggs', 'large_eggs', 'jumbo_eggs'] as const).map((key) => (
+              {(['small_eggs', 'medium_eggs', 'large_eggs', 'jumbo_eggs'] as const).map((key) => {
+                const labelMap: Record<typeof key, { en: string; fr: string }> = {
+                  small_eggs: { en: 'Small', fr: 'Petit' },
+                  medium_eggs: { en: 'Medium', fr: 'Moyen' },
+                  large_eggs: { en: 'Large', fr: 'Grand' },
+                  jumbo_eggs: { en: 'Jumbo', fr: 'Jumbo' },
+                };
+                return (
                 <div key={key}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {key.replace('_eggs', '').charAt(0).toUpperCase() + key.replace('_eggs', '').slice(1)}
+                    {isFr ? labelMap[key].fr : labelMap[key].en}
                   </label>
                   <input
                     type="number"
@@ -388,23 +398,24 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm"
                   />
                 </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <div className="grid grid-cols-3 bg-gray-50 text-xs font-semibold text-gray-700">
-                <div className="px-3 py-2">Size</div>
-                <div className="px-3 py-2 text-center">Trays</div>
-                <div className="px-3 py-2 text-center">Loose</div>
+                <div className="px-3 py-2">{isFr ? 'Taille' : 'Size'}</div>
+                <div className="px-3 py-2 text-center">{isFr ? 'Plateaux' : 'Trays'}</div>
+                <div className="px-3 py-2 text-center">{isFr ? 'En vrac' : 'Loose'}</div>
               </div>
               {([
-                { key: 'small', label: 'Small' },
-                { key: 'medium', label: 'Medium' },
-                { key: 'large', label: 'Large' },
-                { key: 'jumbo', label: 'Jumbo' },
+                { key: 'small', label: 'Small', labelFr: 'Petit' },
+                { key: 'medium', label: 'Medium', labelFr: 'Moyen' },
+                { key: 'large', label: 'Large', labelFr: 'Grand' },
+                { key: 'jumbo', label: 'Jumbo', labelFr: 'Jumbo' },
               ] as const).map((row) => (
                 <div key={row.key} className="grid grid-cols-3 items-center border-t border-gray-200">
-                  <div className="px-3 py-2 text-sm font-semibold text-gray-900">{row.label}</div>
+                  <div className="px-3 py-2 text-sm font-semibold text-gray-900">{isFr ? row.labelFr : row.label}</div>
                   <div className="px-3 py-2">
                     <input
                       type="number"
@@ -427,13 +438,13 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
                 </div>
               ))}
               <div className="px-3 py-2 bg-gray-50 text-[11px] text-gray-600">
-                Loose eggs must be less than {eggsPerTray} per size.
+                {isFr ? `Les œufs en vrac doivent être inférieurs à ${eggsPerTray} par taille.` : `Loose eggs must be less than ${eggsPerTray} per size.`}
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Damaged/Broken Eggs</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Œufs endommagés/cassés' : 'Damaged/Broken Eggs'}</label>
             <input
               type="number"
               min={0}
@@ -444,7 +455,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
           </div>
 
           <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-            <p className="text-sm font-semibold text-green-900">Total good eggs: {totalEggsForMode}</p>
+            <p className="text-sm font-semibold text-green-900">{isFr ? 'Total œufs bons :' : 'Total good eggs:'} {totalEggsForMode}</p>
           </div>
 
           <div>
@@ -454,7 +465,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm resize-none"
-              placeholder="Optional..."
+              placeholder={isFr ? 'Optionnel...' : 'Optional...'}
             />
           </div>
 
@@ -465,14 +476,14 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
                 onClick={onClose}
                 className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50"
               >
-                Cancel
+                {isFr ? 'Annuler' : 'Cancel'}
               </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-xl font-medium hover:bg-amber-700 disabled:opacity-50"
               >
-                {loading ? 'Saving...' : 'Save changes'}
+                {loading ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer les modifications' : 'Save changes')}
               </button>
             </div>
             <button
@@ -482,7 +493,7 @@ export function EditEggCollectionModal({ record, flocks, onClose, onSuccess, onB
               className="flex items-center justify-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-xl font-medium hover:bg-red-50 disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
-              Delete collection
+              {isFr ? 'Supprimer la collecte' : 'Delete collection'}
             </button>
           </div>
         </form>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle, X, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { InventoryType } from '../../types/database';
 
 interface CreateDailyUsageTaskModalProps {
@@ -24,6 +25,8 @@ export function CreateDailyUsageTaskModal({
   unit,
 }: CreateDailyUsageTaskModalProps) {
   const { profile, currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [, _setTimeOfDay] = useState('17:00');
@@ -89,8 +92,10 @@ export function CreateDailyUsageTaskModal({
       ].filter(Boolean);
 
       const errorMessage = errorParts.length > 0
-        ? `Failed to create task template: ${errorParts.join(' | ')}`
-        : 'Failed to create task template';
+        ? (isFr
+            ? `Échec de la création du modèle de tâche : ${errorParts.join(' | ')}`
+            : `Failed to create task template: ${errorParts.join(' | ')}`)
+        : (isFr ? 'Échec de la création du modèle de tâche' : 'Failed to create task template');
 
       setError(errorMessage);
     } finally {
@@ -111,8 +116,8 @@ export function CreateDailyUsageTaskModal({
               <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Track Daily Usage?</h2>
-              <p className="text-sm text-gray-600 mt-1">For {itemName}</p>
+              <h2 className="text-2xl font-bold text-gray-900">{isFr ? 'Suivre l\'utilisation quotidienne ?' : 'Track Daily Usage?'}</h2>
+              <p className="text-sm text-gray-600 mt-1">{isFr ? `Pour ${itemName}` : `For ${itemName}`}</p>
             </div>
           </div>
           <button
@@ -131,26 +136,30 @@ export function CreateDailyUsageTaskModal({
 
         <div className="space-y-4 mb-6">
           <p className="text-gray-700">
-            Would you like to create a daily task to record usage of this item?
+            {isFr
+              ? 'Voulez-vous créer une tâche quotidienne pour enregistrer l\'utilisation de cet article ?'
+              : 'Would you like to create a daily task to record usage of this item?'}
           </p>
 
           <div className="bg-blue-50 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-900">
-                <p className="font-medium mb-1">This will create a daily task that:</p>
+                <p className="font-medium mb-1">{isFr ? 'Cela créera une tâche quotidienne qui :' : 'This will create a daily task that:'}</p>
                 <ul className="list-disc list-inside space-y-1 text-blue-800">
-                  <li>Appears every day for workers to complete</li>
-                  <li>Records how much {itemName} was used</li>
-                  <li>Automatically updates inventory stock</li>
-                  <li>Tracks usage history and trends</li>
+                  <li>{isFr ? 'Apparaît chaque jour pour les travailleurs' : 'Appears every day for workers to complete'}</li>
+                  <li>{isFr ? `Enregistre la quantité de ${itemName} utilisée` : `Records how much ${itemName} was used`}</li>
+                  <li>{isFr ? 'Met automatiquement à jour le stock d\'inventaire' : 'Automatically updates inventory stock'}</li>
+                  <li>{isFr ? 'Suit l\'historique et les tendances d\'utilisation' : 'Tracks usage history and trends'}</li>
                 </ul>
               </div>
             </div>
           </div>
 
           <div className="text-sm text-gray-600">
-            You can customize or disable this task anytime from the Daily Tasks page.
+            {isFr
+              ? 'Vous pouvez personnaliser ou désactiver cette tâche à tout moment depuis la page Tâches Quotidiennes.'
+              : 'You can customize or disable this task anytime from the Daily Tasks page.'}
           </div>
         </div>
 
@@ -160,14 +169,14 @@ export function CreateDailyUsageTaskModal({
             disabled={loading}
             className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
           >
-            Skip for Now
+            {isFr ? 'Passer pour l\'instant' : 'Skip for Now'}
           </button>
           <button
             onClick={handleCreate}
             disabled={loading}
             className="flex-1 bg-[#3D5F42] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#2d4632] transition-colors disabled:opacity-50"
           >
-            {loading ? 'Creating...' : 'Yes, Create Task'}
+            {loading ? (isFr ? 'Création...' : 'Creating...') : (isFr ? 'Oui, créer la tâche' : 'Yes, Create Task')}
           </button>
         </div>
       </div>
