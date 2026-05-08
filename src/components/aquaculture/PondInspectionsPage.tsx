@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Eye, X, Calendar, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -36,27 +37,29 @@ interface PondInspection {
 
 const AQUA_TYPES = ['Catfish', 'Tilapia', 'Clarias', 'Other Fish'];
 
-const CLARITY_OPTIONS = [
-  { value: 'clear', label: 'Clear', color: 'bg-blue-100 text-blue-800', warn: false },
-  { value: 'murky', label: 'Murky', color: 'bg-amber-100 text-amber-800', warn: false },
-  { value: 'green', label: 'Green', color: 'bg-emerald-100 text-emerald-800', warn: true },
-  { value: 'brown', label: 'Brown', color: 'bg-orange-100 text-orange-800', warn: true },
-  { value: 'black', label: 'Black', color: 'bg-gray-800 text-white', warn: true },
+interface ChoiceOption { value: string; label: string; color: string; warn: boolean; }
+
+const buildClarityOptions = (isFr: boolean): ChoiceOption[] => [
+  { value: 'clear', label: isFr ? 'Claire' : 'Clear', color: 'bg-blue-100 text-blue-800', warn: false },
+  { value: 'murky', label: isFr ? 'Trouble' : 'Murky', color: 'bg-amber-100 text-amber-800', warn: false },
+  { value: 'green', label: isFr ? 'Verte' : 'Green', color: 'bg-emerald-100 text-emerald-800', warn: true },
+  { value: 'brown', label: isFr ? 'Marron' : 'Brown', color: 'bg-orange-100 text-orange-800', warn: true },
+  { value: 'black', label: isFr ? 'Noire' : 'Black', color: 'bg-gray-800 text-white', warn: true },
 ];
 
-const BEHAVIOR_OPTIONS = [
-  { value: 'normal', label: 'Normal', color: 'bg-green-100 text-green-800', warn: false },
-  { value: 'feeding-vigorous', label: 'Feeding vigorously', color: 'bg-green-100 text-green-800', warn: false },
-  { value: 'lethargic', label: 'Lethargic', color: 'bg-amber-100 text-amber-800', warn: true },
-  { value: 'gasping', label: 'Gasping at surface', color: 'bg-red-100 text-red-800', warn: true },
-  { value: 'erratic', label: 'Erratic / spinning', color: 'bg-red-100 text-red-800', warn: true },
+const buildBehaviorOptions = (isFr: boolean): ChoiceOption[] => [
+  { value: 'normal', label: isFr ? 'Normal' : 'Normal', color: 'bg-green-100 text-green-800', warn: false },
+  { value: 'feeding-vigorous', label: isFr ? 'Alimentation vigoureuse' : 'Feeding vigorously', color: 'bg-green-100 text-green-800', warn: false },
+  { value: 'lethargic', label: isFr ? 'Léthargique' : 'Lethargic', color: 'bg-amber-100 text-amber-800', warn: true },
+  { value: 'gasping', label: isFr ? 'Halète à la surface' : 'Gasping at surface', color: 'bg-red-100 text-red-800', warn: true },
+  { value: 'erratic', label: isFr ? 'Erratique / tournoie' : 'Erratic / spinning', color: 'bg-red-100 text-red-800', warn: true },
 ];
 
-const FEEDING_OPTIONS = [
-  { value: 'vigorous', label: 'Vigorous', color: 'bg-green-100 text-green-800', warn: false },
-  { value: 'normal', label: 'Normal', color: 'bg-green-100 text-green-800', warn: false },
-  { value: 'slow', label: 'Slow', color: 'bg-amber-100 text-amber-800', warn: true },
-  { value: 'none', label: 'No response', color: 'bg-red-100 text-red-800', warn: true },
+const buildFeedingOptions = (isFr: boolean): ChoiceOption[] => [
+  { value: 'vigorous', label: isFr ? 'Vigoureuse' : 'Vigorous', color: 'bg-green-100 text-green-800', warn: false },
+  { value: 'normal', label: isFr ? 'Normale' : 'Normal', color: 'bg-green-100 text-green-800', warn: false },
+  { value: 'slow', label: isFr ? 'Lente' : 'Slow', color: 'bg-amber-100 text-amber-800', warn: true },
+  { value: 'none', label: isFr ? 'Pas de réponse' : 'No response', color: 'bg-red-100 text-red-800', warn: true },
 ];
 
 function todayLocal(): string {
@@ -70,13 +73,19 @@ function formatDate(s: string): string {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function flag(value: string | null, options: typeof CLARITY_OPTIONS) {
+function flag(value: string | null, options: ChoiceOption[]) {
   return options.find(o => o.value === value);
 }
 
 export function PondInspectionsPage() {
   const { currentFarm, user } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
+
+  const CLARITY_OPTIONS = buildClarityOptions(isFr);
+  const BEHAVIOR_OPTIONS = buildBehaviorOptions(isFr);
+  const FEEDING_OPTIONS = buildFeedingOptions(isFr);
 
   const [flocks, setFlocks] = useState<AquaFlock[]>([]);
   const [inspections, setInspections] = useState<PondInspection[]>([]);
@@ -126,9 +135,9 @@ export function PondInspectionsPage() {
       // helpful empty state rather than a crash.
       if (error.code === '42P01' || error.message?.includes('pond_inspections')) {
         setInspections([]);
-        toast.info('Pond inspections table not yet applied — run migration 20260506000001 to enable.');
+        toast.info(isFr ? "Table d'inspections d'étang non encore appliquée — exécutez la migration 20260506000001 pour activer." : 'Pond inspections table not yet applied — run migration 20260506000001 to enable.');
       } else {
-        toast.error('Failed to load pond inspections');
+        toast.error(isFr ? "Échec du chargement des inspections d'étang" : 'Failed to load pond inspections');
       }
     } else {
       setInspections((data as PondInspection[]) || []);
@@ -148,11 +157,11 @@ export function PondInspectionsPage() {
 
   const handleSubmit = async () => {
     if (!formFlockId) {
-      toast.error('Please select a pond');
+      toast.error(isFr ? 'Veuillez sélectionner un étang' : 'Please select a pond');
       return;
     }
     if (!formClarity && !formBehavior && !formFeeding && !formDeadCount && !formNotes) {
-      toast.error('Please record at least one observation');
+      toast.error(isFr ? 'Veuillez enregistrer au moins une observation' : 'Please record at least one observation');
       return;
     }
     setSubmitting(true);
@@ -169,16 +178,16 @@ export function PondInspectionsPage() {
     });
     setSubmitting(false);
     if (error) {
-      toast.error('Failed to save inspection');
+      toast.error(isFr ? "Échec de l'enregistrement de l'inspection" : 'Failed to save inspection');
     } else {
-      toast.success('Inspection saved');
+      toast.success(isFr ? 'Inspection enregistrée' : 'Inspection saved');
       resetForm();
       setShowForm(false);
       loadInspections();
     }
   };
 
-  const flockName = (id: string) => flocks.find(f => f.id === id)?.name || 'Unknown pond';
+  const flockName = (id: string) => flocks.find(f => f.id === id)?.name || (isFr ? 'Étang inconnu' : 'Unknown pond');
 
   return (
     <div className="space-y-6">
@@ -188,8 +197,8 @@ export function PondInspectionsPage() {
             <Eye className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Pond Inspections</h1>
-            <p className="text-sm text-gray-500">A 30-second daily check on water + fish behavior.</p>
+            <h1 className="text-xl font-bold text-gray-900">{isFr ? "Inspections d'étang" : 'Pond Inspections'}</h1>
+            <p className="text-sm text-gray-500">{isFr ? "Un contrôle quotidien de 30 secondes sur l'eau et le comportement des poissons." : 'A 30-second daily check on water + fish behavior.'}</p>
           </div>
         </div>
         <button
@@ -197,18 +206,18 @@ export function PondInspectionsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-[#3D5F42] text-white text-sm rounded-xl hover:bg-[#2f4a34] transition-colors"
         >
           {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showForm ? 'Cancel' : 'New Inspection'}
+          {showForm ? (isFr ? 'Annuler' : 'Cancel') : (isFr ? 'Nouvelle inspection' : 'New Inspection')}
         </button>
       </div>
 
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">New Inspection</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Nouvelle inspection' : 'New Inspection'}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Pond *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Étang *' : 'Pond *'}</label>
               {flocks.length === 0 ? (
-                <p className="text-xs text-amber-600">No active aquaculture flocks found.</p>
+                <p className="text-xs text-amber-600">{isFr ? 'Aucun étang actif trouvé.' : 'No active aquaculture flocks found.'}</p>
               ) : (
                 <select
                   value={formFlockId}
@@ -222,7 +231,7 @@ export function PondInspectionsPage() {
               )}
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Date *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date *' : 'Date *'}</label>
               <input
                 type="date"
                 value={formDate}
@@ -232,46 +241,46 @@ export function PondInspectionsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Water clarity</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? "Clarté de l'eau" : 'Water clarity'}</label>
               <select
                 value={formClarity}
                 onChange={e => setFormClarity(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               >
-                <option value="">— select —</option>
+                <option value="">{isFr ? '— sélectionner —' : '— select —'}</option>
                 {CLARITY_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Fish behavior</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Comportement des poissons' : 'Fish behavior'}</label>
               <select
                 value={formBehavior}
                 onChange={e => setFormBehavior(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               >
-                <option value="">— select —</option>
+                <option value="">{isFr ? '— sélectionner —' : '— select —'}</option>
                 {BEHAVIOR_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Feeding response</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? "Réponse à l'alimentation" : 'Feeding response'}</label>
               <select
                 value={formFeeding}
                 onChange={e => setFormFeeding(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               >
-                <option value="">— select —</option>
+                <option value="">{isFr ? '— sélectionner —' : '— select —'}</option>
                 {FEEDING_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Dead fish observed</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Poissons morts observés' : 'Dead fish observed'}</label>
               <input
                 type="number"
                 min="0"
@@ -282,12 +291,12 @@ export function PondInspectionsPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Notes' : 'Notes'}</label>
               <textarea
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 rows={2}
-                placeholder="Anything else you noticed — algae bloom, predator marks, smell, etc."
+                placeholder={isFr ? "Tout ce que vous avez remarqué — efflorescence d'algues, traces de prédateur, odeur, etc." : 'Anything else you noticed — algae bloom, predator marks, smell, etc.'}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30 resize-none"
               />
             </div>
@@ -298,7 +307,7 @@ export function PondInspectionsPage() {
               onClick={() => { setShowForm(false); resetForm(); }}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
             >
-              Cancel
+              {isFr ? 'Annuler' : 'Cancel'}
             </button>
             <button
               type="button"
@@ -306,14 +315,14 @@ export function PondInspectionsPage() {
               disabled={submitting}
               className="px-4 py-2 text-sm font-medium bg-[#3D5F42] text-white rounded-lg hover:bg-[#2f4a34] disabled:opacity-60"
             >
-              {submitting ? 'Saving…' : 'Save inspection'}
+              {submitting ? (isFr ? 'Enregistrement…' : 'Saving…') : (isFr ? "Enregistrer l'inspection" : 'Save inspection')}
             </button>
           </div>
         </div>
       )}
 
       <div className="section-card">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Recent inspections</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Inspections récentes' : 'Recent inspections'}</h2>
         {loading ? (
           <div className="space-y-2">
             {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />)}
@@ -321,8 +330,8 @@ export function PondInspectionsPage() {
         ) : inspections.length === 0 ? (
           <div className="text-center py-10 text-gray-400">
             <Eye className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No inspections logged yet.</p>
-            <p className="text-xs mt-1">Click "New Inspection" to record your first one.</p>
+            <p className="text-sm">{isFr ? "Aucune inspection enregistrée pour le moment." : 'No inspections logged yet.'}</p>
+            <p className="text-xs mt-1">{isFr ? "Cliquez sur « Nouvelle inspection » pour enregistrer la première." : 'Click "New Inspection" to record your first one.'}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -343,14 +352,14 @@ export function PondInspectionsPage() {
                     {anyWarning && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                         <AlertTriangle className="w-3 h-3" />
-                        Watch
+                        {isFr ? 'Surveiller' : 'Watch'}
                       </span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 mt-1.5">
                     {clarity && (
                       <span className={`text-xs px-2 py-0.5 rounded-full ${clarity.color}`}>
-                        Water: {clarity.label}
+                        {isFr ? 'Eau' : 'Water'}: {clarity.label}
                       </span>
                     )}
                     {behavior && (
@@ -360,12 +369,12 @@ export function PondInspectionsPage() {
                     )}
                     {feeding && (
                       <span className={`text-xs px-2 py-0.5 rounded-full ${feeding.color}`}>
-                        Feed: {feeding.label}
+                        {isFr ? 'Aliment' : 'Feed'}: {feeding.label}
                       </span>
                     )}
                     {(insp.dead_fish_count ?? 0) > 0 && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-800">
-                        {insp.dead_fish_count} dead fish
+                        {insp.dead_fish_count} {isFr ? 'poissons morts' : 'dead fish'}
                       </span>
                     )}
                   </div>

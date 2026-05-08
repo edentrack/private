@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Calendar, Loader2, Fish, Info } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { useToast } from '../../../contexts/ToastContext';
 
 interface PondRow {
@@ -49,6 +50,8 @@ function fmtDate(d: Date): string {
 
 export function PondCyclePlanningPage() {
   const { currentFarm } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<PondRow[]>([]);
@@ -67,7 +70,7 @@ export function PondCyclePlanningPage() {
       .order('start_date', { ascending: true });
 
     if (error) {
-      showToast(`Failed to load: ${error.message}`, 'error');
+      showToast(isFr ? `Échec du chargement : ${error.message}` : `Failed to load: ${error.message}`, 'error');
       setLoading(false);
       return;
     }
@@ -188,7 +191,7 @@ export function PondCyclePlanningPage() {
   if (!currentFarm) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 text-center text-gray-600">
-        Select a farm to view the pond plan.
+        {isFr ? "Sélectionnez une ferme pour voir le plan d'étang." : 'Select a farm to view the pond plan.'}
       </div>
     );
   }
@@ -207,11 +210,12 @@ export function PondCyclePlanningPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-emerald-600" />
-            Pond cycle planner
+            {isFr ? "Planificateur de cycles d'étang" : 'Pond cycle planner'}
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            Visual timeline of every pond's stocking and projected harvest. Plan re-stocking around upcoming
-            harvest dates.
+            {isFr
+              ? "Frise visuelle de l'empoissonnement et de la récolte projetée de chaque étang. Planifiez le rempoissonnement autour des prochaines dates de récolte."
+              : "Visual timeline of every pond's stocking and projected harvest. Plan re-stocking around upcoming harvest dates."}
           </p>
         </div>
         <label className="inline-flex items-center gap-2 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2">
@@ -221,36 +225,36 @@ export function PondCyclePlanningPage() {
             onChange={(e) => setShowArchived(e.target.checked)}
             className="rounded"
           />
-          Show archived ponds
+          {isFr ? 'Afficher les étangs archivés' : 'Show archived ponds'}
         </label>
       </div>
 
       {visibleRows.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
           <Fish className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <h2 className="text-lg font-medium text-gray-900">No ponds yet</h2>
+          <h2 className="text-lg font-medium text-gray-900">{isFr ? "Aucun étang pour le moment" : 'No ponds yet'}</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Create a fish flock under {`Flocks → New flock`} to see it here.
+            {isFr ? `Créez un lot de poissons via Étangs → Nouvel étang pour le voir ici.` : `Create a fish flock under Flocks → New flock to see it here.`}
           </p>
         </div>
       ) : (
         <>
           <div className="flex items-center gap-3 mb-3 text-xs text-gray-600 flex-wrap">
-            <Legend color="bg-emerald-500" label="Catfish (~180d)" />
-            <Legend color="bg-blue-500" label="Tilapia (~150d)" />
-            <Legend color="bg-cyan-600" label="Clarias (~180d)" />
-            <Legend color="bg-violet-500" label="Other (~180d)" />
+            <Legend color="bg-emerald-500" label={isFr ? 'Poisson-chat (~180j)' : 'Catfish (~180d)'} />
+            <Legend color="bg-blue-500" label={isFr ? 'Tilapia (~150j)' : 'Tilapia (~150d)'} />
+            <Legend color="bg-cyan-600" label={isFr ? 'Clarias (~180j)' : 'Clarias (~180d)'} />
+            <Legend color="bg-violet-500" label={isFr ? 'Autre (~180j)' : 'Other (~180d)'} />
             <span className="ml-2 inline-flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
-              Stocking event
+              {isFr ? 'Empoissonnement' : 'Stocking event'}
             </span>
             <span className="inline-flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-fuchsia-500" />
-              Sampling
+              {isFr ? 'Échantillonnage' : 'Sampling'}
             </span>
             <span className="inline-flex items-center gap-1">
               <span className="w-3 h-0.5 bg-red-500" />
-              Today
+              {isFr ? "Aujourd'hui" : 'Today'}
             </span>
           </div>
 
@@ -260,7 +264,7 @@ export function PondCyclePlanningPage() {
                 {/* Header: month columns */}
                 <div className="flex border-b border-gray-200">
                   <div className="w-48 flex-shrink-0 px-3 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide bg-gray-50">
-                    Pond
+                    {isFr ? 'Étang' : 'Pond'}
                   </div>
                   <div className="flex-1 relative bg-gray-50">
                     <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${monthCount}, 1fr)` }}>
@@ -289,11 +293,11 @@ export function PondCyclePlanningPage() {
                       <div className="w-48 flex-shrink-0 px-3 py-3">
                         <div className="font-medium text-gray-900 text-sm truncate">{row.name}</div>
                         <div className={`text-xs ${colors.text} truncate`}>
-                          {row.species} · {row.currentCount.toLocaleString()} fish
+                          {row.species} · {row.currentCount.toLocaleString()} {isFr ? 'poissons' : 'fish'}
                         </div>
                         {row.status === 'archived' && (
                           <span className="inline-block text-[10px] uppercase tracking-wide text-gray-500 mt-1">
-                            archived
+                            {isFr ? 'archivé' : 'archived'}
                           </span>
                         )}
                       </div>
@@ -321,7 +325,7 @@ export function PondCyclePlanningPage() {
                             width: `${widthPct}%`,
                             opacity: row.actualHarvest ? 0.6 : 1,
                           }}
-                          title={`${fmtDate(row.start)} → ${fmtDate(endDate)} (${dur} days)`}
+                          title={isFr ? `${fmtDate(row.start)} → ${fmtDate(endDate)} (${dur} jours)` : `${fmtDate(row.start)} → ${fmtDate(endDate)} (${dur} days)`}
                         >
                           {widthPct > 8 && (
                             <span className="truncate">
@@ -340,7 +344,7 @@ export function PondCyclePlanningPage() {
                               key={`stk-${i}`}
                               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-amber-500 border border-white"
                               style={{ left: `${p}%` }}
-                              title={`Stocked ${s.count.toLocaleString()} fingerlings on ${fmtDate(s.date)}`}
+                              title={isFr ? `${s.count.toLocaleString()} alevins empoissonnés le ${fmtDate(s.date)}` : `Stocked ${s.count.toLocaleString()} fingerlings on ${fmtDate(s.date)}`}
                             />
                           );
                         })}
@@ -356,8 +360,8 @@ export function PondCyclePlanningPage() {
                               style={{ left: `${p}%` }}
                               title={
                                 s.abwG
-                                  ? `Sampled ${s.abwG}g ABW on ${fmtDate(s.date)}`
-                                  : `Sampled on ${fmtDate(s.date)}`
+                                  ? (isFr ? `Échantillon ${s.abwG} g PVM le ${fmtDate(s.date)}` : `Sampled ${s.abwG}g ABW on ${fmtDate(s.date)}`)
+                                  : (isFr ? `Échantillon le ${fmtDate(s.date)}` : `Sampled on ${fmtDate(s.date)}`)
                               }
                             />
                           );
@@ -373,10 +377,15 @@ export function PondCyclePlanningPage() {
           <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900 flex gap-3">
             <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <div>
-              Projected harvest dates assume typical cycles: <strong>catfish/clarias 180 days</strong>,{' '}
-              <strong>tilapia 150 days</strong>. If your operation differs, sampling-event records will refine this
-              estimate in a future update. Use this view to space out re-stocking so harvests don't collide and
-              your buyers always have stock.
+              {isFr ? (
+                <>
+                  Les dates de récolte projetées supposent des cycles types : <strong>poisson-chat/clarias 180 jours</strong>, <strong>tilapia 150 jours</strong>. Si votre exploitation diffère, les échantillonnages affineront cette estimation dans une future mise à jour. Utilisez cette vue pour échelonner les rempoissonnements afin que les récoltes ne se chevauchent pas et que vos acheteurs aient toujours du stock.
+                </>
+              ) : (
+                <>
+                  Projected harvest dates assume typical cycles: <strong>catfish/clarias 180 days</strong>,{' '}<strong>tilapia 150 days</strong>. If your operation differs, sampling-event records will refine this estimate in a future update. Use this view to space out re-stocking so harvests don't collide and your buyers always have stock.
+                </>
+              )}
             </div>
           </div>
         </>
