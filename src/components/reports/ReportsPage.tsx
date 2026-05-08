@@ -3,6 +3,7 @@ import { FileText, Download, FileSpreadsheet, MessageCircle } from 'lucide-react
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { assembleFarmReport, type FarmReportData } from '../../utils/farmReportAssembler';
 import { downloadFarmReportPDF } from '../../utils/farmReportPDF';
@@ -47,6 +48,8 @@ function startOfYear(): string {
 export function ReportsPage() {
   const { currentFarm } = useAuth();
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
 
   const [startDate, setStartDate] = useState<string>(startOfMonth());
@@ -144,41 +147,43 @@ export function ReportsPage() {
           <FileText className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Farm reports & exports</h1>
+          <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Rapports & exports de la ferme' : 'Farm reports & exports'}</h1>
           <p className="text-sm text-gray-500">
-            Generate a printable PDF for bank or co-op submission, CSV files for analyst review, or a one-message WhatsApp summary.
+            {isFr
+              ? 'Générez un PDF imprimable pour la soumission à une banque ou une coopérative, des fichiers CSV pour les analystes, ou un résumé WhatsApp en un seul message.'
+              : 'Generate a printable PDF for bank or co-op submission, CSV files for analyst review, or a one-message WhatsApp summary.'}
           </p>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-700">Date range</h2>
+        <h2 className="text-sm font-semibold text-gray-700">{isFr ? 'Plage de dates' : 'Date range'}</h2>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => useQuickRange(startOfMonth(), todayLocal(), 'this month')}
             className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50"
           >
-            This month
+            {isFr ? 'Ce mois' : 'This month'}
           </button>
           <button
             type="button"
             onClick={() => useQuickRange(startOfQuarter(), todayLocal(), 'this quarter')}
             className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50"
           >
-            This quarter
+            {isFr ? 'Ce trimestre' : 'This quarter'}
           </button>
           <button
             type="button"
             onClick={() => useQuickRange(startOfYear(), todayLocal(), 'year-to-date')}
             className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-50"
           >
-            Year-to-date
+            {isFr ? "Cumul de l'année" : 'Year-to-date'}
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date de début' : 'Start date'}</label>
             <input
               type="date"
               value={startDate}
@@ -188,7 +193,7 @@ export function ReportsPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">End date</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Date de fin' : 'End date'}</label>
             <input
               type="date"
               value={endDate}
@@ -206,7 +211,7 @@ export function ReportsPage() {
           className="px-4 py-2 text-sm font-medium bg-[#3D5F42] text-white rounded-lg hover:bg-[#2f4a34] disabled:opacity-60 inline-flex items-center gap-2"
         >
           <FileText className="w-4 h-4" />
-          {loading ? 'Assembling…' : 'Generate report'}
+          {loading ? (isFr ? 'Assemblage…' : 'Assembling…') : (isFr ? 'Générer le rapport' : 'Generate report')}
         </button>
       </div>
 
@@ -219,23 +224,23 @@ export function ReportsPage() {
             const previewLabel = getCurrencySymbol(data.currency);
             return (
           <div className="bg-white rounded-2xl border border-gray-200 p-4">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Preview</h2>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">{isFr ? 'Aperçu' : 'Preview'}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div><div className="text-xs text-gray-500">Active groups</div><div className="font-bold text-gray-900">{data.totalFlocks}</div></div>
-              <div><div className="text-xs text-gray-500">Active animals</div><div className="font-bold text-gray-900">{fmt(data.totalActiveAnimals)}</div></div>
-              <div><div className="text-xs text-gray-500">Revenue</div><div className="font-bold text-gray-900">{fmt(data.totalRevenue)} {previewLabel}</div></div>
-              <div><div className="text-xs text-gray-500">Expenses</div><div className="font-bold text-gray-900">{fmt(data.totalExpenses)} {previewLabel}</div></div>
-              <div><div className="text-xs text-gray-500">Net profit</div><div className={`font-bold ${data.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{data.netProfit >= 0 ? '+' : ''}{fmt(data.netProfit)} {previewLabel}</div></div>
-              <div><div className="text-xs text-gray-500">Margin</div><div className="font-bold text-gray-900">{data.marginPercent.toFixed(1)}%</div></div>
+              <div><div className="text-xs text-gray-500">{isFr ? 'Groupes actifs' : 'Active groups'}</div><div className="font-bold text-gray-900">{data.totalFlocks}</div></div>
+              <div><div className="text-xs text-gray-500">{isFr ? 'Animaux actifs' : 'Active animals'}</div><div className="font-bold text-gray-900">{fmt(data.totalActiveAnimals)}</div></div>
+              <div><div className="text-xs text-gray-500">{isFr ? 'Revenus' : 'Revenue'}</div><div className="font-bold text-gray-900">{fmt(data.totalRevenue)} {previewLabel}</div></div>
+              <div><div className="text-xs text-gray-500">{isFr ? 'Dépenses' : 'Expenses'}</div><div className="font-bold text-gray-900">{fmt(data.totalExpenses)} {previewLabel}</div></div>
+              <div><div className="text-xs text-gray-500">{isFr ? 'Bénéfice net' : 'Net profit'}</div><div className={`font-bold ${data.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{data.netProfit >= 0 ? '+' : ''}{fmt(data.netProfit)} {previewLabel}</div></div>
+              <div><div className="text-xs text-gray-500">{isFr ? 'Marge' : 'Margin'}</div><div className="font-bold text-gray-900">{data.marginPercent.toFixed(1)}%</div></div>
               <div><div className="text-xs text-gray-500">{farmSpecies.lossNounPlural}</div><div className="font-bold text-gray-900">{data.totalMortality}</div></div>
-              <div><div className="text-xs text-gray-500">Feed used</div><div className="font-bold text-gray-900">{fmt(data.totalFeedKg)} kg</div></div>
+              <div><div className="text-xs text-gray-500">{isFr ? 'Aliment utilisé' : 'Feed used'}</div><div className="font-bold text-gray-900">{fmt(data.totalFeedKg)} kg</div></div>
             </div>
           </div>
             );
           })()}
 
           <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-700">Export</h2>
+            <h2 className="text-sm font-semibold text-gray-700">{isFr ? 'Exporter' : 'Export'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
@@ -244,7 +249,7 @@ export function ReportsPage() {
                 className="px-4 py-3 text-sm font-medium bg-[#3D5F42] text-white rounded-lg hover:bg-[#2f4a34] disabled:opacity-60 inline-flex items-center gap-2 justify-center"
               >
                 <Download className="w-4 h-4" />
-                {exporting === 'pdf' ? 'Generating PDF…' : 'Download PDF (formal)'}
+                {exporting === 'pdf' ? (isFr ? 'Génération du PDF…' : 'Generating PDF…') : (isFr ? 'Télécharger le PDF (officiel)' : 'Download PDF (formal)')}
               </button>
               <button
                 type="button"
@@ -253,7 +258,7 @@ export function ReportsPage() {
                 className="px-4 py-3 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 inline-flex items-center gap-2 justify-center"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                {exporting === 'csv' ? 'Exporting…' : 'Download CSVs (analyst)'}
+                {exporting === 'csv' ? (isFr ? 'Export en cours…' : 'Exporting…') : (isFr ? 'Télécharger les CSV (analyste)' : 'Download CSVs (analyst)')}
               </button>
               <button
                 type="button"
@@ -262,7 +267,7 @@ export function ReportsPage() {
                 className="px-4 py-3 text-sm font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-60 inline-flex items-center gap-2 justify-center"
               >
                 <FileText className="w-4 h-4" />
-                {exporting === 'md' ? 'Saving…' : 'Markdown (.md)'}
+                {exporting === 'md' ? (isFr ? 'Enregistrement…' : 'Saving…') : 'Markdown (.md)'}
               </button>
               <button
                 type="button"
@@ -271,11 +276,13 @@ export function ReportsPage() {
                 className="px-4 py-3 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60 inline-flex items-center gap-2 justify-center"
               >
                 <MessageCircle className="w-4 h-4" />
-                Share via WhatsApp
+                {isFr ? 'Partager via WhatsApp' : 'Share via WhatsApp'}
               </button>
             </div>
             <p className="text-[11px] text-gray-500">
-              The PDF is the formal version — bank-submission ready. CSV files import cleanly into Excel and Google Sheets for further analysis. Markdown is a text-only summary suitable for email or pasting into chat.
+              {isFr
+                ? "Le PDF est la version officielle — prête pour soumission bancaire. Les fichiers CSV s'importent proprement dans Excel et Google Sheets pour analyse. Markdown est un résumé texte adapté à un e-mail ou au chat."
+                : 'The PDF is the formal version — bank-submission ready. CSV files import cleanly into Excel and Google Sheets for further analysis. Markdown is a text-only summary suitable for email or pasting into chat.'}
             </p>
           </div>
         </>

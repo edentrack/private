@@ -30,6 +30,7 @@ import { cleanHistoricalDuplicateTasks, ensureTasksGeneratedForDate, getFlockTyp
 import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
 import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES, AQUACULTURE_DEFAULT_PHASES, RABBIT_DEFAULT_PHASES } from '../../utils/speciesModules';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface DashboardHomeProps {
   onNavigate: (view: string) => void;
@@ -43,6 +44,8 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
   const { showEggs, isAquaculture } = useFarmType();
   const isRabbits = (currentFarm as any)?.farm_type === 'rabbits';
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
@@ -745,7 +748,7 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
                 className="w-full flex items-center justify-start gap-1.5 px-1 py-1 text-left"
               >
                 <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedSections.mainTasks ? 'rotate-180' : ''}`} />
-                <span className="text-sm font-semibold text-gray-900">Main Tasks</span>
+                <span className="text-sm font-semibold text-gray-900">{isFr ? 'Tâches principales' : 'Main Tasks'}</span>
               </button>
               {expandedSections.mainTasks && (
                 <div className="pt-1">
@@ -761,7 +764,7 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
           {!isAquaculture && showEggs && selectedFlock?.type?.toLowerCase() !== 'broiler' && (
             <div className="animate-fade-in-up stagger-4">
               <div>
-                <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">Egg Quick Entry</div>
+                <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">{isFr ? 'Saisie rapide des œufs' : 'Egg Quick Entry'}</div>
                 <QuickEggCollectionWidget onSuccess={() => setEggRefreshTrigger((t) => t + 1)} />
               </div>
             </div>
@@ -826,7 +829,7 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
       )}
 
       <div className="animate-fade-in-up">
-        <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">Inventory Usage</div>
+        <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">{isFr ? 'Utilisation des stocks' : 'Inventory Usage'}</div>
         <InventoryUsageWidget />
       </div>
 
@@ -838,7 +841,7 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
             className="w-full flex items-center justify-start gap-1.5 px-3 py-2 text-left hover:bg-gray-50"
           >
             <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedSections.quickActions ? 'rotate-180' : ''}`} />
-            <span className="text-sm font-semibold text-gray-900">Quick Actions</span>
+            <span className="text-sm font-semibold text-gray-900">{isFr ? 'Actions rapides' : 'Quick Actions'}</span>
           </button>
           {expandedSections.quickActions && (
             <div className="p-2 pt-0">
@@ -879,8 +882,8 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-500 text-xs mb-0.5">Weight</p>
-                    <p className="text-sm font-semibold text-gray-900">Quick Weight Check</p>
+                    <p className="text-gray-500 text-xs mb-0.5">{isFr ? 'Poids' : 'Weight'}</p>
+                    <p className="text-sm font-semibold text-gray-900">{isFr ? 'Pesée rapide' : 'Quick Weight Check'}</p>
                   </div>
                   <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-neon-500/20 transition-colors">
                     <TrendingUp className="w-4 h-4 text-gray-600" />

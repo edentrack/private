@@ -17,6 +17,7 @@ import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 type TimePeriod = 'all' | 'year' | 'month' | 'week' | 'day' | 'custom';
 
@@ -50,10 +51,14 @@ export function SalesManagement() {
   const { profile, currentFarm, currentRole } = useAuth();
   const { farmPermissions } = usePermissions();
   const species = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   // Aquaculture & rabbit farms shouldn't see "Sell Birds" — relabel and
   // hide the egg-sale tab where it makes no sense.
   const showEggsTab = species.id === 'poultry';
-  const sellTabLabel = `Sell ${species.animalTermPlural}`;
+  const sellTabLabel = isFr
+    ? `Vendre des ${species.animalTermPlural.toLowerCase()}`
+    : `Sell ${species.animalTermPlural}`;
   const [activeTab, setActiveTab] = useState<'record' | 'history' | 'customers' | 'invoices'>('record');
   // Default the History sub-tab to the species-correct list. Pre-fix the
   // default was 'eggs' regardless of species, so a fresh fish farm landed
@@ -450,7 +455,7 @@ export function SalesManagement() {
             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
               <FileText className="w-5 h-5 text-amber-600" />
             </div>
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pending Sales</div>
+            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{isFr ? 'Ventes en attente' : 'Pending Sales'}</div>
           </div>
           <div className="text-3xl font-bold text-gray-900">{stats.pendingInvoices}</div>
         </div>
@@ -459,7 +464,7 @@ export function SalesManagement() {
             <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-green-600" />
             </div>
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Paid Sales</div>
+            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{isFr ? 'Ventes payées' : 'Paid Sales'}</div>
           </div>
           <div className="text-3xl font-bold text-gray-900">{stats.paidInvoices}</div>
         </div>
@@ -598,7 +603,9 @@ export function SalesManagement() {
                     }`}
                   >
                     <Bird className="w-4 h-4 inline-block mr-2" />
-                    {`${species.animalTermPlural} sales`}
+                    {isFr
+                      ? `Ventes de ${species.animalTermPlural.toLowerCase()}`
+                      : `${species.animalTermPlural} sales`}
                   </button>
                   {showEggsTab && (
                     <button

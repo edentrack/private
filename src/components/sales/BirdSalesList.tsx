@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface BirdSale {
   id: string;
@@ -36,6 +37,8 @@ interface BirdSalesListProps {
 export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
   const { currentFarm, currentRole, profile } = useAuth();
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const animalTerm = farmSpecies.animalTerm;
   const animalTermPlural = farmSpecies.animalTermPlural;
   const animalTermPluralLower = farmSpecies.animalTermPlural.toLowerCase();
@@ -80,11 +83,11 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
   const getPaymentStatusBadge = (status: string) => {
     switch (status) {
       case 'paid':
-        return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">Paid</span>;
+        return <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">{isFr ? 'Payé' : 'Paid'}</span>;
       case 'partial':
-        return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">Partial</span>;
+        return <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">{isFr ? 'Partiel' : 'Partial'}</span>;
       case 'credit':
-        return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">Credit</span>;
+        return <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">{isFr ? 'Crédit' : 'Credit'}</span>;
       default:
         return null;
     }
@@ -97,12 +100,9 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
       wholesale: 'bg-amber-100 text-amber-700',
       retail: 'bg-green-100 text-green-700',
     };
-    const labels: Record<string, string> = {
-      market: 'Market',
-      pre_order: 'Pre-Order',
-      wholesale: 'Wholesale',
-      retail: 'Retail',
-    };
+    const labels: Record<string, string> = isFr
+      ? { market: 'Marché', pre_order: 'Précommande', wholesale: 'Gros', retail: 'Détail' }
+      : { market: 'Market', pre_order: 'Pre-Order', wholesale: 'Wholesale', retail: 'Retail' };
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[type] || 'bg-gray-100 text-gray-700'}`}>
         {labels[type] || type}
@@ -124,8 +124,8 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Bird className="w-8 h-8 text-gray-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{`No ${animalTerm} Sales Yet`}</h3>
-        <p className="text-gray-500">{`Record your first ${animalTermLower} sale to start tracking`}</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{isFr ? `Aucune vente de ${animalTermPluralLower} pour le moment` : `No ${animalTerm} Sales Yet`}</h3>
+        <p className="text-gray-500">{isFr ? `Enregistrez votre première vente de ${animalTermLower} pour commencer le suivi` : `Record your first ${animalTermLower} sale to start tracking`}</p>
       </div>
     );
   }
@@ -138,17 +138,17 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="p-3 sm:p-4 bg-blue-50 rounded-xl">
-          <p className="text-xs sm:text-sm text-blue-600 mb-1">{`Total ${animalTermPlural} Sold`}</p>
+          <p className="text-xs sm:text-sm text-blue-600 mb-1">{isFr ? `Total ${animalTermPluralLower} vendus` : `Total ${animalTermPlural} Sold`}</p>
           <p className="text-xl sm:text-2xl font-bold text-gray-900">{totalBirdsSold.toLocaleString()}</p>
         </div>
         {!hideFinancials && (
           <>
             <div className="p-3 sm:p-4 bg-green-50 rounded-xl">
-              <p className="text-xs sm:text-sm text-green-600 mb-1">Total Revenue</p>
+              <p className="text-xs sm:text-sm text-green-600 mb-1">{isFr ? 'Revenus totaux' : 'Total Revenue'}</p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900 break-words">{totalRevenue.toLocaleString()} {currency}</p>
             </div>
             <div className="p-3 sm:p-4 bg-amber-50 rounded-xl">
-              <p className="text-xs sm:text-sm text-amber-600 mb-1">Pending Payment</p>
+              <p className="text-xs sm:text-sm text-amber-600 mb-1">{isFr ? 'Paiement en attente' : 'Pending Payment'}</p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900 break-words">{totalPending.toLocaleString()} {currency}</p>
             </div>
           </>
@@ -205,16 +205,20 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
               <div className="px-3 sm:px-4 pb-3 sm:pb-4 border-t border-gray-100 pt-3 sm:pt-4 bg-gray-50">
                 <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                   <div>
-                    <p className="text-gray-500 mb-1">Sale Method</p>
+                    <p className="text-gray-500 mb-1">{isFr ? 'Méthode de vente' : 'Sale Method'}</p>
                     <p className="font-medium text-gray-900 break-words">
-                      {sale.sale_method === 'per_bird' && `Per ${animalTerm} (${sale.price_per_bird?.toLocaleString()} ${currency}/${animalTermLower})`}
-                      {sale.sale_method === 'per_kg' && `Per Kg (${sale.price_per_kg?.toLocaleString()} ${currency}/kg)`}
-                      {sale.sale_method === 'lump_sum' && 'Lump Sum'}
+                      {sale.sale_method === 'per_bird' && (isFr
+                        ? `Par ${animalTermLower} (${sale.price_per_bird?.toLocaleString()} ${currency}/${animalTermLower})`
+                        : `Per ${animalTerm} (${sale.price_per_bird?.toLocaleString()} ${currency}/${animalTermLower})`)}
+                      {sale.sale_method === 'per_kg' && (isFr
+                        ? `Par kg (${sale.price_per_kg?.toLocaleString()} ${currency}/kg)`
+                        : `Per Kg (${sale.price_per_kg?.toLocaleString()} ${currency}/kg)`)}
+                      {sale.sale_method === 'lump_sum' && (isFr ? 'Forfait' : 'Lump Sum')}
                     </p>
                   </div>
                   {sale.sale_method === 'per_kg' && sale.total_weight_kg && (
                     <div>
-                      <p className="text-gray-500 mb-1">Total Weight</p>
+                      <p className="text-gray-500 mb-1">{isFr ? 'Poids total' : 'Total Weight'}</p>
                       <p className="font-medium text-gray-900 flex items-center gap-1">
                         <Scale className="w-3 h-3 sm:w-4 sm:h-4" />
                         {sale.total_weight_kg} kg
@@ -223,7 +227,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
                   )}
                   {sale.customer_name && (
                     <div>
-                      <p className="text-gray-500 mb-1">Customer</p>
+                      <p className="text-gray-500 mb-1">{isFr ? 'Client' : 'Customer'}</p>
                       <p className="font-medium text-gray-900 flex items-center gap-1 break-words">
                         <User className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                         <span>
@@ -235,12 +239,12 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
                   )}
                   {!hideFinancials && sale.payment_status !== 'paid' && (
                     <div>
-                      <p className="text-gray-500 mb-1">Payment Details</p>
+                      <p className="text-gray-500 mb-1">{isFr ? 'Détails du paiement' : 'Payment Details'}</p>
                       <p className="font-medium text-gray-900 break-words">
-                        Paid: {sale.amount_paid.toLocaleString()} {currency}
+                        {isFr ? 'Payé' : 'Paid'}: {sale.amount_paid.toLocaleString()} {currency}
                         {sale.amount_pending > 0 && (
                           <span className="text-amber-600 block sm:inline sm:ml-2 mt-1 sm:mt-0">
-                            (Pending: {sale.amount_pending.toLocaleString()} {currency})
+                            ({isFr ? 'En attente' : 'Pending'}: {sale.amount_pending.toLocaleString()} {currency})
                           </span>
                         )}
                       </p>
@@ -248,7 +252,7 @@ export function BirdSalesList({ refreshTrigger }: BirdSalesListProps) {
                   )}
                   {sale.notes && (
                     <div className="sm:col-span-2">
-                      <p className="text-gray-500 mb-1">Notes</p>
+                      <p className="text-gray-500 mb-1">{isFr ? 'Notes' : 'Notes'}</p>
                       <p className="font-medium text-gray-900 break-words">{sale.notes}</p>
                     </div>
                   )}
