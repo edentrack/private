@@ -1491,6 +1491,12 @@
   },
   "settings": {
     "title": "Settings",
+    "tabs": {
+      "farm": "Farm",
+      "my_farms": "My Farms",
+      "team": "Team",
+      "prefs": "Prefs"
+    },
     "farm_profile": "Farm Profile",
     "farm_name": "Farm Name",
     "farm_operations": "Farm Operations",
