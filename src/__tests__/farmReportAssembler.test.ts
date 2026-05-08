@@ -158,6 +158,71 @@ describe('assembleFarmReport — perf rewrite', () => {
     expect(data.totalMortality).toBe(13);
   });
 
+  it("does NOT double-count egg/bird sales that have shadow rows in the revenues table", async () => {
+    // Greg's bug report (May 2026): "my account said 800,000 for total
+    // income but a one month report said im 1,200,000 in profit". Root
+    // cause: every egg/bird sale is written to TWO tables — the
+    // canonical detail row in egg_sales/bird_sales, and a shadow row
+    // in `revenues` with source_type='egg_sale'/'bird_sale'. The pre-fix
+    // assembler summed both and double-counted every sale. Legacy
+    // reportGenerator.ts already filtered the shadows; we now match.
+    const flocks = [
+      { id: 'a', name: 'Pen A', type: 'Layer', initial_count: 100, current_count: 100, arrival_date: '2025-10-01', status: 'active' },
+    ];
+
+    // Real-world shape: one egg sale of 100,000 generates rows in BOTH tables.
+    const egg_sales = [
+      { total_amount: 100_000, total_eggs: 1000, flock_id: 'a' },
+    ];
+    const revenues = [
+      // Shadow of the egg sale — should be excluded.
+      { amount: 100_000, source_type: 'egg_sale', flock_id: 'a' },
+      // A genuine "other" revenue (e.g. consultancy) — should be included.
+      { amount: 50_000, source_type: 'other', flock_id: 'a' },
+    ];
+
+    const sb = makeMockSupabase({ flocks, egg_sales, revenues });
+
+    const data = await assembleFarmReport({
+      farmId: 'f1',
+      startDate: '2026-04-01',
+      endDate: '2026-04-30',
+      supabase: sb,
+    });
+
+    // Pre-fix: 100k + 100k + 50k = 250k (double-counted egg sale)
+    // Post-fix: 100k (egg) + 50k (other) = 150k
+    expect(data.totalRevenue).toBe(150_000);
+
+    // revenueBySource should also reflect the de-duplicated split.
+    const eggSrc = data.revenueBySource.find(r => r.source === 'Egg sales');
+    const otherSrc = data.revenueBySource.find(r => r.source === 'Other revenue');
+    expect(eggSrc?.amount).toBe(100_000);
+    expect(otherSrc?.amount).toBe(50_000);
+
+    // Per-flock revenue total should also be correct (no double-count).
+    expect(data.flocks[0].revenueTotal).toBe(150_000);
+  });
+
+  it('also de-duplicates bird_sale shadow rows', async () => {
+    const flocks = [
+      { id: 'a', name: 'Broiler Pen', type: 'Broiler', initial_count: 200, current_count: 198, arrival_date: '2026-01-01', status: 'active' },
+    ];
+    const bird_sales = [{ total_amount: 250_000, flock_id: 'a' }];
+    const revenues = [
+      { amount: 250_000, source_type: 'bird_sale', flock_id: 'a' }, // shadow
+    ];
+    const sb = makeMockSupabase({ flocks, bird_sales, revenues });
+    const data = await assembleFarmReport({
+      farmId: 'f1',
+      startDate: '2026-04-01',
+      endDate: '2026-04-30',
+      supabase: sb,
+    });
+    expect(data.totalRevenue).toBe(250_000);
+    expect(data.flocks[0].revenueTotal).toBe(250_000);
+  });
+
   it('handles flocks with zero events without errors', async () => {
     const flocks = [
       { id: 'a', name: 'Empty Pen', type: 'Layer', initial_count: 100, current_count: 100, arrival_date: '2025-10-01', status: 'active' },
