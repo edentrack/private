@@ -316,7 +316,11 @@ export function NotificationCenter() {
 
   return (
     <div className="relative">
-      <button onClick={() => setShowPanel(p => !p)} className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
+      <button
+        onClick={() => setShowPanel(p => !p)}
+        className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        aria-label={totalBadge > 0 ? `Notifications (${totalBadge} unread)` : 'Notifications'}
+      >
         <Bell className="w-6 h-6 text-gray-700" />
         {totalBadge > 0 && (
           <span className="absolute top-0 right-0 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
