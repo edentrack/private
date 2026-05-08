@@ -135,6 +135,13 @@ interface ChatRequest {
    * signals. See docs/BRIEF_PHASE_6_CONVERSATIONAL_ONBOARDING.md.
    */
   onboarding_mode?: boolean;
+  /**
+   * Onboarding-only: the country the user picked at signup. Passed by
+   * the OnboardingChat client so Eden's CREATE_FARM action can fill in
+   * the right country and currency instead of defaulting to "Nigeria"
+   * from the system-prompt example. (BUG #1/#8 fix, May 2026.)
+   */
+  user_country?: string;
 }
 
 async function getFarmContext(supabase: any, farmId: string): Promise<{ context: string; setupConfig: any; farmType: string }> {
@@ -1142,7 +1149,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ChatRequest = await req.json();
-    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel, onboarding_mode } = body;
+    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel, onboarding_mode, user_country } = body;
 
     const isCrossFarm = cross_farm === true && Array.isArray(cross_farm_farm_ids) && cross_farm_farm_ids.length > 0;
     const isOnboarding = onboarding_mode === true;
@@ -1370,8 +1377,16 @@ Deno.serve(async (req: Request) => {
     // dates in January when the user said "today").
     const todayISO = new Date().toISOString().slice(0, 10);
     const todayBanner = `\n\n## TODAY'S DATE\nReal-world today is ${todayISO}. Whenever the user says "today", "now", or doesn't specify a date, use ${todayISO}. NEVER guess or default to your training-cutoff date.\n`;
+    // Onboarding-only: thread the user's selected country into the prompt
+    // so the CREATE_FARM action carries it instead of defaulting to the
+    // example "Nigeria". (BUG #1/#8 fix, May 2026.)
+    const trustedCountry = (user_country || "").trim().slice(0, 60);
+    const onboardingCountryBanner = trustedCountry
+      ? `\n\n## USER COUNTRY\nThe user picked "${trustedCountry}" at signup. Use this exact string as the "country" field in your CREATE_FARM action — do NOT use the example country from the steps above. Do NOT ask the user for their country again.\n`
+      : `\n\n## USER COUNTRY\nThe user did not pick a country at signup. Before emitting CREATE_FARM, ask the user one short question: "Which country are you farming in?". Then put their answer (e.g. "Cameroon", "Kenya") into the "country" field of CREATE_FARM. Do NOT default to Nigeria.\n`;
+
     const systemMessage = isOnboarding
-      ? ONBOARDING_SYSTEM_PROMPT + todayBanner
+      ? ONBOARDING_SYSTEM_PROMPT + todayBanner + onboardingCountryBanner
       : SYSTEM_PROMPT + speciesNote + tierNote + farmCapNote + roleNote + greetingNote + todayBanner + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)

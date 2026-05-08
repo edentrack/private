@@ -1828,8 +1828,18 @@ export function AIAssistantPage() {
       return `Pond inspection "${pond}": clarity ${a.water_clarity || '—'}, fish ${a.fish_behavior || '—'}${a.dead_fish_count ? `, ${a.dead_fish_count} dead` : ''}${dateLabel}`;
     }
     if (a.type === 'LOG_STOCKING') {
+      // Species-aware verb + noun: "stocking fingerlings" is aquaculture
+      // vocab. For poultry it's "delivered birds", for rabbits "acquired
+      // rabbits". Greg flagged the fish-only wording on poultry farms in
+      // his May 2026 audit (BUG #7).
       const pond = a.pond_name || a.flock_name;
-      return `Stocked ${(a.fingerling_count || 0).toLocaleString()} ${a.species || 'fish'} fingerlings into "${pond}"${dateLabel}`;
+      const sp = String(a.species || '').toLowerCase();
+      const count = (a.fingerling_count || 0).toLocaleString();
+      const isFish = ['catfish', 'tilapia', 'salmon', 'trout', 'carp', 'shrimp', 'clarias', 'fish', 'other fish'].includes(sp);
+      const isRabbit = sp === 'rabbit' || sp === 'rabbits' || sp === 'rabbitry';
+      if (isFish) return `Stocked ${count} ${a.species} fingerlings into "${pond}"${dateLabel}`;
+      if (isRabbit) return `Acquired ${count} rabbits into "${pond}"${dateLabel}`;
+      return `Delivered ${count} ${a.species || 'birds'} to "${pond}"${dateLabel}`;
     }
     if (a.type === 'LOG_HARVEST') {
       const pond = a.pond_name || a.flock_name;
