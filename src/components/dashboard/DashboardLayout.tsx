@@ -130,8 +130,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
 
     // Items hidden in Simple Mode (advanced features)
     const simpleModeHidden = new Set(['vet-log', 'shifts']);
-    // Items only relevant when eggs are tracked (layer/mixed farms)
-    const eggOnlyItems = new Set(['sales', 'egg-records']);
+    // Items only relevant when eggs are tracked (layer/mixed farms).
+    // Sales used to be in this set — that hid the Sales nav item on
+    // every non-egg farm, including rabbits and aqua farms that
+    // routinely sell their animals through the Sales page. Removed.
+    const eggOnlyItems = new Set(['egg-records']);
     // Items only for aquaculture farms. `pond-planner` was missing from
     // this set pre-May-2026 — the pre-existing flat menu hid it at the
     // bottom so nobody noticed, but the post-grouping mobile More menu
@@ -142,8 +145,10 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     const rabbitsOnlyItems = new Set(['rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry']);
     // Items hidden for aquaculture farms — 'weight' is replaced by 'sampling' (Weight Sampling)
     // which is the species-correct surface for fish (ABW, biomass, SGR), so the legacy
-    // Weight & FCR page (broiler/layer charts) is not exposed.
-    const poultryOnlyItems = new Set(['vaccinations', 'weight']);
+    // Weight & FCR page (broiler/layer charts) is not exposed. Vaccinations apply
+    // to poultry + rabbits per speciesModules.features.vaccination — only aqua hides them.
+    const poultryRabbitItems = new Set(['vaccinations']);
+    const poultryOnlyItems = new Set(['weight']);
     const isRabbits = farmSpecies.id === 'rabbits';
 
     const filteredItems = allItems.filter(item => {
@@ -156,6 +161,8 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
         if (!isRabbits && rabbitsOnlyItems.has(item.id)) return false;
         if (isAquaculture && poultryOnlyItems.has(item.id)) return false;
         if (isRabbits && poultryOnlyItems.has(item.id)) return false;
+        // Aqua farms don't have vaccinations (no vaccination feature for fish).
+        if (isAquaculture && poultryRabbitItems.has(item.id)) return false;
       }
       return true;
     });
