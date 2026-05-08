@@ -555,7 +555,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             </div>
           )}
 
-          {isOwner && (
+          {isOwner && farmType === 'poultry' && (
             <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-50 text-orange-500">
