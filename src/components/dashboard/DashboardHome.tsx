@@ -29,6 +29,7 @@ import { getFarmTimeZone, getFarmTodayISO } from '../../utils/farmTime';
 import { cleanHistoricalDuplicateTasks, ensureTasksGeneratedForDate, getFlockTypesForFarm } from '../../utils/unifiedTaskSystem';
 import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
 import { BROILER_DEFAULT_PHASES, LAYER_DEFAULT_PHASES, AQUACULTURE_DEFAULT_PHASES, RABBIT_DEFAULT_PHASES } from '../../utils/speciesModules';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 
 interface DashboardHomeProps {
   onNavigate: (view: string) => void;
@@ -41,6 +42,7 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
   usePermissions(); // hook side-effects only — farmPermissions consumed by children
   const { showEggs, isAquaculture } = useFarmType();
   const isRabbits = (currentFarm as any)?.farm_type === 'rabbits';
+  const farmSpecies = useFarmSpecies();
   const toast = useToast();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [selectedFlockId, setSelectedFlockId] = useState<string | null>(null);
@@ -253,44 +255,56 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
     lines.push(`📅 *Date:* ${dateStr}`);
     lines.push('');
 
-    // Flocks
+    // Species-aware copy for the share text. Pre-fix the share message was
+    // hardcoded to "🐔 FLOCKS", "X birds", "🥚 EGGS", "MORTALITY ... birds"
+    // even on rabbits/aqua farms — fish farmers received reports calling
+    // their tilapia "birds".
+    const speciesEmoji =
+      isAquaculture ? '🐟' : isRabbits ? '🐰' : '🐔';
+    const groupLabelUpper = farmSpecies.groupTermPlural.toUpperCase();
+    const animalTermPluralLower = farmSpecies.animalTermPlural.toLowerCase();
+    const lossLabelUpper = farmSpecies.lossNounPlural.toUpperCase();
+
+    // Flocks / Ponds / Rabbitries
     if (flocks.length > 0) {
-      lines.push(`🐔 *FLOCKS (${flocks.length} active)*`);
+      lines.push(`${speciesEmoji} *${groupLabelUpper} (${flocks.length} active)*`);
       flocks.forEach(f => {
-        lines.push(`• ${f.name}: ${(f.current_count ?? 0).toLocaleString()} birds (${f.type ?? 'Unknown'})`);
+        lines.push(`• ${f.name}: ${(f.current_count ?? 0).toLocaleString()} ${animalTermPluralLower} (${f.type ?? 'Unknown'})`);
       });
       lines.push('');
     }
 
-    // Eggs — loaded in background by loadDashboardData
-    if (todayEggs.length > 0) {
-      const totalGood = todayEggs.reduce((s, e) => s + (Number(e.total_eggs) || 0), 0);
-      const totalDmg = todayEggs.reduce((s, e) => s + (Number(e.damaged_eggs) || 0), 0);
-      lines.push(`🥚 *EGGS COLLECTED TODAY*`);
-      lines.push(`• Good eggs: *${totalGood.toLocaleString()}*`);
-      if (totalDmg > 0) lines.push(`• Damaged: ${totalDmg}`);
-      todayEggs.forEach(e => {
-        const flock = flocks.find(f => f.id === e.flock_id);
-        if (flock && todayEggs.length > 1) lines.push(`  → ${flock.name}: ${Number(e.total_eggs) || 0} eggs`);
-      });
-      lines.push('');
-    } else {
-      lines.push(`🥚 *EGGS:* No collections recorded today`);
-      lines.push('');
+    // Eggs — only relevant on poultry farms with egg collection
+    if (showEggs) {
+      if (todayEggs.length > 0) {
+        const totalGood = todayEggs.reduce((s, e) => s + (Number(e.total_eggs) || 0), 0);
+        const totalDmg = todayEggs.reduce((s, e) => s + (Number(e.damaged_eggs) || 0), 0);
+        lines.push(`🥚 *EGGS COLLECTED TODAY*`);
+        lines.push(`• Good eggs: *${totalGood.toLocaleString()}*`);
+        if (totalDmg > 0) lines.push(`• Damaged: ${totalDmg}`);
+        todayEggs.forEach(e => {
+          const flock = flocks.find(f => f.id === e.flock_id);
+          if (flock && todayEggs.length > 1) lines.push(`  → ${flock.name}: ${Number(e.total_eggs) || 0} eggs`);
+        });
+        lines.push('');
+      } else {
+        lines.push(`🥚 *EGGS:* No collections recorded today`);
+        lines.push('');
+      }
     }
 
-    // Mortality
+    // Mortality / Losses / Deaths — labelled with species lossNoun
     if (todayMortality.length > 0) {
       const totalDeaths = todayMortality.reduce((s, m) => s + (Number(m.count) || 0), 0);
-      lines.push(`⚠️ *MORTALITY TODAY: ${totalDeaths} birds*`);
+      lines.push(`⚠️ *${lossLabelUpper} TODAY: ${totalDeaths} ${animalTermPluralLower}*`);
       todayMortality.forEach(m => {
         const flock = flocks.find(f => f.id === m.flock_id);
         const cause = m.cause ? ` — ${m.cause}` : '';
-        lines.push(`• ${flock?.name ?? 'Unknown flock'}: ${Number(m.count) || 0} birds${cause}`);
+        lines.push(`• ${flock?.name ?? `Unknown ${farmSpecies.groupTerm.toLowerCase()}`}: ${Number(m.count) || 0} ${animalTermPluralLower}${cause}`);
       });
       lines.push('');
     } else {
-      lines.push(`✅ *MORTALITY:* 0 deaths today`);
+      lines.push(`✅ *${lossLabelUpper}:* 0 ${animalTermPluralLower} today`);
       lines.push('');
     }
 
@@ -546,10 +560,10 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
           <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-red-800 text-sm">
-              ⚠️ Mortality spike in {alert.flock_name} — {alert.today_deaths} deaths today ({alert.spike_ratio?.toFixed(1)}× above normal)
+              ⚠️ {farmSpecies.lossNoun} spike in {alert.flock_name} — {alert.today_deaths} {farmSpecies.lossNounPlural.toLowerCase()} today ({alert.spike_ratio?.toFixed(1)}× above normal)
             </p>
             <p className="text-red-700 text-xs mt-1">
-              Likely causes: {alert.likely_causes?.join(', ')}. Isolate affected birds and check water/feed immediately.
+              Likely causes: {alert.likely_causes?.join(', ')}. Isolate affected {farmSpecies.animalTermPlural.toLowerCase()} and check water/feed immediately.
             </p>
           </div>
           <button onClick={() => dismissAlert(alert.id)} className="text-red-400 hover:text-red-600 shrink-0">

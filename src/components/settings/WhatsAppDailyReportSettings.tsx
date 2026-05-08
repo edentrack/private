@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MessageCircle, Save, Send, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 
 /**
@@ -38,6 +39,20 @@ const E164_REGEX = /^\+[1-9][0-9]{6,14}$/;
 export function WhatsAppDailyReportSettings() {
   const { currentFarm, user } = useAuth();
   const toast = useToast();
+  const farmSpecies = useFarmSpecies();
+  // Description fragments that vary by species. Poultry farms care about
+  // egg counts; aqua about biomass + water-quality emergencies; rabbits
+  // get a clean "deaths, sales, tasks" line with no aqua/poultry leakage.
+  const productionPhrase =
+    farmSpecies.id === 'aquaculture' ? 'biomass, '
+      : farmSpecies.id === 'poultry' ? 'eggs, '
+      : '';
+  const aquaTailPhrase =
+    farmSpecies.id === 'aquaculture' ? ', and any water-quality emergencies'
+      : '';
+  const lossPhrase = farmSpecies.lossNounPlural.toLowerCase();
+  const dailyReportDescription =
+    `Get a one-line summary of yesterday's farm activity in WhatsApp every morning. Includes ${lossPhrase}, ${productionPhrase}sales, pending tasks${aquaTailPhrase}.`;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -164,10 +179,7 @@ export function WhatsAppDailyReportSettings() {
         </div>
         <h2 className="font-semibold text-gray-900">WhatsApp daily report</h2>
       </div>
-      <p className="text-xs text-gray-500 mb-4">
-        Get a one-line summary of yesterday's farm activity in WhatsApp every morning. Includes deaths,
-        eggs/biomass, sales, pending tasks, and any water-quality emergencies.
-      </p>
+      <p className="text-xs text-gray-500 mb-4">{dailyReportDescription}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
