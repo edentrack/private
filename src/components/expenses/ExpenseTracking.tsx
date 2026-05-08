@@ -4,6 +4,7 @@ import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Expense, ExpenseCategory, Currency, Flock, InventoryLinkType, InventoryType } from '../../types/database';
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { EditExpenseModal } from './EditExpenseModal';
@@ -73,6 +74,8 @@ const getCategoryEmoji = (cat: string, species: SpeciesId = 'poultry'): string =
 export function ExpenseTracking() {
   const { t } = useTranslation();
   const { user, currentFarm, currentRole } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const { farmPermissions } = usePermissions();
   const farmSpecies = useFarmSpecies();
@@ -969,16 +972,16 @@ export function ExpenseTracking() {
                 <button
                   onClick={() => setShowExpenseShareMenu(v => !v)}
                   className="flex items-center gap-1.5 px-3 py-2 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-xl transition-colors text-sm font-medium"
-                  title="Share via WhatsApp"
+                  title={isFr ? 'Partager via WhatsApp' : 'Share via WhatsApp'}
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Share</span>
+                  <span className="hidden sm:inline">{isFr ? 'Partager' : 'Share'}</span>
                 </button>
                 {showExpenseShareMenu && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowExpenseShareMenu(false)} />
                     <div className="absolute right-0 top-full mt-2 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden w-48">
-                      <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">Send via WhatsApp</p>
+                      <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">{isFr ? 'Envoyer via WhatsApp' : 'Send via WhatsApp'}</p>
                       {([
                         { key: 'today', label: "📅 Today's Expenses" },
                         { key: 'week', label: '📆 Last 7 Days' },
@@ -1197,7 +1200,7 @@ export function ExpenseTracking() {
                 className="w-4 h-4"
               />
               <div>
-                <div className="text-xs font-semibold text-gray-900">Paid from revenue balance</div>
+                <div className="text-xs font-semibold text-gray-900">{isFr ? 'Payé depuis le solde des revenus' : 'Paid from revenue balance'}</div>
                 <div className="text-[10px] text-gray-600">
                   When checked, this expense reduces your revenue balance tracker below.
                 </div>
@@ -1280,7 +1283,7 @@ export function ExpenseTracking() {
       {!hideFinancials && (
         <div className="section-card animate-fade-in-up">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <h3 className="text-base font-bold text-gray-900">Revenue Balance</h3>
+            <h3 className="text-base font-bold text-gray-900">{isFr ? 'Solde de revenus' : 'Revenue Balance'}</h3>
             <div className="text-xs text-gray-600">
               Remaining: <span className={`font-semibold ${remainingProfitBalance < 0 ? 'text-red-600' : 'text-gray-900'}`}>
                 {convertAmount(remainingProfitBalance)} {currency}

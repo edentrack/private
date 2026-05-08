@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { todayLocal } from '../../utils/dateUtils';
 
 interface VetLog {
@@ -43,6 +44,8 @@ export function VetLog() {
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const toast = useToast();
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [logs, setLogs] = useState<VetLog[]>([]);
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,16 +179,16 @@ export function VetLog() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Stethoscope className="w-6 h-6 text-[#3D5F42]" />
-            Veterinary Log
+            {isFr ? 'Journal Vétérinaire' : 'Veterinary Log'}
           </h1>
-          <p className="text-gray-500 text-sm mt-0.5">Track vet visits, diagnoses & medication withdrawal periods</p>
+          <p className="text-gray-500 text-sm mt-0.5">{isFr ? 'Suivez les visites vétérinaires, diagnostics et délais de retrait des médicaments' : 'Track vet visits, diagnoses & medication withdrawal periods'}</p>
         </div>
         <button
           onClick={openNew}
           className="flex items-center gap-2 bg-[#3D5F42] text-white px-4 py-2.5 rounded-xl hover:bg-[#2F4A34] transition-colors text-sm font-semibold shadow"
         >
           <Plus className="w-4 h-4" />
-          Add Visit
+          {isFr ? 'Ajouter une visite' : 'Add Visit'}
         </button>
       </div>
 
@@ -194,7 +197,9 @@ export function VetLog() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-1.5">
           <p className="text-amber-800 font-semibold text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
-            Active withdrawal periods — do not sell eggs or birds until clear date
+            {isFr
+              ? `Délais de retrait actifs — ne pas vendre ${farmSpecies.id === 'poultry' ? "d'œufs ou d'animaux" : `de ${farmSpecies.animalTermPlural.toLowerCase()}`} avant la date de levée`
+              : `Active withdrawal periods — do not sell ${farmSpecies.id === 'poultry' ? 'eggs or birds' : farmSpecies.animalTermPlural.toLowerCase()} until clear date`}
           </p>
           {logs.filter(isWithdrawalActive).map(log => {
             const clear = withdrawalClearDate(log);
@@ -218,7 +223,7 @@ export function VetLog() {
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Visit Date *</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Date de visite *' : 'Visit Date *'}</label>
                   <input type="date" value={form.visit_date} onChange={e => setForm(p => ({ ...p, visit_date: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]" />
                 </div>
@@ -226,7 +231,7 @@ export function VetLog() {
                   <label className="block text-xs font-semibold text-gray-600 mb-1">{farmSpecies.groupTerm}</label>
                   <select value={form.flock_id} onChange={e => setForm(p => ({ ...p, flock_id: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]">
-                    <option value="">All / General</option>
+                    <option value="">{isFr ? 'Tous / Général' : 'All / General'}</option>
                     {flocks.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                   </select>
                 </div>
@@ -239,14 +244,14 @@ export function VetLog() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Diagnosis / Condition</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Diagnostic / Condition' : 'Diagnosis / Condition'}</label>
                 <input type="text" value={form.diagnosis} onChange={e => setForm(p => ({ ...p, diagnosis: e.target.value }))}
                   placeholder="e.g. Newcastle disease, Coccidiosis" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Medication</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Médicament' : 'Medication'}</label>
                   <input type="text" value={form.medication} onChange={e => setForm(p => ({ ...p, medication: e.target.value }))}
                     placeholder="e.g. Oxytetracycline" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]" />
                 </div>
@@ -258,7 +263,7 @@ export function VetLog() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Withdrawal Period (days)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Délai de retrait (jours)' : 'Withdrawal Period (days)'}</label>
                 <input type="number" min="0" value={form.withdrawal_period_days} onChange={e => setForm(p => ({ ...p, withdrawal_period_days: e.target.value }))}
                   placeholder="0 = none" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 <p className="text-xs text-gray-400 mt-1">

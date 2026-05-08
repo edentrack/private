@@ -13,6 +13,7 @@ import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { useTranslation } from 'react-i18next';
 import { invalidateFarmTypeCache, useFarmType } from '../../hooks/useFarmType';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { FlockListSkeleton } from '../common/Skeleton';
 import { atFlockLimit, getMaxFlocks } from '../../utils/planGating';
 import { getFlockAge as getFlockAgeFromHelper } from '../../utils/flockAge';
@@ -28,6 +29,8 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
   const { t } = useTranslation();
   const { isAquaculture } = useFarmType();
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const groupTerm = farmSpecies.groupTerm;          // "Flock" | "Pond" | "Rabbitry"
   const groupTermPlural = farmSpecies.groupTermPlural; // "Flocks" | "Ponds" | "Rabbitries"
   // The audit flagged that this page reverts to poultry copy on a rabbits
@@ -458,7 +461,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                       {hideFinancials ? (
                         <span className="text-gray-400 italic">Sale Price: Hidden</span>
                       ) : (
-                        <>Sale Price: ${flock.sale_price.toLocaleString()}</>
+                        <>{isFr ? 'Prix de vente :' : 'Sale Price:'} ${flock.sale_price.toLocaleString()}</>
                       )}
                     </div>
                   )}
@@ -472,7 +475,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="text-sm text-blue-900 font-medium">
-                          Restore "{flock.name}"?
+                          {isFr ? `Restaurer « ${flock.name} » ?` : `Restore "${flock.name}"?`}
                         </div>
                         <button
                           onClick={(e) => {
@@ -485,9 +488,11 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         </button>
                       </div>
                       <div className="text-xs text-blue-700">
-                        {isAquaculture
-                          ? 'This will bring the pond back to your active ponds.'
-                          : 'This will bring the flock back to your active flocks.'}
+                        {isFr
+                          ? `Ceci ramènera ${farmSpecies.id === 'aquaculture' ? 'l’étang' : farmSpecies.id === 'rabbits' ? 'le clapier' : 'le troupeau'} dans vos ${farmSpecies.groupTermPlural.toLowerCase()} actifs.`
+                          : (isAquaculture
+                              ? 'This will bring the pond back to your active ponds.'
+                              : 'This will bring the flock back to your active flocks.')}
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -497,7 +502,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                           }}
                           className="flex-1 bg-blue-600 text-white text-xs font-medium px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                         >
-                          Yes, Restore
+                          {isFr ? 'Oui, restaurer' : 'Yes, Restore'}
                         </button>
                         <button
                           onClick={(e) => {
@@ -506,7 +511,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                           }}
                           className="flex-1 bg-white text-blue-600 text-xs font-medium px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors border border-blue-200"
                         >
-                          Cancel
+                          {isFr ? 'Annuler' : 'Cancel'}
                         </button>
                       </div>
                     </div>
@@ -516,7 +521,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                     <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div className="text-sm text-red-900 font-medium">
-                          Delete "{flock.name}" forever?
+                          {isFr ? `Supprimer définitivement « ${flock.name} » ?` : `Delete "${flock.name}" forever?`}
                         </div>
                         <button
                           onClick={(e) => {
@@ -529,15 +534,15 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         </button>
                       </div>
                       <div className="text-xs text-red-700 space-y-1">
-                        <div className="font-medium">This will permanently delete:</div>
+                        <div className="font-medium">{isFr ? 'Ceci supprimera définitivement :' : 'This will permanently delete:'}</div>
                         <ul className="list-disc list-inside space-y-0.5 ml-1">
-                          <li>All expenses</li>
-                          <li>All tasks</li>
-                          <li>{farmSpecies.lossNounPlural} records</li>
-                          <li>Weight checks</li>
-                          <li>All other records</li>
+                          <li>{isFr ? 'Toutes les dépenses' : 'All expenses'}</li>
+                          <li>{isFr ? 'Toutes les tâches' : 'All tasks'}</li>
+                          <li>{isFr ? `Enregistrements de ${farmSpecies.lossNounPlural.toLowerCase()}` : `${farmSpecies.lossNounPlural} records`}</li>
+                          <li>{isFr ? 'Vérifications de poids' : 'Weight checks'}</li>
+                          <li>{isFr ? 'Tous les autres enregistrements' : 'All other records'}</li>
                         </ul>
-                        <div className="font-semibold mt-1">This CANNOT be undone!</div>
+                        <div className="font-semibold mt-1">{isFr ? 'Cette action est IRRÉVERSIBLE !' : 'This CANNOT be undone!'}</div>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -547,7 +552,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                           }}
                           className="flex-1 bg-red-600 text-white text-xs font-medium px-3 py-2 rounded-lg hover:bg-red-700 transition-colors"
                         >
-                          Yes, Delete Forever
+                          {isFr ? 'Oui, supprimer définitivement' : 'Yes, Delete Forever'}
                         </button>
                         <button
                           onClick={(e) => {
@@ -556,7 +561,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                           }}
                           className="flex-1 bg-white text-red-600 text-xs font-medium px-3 py-2 rounded-lg hover:bg-red-50 transition-colors border border-red-200"
                         >
-                          Cancel
+                          {isFr ? 'Annuler' : 'Cancel'}
                         </button>
                       </div>
                     </div>
@@ -572,7 +577,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                         className="flex-1 text-xs text-blue-600 hover:text-blue-700 font-medium inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors border border-blue-200"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
-                        Restore
+                        {isFr ? 'Restaurer' : 'Restore'}
                       </button>
                       <button
                         onClick={(e) => {
