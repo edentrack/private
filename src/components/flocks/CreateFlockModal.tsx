@@ -89,9 +89,19 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
       const plan = (profile?.subscription_tier as any) || 'basic';
       const maxBirds = getMaxBirdsPerFlock(plan);
       if (exceedsBirdLimit(plan, initialCountNum)) {
+        const perGroup = isAquaculture
+          ? 'fish per pond'
+          : isRabbits
+            ? 'rabbits per rabbitry'
+            : 'birds per flock';
+        const upgradeNoun = isAquaculture
+          ? 'larger ponds'
+          : isRabbits
+            ? 'larger rabbitries'
+            : 'larger flocks';
         setError(
-          `Your ${plan === 'basic' ? 'Starter' : plan === 'pro' ? 'Grower' : 'Farm Boss'} plan allows up to ${maxBirds.toLocaleString()} ${isAquaculture ? 'fish per pond' : 'birds per flock'}. ` +
-          `Upgrade your plan to add ${isAquaculture ? 'larger ponds' : 'larger flocks'}.`
+          `Your ${plan === 'basic' ? 'Starter' : plan === 'pro' ? 'Grower' : 'Farm Boss'} plan allows up to ${maxBirds.toLocaleString()} ${perGroup}. ` +
+          `Upgrade your plan to add ${upgradeNoun}.`
         );
         setLoading(false);
         return;
