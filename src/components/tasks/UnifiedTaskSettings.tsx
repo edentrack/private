@@ -22,6 +22,7 @@ const FREQUENCIES = [
 
 export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
   const { currentFarm } = useAuth();
+  const farmSpeciesOuter = useFarmSpecies();
   const farmTz = getFarmTimeZone(currentFarm);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -410,7 +411,12 @@ export function UnifiedTaskSettings({ onClose }: UnifiedTaskSettingsProps) {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-2 border-b border-gray-100 bg-gray-50">
           <div className="flex items-center gap-2 flex-wrap">
-            {(['all', 'general', 'broiler', 'layer'] as const).map((f) => (
+            {/* Broiler / Layer filters only meaningful on poultry — hide on
+                rabbits/aqua where templates don't split by sub-type. */}
+            {(farmSpeciesOuter.id === 'poultry'
+              ? (['all', 'general', 'broiler', 'layer'] as const)
+              : (['all', 'general'] as const)
+            ).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
