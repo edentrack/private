@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, DollarSign } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFarmSpecies } from '../../hooks/useSpecies';
 import { Expense, ExpenseCategory, Flock } from '../../types/database';
 
 interface EditExpenseModalProps {
@@ -18,6 +19,7 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = ['feed', 'medication', 'equipment'
 
 export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpenseModalProps) {
   const { user, currentFarm } = useAuth();
+  const farmSpecies = useFarmSpecies();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
   const [amount, setAmount] = useState(expense.amount.toString());
@@ -193,10 +195,10 @@ export function EditExpenseModal({ expense, isOpen, onClose, onSave }: EditExpen
                 required
                 className="w-full px-2.5 py-1.5 bg-white text-gray-900 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all text-sm"
               >
-                <option value="">Select a flock</option>
+                <option value="">{`Select a ${farmSpecies.groupTerm.toLowerCase()}`}</option>
                 {flocks.map((flock) => (
                   <option key={flock.id} value={flock.id}>
-                    {flock.name} ({flock.type} - {flock.current_count} birds)
+                    {flock.name} ({flock.type} - {flock.current_count} {farmSpecies.animalTermPlural.toLowerCase()})
                   </option>
                 ))}
               </select>

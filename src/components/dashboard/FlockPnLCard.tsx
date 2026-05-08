@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { Flock, FlockCycleStatus } from '../../types/database';
 
+import { useFlockSpecies } from '../../hooks/useSpecies';
+
 interface FlockPnLCardProps {
   flock: Flock | null;
   onNavigate?: (view: string) => void;
@@ -30,6 +32,8 @@ interface CycleData {
 
 export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCardProps) {
   const { profile, currentFarm } = useAuth();
+  const flockSpecies = useFlockSpecies(flock?.type ?? null);
+  const animalTermLower = flockSpecies.animalTerm.toLowerCase();
   const [pnl, setPnl] = useState<PnLData>({
     revenue: 0,
     feedCost: 0,
@@ -284,9 +288,9 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
 
       {/* Metrics */}
       <div className="space-y-2 text-sm">
-        {/* Per-bird ROI */}
+        {/* Per-animal ROI — uses flock-specific species terminology */}
         <div className="flex items-center justify-between">
-          <span className="text-gray-600">Per-bird ROI</span>
+          <span className="text-gray-600">{`Per-${animalTermLower} ROI`}</span>
           <span className="font-semibold text-gray-900">
             {flock.initial_count > 0 ? formatCurrency(pnl.perBirdROI) : '—'}
           </span>
