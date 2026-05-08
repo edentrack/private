@@ -1383,7 +1383,7 @@ Deno.serve(async (req: Request) => {
     const trustedCountry = (user_country || "").trim().slice(0, 60);
     const onboardingCountryBanner = trustedCountry
       ? `\n\n## USER COUNTRY\nThe user picked "${trustedCountry}" at signup. Use this exact string as the "country" field in your CREATE_FARM action — do NOT use the example country from the steps above. Do NOT ask the user for their country again.\n`
-      : `\n\n## USER COUNTRY\nThe user did not pick a country at signup. Before emitting CREATE_FARM, ask the user one short question: "Which country are you farming in?". Then put their answer (e.g. "Cameroon", "Kenya") into the "country" field of CREATE_FARM. Do NOT default to Nigeria.\n`;
+      : `\n\n## USER COUNTRY\nThe user did not pick a country at signup.\n\n**Where to ask**: ask the country question in your reply RIGHT AFTER the user answers the species question (Step 2), at the same time as you confirm the species. Do NOT ask before species. Do NOT ask twice. Example after the user says "chickens":\n\`\`\`\nGot it, chickens. Which country are you farming in?\n\`\`\`\nThen, after the user answers the country (e.g. "Cameroon"), emit the CREATE_FARM block with that country and proceed to Step 3 (first flock). Audit caught Eden asking the country question twice — once before species and once after. Only ask once, after species.\n`;
 
     const systemMessage = isOnboarding
       ? ONBOARDING_SYSTEM_PROMPT + todayBanner + onboardingCountryBanner
