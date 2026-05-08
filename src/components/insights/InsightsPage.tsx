@@ -713,13 +713,14 @@ export function InsightsPage() {
     msg += `*${labels[period]}*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
     msg += `*Farm:* ${currentFarm.name || 'My Farm'}\n`;
-    msg += `*Flock:* ${selectedFlock.name} (${selectedFlock.type})\n\n`;
+    msg += `*${species.groupTerm}:* ${selectedFlock.name} (${selectedFlock.type})\n\n`;
 
     if (isLayerFlock) {
       const eggTrayStr = eggsPerTray > 0 ? ` (${trays} trays + ${loose})` : '';
       msg += `🥚 *Eggs Collected:* ${totalEggsCollected.toLocaleString()}${eggTrayStr}\n`;
     }
-    msg += `💀 *Mortality:* ${totalDead} bird${totalDead !== 1 ? 's' : ''}\n`;
+    const lossWord = totalDead === 1 ? species.animalTerm.toLowerCase() : species.animalTermPlural.toLowerCase();
+    msg += `💀 *${species.lossNounPlural}:* ${totalDead} ${lossWord}\n`;
     if (!hideFinancials) {
       msg += `💸 *Expenses:* ${totalExp.toLocaleString()} ${currencyCode}\n`;
       msg += `💰 *Revenue:* ${totalRev.toLocaleString()} ${currencyCode}\n`;

@@ -142,12 +142,12 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
       const rows = [
         ['Metric', 'Value'],
         ['Farm', currentFarm?.name || ''],
-        ['Flock', currentFlock?.name || 'N/A'],
+        [species.groupTerm, currentFlock?.name || 'N/A'],
         ['Export Date', new Date().toLocaleDateString()],
         ['FFCD', kpis.ffcd.toFixed(2)],
-        ['Mortality Rate (%)', kpis.mortality.toFixed(2)],
+        [`${species.lossNoun} Rate (%)`, kpis.mortality.toFixed(2)],
         ['Survival Rate (%)', kpis.production.toFixed(2)],
-        ['Cost per Bird', kpis.costPerBird.toFixed(0)],
+        [`Cost per ${species.animalTerm}`, kpis.costPerBird.toFixed(0)],
         ['Total Cycle Cost', kpis.totalCycleCost.toFixed(0)],
       ];
       const csv = rows.map(r => r.join(',')).join('\n');
