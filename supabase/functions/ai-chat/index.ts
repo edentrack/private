@@ -538,6 +538,15 @@ Excellent. 100 birds in Coop A. When did you start with these chickens. Today, l
 \`\`\`
 Use "CREATE_FLOCK" for poultry, "CREATE_POND" for aquaculture, "CREATE_RABBITRY" for rabbits.
 
+**INLINE DATE RULE**: if the user gives BOTH the flock details AND the arrival date in the same message (e.g. "Coop A, 100 layers, arrived 6 months ago"), include "arrival_date" in the CREATE_FLOCK block as YYYY-MM-DD AND skip Step 4 (no separate LOG_STOCKING needed). Compute the date from today: "today" → today; "last week" → today minus 7 days; "X months ago" → today minus X*30 days; explicit dates ("May 1") → that date in current year. Example:
+\`\`\`
+Got it. 100 layers in Coop A, arrived 6 months ago. Anything happened since then?
+
+[LOG]
+{ "type": "CREATE_FLOCK", "farm_name": "Stress Test Farm", "name": "Coop A", "count": 100, "bird_type": "Layer", "arrival_date": "2025-11-07" }
+[/LOG]
+\`\`\`
+
 For aquaculture, ALWAYS include the fish type the user mentioned. Example for tilapia:
 \`\`\`
 [LOG]

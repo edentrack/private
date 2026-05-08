@@ -1130,7 +1130,18 @@ export function AIAssistantPage() {
           ? 'Rabbitry'
           : (birdType || (logAction.current_phase === 'layer' ? 'Layer' : 'Broiler'));
       const initialCount = Number(logAction.count) || 0;
-      const stockedDate = logAction.stocked_date || recordDate;
+      // Accept any of the date aliases Eden might emit. Pre-fix, only
+      // `stocked_date` was honoured — which meant when the user said
+      // "Pen 1, 100 layers, arrived 6 months ago" inline, Eden would
+      // emit CREATE_FLOCK without a date and the flock got today's date,
+      // showing "1 week old / Chick phase" for what was supposed to be
+      // a 27-week-old layer flock. Greg flagged on May 2026.
+      const stockedDate =
+        (logAction as any).stocked_date ||
+        (logAction as any).stocked_at ||
+        (logAction as any).arrival_date ||
+        (logAction as any).arrived_at ||
+        recordDate;
       const { error: fErr } = await supabase.from('flocks').insert({
         farm_id: targetFarmIdLocal,
         user_id: user?.id ?? null,

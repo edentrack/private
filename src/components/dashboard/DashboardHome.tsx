@@ -148,13 +148,18 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
         .order('scheduled_time', { ascending: true })
         .limit(8);
 
+      // BUG-fix (Greg's audit, May 2026): the counter showed "0 Pending"
+      // while the Today's Tasks widget below showed 5 items. The counter
+      // only matched on due_date, but the widget also matches scheduled_for.
+      // Tasks with scheduled_for=today and due_date=null fell through the
+      // counter. Align the OR clause so both sources agree.
       const { count: totalTasksCount } = await supabase
         .from('tasks')
         .select('*', { count: 'exact', head: true })
         .eq('farm_id', farm.id)
         .eq('status', 'pending')
         .eq('is_archived', false)
-        .or(`due_date.eq.${today},due_date.lt.${today}`);
+        .or(`due_date.eq.${today},due_date.lt.${today},scheduled_for.eq.${today}`);
 
       setTasks(tasksData || []);
       setStats(prev => ({ ...prev, pendingTasks: totalTasksCount || 0 }));
@@ -574,11 +579,25 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
       </div>
 
       <WeatherWidget
-        fallbackLocation={
-          farm?.city
-            ? `${farm.city}${farm.region_state ? ', ' + farm.region_state : ''}, ${farm.country}`
-            : farm?.country
-        }
+        fallbackLocation={(() => {
+          // BUG-fix (Greg's audit, May 2026): pre-fix this rendered as
+          // "Nigeria, Nigeria" when city was missing because the weather
+          // API echoes back the country twice. Dedupe parts before joining.
+          const parts = [farm?.city, farm?.region_state, farm?.country]
+            .filter((p): p is string => Boolean(p) && typeof p === 'string')
+            .map(p => p.trim());
+          // Drop later parts that match earlier ones (case-insensitive).
+          const seen = new Set<string>();
+          const unique: string[] = [];
+          for (const p of parts) {
+            const k = p.toLowerCase();
+            if (!seen.has(k)) {
+              seen.add(k);
+              unique.push(p);
+            }
+          }
+          return unique.length > 0 ? unique.join(', ') : undefined;
+        })()}
         onOpenSettings={() => onNavigate('settings')}
       />
 
