@@ -168,7 +168,7 @@ export function NotificationCenter() {
         const daysLeft = avgDailyUsage > 0 ? stock / avgDailyUsage : null;
 
         if (stock <= 0) {
-          alerts.push({ id: `feed-empty-${feed.id}`, severity: 'critical', title: `${name} is empty`, description: 'Feed is depleted — restock immediately.', action: 'Go to Inventory', actionLink: 'inventory' });
+          alerts.push({ id: `feed-empty-${feed.id}`, severity: 'critical', title: `${name} is empty`, description: 'Feed is depleted - restock immediately.', action: 'Go to Inventory', actionLink: 'inventory' });
         } else if (daysLeft !== null && daysLeft < 1) {
           alerts.push({ id: `feed-critical-${feed.id}`, severity: 'critical', title: `${name} critically low`, description: `Less than 1 day of feed remaining at current usage (${stock.toFixed(1)} units left).`, action: 'Go to Inventory', actionLink: 'inventory' });
         } else if (daysLeft !== null && daysLeft < 3) {
@@ -189,7 +189,7 @@ export function NotificationCenter() {
         const stock = Number(feed.current_stock_bags || 0);
         const name = feed.feed_type || 'Feed';
         if (stock <= 0) {
-          alerts.push({ id: `feed-empty-${feed.id}`, severity: 'critical', title: `${name} is empty`, description: 'Feed is depleted — restock immediately.', action: 'Go to Inventory', actionLink: 'inventory' });
+          alerts.push({ id: `feed-empty-${feed.id}`, severity: 'critical', title: `${name} is empty`, description: 'Feed is depleted - restock immediately.', action: 'Go to Inventory', actionLink: 'inventory' });
         } else if (stock <= 2) {
           alerts.push({ id: `feed-critical-${feed.id}`, severity: 'critical', title: `${name} critically low`, description: `Only ${stock} bag${stock !== 1 ? 's' : ''} remaining.`, action: 'Go to Inventory', actionLink: 'inventory' });
         }
@@ -271,7 +271,7 @@ export function NotificationCenter() {
     if (outOfStock.length > 0) {
       const names = outOfStock.slice(0, 3).map(i => i.name).join(', ');
       const extra = outOfStock.length > 3 ? ` and ${outOfStock.length - 3} more` : '';
-      alerts.push({ id: 'out-of-stock-inventory', severity: 'warning', title: `${outOfStock.length} item${outOfStock.length > 1 ? 's' : ''} out of stock`, description: `${names}${extra} — restock when possible.`, action: 'View Inventory', actionLink: 'inventory' });
+      alerts.push({ id: 'out-of-stock-inventory', severity: 'warning', title: `${outOfStock.length} item${outOfStock.length > 1 ? 's' : ''} out of stock`, description: `${names}${extra} - restock when possible.`, action: 'View Inventory', actionLink: 'inventory' });
     }
   };
 

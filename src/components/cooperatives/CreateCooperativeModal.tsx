@@ -90,8 +90,8 @@ export function CreateCooperativeModal({ onClose, onCreated }: Props) {
         <div className="p-5 space-y-4">
           <p className="text-sm text-gray-600">
             {isFr
-              ? 'Une coopérative est une organisation mère (ONG, fédération, union laitière, réseau d\'écloseries) avec de nombreuses fermes membres. Vous serez le premier administrateur — invitez-en d\'autres ensuite.'
-              : 'A cooperative is a parent organisation (NGO, federation, dairy union, hatchery network) with many member farms under it. You\'ll be the first admin — invite more after.'}
+              ? 'Une coopérative est une organisation mère (ONG, fédération, union laitière, réseau d\'écloseries) avec de nombreuses fermes membres. Vous serez le premier administrateur - invitez-en d\'autres ensuite.'
+              : 'A cooperative is a parent organisation (NGO, federation, dairy union, hatchery network) with many member farms under it. You\'ll be the first admin - invite more after.'}
           </p>
 
           <Field label={isFr ? 'Nom de la coopérative' : 'Cooperative name'} required>

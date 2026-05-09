@@ -28,14 +28,14 @@ export interface WaterQualityClassification {
 //   ≥5   = healthy
 export function classifyDO(mgPerL: number | null | undefined): WaterQualityClassification {
   if (mgPerL == null || mgPerL <= 0) {
-    return { status: 'unknown', color: 'gray', label: '—', message: 'No DO reading' };
+    return { status: 'unknown', color: 'gray', label: ' - ', message: 'No DO reading' };
   }
   if (mgPerL < 3) {
     return {
       status: 'emergency',
       color: 'red',
       label: 'Critical',
-      message: `DO ${mgPerL.toFixed(1)} mg/L — fish are suffocating. Aerate immediately or partial water exchange.`,
+      message: `DO ${mgPerL.toFixed(1)} mg/L - fish are suffocating. Aerate immediately or partial water exchange.`,
     };
   }
   if (mgPerL < 5) {
@@ -43,14 +43,14 @@ export function classifyDO(mgPerL: number | null | undefined): WaterQualityClass
       status: 'marginal',
       color: 'amber',
       label: 'Low',
-      message: `DO ${mgPerL.toFixed(1)} mg/L — fish stressed and growth slowing. Add aeration or reduce feed.`,
+      message: `DO ${mgPerL.toFixed(1)} mg/L - fish stressed and growth slowing. Add aeration or reduce feed.`,
     };
   }
   return {
     status: 'healthy',
     color: 'green',
     label: 'Healthy',
-    message: `DO ${mgPerL.toFixed(1)} mg/L — good.`,
+    message: `DO ${mgPerL.toFixed(1)} mg/L - good.`,
   };
 }
 
@@ -60,14 +60,14 @@ export function classifyDO(mgPerL: number | null | undefined): WaterQualityClass
 //   7.0–8.5 = healthy
 export function classifyPH(pH: number | null | undefined): WaterQualityClassification {
   if (pH == null || pH <= 0) {
-    return { status: 'unknown', color: 'gray', label: '—', message: 'No pH reading' };
+    return { status: 'unknown', color: 'gray', label: ' - ', message: 'No pH reading' };
   }
   if (pH < 6.5 || pH > 9.0) {
     return {
       status: 'emergency',
       color: 'red',
       label: 'Out of safe range',
-      message: `pH ${pH.toFixed(1)} — outside safe range (6.5–9.0). Check buffering and inflow source.`,
+      message: `pH ${pH.toFixed(1)} - outside safe range (6.5–9.0). Check buffering and inflow source.`,
     };
   }
   if (pH < 7.0 || pH > 8.5) {
@@ -75,10 +75,10 @@ export function classifyPH(pH: number | null | undefined): WaterQualityClassific
       status: 'marginal',
       color: 'amber',
       label: 'Watch',
-      message: `pH ${pH.toFixed(1)} — outside ideal 7.0–8.5. Add lime if low, partial water change if high.`,
+      message: `pH ${pH.toFixed(1)} - outside ideal 7.0–8.5. Add lime if low, partial water change if high.`,
     };
   }
-  return { status: 'healthy', color: 'green', label: 'Healthy', message: `pH ${pH.toFixed(1)} — ideal.` };
+  return { status: 'healthy', color: 'green', label: 'Healthy', message: `pH ${pH.toFixed(1)} - ideal.` };
 }
 
 // ─── Ammonia (un-ionised NH₃, mg/L) ─────────────────────────────────────
@@ -87,14 +87,14 @@ export function classifyPH(pH: number | null | undefined): WaterQualityClassific
 //   <0.05 = healthy
 export function classifyAmmonia(mgPerL: number | null | undefined): WaterQualityClassification {
   if (mgPerL == null || mgPerL < 0) {
-    return { status: 'unknown', color: 'gray', label: '—', message: 'No ammonia reading' };
+    return { status: 'unknown', color: 'gray', label: ' - ', message: 'No ammonia reading' };
   }
   if (mgPerL >= 0.5) {
     return {
       status: 'emergency',
       color: 'red',
       label: 'Toxic',
-      message: `NH₃ ${mgPerL.toFixed(2)} mg/L — toxic to fish. Stop feeding, partial water exchange, check biofilter / pond age.`,
+      message: `NH₃ ${mgPerL.toFixed(2)} mg/L - toxic to fish. Stop feeding, partial water exchange, check biofilter / pond age.`,
     };
   }
   if (mgPerL > 0.05) {
@@ -102,10 +102,10 @@ export function classifyAmmonia(mgPerL: number | null | undefined): WaterQuality
       status: 'marginal',
       color: 'amber',
       label: 'Elevated',
-      message: `NH₃ ${mgPerL.toFixed(2)} mg/L — climbing. Reduce feed by 25%, add water if possible.`,
+      message: `NH₃ ${mgPerL.toFixed(2)} mg/L - climbing. Reduce feed by 25%, add water if possible.`,
     };
   }
-  return { status: 'healthy', color: 'green', label: 'Safe', message: `NH₃ ${mgPerL.toFixed(2)} mg/L — safe.` };
+  return { status: 'healthy', color: 'green', label: 'Safe', message: `NH₃ ${mgPerL.toFixed(2)} mg/L - safe.` };
 }
 
 // ─── Nitrite (NO₂⁻, mg/L) ───────────────────────────────────────────────
@@ -114,14 +114,14 @@ export function classifyAmmonia(mgPerL: number | null | undefined): WaterQuality
 //   <0.1  = healthy
 export function classifyNitrite(mgPerL: number | null | undefined): WaterQualityClassification {
   if (mgPerL == null || mgPerL < 0) {
-    return { status: 'unknown', color: 'gray', label: '—', message: 'No nitrite reading' };
+    return { status: 'unknown', color: 'gray', label: ' - ', message: 'No nitrite reading' };
   }
   if (mgPerL >= 1.0) {
     return {
       status: 'emergency',
       color: 'red',
       label: 'Toxic',
-      message: `NO₂⁻ ${mgPerL.toFixed(2)} mg/L — brown blood disease risk. Add salt (chloride blocks nitrite uptake) and exchange water.`,
+      message: `NO₂⁻ ${mgPerL.toFixed(2)} mg/L - brown blood disease risk. Add salt (chloride blocks nitrite uptake) and exchange water.`,
     };
   }
   if (mgPerL > 0.1) {
@@ -129,10 +129,10 @@ export function classifyNitrite(mgPerL: number | null | undefined): WaterQuality
       status: 'marginal',
       color: 'amber',
       label: 'Elevated',
-      message: `NO₂⁻ ${mgPerL.toFixed(2)} mg/L — biofilter not keeping up. Add salt, reduce feed.`,
+      message: `NO₂⁻ ${mgPerL.toFixed(2)} mg/L - biofilter not keeping up. Add salt, reduce feed.`,
     };
   }
-  return { status: 'healthy', color: 'green', label: 'Safe', message: `NO₂⁻ ${mgPerL.toFixed(2)} mg/L — safe.` };
+  return { status: 'healthy', color: 'green', label: 'Safe', message: `NO₂⁻ ${mgPerL.toFixed(2)} mg/L - safe.` };
 }
 
 // ─── Temperature (°C) ───────────────────────────────────────────────────
@@ -149,7 +149,7 @@ export function classifyTemperature(
   species: FishSpeciesType,
 ): WaterQualityClassification {
   if (tempC == null) {
-    return { status: 'unknown', color: 'gray', label: '—', message: 'No temperature reading' };
+    return { status: 'unknown', color: 'gray', label: ' - ', message: 'No temperature reading' };
   }
   const band = TEMP_BANDS[species];
   if (tempC < band.criticalLow || tempC > band.criticalHigh) {
@@ -165,14 +165,14 @@ export function classifyTemperature(
       status: 'marginal',
       color: 'amber',
       label: 'Suboptimal',
-      message: `${tempC.toFixed(1)} °C — outside the optimum ${band.optimumLow}–${band.optimumHigh} °C for ${species.toLowerCase()}. Growth and feeding will slow.`,
+      message: `${tempC.toFixed(1)} °C - outside the optimum ${band.optimumLow}–${band.optimumHigh} °C for ${species.toLowerCase()}. Growth and feeding will slow.`,
     };
   }
   return {
     status: 'healthy',
     color: 'green',
     label: 'Optimal',
-    message: `${tempC.toFixed(1)} °C — in the ideal range for ${species.toLowerCase()}.`,
+    message: `${tempC.toFixed(1)} °C - in the ideal range for ${species.toLowerCase()}.`,
   };
 }
 

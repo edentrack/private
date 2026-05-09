@@ -62,7 +62,7 @@ export function CreditScorePage() {
         currencyCode: currentFarm.currency_code || currentFarm.currency || 'USD',
         score,
       });
-      showToast(isFr ? 'PDF téléchargé — à soumettre à votre banque.' : 'PDF downloaded — submit to your bank.', 'success');
+      showToast(isFr ? 'PDF téléchargé - à soumettre à votre banque.' : 'PDF downloaded - submit to your bank.', 'success');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       showToast(isFr ? `Échec du téléchargement : ${msg}` : `Download failed: ${msg}`, 'error');
@@ -228,7 +228,7 @@ export function CreditScorePage() {
           title={isFr ? 'À améliorer' : 'Where to improve'}
           items={score.components
             .filter((c) => c.score / c.maxScore < 0.6)
-            .map((c) => `${c.label} — ${c.detail}`)}
+            .map((c) => `${c.label} - ${c.detail}`)}
           emptyMsg={isFr ? 'Aucun point faible. Continuez.' : 'No weak areas. Keep going.'}
         />
       </div>

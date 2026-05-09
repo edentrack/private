@@ -53,7 +53,7 @@ export function calculateStockingDensity({
       density: 0,
       status: 'unknown',
       color: 'gray',
-      label: '—',
+      label: ' - ',
       message: 'Set pond size (m²) to track stocking density.',
       maxRecommended: 0,
     };
@@ -74,7 +74,7 @@ export function calculateStockingDensity({
       status: 'ideal',
       color: 'green',
       label: 'Ideal',
-      message: `${density.toFixed(1)} fish/m² — comfortable for ${species.toLowerCase()}${aerated ? ' (aerated)' : ''}.`,
+      message: `${density.toFixed(1)} fish/m² - comfortable for ${species.toLowerCase()}${aerated ? ' (aerated)' : ''}.`,
       maxRecommended: t.acceptable,
     };
   }
@@ -84,7 +84,7 @@ export function calculateStockingDensity({
       status: 'acceptable',
       color: 'green',
       label: 'Acceptable',
-      message: `${density.toFixed(1)} fish/m² — within healthy range. Watch DO and ammonia.`,
+      message: `${density.toFixed(1)} fish/m² - within healthy range. Watch DO and ammonia.`,
       maxRecommended: t.acceptable,
     };
   }
@@ -103,7 +103,7 @@ export function calculateStockingDensity({
     status: 'crisis',
     color: 'red',
     label: 'Crisis',
-    message: `${density.toFixed(1)} fish/m² is critically high (max safe ${t.stressed.toFixed(0)}). Mortality and disease risk are very high — consider emergency partial harvest or splitting the pond.`,
+    message: `${density.toFixed(1)} fish/m² is critically high (max safe ${t.stressed.toFixed(0)}). Mortality and disease risk are very high - consider emergency partial harvest or splitting the pond.`,
     maxRecommended: t.acceptable,
   };
 }

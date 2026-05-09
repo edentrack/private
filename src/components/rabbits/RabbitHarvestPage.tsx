@@ -220,7 +220,7 @@ export function RabbitHarvestPage() {
               <span className="text-xs">{isFr ? 'Revenus totaux' : 'Total Revenue'}</span>
             </div>
             <p className="text-2xl font-bold text-[#3D5F42]">
-              {totalRevenue > 0 ? formatCurrency(totalRevenue, currency) : '—'}
+              {totalRevenue > 0 ? formatCurrency(totalRevenue, currency) : ' - '}
             </p>
           </div>
         </div>

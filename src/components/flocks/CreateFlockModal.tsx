@@ -296,7 +296,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
               required
               className="w-full px-2 py-1.5 text-sm bg-white border border-gray-900 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gray-400 focus:border-gray-900"
               placeholder={isAquaculture
-                ? (isFr ? 'ex. Étang 1 — Poisson-chat' : 'e.g. Pond 1 — Catfish')
+                ? (isFr ? 'ex. Étang 1 - Poisson-chat' : 'e.g. Pond 1 - Catfish')
                 : isRabbits
                   ? (isFr ? 'ex. Bloc clapier A' : 'e.g. Hutch Block A')
                   : t('flocks.flock_name_placeholder')}
@@ -306,7 +306,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
           {isAquaculture && (
             <div>
               <label htmlFor="pondSize" className="block text-xs font-medium text-gray-700 mb-1">
-                {isFr ? "Taille de l'étang (m²)" : 'Pond size (m²)'} <span className="text-gray-400 font-normal">{isFr ? '— optionnel' : '— optional'}</span>
+                {isFr ? "Taille de l'étang (m²)" : 'Pond size (m²)'} <span className="text-gray-400 font-normal">{isFr ? ' - optionnel' : ' - optional'}</span>
               </label>
               <input
                 id="pondSize"
@@ -405,7 +405,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
                     className="mt-1.5 text-[11px] text-gray-600 hover:text-gray-900 underline"
                   >
                     {showCustomAge
-                      ? (isFr ? '— fermer personnalisé' : '— close custom')
+                      ? (isFr ? ' - fermer personnalisé' : ' - close custom')
                       : (isFr ? '+ saisir un âge personnalisé' : '+ enter custom age')}
                   </button>
                   {showCustomAge && (

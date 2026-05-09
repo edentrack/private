@@ -231,7 +231,7 @@ function formatDailyReport(data: ReportData): string {
   if (parseFloat(mortalityRate) > 2) {
     lines.push('🚨 HEALTH ALERT');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    lines.push(`⚠️ Mortality rate is ${mortalityRate}% — above the 2% safe threshold`);
+    lines.push(`⚠️ Mortality rate is ${mortalityRate}% - above the 2% safe threshold`);
     lines.push(`   ${totalDeaths} birds died this week (vs ${prevTotalDeaths} last week). Investigate immediately.`);
     lines.push('');
   }
@@ -330,7 +330,7 @@ function formatDailyReport(data: ReportData): string {
             lines.push(`  → FCR (est.): ${fcr} ${fcrLabel} (target <2.0)`);
           }
         }
-        if (ageInWeeks >= 6) lines.push(`  → ⚠️ ${ageInWeeks} weeks old — assess for sale`);
+        if (ageInWeeks >= 6) lines.push(`  → ⚠️ ${ageInWeeks} weeks old - assess for sale`);
       }
 
       if (totalFlockExpenses > 0) {
@@ -572,7 +572,7 @@ function formatDailyReport(data: ReportData): string {
     lines.push('💉 UPCOMING VACCINATIONS (Next 7 Days)');
     lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     upcomingVaccinations.forEach((vacc: any) => {
-      lines.push(`• ${vacc.scheduled_date}: ${vacc.vaccine_name || 'Vaccination'} — ${getFlockName(vacc.flock_id, flocks)}`);
+      lines.push(`• ${vacc.scheduled_date}: ${vacc.vaccine_name || 'Vaccination'} - ${getFlockName(vacc.flock_id, flocks)}`);
     });
     lines.push('');
   }
@@ -806,7 +806,7 @@ function formatDailyReport(data: ReportData): string {
       return bags <= 0;
     });
     emptyItems.forEach((item: any) => {
-      recommendations.push(`• Order ${item.feed_type} URGENTLY — out of stock`);
+      recommendations.push(`• Order ${item.feed_type} URGENTLY - out of stock`);
     });
     criticalItems.forEach((item: any) => {
       const bags = Number(item.current_stock_bags || item.bags_in_stock || item.current_quantity || 0);

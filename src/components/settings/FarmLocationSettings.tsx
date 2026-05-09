@@ -3,9 +3,12 @@ import { MapPin, Navigation, Info, CloudSun } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export function FarmLocationSettings() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { currentFarm } = useAuth();
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
@@ -52,7 +55,7 @@ export function FarmLocationSettings() {
 
   const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
-      setMessage(t('settings.geolocation_not_supported') || 'Geolocation not supported by your browser');
+      setMessage(isFr ? "La géolocalisation n'est pas prise en charge par votre navigateur" : (t('settings.geolocation_not_supported') || 'Geolocation not supported by your browser'));
       return;
     }
 
@@ -126,15 +129,15 @@ export function FarmLocationSettings() {
       }
 
       if (addressFound) {
-        setMessage(t('settings.location_detected') || 'Location and address detected successfully!');
+        setMessage(isFr ? 'Localisation et adresse détectées avec succès!' : (t('settings.location_detected') || 'Location and address detected successfully!'));
       } else {
-        setMessage(t('settings.coordinates_detected') || 'Coordinates detected. Address lookup failed - please enter manually.');
+        setMessage(isFr ? "Coordonnées détectées. Échec de la recherche d'adresse - veuillez saisir manuellement." : (t('settings.coordinates_detected') || 'Coordinates detected. Address lookup failed - please enter manually.'));
       }
     } catch (error: any) {
       if (error.code === 1) {
-        setMessage(t('settings.location_denied') || 'Location access denied. Please enable location in your browser.');
+        setMessage(isFr ? "Accès à la localisation refusé. Veuillez activer la localisation dans votre navigateur." : (t('settings.location_denied') || 'Location access denied. Please enable location in your browser.'));
       } else {
-        setMessage(t('settings.location_error') || 'Could not get your location. Please enter manually.');
+        setMessage(isFr ? "Impossible d'obtenir votre position. Veuillez saisir manuellement." : (t('settings.location_error') || 'Could not get your location. Please enter manually.'));
       }
     } finally {
       setDetectingLocation(false);
@@ -165,11 +168,11 @@ export function FarmLocationSettings() {
 
       if (error) throw error;
 
-      setMessage(t('settings.location_saved') || 'Location saved successfully!');
+      setMessage(isFr ? 'Localisation enregistrée avec succès!' : (t('settings.location_saved') || 'Location saved successfully!'));
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error saving location:', error);
-      setMessage(t('settings.location_save_failed') || 'Failed to save location');
+      setMessage(isFr ? "Échec de l'enregistrement de la localisation" : (t('settings.location_save_failed') || 'Failed to save location'));
     } finally {
       setSaving(false);
     }
@@ -191,14 +194,14 @@ export function FarmLocationSettings() {
           <MapPin className="w-5 h-5" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-gray-900">{t('settings.farm_location') || 'Farm Location'}</h3>
-          <p className="text-sm text-gray-500">{t('settings.farm_location_desc') || 'Help us locate your farm precisely'}</p>
+          <h3 className="text-xl font-bold text-gray-900">{isFr ? 'Localisation de la ferme' : (t('settings.farm_location') || 'Farm Location')}</h3>
+          <p className="text-sm text-gray-500">{isFr ? 'Aidez-nous à localiser votre ferme avec précision' : (t('settings.farm_location_desc') || 'Help us locate your farm precisely')}</p>
         </div>
       </div>
 
       {message && (
         <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
-          message.includes('success') || message.includes('detected')
+          message.includes('success') || message.includes('detected') || message.includes('succès') || message.includes('détect')
             ? 'bg-green-50 text-green-600'
             : 'bg-red-50 text-red-600'
         }`}>
@@ -211,29 +214,31 @@ export function FarmLocationSettings() {
         <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
           <div className="flex items-center gap-2 mb-3">
             <CloudSun className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-semibold text-blue-900">Weather Forecast Location</span>
+            <span className="text-sm font-semibold text-blue-900">{isFr ? 'Localisation pour les prévisions météo' : 'Weather Forecast Location'}</span>
           </div>
           <p className="text-xs text-blue-700 mb-3">
-            This city is used to show weather and heat stress alerts on your dashboard. No GPS needed — just type your city name.
+            {isFr
+              ? "Cette ville est utilisée pour afficher la météo et les alertes de stress thermique sur votre tableau de bord. Aucun GPS nécessaire - saisissez simplement le nom de votre ville."
+              : 'This city is used to show weather and heat stress alerts on your dashboard. No GPS needed - just type your city name.'}
           </p>
           <div className="grid md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">City / Town *</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{isFr ? 'Ville *' : 'City / Town *'}</label>
               <input
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g., Douala"
+                placeholder={isFr ? 'ex. Douala' : 'e.g., Douala'}
                 className="w-full px-3 py-2.5 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white text-gray-900 text-sm outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Region / State</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{isFr ? 'Région / État' : 'Region / State'}</label>
               <input
                 type="text"
                 value={regionState}
                 onChange={(e) => setRegionState(e.target.value)}
-                placeholder="e.g., Littoral"
+                placeholder={isFr ? 'ex. Littoral' : 'e.g., Littoral'}
                 className="w-full px-3 py-2.5 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-400 bg-white text-gray-900 text-sm outline-none"
               />
             </div>
@@ -242,26 +247,26 @@ export function FarmLocationSettings() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('settings.street_address') || 'Street Address'}
+            {isFr ? 'Adresse' : (t('settings.street_address') || 'Street Address')}
           </label>
           <input
             type="text"
             value={addressLine1}
             onChange={(e) => setAddressLine1(e.target.value)}
-            placeholder={t('settings.street_address_placeholder') || 'e.g., 123 Farm Road'}
+            placeholder={isFr ? 'ex. 123 Rue de la Ferme' : (t('settings.street_address_placeholder') || 'e.g., 123 Farm Road')}
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('settings.address_line_2') || 'Address Line 2 (Optional)'}
+            {isFr ? 'Adresse ligne 2 (Optionnel)' : (t('settings.address_line_2') || 'Address Line 2 (Optional)')}
           </label>
           <input
             type="text"
             value={addressLine2}
             onChange={(e) => setAddressLine2(e.target.value)}
-            placeholder={t('settings.address_line_2_placeholder') || 'e.g., Near Central Market'}
+            placeholder={isFr ? 'ex. Près du marché central' : (t('settings.address_line_2_placeholder') || 'e.g., Near Central Market')}
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
           />
         </div>
@@ -269,28 +274,28 @@ export function FarmLocationSettings() {
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('settings.country') || 'Country'}
+              {isFr ? 'Pays' : (t('settings.country') || 'Country')}
             </label>
             <input
               type="text"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              placeholder={t('settings.country_placeholder') || 'e.g., Cameroon'}
+              placeholder={isFr ? 'ex. Cameroun' : (t('settings.country_placeholder') || 'e.g., Cameroon')}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
               disabled
             />
-            <p className="text-xs text-gray-500 mt-1">{t('settings.country_set_above') || 'Set in Farm Information above'}</p>
+            <p className="text-xs text-gray-500 mt-1">{isFr ? 'Défini dans Informations sur la ferme ci-dessus' : (t('settings.country_set_above') || 'Set in Farm Information above')}</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('settings.postal_code') || 'Postal Code (Optional)'}
+              {isFr ? 'Code postal (Optionnel)' : (t('settings.postal_code') || 'Postal Code (Optional)')}
             </label>
             <input
               type="text"
               value={postalCode}
               onChange={(e) => setPostalCode(e.target.value)}
-              placeholder={t('settings.postal_code_placeholder') || 'e.g., 12345'}
+              placeholder={isFr ? 'ex. 12345' : (t('settings.postal_code_placeholder') || 'e.g., 12345')}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
             />
           </div>
@@ -299,33 +304,33 @@ export function FarmLocationSettings() {
         <div className="border-t border-gray-200 pt-4 mt-4">
           <div className="flex items-center gap-2 mb-4">
             <Navigation className="w-5 h-5 text-gray-600" />
-            <h4 className="font-medium text-gray-900">{t('settings.gps_coordinates') || 'GPS Coordinates (Optional)'}</h4>
+            <h4 className="font-medium text-gray-900">{isFr ? 'Coordonnées GPS (Optionnel)' : (t('settings.gps_coordinates') || 'GPS Coordinates (Optional)')}</h4>
           </div>
-          <p className="text-sm text-gray-500 mb-4">{t('settings.gps_coordinates_desc') || 'For precise location mapping'}</p>
+          <p className="text-sm text-gray-500 mb-4">{isFr ? 'Pour une cartographie précise de la localisation' : (t('settings.gps_coordinates_desc') || 'For precise location mapping')}</p>
 
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('settings.latitude') || 'Latitude'}
+                {isFr ? 'Latitude' : (t('settings.latitude') || 'Latitude')}
               </label>
               <input
                 type="text"
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value)}
-                placeholder={t('settings.latitude_placeholder') || 'e.g., 4.0511'}
+                placeholder={isFr ? 'ex. 4.0511' : (t('settings.latitude_placeholder') || 'e.g., 4.0511')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('settings.longitude') || 'Longitude'}
+                {isFr ? 'Longitude' : (t('settings.longitude') || 'Longitude')}
               </label>
               <input
                 type="text"
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value)}
-                placeholder={t('settings.longitude_placeholder') || 'e.g., 9.7679'}
+                placeholder={isFr ? 'ex. 9.7679' : (t('settings.longitude_placeholder') || 'e.g., 9.7679')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 bg-white text-gray-900"
               />
             </div>
@@ -338,18 +343,18 @@ export function FarmLocationSettings() {
             className="w-full px-4 py-3 bg-blue-50 text-blue-700 rounded-xl font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <MapPin className="w-5 h-5" />
-            {detectingLocation ? (t('settings.detecting_location') || 'Detecting Location...') : (t('settings.use_current_location') || 'Use My Current Location')}
+            {detectingLocation ? (isFr ? 'Détection en cours...' : (t('settings.detecting_location') || 'Detecting Location...')) : (isFr ? 'Utiliser ma position actuelle' : (t('settings.use_current_location') || 'Use My Current Location'))}
           </button>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('settings.additional_notes') || 'Additional Notes (Optional)'}
+            {isFr ? 'Notes supplémentaires (Optionnel)' : (t('settings.additional_notes') || 'Additional Notes (Optional)')}
           </label>
           <textarea
             value={locationNotes}
             onChange={(e) => setLocationNotes(e.target.value)}
-            placeholder={t('settings.additional_notes_placeholder') || 'e.g., Behind the school, Turn left at gas station'}
+            placeholder={isFr ? "ex. Derrière l'école, Tourner à gauche à la station-service" : (t('settings.additional_notes_placeholder') || 'e.g., Behind the school, Turn left at gas station')}
             rows={2}
             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-neon-500/20 focus:border-neon-500 resize-none bg-white text-gray-900"
           />
@@ -357,7 +362,7 @@ export function FarmLocationSettings() {
 
         {fullAddress && (
           <div className="p-4 bg-gray-50 rounded-xl">
-            <p className="text-sm font-medium text-gray-700 mb-2">{t('settings.full_address_preview') || 'Full Address Preview'}</p>
+            <p className="text-sm font-medium text-gray-700 mb-2">{isFr ? "Aperçu de l'adresse complète" : (t('settings.full_address_preview') || 'Full Address Preview')}</p>
             <p className="text-gray-900">{fullAddress}</p>
             {latitude && longitude && (
               <p className="text-sm text-gray-500 mt-2">GPS: {latitude}, {longitude}</p>
@@ -374,14 +379,16 @@ export function FarmLocationSettings() {
             className="mt-1 w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
           />
           <label htmlFor="locationConsent" className="text-sm text-gray-700">
-            {t('settings.share_location') || 'Share my location with suppliers for delivery estimates'}
+            {isFr ? 'Partager ma position avec les fournisseurs pour les estimations de livraison' : (t('settings.share_location') || 'Share my location with suppliers for delivery estimates')}
           </label>
         </div>
 
         <div className="flex items-start gap-2 text-sm text-gray-500">
           <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
           <p>
-            {t('settings.location_why_needed') || 'Why we need this: Supplier delivery estimates, connect with nearby farmers, local weather data (future). Your exact location is private and only shared with your consent.'}
+            {isFr
+              ? "Pourquoi nous en avons besoin: estimations de livraison fournisseurs, connexion avec les éleveurs voisins, données météo locales (à venir). Votre position exacte est privée et partagée uniquement avec votre consentement."
+              : (t('settings.location_why_needed') || 'Why we need this: Supplier delivery estimates, connect with nearby farmers, local weather data (future). Your exact location is private and only shared with your consent.')}
           </p>
         </div>
 
@@ -400,14 +407,14 @@ export function FarmLocationSettings() {
             }}
             className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
           >
-            {t('common.clear') || 'Clear'}
+            {isFr ? 'Effacer' : (t('common.clear') || 'Clear')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="flex-1 px-4 py-3 bg-neon-500 text-gray-900 rounded-xl font-medium hover:bg-neon-400 transition-colors disabled:opacity-50"
           >
-            {saving ? (t('settings.saving') || 'Saving...') : (t('settings.save_location') || 'Save Location')}
+            {saving ? (isFr ? 'Enregistrement...' : (t('settings.saving') || 'Saving...')) : (isFr ? 'Enregistrer la localisation' : (t('settings.save_location') || 'Save Location'))}
           </button>
         </div>
       </div>

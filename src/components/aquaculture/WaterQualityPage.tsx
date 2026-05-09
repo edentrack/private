@@ -15,7 +15,7 @@ interface AquaFlock {
 }
 
 function getDOStatus(do2: number | null | undefined): { label: string; color: string; bg: string } {
-  if (do2 === null || do2 === undefined) return { label: '—', color: 'text-gray-400', bg: 'bg-gray-100' };
+  if (do2 === null || do2 === undefined) return { label: ' - ', color: 'text-gray-400', bg: 'bg-gray-100' };
   if (do2 >= 5) return { label: `${do2} mg/L`, color: 'text-emerald-700', bg: 'bg-emerald-100' };
   if (do2 >= 3) return { label: `${do2} mg/L`, color: 'text-amber-700', bg: 'bg-amber-100' };
   return { label: `${do2} mg/L`, color: 'text-red-700', bg: 'bg-red-100' };
@@ -439,19 +439,19 @@ export function WaterQualityPage({ onNavigate }: WaterQualityPageProps) {
       {logs.length > 0 && (
         <div className="flex flex-wrap gap-3 text-xs text-gray-500">
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> {isFr ? 'OD ≥5 mg/L — Bon' : 'DO ≥5 mg/L — Good'}
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> {isFr ? 'OD ≥5 mg/L - Bon' : 'DO ≥5 mg/L - Good'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> {isFr ? 'OD 3–5 mg/L — Attention' : 'DO 3–5 mg/L — Warning'}
+            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> {isFr ? 'OD 3–5 mg/L - Attention' : 'DO 3–5 mg/L - Warning'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {isFr ? 'OD <3 mg/L — Critique' : 'DO <3 mg/L — Critical'}
+            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {isFr ? 'OD <3 mg/L - Critique' : 'DO <3 mg/L - Critical'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> {isFr ? 'NH₃ <0,02 — Sûr' : 'NH₃ <0.02 — Safe'}
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> {isFr ? 'NH₃ <0,02 - Sûr' : 'NH₃ <0.02 - Safe'}
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {isFr ? 'NH₃ >0,1 — Critique' : 'NH₃ >0.1 — Critical'}
+            <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {isFr ? 'NH₃ >0,1 - Critique' : 'NH₃ >0.1 - Critical'}
           </span>
         </div>
       )}

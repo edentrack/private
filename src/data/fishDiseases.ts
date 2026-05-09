@@ -57,7 +57,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'Salt bath: 1–3% (10–30 g/L) for 30 minutes daily, 3–5 days',
       'Potassium permanganate: 2 mg/L pond-wide for 4 hours',
       'Methylene blue: 1 mg/L for 5 days in tanks',
-      'Antibiotic feed (oxytetracycline) 7–10 days if severe — vet only',
+      'Antibiotic feed (oxytetracycline) 7–10 days if severe - vet only',
       'Reduce stocking density during treatment',
     ],
     prevention: [
@@ -66,7 +66,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'Disinfect nets/equipment between ponds',
       'Quarantine new fish 14 days before mixing',
     ],
-    oneLiner: 'Cottony patches on skin/mouth — salt bath + improve water quality.',
+    oneLiner: 'Cottony patches on skin/mouth - salt bath + improve water quality.',
   },
   {
     id: 'aeromonas',
@@ -87,9 +87,9 @@ export const FISH_DISEASES: FishDisease[] = [
       'Outbreaks after temperature shocks or rain events',
     ],
     treatment: [
-      'Improve water quality immediately — partial water exchange',
+      'Improve water quality immediately - partial water exchange',
       'Stop feeding for 24–48h to reduce ammonia',
-      'Antibiotic-medicated feed 7–10 days (oxytetracycline, florfenicol) — needs vet prescription',
+      'Antibiotic-medicated feed 7–10 days (oxytetracycline, florfenicol) - needs vet prescription',
       'Salt 0.3–0.5% in pond aids recovery',
     ],
     prevention: [
@@ -98,7 +98,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'Quick wound care with potassium permanganate',
       'Avoid mixing batches without quarantine',
     ],
-    oneLiner: 'Red sores + pop-eye — emergency water exchange, vet for antibiotics.',
+    oneLiner: 'Red sores + pop-eye - emergency water exchange, vet for antibiotics.',
   },
   {
     id: 'saprolegnia',
@@ -113,14 +113,14 @@ export const FISH_DISEASES: FishDisease[] = [
       'Affected fish lethargic, may stop eating',
     ],
     causes: [
-      'Cool water (<22°C) — common during cold snaps',
+      'Cool water (<22°C) - common during cold snaps',
       'Skin damage from parasites, handling, or aggression',
       'Poor water quality (organic matter buildup)',
     ],
     treatment: [
       'Salt bath 1–3% (15–30 minutes) repeated daily',
       'Methylene blue 2 ppm bath',
-      'Formalin 25 ppm pond treatment (use carefully — toxic to gills)',
+      'Formalin 25 ppm pond treatment (use carefully - toxic to gills)',
       'Improve water clarity, remove decomposing organic matter',
     ],
     prevention: [
@@ -128,7 +128,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'Treat wounds promptly with potassium permanganate',
       'Regular pond cleaning, avoid feed accumulation',
     ],
-    oneLiner: 'Cotton-wool growth — usually means cool/dirty water; salt bath helps.',
+    oneLiner: 'Cotton-wool growth - usually means cool/dirty water; salt bath helps.',
   },
   {
     id: 'ich',
@@ -151,14 +151,14 @@ export const FISH_DISEASES: FishDisease[] = [
       'Raise temperature to 30°C if species tolerates (speeds parasite life cycle for treatment)',
       'Salt 0.3% (3 g/L) for 7–10 days',
       'Formalin 25 ppm bath (1 hour), 3 treatments 3 days apart',
-      'Methylene blue 2 ppm — 5 days',
+      'Methylene blue 2 ppm - 5 days',
     ],
     prevention: [
       'Quarantine new fish 14 days at warm water',
       'Avoid temperature stress',
       'Reduce overcrowding',
     ],
-    oneLiner: 'White salt-grain spots — raise temp + salt for 7-10 days.',
+    oneLiner: 'White salt-grain spots - raise temp + salt for 7-10 days.',
   },
   {
     id: 'gill-parasites',
@@ -178,8 +178,8 @@ export const FISH_DISEASES: FishDisease[] = [
       'Stressed fish more vulnerable',
     ],
     treatment: [
-      'Formalin 25 ppm — 1 hour bath',
-      'Salt 1.5% bath — 30 minutes',
+      'Formalin 25 ppm - 1 hour bath',
+      'Salt 1.5% bath - 30 minutes',
       'Improve water quality',
     ],
     prevention: [
@@ -187,7 +187,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'Don\'t exceed recommended density',
       'Microscope check during routine health monitoring',
     ],
-    oneLiner: 'Gasping despite good DO + excess mucus — likely gill parasites; formalin bath.',
+    oneLiner: 'Gasping despite good DO + excess mucus - likely gill parasites; formalin bath.',
   },
   {
     id: 'anchor-worm',
@@ -202,20 +202,20 @@ export const FISH_DISEASES: FishDisease[] = [
       'Flashing, irritation behaviour',
     ],
     causes: [
-      'Crustacean ectoparasites — common in pond systems',
+      'Crustacean ectoparasites - common in pond systems',
       'Spread by infested fingerlings or water sources',
     ],
     treatment: [
-      'Potassium permanganate 2–4 mg/L pond — kills free-swimming larvae',
+      'Potassium permanganate 2–4 mg/L pond - kills free-swimming larvae',
       'Manual removal with forceps for severe cases',
-      'Diflubenzuron / dimilin (insect growth regulator) — vet only',
+      'Diflubenzuron / dimilin (insect growth regulator) - vet only',
     ],
     prevention: [
       'Source fingerlings from clean hatcheries',
       'Quarantine new stock',
       'Treat pond with KMnO4 between cycles',
     ],
-    oneLiner: 'Visible worms/lice on skin — KMnO4 treatment + quarantine new fish.',
+    oneLiner: 'Visible worms/lice on skin - KMnO4 treatment + quarantine new fish.',
   },
   {
     id: 'low-do',
@@ -224,7 +224,7 @@ export const FISH_DISEASES: FishDisease[] = [
     severity: 'fatal',
     affectedSpecies: ['Tilapia', 'Catfish', 'Clarias', 'Other Fish'],
     symptoms: [
-      'Mass mortality at dawn — biggest fish die first',
+      'Mass mortality at dawn - biggest fish die first',
       'Fish gasping at surface, especially morning',
       'Lethargic, off feed in afternoon',
     ],
@@ -246,7 +246,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'Reduce feed during cloudy weeks',
       'Keep water depth >1.2m (deeper = more oxygen reserve)',
     ],
-    oneLiner: 'Dawn mass die-off — DO crash. Aerate now, water exchange, no feed 24h.',
+    oneLiner: 'Dawn mass die-off - DO crash. Aerate now, water exchange, no feed 24h.',
   },
   {
     id: 'ammonia-toxicity',
@@ -270,10 +270,10 @@ export const FISH_DISEASES: FishDisease[] = [
       'Partial water exchange 30–50%',
       'Stop feeding 24–48h, then resume at half rate',
       'Add salt 0.3% (reduces nitrite uptake; doesn\'t directly fix ammonia but reduces stress)',
-      'Test pH — if high, consider gypsum to lower slightly',
+      'Test pH - if high, consider gypsum to lower slightly',
     ],
     prevention: [
-      'Match feed to biomass — don\'t overfeed',
+      'Match feed to biomass - don\'t overfeed',
       'Clean uneaten feed within 30 minutes',
       'Cycle new ponds with low stock first',
       'Weekly NH3 test',
@@ -307,7 +307,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'Don\'t use broad-spectrum antibiotics in pond water',
       'Test NO2- weekly during heavy feeding',
     ],
-    oneLiner: 'Brown gills + gasping despite good DO — add salt 1 g/L, exchange water.',
+    oneLiner: 'Brown gills + gasping despite good DO - add salt 1 g/L, exchange water.',
   },
   {
     id: 'tilapia-lake-virus',
@@ -328,7 +328,7 @@ export const FISH_DISEASES: FishDisease[] = [
       'No specific treatment available',
     ],
     treatment: [
-      'NO TREATMENT — viral, not curable',
+      'NO TREATMENT - viral, not curable',
       'Cull and dispose of dead fish properly (bury deep with lime or burn)',
       'Disinfect equipment with iodophor or 10% bleach',
       'Quarantine and stop selling fish from affected pond',
@@ -336,11 +336,11 @@ export const FISH_DISEASES: FishDisease[] = [
     ],
     prevention: [
       'Source fingerlings from certified TiLV-free hatcheries',
-      'Strict biosecurity — separate equipment per pond',
+      'Strict biosecurity - separate equipment per pond',
       'Quarantine new stock 21 days minimum',
       'Report suspected cases to local fisheries authority',
     ],
-    oneLiner: 'Mass tilapia die-off + lesions — likely TiLV; quarantine, disinfect, no cure.',
+    oneLiner: 'Mass tilapia die-off + lesions - likely TiLV; quarantine, disinfect, no cure.',
   },
 ];
 

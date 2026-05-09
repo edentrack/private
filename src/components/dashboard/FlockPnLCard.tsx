@@ -160,7 +160,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
   };
 
   const formatCurrency = (value: number, showDash = false): string => {
-    if (showDash && value === 0) return '—';
+    if (showDash && value === 0) return ' - ';
     return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   };
 
@@ -223,7 +223,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
           <TrendingUp className="w-4 h-4 text-neon-700" />
         </div>
         <div className="mt-1 text-lg font-bold text-neon-900">
-          {pnl.revenue > 0 ? formatCurrency(pnl.revenue) : '—'}
+          {pnl.revenue > 0 ? formatCurrency(pnl.revenue) : ' - '}
         </div>
         <div className="text-xs text-neon-700 mt-0.5">{currency}</div>
       </div>
@@ -236,7 +236,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-700">{isFr ? 'Aliments' : 'Feed'}</span>
           <span className="font-medium text-gray-900">
-            {pnl.feedCost > 0 ? formatCurrency(pnl.feedCost) : '—'}
+            {pnl.feedCost > 0 ? formatCurrency(pnl.feedCost) : ' - '}
           </span>
         </div>
 
@@ -244,7 +244,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-700">{isFr ? 'Dépenses directes' : 'Direct Expenses'}</span>
           <span className="font-medium text-gray-900">
-            {pnl.directExpenses > 0 ? formatCurrency(pnl.directExpenses) : (pnl.totalCosts === 0 ? (isFr ? 'Coûts en cours de suivi' : 'Costs being tracked') : '—')}
+            {pnl.directExpenses > 0 ? formatCurrency(pnl.directExpenses) : (pnl.totalCosts === 0 ? (isFr ? 'Coûts en cours de suivi' : 'Costs being tracked') : ' - ')}
           </span>
         </div>
 
@@ -262,7 +262,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
         <div className="pt-2 border-t border-gray-200 flex items-center justify-between text-sm font-semibold">
           <span className="text-gray-900">{isFr ? 'Coûts totaux' : 'Total Costs'}</span>
           <span className="text-gray-900">
-            {pnl.totalCosts > 0 ? formatCurrency(pnl.totalCosts) : '—'}
+            {pnl.totalCosts > 0 ? formatCurrency(pnl.totalCosts) : ' - '}
           </span>
         </div>
       </div>
@@ -295,7 +295,7 @@ export function FlockPnLCard({ flock, onNavigate, compact = false }: FlockPnLCar
         <div className="flex items-center justify-between">
           <span className="text-gray-600">{isFr ? `ROI par ${animalTermLower}` : `Per-${animalTermLower} ROI`}</span>
           <span className="font-semibold text-gray-900">
-            {flock.initial_count > 0 ? formatCurrency(pnl.perBirdROI) : '—'}
+            {flock.initial_count > 0 ? formatCurrency(pnl.perBirdROI) : ' - '}
           </span>
         </div>
 

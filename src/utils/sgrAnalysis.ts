@@ -78,7 +78,7 @@ export function classifySGR(sgr: number): SgrResult {
     return { sgr, status: 'concerning', color: 'amber', label: 'Concerning' };
   }
   if (sgr > 0) {
-    return { sgr, status: 'critical', color: 'red', label: 'Critical — investigate' };
+    return { sgr, status: 'critical', color: 'red', label: 'Critical - investigate' };
   }
   // Negative SGR = fish lost weight (impossible in healthy farm — disease/stress).
   return { sgr, status: 'critical', color: 'red', label: 'Negative growth' };

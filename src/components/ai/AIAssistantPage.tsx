@@ -423,12 +423,12 @@ export function AIAssistantPage() {
           // dictate in chunks.
           setInput(prev => (prev ? `${prev.trim()} ${text}` : text));
         } else {
-          showToast('Could not transcribe — try speaking closer to the mic', 'warning');
+          showToast('Could not transcribe - try speaking closer to the mic', 'warning');
         }
       } catch (err: any) {
         const msg = err?.message || 'Transcription failed';
         if (msg.includes('not configured')) {
-          showToast('Voice transcription not yet configured — admin needs to set OPENAI_API_KEY', 'error');
+          showToast('Voice transcription not yet configured - admin needs to set OPENAI_API_KEY', 'error');
         } else {
           showToast(msg, 'error');
         }
@@ -482,7 +482,7 @@ export function AIAssistantPage() {
       utter.rate = 0.95;
       window.speechSynthesis.speak(utter);
     } catch {
-      // swallow — TTS is non-critical
+      // swallow - TTS is non-critical
     }
   };
 
@@ -524,7 +524,7 @@ export function AIAssistantPage() {
       const content = [header, ...capped].join('\n');
       setPendingFile({ name: file.name, content, rowCount: capped.length });
     } catch {
-      showToast('Could not read file — make sure it is a plain CSV or text file', 'error');
+      showToast('Could not read file - make sure it is a plain CSV or text file', 'error');
     }
   };
 
@@ -533,7 +533,7 @@ export function AIAssistantPage() {
     try {
       if (logAction.type === 'LOG_EGG_SALE') {
         const saleDay = logAction.sale_date || logAction.log_date || today;
-        // Only check for duplicate when both customer AND amount are known — avoids false positives on multi-flock farms
+        // Only check for duplicate when both customer AND amount are known - avoids false positives on multi-flock farms
         if (logAction.customer_name && logAction.total_amount) {
           const { data } = await supabase.from('egg_sales').select('id, total_eggs, total_amount').eq('farm_id', farmId).eq('sale_date', saleDay).eq('total_amount', logAction.total_amount).ilike('customer_name', `%${logAction.customer_name}%`).limit(1);
           if (data?.length) return `Egg sale to "${logAction.customer_name}" for ${logAction.total_amount} on ${saleDay} already exists`;
@@ -573,7 +573,7 @@ export function AIAssistantPage() {
         created_by: user?.id || null,
       }).select('id');
       if (mortErr) throw new Error(`Mortality save failed: ${mortErr.message}`);
-      if (!mortData?.length) throw new Error('Mortality record not saved — possible permission issue. Check you are logged in.');
+      if (!mortData?.length) throw new Error('Mortality record not saved - possible permission issue. Check you are logged in.');
       // Auto-complete any pending mortality tasks scheduled for this date
       try {
         const { data: mortTasks } = await supabase.from('tasks')
@@ -598,7 +598,7 @@ export function AIAssistantPage() {
       const trays = Math.floor(totalGood / eggsPerTray);
       const { data: collData, error: collErr } = await supabase.from('egg_collections').insert({
         farm_id: farmId, flock_id: flock.id,
-        // omit 'date' and 'trays_collected' — legacy columns with defaults set by migration; PostgREST schema cache issue
+        // omit 'date' and 'trays_collected' - legacy columns with defaults set by migration; PostgREST schema cache issue
         collection_date: recordDate, collected_on: recordDate,
         small_eggs: small, medium_eggs: medium, large_eggs: large, jumbo_eggs: jumbo,
         damaged_eggs: damaged, broken: damaged,
@@ -606,7 +606,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null, created_by: user?.id || null,
       }).select('id');
       if (collErr) throw new Error(`Egg collection save failed: ${collErr.message}`);
-      if (!collData?.length) throw new Error('Collection not saved — possible permission issue. Check you are logged in.');
+      if (!collData?.length) throw new Error('Collection not saved - possible permission issue. Check you are logged in.');
       const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
       if (inv) {
         await supabase.from('egg_inventory').update({ small_eggs: (inv.small_eggs || 0) + small, medium_eggs: (inv.medium_eggs || 0) + medium, large_eggs: (inv.large_eggs || 0) + large, jumbo_eggs: (inv.jumbo_eggs || 0) + jumbo, last_updated: new Date().toISOString() }).eq('farm_id', farmId);
@@ -644,7 +644,7 @@ export function AIAssistantPage() {
       const saleFlock = logAction.flock_name
         ? await findFlock(logAction.flock_name)
         : ((await supabase.from('flocks').select('id').eq('farm_id', farmId).eq('status', 'active').limit(1)).data?.[0] || null);
-      // Mirror LogSaleModal's insert exactly — same columns, same order, no legacy fields
+      // Mirror LogSaleModal's insert exactly - same columns, same order, no legacy fields
       const salePayload = {
         farm_id: farmId,
         flock_id: saleFlock?.id || null,
@@ -665,7 +665,7 @@ export function AIAssistantPage() {
       };
       const { data: saleData, error: saleInsertErr } = await supabase.from('egg_sales').insert(salePayload).select('id');
       if (saleInsertErr) throw new Error(`Egg sale save failed: ${saleInsertErr.message}`);
-      if (!saleData?.length) throw new Error('Sale not saved — possible permission issue. Try logging out and back in.');
+      if (!saleData?.length) throw new Error('Sale not saved - possible permission issue. Try logging out and back in.');
       const { data: inv } = await supabase.from('egg_inventory').select('*').eq('farm_id', farmId).maybeSingle();
       if (inv) {
         await supabase.from('egg_inventory').update({
@@ -695,7 +695,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null, recorded_by: user?.id || null,
       }).select('id');
       if (birdSaleErr) throw new Error(`Bird sale save failed: ${birdSaleErr.message}`);
-      if (!birdSaleData?.length) throw new Error('Bird sale not saved — possible permission issue.');
+      if (!birdSaleData?.length) throw new Error('Bird sale not saved - possible permission issue.');
 
       // BUG-020: decrement the flock/pond's current_count to match the sold
       // amount, same as the manual sale modal does. Without this, every
@@ -722,7 +722,7 @@ export function AIAssistantPage() {
         flock_id: flock?.id || null, paid_from_profit: logAction.paid_from_profit ?? false,
       }).select('id');
       if (purchaseErr) throw new Error(`Purchase save failed: ${purchaseErr.message}`);
-      if (!purchaseData?.length) throw new Error('Purchase not saved — possible permission issue.');
+      if (!purchaseData?.length) throw new Error('Purchase not saved - possible permission issue.');
       if (invCat === 'feed') {
         let { data: ft } = await supabase.from('feed_types').select('id').eq('farm_id', farmId).ilike('name', logAction.item_name!).maybeSingle();
         if (!ft) {
@@ -747,7 +747,7 @@ export function AIAssistantPage() {
       }
 
     } else if (logAction.type === 'LOG_EXPENSE') {
-      // Normalise category to valid DB enum values — guard against AI returning 'utilities', 'chick_purchase', etc.
+      // Normalise category to valid DB enum values - guard against AI returning 'utilities', 'chick_purchase', etc.
       const VALID_EXPENSE_CATEGORIES = ['feed', 'medication', 'equipment', 'labor', 'chicks purchase', 'transport', 'other'];
       const rawCat = (logAction.category || '').toLowerCase().trim();
       const categoryMap: Record<string, string> = {
@@ -762,7 +762,7 @@ export function AIAssistantPage() {
         description: logAction.description, currency, incurred_on: recordDate,
       }).select('id');
       if (expErr) throw new Error(`Expense save failed: ${expErr.message}`);
-      if (!expData?.length) throw new Error('Expense not saved — possible permission issue.');
+      if (!expData?.length) throw new Error('Expense not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_WEIGHT') {
       const flock = await findFlock(logAction.flock_name);
@@ -776,7 +776,7 @@ export function AIAssistantPage() {
         recorded_by: user?.id || null,
       }).select('id');
       if (weightErr) throw new Error(`Weight save failed: ${weightErr.message}`);
-      if (!weightData?.length) throw new Error('Weight record not saved — possible permission issue.');
+      if (!weightData?.length) throw new Error('Weight record not saved - possible permission issue.');
       // Auto-complete any pending weight tasks scheduled for this date
       try {
         const { data: weightTasks } = await supabase.from('tasks')
@@ -806,7 +806,7 @@ export function AIAssistantPage() {
     } else if (logAction.type === 'CREATE_TASK') {
       if (!logAction.title) throw new Error('Task title is required');
       const taskDate = logAction.due_date || recordDate;
-      // window_start / window_end are NOT NULL in the schema — default to 09:00 local with 60-min window
+      // window_start / window_end are NOT NULL in the schema - default to 09:00 local with 60-min window
       const rawWindowStart = new Date(`${taskDate}T09:00:00`);
       const windowBase = isNaN(rawWindowStart.getTime()) ? new Date() : rawWindowStart;
       const windowStartISO = windowBase.toISOString();
@@ -825,7 +825,7 @@ export function AIAssistantPage() {
         is_archived: false,
       }).select('id');
       if (taskErr) throw new Error(`Task creation failed: ${taskErr.message}`);
-      if (!taskData?.length) throw new Error('Task not saved — possible permission issue.');
+      if (!taskData?.length) throw new Error('Task not saved - possible permission issue.');
 
     // ─── Fish (aquaculture) actions ───────────────────────────────────────
     } else if (logAction.type === 'LOG_WATER_QUALITY') {
@@ -843,7 +843,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null,
       }).select('id');
       if (wqErr) throw new Error(`Water quality save failed: ${wqErr.message}`);
-      if (!wqData?.length) throw new Error('Water quality record not saved — possible permission issue.');
+      if (!wqData?.length) throw new Error('Water quality record not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_POND_INSPECTION') {
       const pondName = logAction.pond_name || logAction.flock_name;
@@ -860,7 +860,7 @@ export function AIAssistantPage() {
         inspected_by: user?.id || null,
       }).select('id');
       if (piErr) throw new Error(`Pond inspection save failed: ${piErr.message}`);
-      if (!piData?.length) throw new Error('Pond inspection not saved — possible permission issue.');
+      if (!piData?.length) throw new Error('Pond inspection not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_STOCKING') {
       const pondName = logAction.pond_name || logAction.flock_name;
@@ -879,7 +879,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null,
       }).select('id');
       if (stockErr) throw new Error(`Stocking save failed: ${stockErr.message}`);
-      if (!stockData?.length) throw new Error('Stocking record not saved — possible permission issue.');
+      if (!stockData?.length) throw new Error('Stocking record not saved - possible permission issue.');
       if (fingerlingCount > 0) {
         await supabase.from('flocks').update({ current_count: (flock.current_count || 0) + fingerlingCount }).eq('id', flock.id).eq('farm_id', farmId);
       }
@@ -900,7 +900,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null,
       }).select('id');
       if (harvErr) throw new Error(`Fish harvest save failed: ${harvErr.message}`);
-      if (!harvData?.length) throw new Error('Fish harvest record not saved — possible permission issue.');
+      if (!harvData?.length) throw new Error('Fish harvest record not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_SAMPLING') {
       const pondName = logAction.pond_name || logAction.flock_name;
@@ -908,7 +908,7 @@ export function AIAssistantPage() {
       if (!flock) throw new Error(`Pond "${pondName}" not found`);
       const sampleSize = logAction.sample_size || 10;
       const abwG = logAction.abw_g || 0;
-      // Synthesise individual_weights_g — AI-driven sampling simplification (UI form allows per-fish entry)
+      // Synthesise individual_weights_g - AI-driven sampling simplification (UI form allows per-fish entry)
       const individualWeights = Array(sampleSize).fill(abwG);
       const { data: sampData, error: sampErr } = await supabase.from('sampling_events').insert({
         farm_id: farmId, flock_id: flock.id,
@@ -919,7 +919,7 @@ export function AIAssistantPage() {
         created_by: user?.id || null,
       }).select('id');
       if (sampErr) throw new Error(`Sampling save failed: ${sampErr.message}`);
-      if (!sampData?.length) throw new Error('Sampling record not saved — possible permission issue.');
+      if (!sampData?.length) throw new Error('Sampling record not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_FISH_LOSS') {
       const pondName = logAction.pond_name || logAction.flock_name;
@@ -933,7 +933,7 @@ export function AIAssistantPage() {
         created_by: user?.id || null,
       }).select('id');
       if (fishLossErr) throw new Error(`Fish loss save failed: ${fishLossErr.message}`);
-      if (!fishLossData?.length) throw new Error('Fish loss record not saved — possible permission issue.');
+      if (!fishLossData?.length) throw new Error('Fish loss record not saved - possible permission issue.');
 
     // ─── Rabbit actions ───────────────────────────────────────────────────
     } else if (logAction.type === 'LOG_BREEDING') {
@@ -957,7 +957,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null,
       }).select('id');
       if (breedErr) throw new Error(`Breeding event save failed: ${breedErr.message}`);
-      if (!breedData?.length) throw new Error('Breeding event not saved — possible permission issue.');
+      if (!breedData?.length) throw new Error('Breeding event not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_KINDLING') {
       if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_KINDLING');
@@ -984,7 +984,7 @@ export function AIAssistantPage() {
         notes: logAction.notes || null,
       }).select('id');
       if (litterErr) throw new Error(`Kindling save failed: ${litterErr.message}`);
-      if (!litterData?.length) throw new Error('Kindling record not saved — possible permission issue.');
+      if (!litterData?.length) throw new Error('Kindling record not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_WEANING') {
       if (!logAction.doe_tag) throw new Error('doe_tag is required for LOG_WEANING');
@@ -1016,7 +1016,7 @@ export function AIAssistantPage() {
         if (rabbitErr.code === '23505') throw new Error(`Rabbit tag "${logAction.tag}" already exists on this farm`);
         throw new Error(`Rabbit registration failed: ${rabbitErr.message}`);
       }
-      if (!rabbitData?.length) throw new Error('Rabbit not registered — possible permission issue.');
+      if (!rabbitData?.length) throw new Error('Rabbit not registered - possible permission issue.');
 
     } else if (logAction.type === 'LOG_RABBIT_LOSS') {
       const rabbitryName = logAction.rabbitry_name || logAction.flock_name;
@@ -1030,7 +1030,7 @@ export function AIAssistantPage() {
         created_by: user?.id || null,
       }).select('id');
       if (rLossErr) throw new Error(`Rabbit loss save failed: ${rLossErr.message}`);
-      if (!rLossData?.length) throw new Error('Rabbit loss record not saved — possible permission issue.');
+      if (!rLossData?.length) throw new Error('Rabbit loss record not saved - possible permission issue.');
 
     } else if (logAction.type === 'LOG_RABBIT_HARVEST') {
       const rabbitryName = logAction.rabbitry_name || logAction.flock_name;
@@ -1051,14 +1051,14 @@ export function AIAssistantPage() {
         notes: logAction.notes || null,
       }).select('id');
       if (rhrErr) throw new Error(`Rabbit harvest save failed: ${rhrErr.message}`);
-      if (!rhrData?.length) throw new Error('Rabbit harvest not saved — possible permission issue.');
+      if (!rhrData?.length) throw new Error('Rabbit harvest not saved - possible permission issue.');
       if (harvestCount > 0) {
         await supabase.from('flocks').update({ current_count: Math.max(0, (flock.current_count || 0) - harvestCount) }).eq('id', flock.id).eq('farm_id', farmId);
       }
 
     // ─── Phase 6 onboarding actions ────────────────────────────────────
     // CREATE_FARM creates a new farm AND adds the current user as owner
-    // in farm_members. The farmId argument is ignored — we don't have one
+    // in farm_members. The farmId argument is ignored - we don't have one
     // yet. Subsequent CREATE_FLOCK/POND/RABBITRY rely on farm_name to
     // resolve back to the just-created farm.
     } else if (logAction.type === 'CREATE_FARM') {
@@ -1079,7 +1079,7 @@ export function AIAssistantPage() {
         .select('id, name, farm_type')
         .single();
       if (cfErr || !newFarm) throw new Error(`Create farm failed: ${cfErr?.message || 'unknown'}`);
-      // Add the user as owner — table may have a trigger; this is defensive.
+      // Add the user as owner - table may have a trigger; this is defensive.
       await supabase
         .from('farm_members')
         .insert({ farm_id: newFarm.id, user_id: user.id, role: 'owner' })
@@ -1089,7 +1089,7 @@ export function AIAssistantPage() {
           }
         });
 
-    // CREATE_FLOCK / CREATE_POND / CREATE_RABBITRY — all insert into
+    // CREATE_FLOCK / CREATE_POND / CREATE_RABBITRY - all insert into
     // `flocks` with the species-appropriate `type`. Resolves the parent
     // farm by name from the just-created CREATE_FARM in this session.
     } else if (
@@ -1112,7 +1112,7 @@ export function AIAssistantPage() {
       if (!targetFarmIdLocal) throw new Error('Could not find the farm to add to');
       const entityName = (logAction.name || logAction.flock_name || '').trim();
       if (!entityName) throw new Error('Name required');
-      // BUG-008 / BUG-033: don't hardcode Catfish — respect what Eden said.
+      // BUG-008 / BUG-033: don't hardcode Catfish - respect what Eden said.
       // Same fish_type / bird_type fields the onboarding flow uses.
       const normalizeFish = (s: string): string => {
         const k = s.toLowerCase();
@@ -1134,7 +1134,7 @@ export function AIAssistantPage() {
           : (birdType || (logAction.current_phase === 'layer' ? 'Layer' : 'Broiler'));
       const initialCount = Number(logAction.count) || 0;
       // Accept any of the date aliases Eden might emit. Pre-fix, only
-      // `stocked_date` was honoured — which meant when the user said
+      // `stocked_date` was honoured - which meant when the user said
       // "Pen 1, 100 layers, arrived 6 months ago" inline, Eden would
       // emit CREATE_FLOCK without a date and the flock got today's date,
       // showing "1 week old / Chick phase" for what was supposed to be
@@ -1159,7 +1159,7 @@ export function AIAssistantPage() {
       });
       if (fErr) throw new Error(`Create ${logAction.type.replace('CREATE_', '').toLowerCase()} failed: ${fErr.message}`);
 
-    // ONBOARDING_COMPLETE / SWITCH_TO_FORM are control signals — the
+    // ONBOARDING_COMPLETE / SWITCH_TO_FORM are control signals - the
     // confirmLog wrapper handles UI state, here we just flip the
     // profiles.onboarding_status accordingly.
     } else if (logAction.type === 'ONBOARDING_COMPLETE') {
@@ -1188,7 +1188,7 @@ export function AIAssistantPage() {
 
     if (!targetFarmId) {
       if (crossFarm) {
-        showToast('Eden did not specify which farm — re-ask and mention the farm name', 'error');
+        showToast('Eden did not specify which farm - re-ask and mention the farm name', 'error');
       } else {
         showToast('Please select a farm first', 'error');
       }
@@ -1202,7 +1202,7 @@ export function AIAssistantPage() {
       if (!ok) return;
     }
 
-    // Show saving spinner — do NOT set logConfirmed yet (only after DB write confirmed)
+    // Show saving spinner - do NOT set logConfirmed yet (only after DB write confirmed)
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, logSaving: true, logError: undefined } : m));
     const currency = logAction.currency || 'XAF';
 
@@ -1283,7 +1283,7 @@ export function AIAssistantPage() {
 
     // BUG-033: re-sort so prerequisites fire before dependents (e.g.
     // CREATE_RABBITRY → REGISTER_RABBIT → LOG_KINDLING → LOG_RABBIT_LOSS).
-    // Eden's emission order isn't always dependency-correct — this layer
+    // Eden's emission order isn't always dependency-correct - this layer
     // makes the executor robust to whatever order the model produces.
     const selectedActions = sortActionsByDependency(actions.filter((_, i) => selected[i]));
     if (selectedActions.length === 0) return;
@@ -1334,10 +1334,10 @@ export function AIAssistantPage() {
       const failed = errors.length - skipped;
       const lines: string[] = [`✅ **${successCount} of ${selectedActions.length}** records saved.`];
       if (skipped > 0) {
-        lines.push(`⚠️ **${skipped}** skipped — already in the system:`);
+        lines.push(`⚠️ **${skipped}** skipped - already in the system:`);
         skippedErrors.forEach(e => lines.push(`  • ${e.replace(/^Skipped: /, '')}`));
       }
-      if (failed > 0) lines.push(`❌ **${failed}** failed to save — please retry those individually.`);
+      if (failed > 0) lines.push(`❌ **${failed}** failed to save - please retry those individually.`);
       lines.push(`\nVerify your entries under **${verifyLocation}**.`);
       const followUp: ChatMessage = {
         id: Date.now().toString() + '_f',
@@ -1352,7 +1352,7 @@ export function AIAssistantPage() {
       const followUp: ChatMessage = {
         id: Date.now().toString() + '_f',
         role: 'assistant',
-        content: `❌ None of the ${selectedActions.length} records could be saved — ${errors[0] || 'unknown error'}.\n\nTry again or paste a smaller batch and I'll log them for you.`,
+        content: `❌ None of the ${selectedActions.length} records could be saved - ${errors[0] || 'unknown error'}.\n\nTry again or paste a smaller batch and I'll log them for you.`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, followUp]);
@@ -1425,7 +1425,7 @@ export function AIAssistantPage() {
         notes: action.notes,
       });
 
-      showToast(`Pay run saved — ${action.worker_name} paid ${(action.currency || 'XAF')} ${totalAmount.toLocaleString()}`, 'success');
+      showToast(`Pay run saved - ${action.worker_name} paid ${(action.currency || 'XAF')} ${totalAmount.toLocaleString()}`, 'success');
     } catch (err: any) {
       showToast('Failed to save pay run: ' + err.message, 'error');
       setMessages(prev => prev.map(m => m.id === messageId ? { ...m, payRunConfirmed: false } : m));
@@ -1555,7 +1555,7 @@ export function AIAssistantPage() {
     const text = messageText || input.trim();
     if ((!text && pendingImages.length === 0 && !pendingFile) || loading) return;
 
-    // In cross-farm mode there is no single currentFarm — that's the point.
+    // In cross-farm mode there is no single currentFarm - that's the point.
     // We still require the user to belong to at least one farm to send anything.
     if (!crossFarm && !currentFarm) {
       showToast('Please select a farm first', 'error');
@@ -1619,7 +1619,7 @@ export function AIAssistantPage() {
       if (!session || (session.expires_at && session.expires_at * 1000 - Date.now() < 60_000)) {
         const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
         if (refreshErr || !refreshed.session) {
-          throw new Error('Your session expired — please reload the page and try again.');
+          throw new Error('Your session expired - please reload the page and try again.');
         }
         session = refreshed.session;
       }
@@ -1683,7 +1683,7 @@ export function AIAssistantPage() {
           const isTimeout2 = fetchErr2?.name === 'AbortError';
           console.error('AI fetch error (attempt 2):', fetchErr2?.name, fetchErr2?.message);
           const msg = isTimeout || isTimeout2
-            ? 'Request timed out — Eden AI is slow to start. Try again in a moment.'
+            ? 'Request timed out - Eden AI is slow to start. Try again in a moment.'
             : 'Could not reach Eden AI. Check your connection and try again.';
           throw new Error(msg);
         }
@@ -1696,7 +1696,7 @@ export function AIAssistantPage() {
         throw new Error(
           response.status === 504 || response.status === 524
             ? 'Eden AI is taking too long to respond. Please try again.'
-            : `Server error ${response.status} — please try again.`
+            : `Server error ${response.status} - please try again.`
         );
       }
       if (!response.ok) {
@@ -1800,7 +1800,7 @@ export function AIAssistantPage() {
   const summariseLogAction = (a: LogAction): string => {
     const cur = a.currency || '';
     const dateLabel = a.log_date ? ` · ${a.log_date}` : '';
-    if (a.type === 'LOG_MORTALITY') return `${a.count} death(s) in "${a.flock_name}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
+    if (a.type === 'LOG_MORTALITY') return `${a.count} death(s) in "${a.flock_name}"${a.cause ? ` - ${a.cause}` : ''}${dateLabel}`;
     if (a.type === 'LOG_EGGS') {
       const parts = [];
       if (a.small_eggs) parts.push(`${a.small_eggs} small`);
@@ -1828,11 +1828,11 @@ export function AIAssistantPage() {
     if (a.type === 'LOG_FEED_USAGE') return `${a.bags_used} bag(s) of ${a.feed_type} used${dateLabel}`;
     if (a.type === 'LOG_WATER_QUALITY') {
       const pond = a.pond_name || a.flock_name;
-      return `Water quality "${pond}": DO ${a.dissolved_oxygen ?? '—'} mg/L, pH ${a.ph ?? '—'}, Temp ${a.temperature_c ?? '—'}°C${dateLabel}`;
+      return `Water quality "${pond}": DO ${a.dissolved_oxygen ?? ' - '} mg/L, pH ${a.ph ?? ' - '}, Temp ${a.temperature_c ?? ' - '}°C${dateLabel}`;
     }
     if (a.type === 'LOG_POND_INSPECTION') {
       const pond = a.pond_name || a.flock_name;
-      return `Pond inspection "${pond}": clarity ${a.water_clarity || '—'}, fish ${a.fish_behavior || '—'}${a.dead_fish_count ? `, ${a.dead_fish_count} dead` : ''}${dateLabel}`;
+      return `Pond inspection "${pond}": clarity ${a.water_clarity || ' - '}, fish ${a.fish_behavior || ' - '}${a.dead_fish_count ? `, ${a.dead_fish_count} dead` : ''}${dateLabel}`;
     }
     if (a.type === 'LOG_STOCKING') {
       // Species-aware verb + noun: "stocking fingerlings" is aquaculture
@@ -1854,19 +1854,19 @@ export function AIAssistantPage() {
     }
     if (a.type === 'LOG_SAMPLING') {
       const pond = a.pond_name || a.flock_name;
-      return `Sampling "${pond}": n=${a.sample_size || 10}, ABW ${a.abw_g || '—'} g${dateLabel}`;
+      return `Sampling "${pond}": n=${a.sample_size || 10}, ABW ${a.abw_g || ' - '} g${dateLabel}`;
     }
     if (a.type === 'LOG_FISH_LOSS') {
       const pond = a.pond_name || a.flock_name;
-      return `${a.count} fish loss in "${pond}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
+      return `${a.count} fish loss in "${pond}"${a.cause ? ` - ${a.cause}` : ''}${dateLabel}`;
     }
     if (a.type === 'LOG_BREEDING') return `Breeding: ${a.doe_tag} × ${a.buck_tag}${a.mating_date ? ` on ${a.mating_date}` : ''}`;
-    if (a.type === 'LOG_KINDLING') return `Kindling: doe ${a.doe_tag} — ${a.kits_born_alive ?? 0} alive, ${a.kits_born_dead ?? 0} dead${dateLabel}`;
+    if (a.type === 'LOG_KINDLING') return `Kindling: doe ${a.doe_tag} - ${a.kits_born_alive ?? 0} alive, ${a.kits_born_dead ?? 0} dead${dateLabel}`;
     if (a.type === 'LOG_WEANING') return `Weaning: ${a.kits_weaned ?? 0} kits from doe ${a.doe_tag}${dateLabel}`;
     if (a.type === 'REGISTER_RABBIT') return `Register rabbit: tag "${a.tag}" · ${a.sex}${a.breed ? ` · ${a.breed}` : ''}`;
     if (a.type === 'LOG_RABBIT_LOSS') {
       const rabbitry = a.rabbitry_name || a.flock_name;
-      return `${a.count} rabbit loss in "${rabbitry}"${a.cause ? ` — ${a.cause}` : ''}${dateLabel}`;
+      return `${a.count} rabbit loss in "${rabbitry}"${a.cause ? ` - ${a.cause}` : ''}${dateLabel}`;
     }
     if (a.type === 'LOG_RABBIT_HARVEST') {
       const rabbitry = a.rabbitry_name || a.flock_name;
@@ -2074,7 +2074,7 @@ export function AIAssistantPage() {
                               <p><strong>Bonus:</strong> {message.payRunAction.currency} {message.payRunAction.bonus!.toLocaleString()}</p>
                             )}
                             <p><strong>Total:</strong> {message.payRunAction.currency} {((message.payRunAction.amount || 0) + (message.payRunAction.bonus || 0)).toLocaleString()}</p>
-                            <p><strong>Period:</strong> {message.payRunAction.pay_period_start || '—'} to {message.payRunAction.pay_period_end || message.payRunAction.pay_date}</p>
+                            <p><strong>Period:</strong> {message.payRunAction.pay_period_start || ' - '} to {message.payRunAction.pay_period_end || message.payRunAction.pay_date}</p>
                           </div>
                           <div className="flex gap-2 pt-1">
                             <button

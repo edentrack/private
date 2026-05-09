@@ -467,7 +467,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                     {t('settings.currency_settings') || 'Currency & Exchange Rate'}
                   </h3>
                   <p className="text-xs text-gray-500">
-                    {t('settings.currency_auto_set') || 'Currency set by country — enter rate to see USD equivalent'}
+                    {t('settings.currency_auto_set') || 'Currency set by country - enter rate to see USD equivalent'}
                   </p>
                 </div>
               </div>
@@ -478,7 +478,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                     <div>
                       <p className="text-xs text-gray-500 mb-0.5">{t('settings.farm_currency') || 'Farm currency'}</p>
                       <p className="text-base font-bold text-gray-900">
-                        {effectiveCurrency} — {getCurrencySymbol(effectiveCurrency)}
+                        {effectiveCurrency} - {getCurrencySymbol(effectiveCurrency)}
                       </p>
                     </div>
                     {/*
@@ -527,8 +527,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
                 <div>
                   <label htmlFor="exchangeRate" className="block text-xs font-medium text-gray-700 mb-1.5">
                     {language === 'fr'
-                      ? `Saisie manuelle — 1 USD = ? ${effectiveCurrency}`
-                      : `Manual entry — 1 USD = ? ${effectiveCurrency}`}
+                      ? `Saisie manuelle - 1 USD = ? ${effectiveCurrency}`
+                      : `Manual entry - 1 USD = ? ${effectiveCurrency}`}
                   </label>
                   <input
                     id="exchangeRate"
@@ -838,7 +838,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-gray-900">{language === 'fr' ? 'Mode Simple' : 'Simple Mode'}</p>
-              <p className="text-xs text-gray-500">{language === 'fr' ? 'Masquer les fonctionnalités avancées — garder l’essentiel' : 'Hide advanced features — keep the essentials only'}</p>
+              <p className="text-xs text-gray-500">{language === 'fr' ? 'Masquer les fonctionnalités avancées - garder l’essentiel' : 'Hide advanced features - keep the essentials only'}</p>
             </div>
             <button
               type="button"

@@ -161,7 +161,7 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
       link.click();
       showToast('CSV exported successfully', 'success');
     } else {
-      showToast('PDF export coming soon — use CSV for now', 'info');
+      showToast('PDF export coming soon - use CSV for now', 'info');
     }
   };
 
@@ -325,7 +325,7 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
                   Cost/Egg
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {kpis.costPerEgg > 0 ? kpis.costPerEgg : '—'} {kpis.costPerEgg > 0 && <span className="text-base">{profile?.currency_preference}</span>}
+                  {kpis.costPerEgg > 0 ? kpis.costPerEgg : ' - '} {kpis.costPerEgg > 0 && <span className="text-base">{profile?.currency_preference}</span>}
                 </div>
                 <div className="text-xs text-gray-600">Per egg cost</div>
               </div>
@@ -336,7 +336,7 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
                 Cost/{species.animalTerm}
               </div>
               <div className="text-3xl font-bold text-gray-900 mb-1">
-                {kpis.costPerBird > 0 ? kpis.costPerBird.toFixed(0) : '—'} {kpis.costPerBird > 0 && <span className="text-base">{profile?.currency_preference}</span>}
+                {kpis.costPerBird > 0 ? kpis.costPerBird.toFixed(0) : ' - '} {kpis.costPerBird > 0 && <span className="text-base">{profile?.currency_preference}</span>}
               </div>
               <div className="text-xs text-gray-600">Per {species.animalTerm.toLowerCase()} cost</div>
             </div>
@@ -371,7 +371,7 @@ export function AnalyticsDashboard({ flock }: AnalyticsDashboardProps) {
                   Profit/Tray
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {kpis.profitPerTray > 0 ? kpis.profitPerTray : '—'} {kpis.profitPerTray > 0 && <span className="text-base">{profile?.currency_preference}</span>}
+                  {kpis.profitPerTray > 0 ? kpis.profitPerTray : ' - '} {kpis.profitPerTray > 0 && <span className="text-base">{profile?.currency_preference}</span>}
                 </div>
                 <div className="text-xs text-gray-600">Est. profit</div>
               </div>

@@ -281,8 +281,8 @@ export function ReportsPage() {
             </div>
             <p className="text-[11px] text-gray-500">
               {isFr
-                ? "Le PDF est la version officielle — prête pour soumission bancaire. Les fichiers CSV s'importent proprement dans Excel et Google Sheets pour analyse. Markdown est un résumé texte adapté à un e-mail ou au chat."
-                : 'The PDF is the formal version — bank-submission ready. CSV files import cleanly into Excel and Google Sheets for further analysis. Markdown is a text-only summary suitable for email or pasting into chat.'}
+                ? "Le PDF est la version officielle - prête pour soumission bancaire. Les fichiers CSV s'importent proprement dans Excel et Google Sheets pour analyse. Markdown est un résumé texte adapté à un e-mail ou au chat."
+                : 'The PDF is the formal version - bank-submission ready. CSV files import cleanly into Excel and Google Sheets for further analysis. Markdown is a text-only summary suitable for email or pasting into chat.'}
             </p>
           </div>
         </>

@@ -777,7 +777,7 @@ export function InventoryUsageWidget() {
                     onChange={(e) => setSelectedFlockId(e.target.value)}
                     className="w-full px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
                   >
-                    <option value="">— All / Unknown —</option>
+                    <option value=""> - All / Unknown - </option>
                     {activeFlocks.map((f) => (
                       <option key={f.id} value={f.id}>{f.name}</option>
                     ))}

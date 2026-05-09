@@ -142,10 +142,10 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
           done: mortalityOk,
           detail: flock
             ? (isFr
-                ? `${mortalityPct.toFixed(1)}% du troupeau — ${mortalityOk ? 'dans la plage normale' : 'au-dessus du seuil de 5%'}`
-                : `${mortalityPct.toFixed(1)}% of flock — ${mortalityOk ? 'within normal range' : 'above 5% threshold'}`)
+                ? `${mortalityPct.toFixed(1)}% du troupeau - ${mortalityOk ? 'dans la plage normale' : 'au-dessus du seuil de 5%'}`
+                : `${mortalityPct.toFixed(1)}% of flock - ${mortalityOk ? 'within normal range' : 'above 5% threshold'}`)
             : undefined,
-          prompt: `My mortality rate is ${mortalityPct.toFixed(1)}% — is that normal and what should I do?`,
+          prompt: `My mortality rate is ${mortalityPct.toFixed(1)}% - is that normal and what should I do?`,
         },
         {
           key: 'tasks',
@@ -157,7 +157,7 @@ export function FarmSetupScoreCard({ onAskEden }: FarmSetupScoreCardProps) {
                 ? `${overdueCount} tâche${overdueCount !== 1 ? 's' : ''} en retard`
                 : `${overdueCount} overdue task${overdueCount !== 1 ? 's' : ''}`)
             : undefined,
-          prompt: 'I have overdue tasks — help me catch up',
+          prompt: 'I have overdue tasks - help me catch up',
         },
         {
           key: 'feed_stock',

@@ -36,7 +36,7 @@ function downloadFile(content: string, filename: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Download the full report as a single Markdown text file — easiest format
+/** Download the full report as a single Markdown text file - easiest format
  *  for WhatsApp/email pasting. The PDF is the formal version; this is the
  *  copy-paste version. */
 export function downloadFarmReportMarkdown(data: FarmReportData) {
@@ -47,7 +47,7 @@ export function downloadFarmReportMarkdown(data: FarmReportData) {
 export function formatFarmReportMarkdown(data: FarmReportData): string {
   const fmt = (n: number) => Math.round(n).toLocaleString();
   const lines: string[] = [];
-  lines.push(`# ${data.farmName} — farm report`);
+  lines.push(`# ${data.farmName} - farm report`);
   lines.push(`**Period:** ${data.startDate} → ${data.endDate}`);
   lines.push(`**Generated:** ${new Date(data.generatedAt).toLocaleString()}`);
   lines.push('');
@@ -85,7 +85,7 @@ export function formatFarmReportMarkdown(data: FarmReportData): string {
 
 /**
  * Download each report section as its own CSV file. Calling this triggers
- * 4–6 file-download prompts in series — most browsers either chain them
+ * 4–6 file-download prompts in series - most browsers either chain them
  * automatically or surface a "download multiple files" permission prompt
  * the first time, then silently allow subsequent ones.
  */

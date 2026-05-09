@@ -145,7 +145,7 @@ export function CooperativesPage() {
       showToast(isFr ? `Échec de la demande : ${error.message}` : `Request failed: ${error.message}`, 'error');
       return;
     }
-    showToast(isFr ? "Demande d'adhésion envoyée — l'administrateur l'approuvera." : 'Join request sent — admin will approve.', 'success');
+    showToast(isFr ? "Demande d'adhésion envoyée - l'administrateur l'approuvera." : 'Join request sent - admin will approve.', 'success');
     setBrowseResults((r) => r.filter((c) => c.id !== cooperativeId));
     load();
   };

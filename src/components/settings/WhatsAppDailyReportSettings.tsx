@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { MessageCircle, Save, Send, Trash2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -39,20 +40,26 @@ const E164_REGEX = /^\+[1-9][0-9]{6,14}$/;
 export function WhatsAppDailyReportSettings() {
   const { currentFarm, user } = useAuth();
   const toast = useToast();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const farmSpecies = useFarmSpecies();
   // Description fragments that vary by species. Poultry farms care about
   // egg counts; aqua about biomass + water-quality emergencies; rabbits
   // get a clean "deaths, sales, tasks" line with no aqua/poultry leakage.
-  const productionPhrase =
-    farmSpecies.id === 'aquaculture' ? 'biomass, '
+  const productionPhrase = isFr
+    ? (farmSpecies.id === 'aquaculture' ? 'biomasse, '
+      : farmSpecies.id === 'poultry' ? 'œufs, '
+      : '')
+    : (farmSpecies.id === 'aquaculture' ? 'biomass, '
       : farmSpecies.id === 'poultry' ? 'eggs, '
-      : '';
-  const aquaTailPhrase =
-    farmSpecies.id === 'aquaculture' ? ', and any water-quality emergencies'
-      : '';
+      : '');
+  const aquaTailPhrase = isFr
+    ? (farmSpecies.id === 'aquaculture' ? " et toute urgence liée à la qualité de l'eau" : '')
+    : (farmSpecies.id === 'aquaculture' ? ', and any water-quality emergencies' : '');
   const lossPhrase = farmSpecies.lossNounPlural.toLowerCase();
-  const dailyReportDescription =
-    `Get a one-line summary of yesterday's farm activity in WhatsApp every morning. Includes ${lossPhrase}, ${productionPhrase}sales, pending tasks${aquaTailPhrase}.`;
+  const dailyReportDescription = isFr
+    ? `Recevez un résumé en une ligne de l'activité de votre ferme d'hier dans WhatsApp chaque matin. Inclut ${lossPhrase}, ${productionPhrase}ventes, tâches en attente${aquaTailPhrase}.`
+    : `Get a one-line summary of yesterday's farm activity in WhatsApp every morning. Includes ${lossPhrase}, ${productionPhrase}sales, pending tasks${aquaTailPhrase}.`;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -76,7 +83,7 @@ export function WhatsAppDailyReportSettings() {
       .eq('user_id', user!.id)
       .maybeSingle();
     if (error && error.code !== 'PGRST116' && !error.message?.includes('whatsapp_subscriptions')) {
-      toast.error('Failed to load WhatsApp subscription');
+      toast.error(isFr ? "Échec du chargement de l'abonnement WhatsApp" : 'Failed to load WhatsApp subscription');
     } else if (data) {
       const sub = data as Subscription;
       setSubscription(sub);
@@ -90,7 +97,7 @@ export function WhatsAppDailyReportSettings() {
   const handleSave = async () => {
     const trimmed = phone.trim();
     if (!E164_REGEX.test(trimmed)) {
-      toast.error('Phone must be in international format (e.g. +234801234567)');
+      toast.error(isFr ? 'Le téléphone doit être au format international (ex. +234801234567)' : 'Phone must be in international format (e.g. +234801234567)');
       return;
     }
     setSaving(true);
@@ -106,16 +113,16 @@ export function WhatsAppDailyReportSettings() {
       .upsert(payload, { onConflict: 'farm_id,user_id' });
     setSaving(false);
     if (error) {
-      toast.error(`Failed to save: ${error.message}`);
+      toast.error(isFr ? `Échec de l'enregistrement: ${error.message}` : `Failed to save: ${error.message}`);
     } else {
-      toast.success(enabled ? 'WhatsApp daily report enabled' : 'Saved');
+      toast.success(enabled ? (isFr ? 'Rapport quotidien WhatsApp activé' : 'WhatsApp daily report enabled') : (isFr ? 'Enregistré' : 'Saved'));
       loadSubscription();
     }
   };
 
   const handleTest = async () => {
     if (!subscription) {
-      toast.error('Save your phone number first');
+      toast.error(isFr ? "Enregistrez d'abord votre numéro de téléphone" : 'Save your phone number first');
       return;
     }
     setTesting(true);
@@ -130,16 +137,16 @@ export function WhatsAppDailyReportSettings() {
       if (error) throw error;
       const result = (data as any)?.results?.[0];
       if (result?.ok) {
-        toast.success('Test message sent — check WhatsApp');
+        toast.success(isFr ? 'Message test envoyé - vérifiez WhatsApp' : 'Test message sent - check WhatsApp');
       } else if (result?.error) {
-        toast.error(`Test failed: ${result.error}`);
+        toast.error(isFr ? `Échec du test: ${result.error}` : `Test failed: ${result.error}`);
       } else if ((data as any)?.skipped) {
-        toast.info('WhatsApp not configured on the server yet — ask the admin to set WHATSAPP_ACCESS_TOKEN');
+        toast.info(isFr ? "WhatsApp n'est pas encore configuré sur le serveur - demandez à l'administrateur de définir WHATSAPP_ACCESS_TOKEN" : 'WhatsApp not configured on the server yet - ask the admin to set WHATSAPP_ACCESS_TOKEN');
       } else {
-        toast.success('Test queued');
+        toast.success(isFr ? 'Test mis en file' : 'Test queued');
       }
     } catch (err: any) {
-      toast.error(`Test failed: ${err?.message || 'unknown error'}`);
+      toast.error(isFr ? `Échec du test: ${err?.message || 'erreur inconnue'}` : `Test failed: ${err?.message || 'unknown error'}`);
     } finally {
       setTesting(false);
     }
@@ -147,15 +154,15 @@ export function WhatsAppDailyReportSettings() {
 
   const handleDelete = async () => {
     if (!subscription) return;
-    if (!confirm('Stop receiving WhatsApp daily reports for this farm?')) return;
+    if (!confirm(isFr ? 'Arrêter de recevoir les rapports quotidiens WhatsApp pour cette ferme ?' : 'Stop receiving WhatsApp daily reports for this farm?')) return;
     const { error } = await supabase
       .from('whatsapp_subscriptions')
       .delete()
       .eq('id', subscription.id);
     if (error) {
-      toast.error('Failed to remove subscription');
+      toast.error(isFr ? "Échec de la suppression de l'abonnement" : 'Failed to remove subscription');
     } else {
-      toast.success('WhatsApp daily report disabled');
+      toast.success(isFr ? 'Rapport quotidien WhatsApp désactivé' : 'WhatsApp daily report disabled');
       setSubscription(null);
       setPhone('');
       setEnabled(true);
@@ -166,7 +173,7 @@ export function WhatsAppDailyReportSettings() {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl p-4 border border-gray-200">
-        <p className="text-sm text-gray-500">Loading WhatsApp settings…</p>
+        <p className="text-sm text-gray-500">{isFr ? 'Chargement des paramètres WhatsApp…' : 'Loading WhatsApp settings…'}</p>
       </div>
     );
   }
@@ -177,13 +184,13 @@ export function WhatsAppDailyReportSettings() {
         <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
           <MessageCircle className="w-4 h-4" />
         </div>
-        <h2 className="font-semibold text-gray-900">WhatsApp daily report</h2>
+        <h2 className="font-semibold text-gray-900">{isFr ? 'Rapport quotidien WhatsApp' : 'WhatsApp daily report'}</h2>
       </div>
       <p className="text-xs text-gray-500 mb-4">{dailyReportDescription}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Phone (international format)</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Téléphone (format international)' : 'Phone (international format)'}</label>
           <input
             type="tel"
             placeholder="+234801234567"
@@ -191,10 +198,10 @@ export function WhatsAppDailyReportSettings() {
             onChange={e => setPhone(e.target.value)}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
           />
-          <p className="text-[11px] text-gray-500 mt-1">Must start with + and country code, e.g. +234, +237, +254.</p>
+          <p className="text-[11px] text-gray-500 mt-1">{isFr ? 'Doit commencer par + et le code pays, ex. +234, +237, +254.' : 'Must start with + and country code, e.g. +234, +237, +254.'}</p>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Delivery time (your local)</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Heure de livraison (heure locale)' : 'Delivery time (your local)'}</label>
           <input
             type="time"
             value={deliveryTime}
@@ -211,7 +218,7 @@ export function WhatsAppDailyReportSettings() {
           onChange={e => setEnabled(e.target.checked)}
           className="rounded"
         />
-        Enabled
+        {isFr ? 'Activé' : 'Enabled'}
       </label>
 
       <div className="flex flex-wrap gap-2">
@@ -222,7 +229,7 @@ export function WhatsAppDailyReportSettings() {
           className="px-3 py-2 text-sm font-medium bg-[#3D5F42] text-white rounded-lg hover:bg-[#2f4a34] disabled:opacity-60 inline-flex items-center gap-1.5"
         >
           <Save className="w-3.5 h-3.5" />
-          {saving ? 'Saving…' : subscription ? 'Update' : 'Save & enable'}
+          {saving ? (isFr ? 'Enregistrement…' : 'Saving…') : subscription ? (isFr ? 'Mettre à jour' : 'Update') : (isFr ? 'Enregistrer et activer' : 'Save & enable')}
         </button>
         {subscription && (
           <>
@@ -233,7 +240,7 @@ export function WhatsAppDailyReportSettings() {
               className="px-3 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60 inline-flex items-center gap-1.5"
             >
               <Send className="w-3.5 h-3.5" />
-              {testing ? 'Sending…' : 'Send a test message now'}
+              {testing ? (isFr ? 'Envoi…' : 'Sending…') : (isFr ? 'Envoyer un message test maintenant' : 'Send a test message now')}
             </button>
             <button
               type="button"
@@ -241,7 +248,7 @@ export function WhatsAppDailyReportSettings() {
               className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg inline-flex items-center gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Remove
+              {isFr ? 'Supprimer' : 'Remove'}
             </button>
           </>
         )}
@@ -249,36 +256,38 @@ export function WhatsAppDailyReportSettings() {
 
       {subscription?.last_sent_at && (
         <p className="text-[11px] text-gray-500 mt-3">
-          Last sent: {new Date(subscription.last_sent_at).toLocaleString()} ·{' '}
+          {isFr ? 'Dernier envoi: ' : 'Last sent: '}{new Date(subscription.last_sent_at).toLocaleString()} ·{' '}
           <span className={subscription.last_send_status === 'ok' ? 'text-emerald-700' : 'text-red-600'}>
-            {subscription.last_send_status === 'ok' ? 'delivered' : `failed (${subscription.last_send_status})`}
+            {subscription.last_send_status === 'ok' ? (isFr ? 'livré' : 'delivered') : (isFr ? `échec (${subscription.last_send_status})` : `failed (${subscription.last_send_status})`)}
           </span>
         </p>
       )}
       {subscription && subscription.consecutive_failures >= 3 && (
         <p className="text-[11px] text-amber-700 mt-2">
-          ⚠️ {subscription.consecutive_failures} consecutive failures — likely the recipient hasn't accepted
-          your WhatsApp business conversation yet. Have them send any message to your business number, then try again.
+          {isFr
+            ? `⚠️ ${subscription.consecutive_failures} échecs consécutifs - le destinataire n'a probablement pas encore accepté votre conversation WhatsApp Business. Demandez-lui d'envoyer un message à votre numéro professionnel, puis réessayez.`
+            : `⚠️ ${subscription.consecutive_failures} consecutive failures - likely the recipient hasn't accepted your WhatsApp business conversation yet. Have them send any message to your business number, then try again.`}
         </p>
       )}
 
       <details className="mt-4 text-[11px] text-gray-500">
-        <summary className="cursor-pointer hover:text-gray-700">How this works</summary>
+        <summary className="cursor-pointer hover:text-gray-700">{isFr ? 'Comment ça marche' : 'How this works'}</summary>
         <div className="mt-2 space-y-1.5 leading-relaxed">
-          <p>
-            • Messages are sent via Meta's WhatsApp Business Cloud API using an approved template.
-          </p>
-          <p>
-            • The first time, the recipient must send any message to your business number to open the
-            24-hour window. After that, the daily template can fire freely.
-          </p>
-          <p>
-            • If 5 consecutive sends fail, the subscription auto-disables. Re-save here to re-enable.
-          </p>
-          <p>
-            • Multiple farm members can each opt in with their own phone — every member can have their own
-            delivery time.
-          </p>
+          {isFr ? (
+            <>
+              <p>• Les messages sont envoyés via l'API WhatsApp Business Cloud de Meta en utilisant un modèle approuvé.</p>
+              <p>• La première fois, le destinataire doit envoyer un message à votre numéro professionnel pour ouvrir la fenêtre de 24 heures. Après cela, le modèle quotidien peut être envoyé librement.</p>
+              <p>• Si 5 envois consécutifs échouent, l'abonnement se désactive automatiquement. Ré-enregistrez ici pour réactiver.</p>
+              <p>• Plusieurs membres de la ferme peuvent s'inscrire avec leur propre téléphone - chaque membre peut avoir sa propre heure de livraison.</p>
+            </>
+          ) : (
+            <>
+              <p>• Messages are sent via Meta's WhatsApp Business Cloud API using an approved template.</p>
+              <p>• The first time, the recipient must send any message to your business number to open the 24-hour window. After that, the daily template can fire freely.</p>
+              <p>• If 5 consecutive sends fail, the subscription auto-disables. Re-save here to re-enable.</p>
+              <p>• Multiple farm members can each opt in with their own phone - every member can have their own delivery time.</p>
+            </>
+          )}
         </div>
       </details>
     </div>

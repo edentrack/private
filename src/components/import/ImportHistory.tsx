@@ -129,7 +129,7 @@ export function ImportHistory() {
         .eq('id', importRecord.id)
         .eq('farm_id', currentFarm.id);
 
-      toast.success('Import undone — records removed');
+      toast.success('Import undone - records removed');
       loadHistory();
     } catch (err: any) {
       toast.error(err.message || 'Failed to undo');

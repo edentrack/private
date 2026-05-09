@@ -232,7 +232,7 @@ export function RabbitsRegistryPage() {
                   onChange={e => setFormFlockId(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
                 >
-                  <option value="">{isFr ? '— aucun —' : '— none —'}</option>
+                  <option value="">{isFr ? ' - aucun - ' : ' - none - '}</option>
                   {flocks.map(f => (
                     <option key={f.id} value={f.id}>{f.name}</option>
                   ))}

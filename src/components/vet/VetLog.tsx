@@ -133,7 +133,7 @@ export function VetLog() {
         if (error) {
           if (isNetworkError(error)) {
             await tryWrite('vet_logs', 'insert', payload);
-            toast.success(isFr ? 'Journal vétérinaire en file d\'attente — synchronisation en ligne' : 'Vet log queued — will sync when online');
+            toast.success(isFr ? 'Journal vétérinaire en file d\'attente - synchronisation en ligne' : 'Vet log queued - will sync when online');
           } else {
             throw error;
           }
@@ -198,14 +198,14 @@ export function VetLog() {
           <p className="text-amber-800 font-semibold text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
             {isFr
-              ? `Délais de retrait actifs — ne pas vendre ${farmSpecies.id === 'poultry' ? "d'œufs ou d'animaux" : `de ${farmSpecies.animalTermPlural.toLowerCase()}`} avant la date de levée`
-              : `Active withdrawal periods — do not sell ${farmSpecies.id === 'poultry' ? 'eggs or birds' : farmSpecies.animalTermPlural.toLowerCase()} until clear date`}
+              ? `Délais de retrait actifs - ne pas vendre ${farmSpecies.id === 'poultry' ? "d'œufs ou d'animaux" : `de ${farmSpecies.animalTermPlural.toLowerCase()}`} avant la date de levée`
+              : `Active withdrawal periods - do not sell ${farmSpecies.id === 'poultry' ? 'eggs or birds' : farmSpecies.animalTermPlural.toLowerCase()} until clear date`}
           </p>
           {logs.filter(isWithdrawalActive).map(log => {
             const clear = withdrawalClearDate(log);
             return (
               <p key={log.id} className="text-amber-700 text-sm pl-6">
-                {log.medication || log.diagnosis || (isFr ? 'Médicament' : 'Medication')} {log.flocks?.name ? `(${log.flocks.name})` : ''} — {isFr ? 'levée le' : 'clear on'} <strong>{clear?.toLocaleDateString(isFr ? 'fr' : 'en', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                {log.medication || log.diagnosis || (isFr ? 'Médicament' : 'Medication')} {log.flocks?.name ? `(${log.flocks.name})` : ''} - {isFr ? 'levée le' : 'clear on'} <strong>{clear?.toLocaleDateString(isFr ? 'fr' : 'en', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
               </p>
             );
           })}
@@ -355,15 +355,15 @@ export function VetLog() {
                         <div>
                           <span className="text-xs font-semibold text-gray-600">{isFr ? 'Médicament : ' : 'Medication: '}</span>
                           <span className="text-sm text-gray-800">{log.medication}</span>
-                          {log.dosage && <span className="text-sm text-gray-500"> — {log.dosage}</span>}
+                          {log.dosage && <span className="text-sm text-gray-500"> - {log.dosage}</span>}
                         </div>
                       </div>
                     )}
                     {log.withdrawal_period_days != null && log.withdrawal_period_days > 0 && (
                       <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
                         {isFr
-                          ? `Retrait : ${log.withdrawal_period_days} jours après le ${new Date(log.visit_date).toLocaleDateString('fr', { day: 'numeric', month: 'short' })}${clearDate ? ` — levée le ${clearDate.toLocaleDateString('fr', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
-                          : `Withdrawal: ${log.withdrawal_period_days} days after ${new Date(log.visit_date).toLocaleDateString('en', { day: 'numeric', month: 'short' })}${clearDate ? ` — clear on ${clearDate.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`}
+                          ? `Retrait : ${log.withdrawal_period_days} jours après le ${new Date(log.visit_date).toLocaleDateString('fr', { day: 'numeric', month: 'short' })}${clearDate ? ` - levée le ${clearDate.toLocaleDateString('fr', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
+                          : `Withdrawal: ${log.withdrawal_period_days} days after ${new Date(log.visit_date).toLocaleDateString('en', { day: 'numeric', month: 'short' })}${clearDate ? ` - clear on ${clearDate.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`}
                       </p>
                     )}
                     {log.notes && <p className="text-sm text-gray-600 whitespace-pre-wrap">{log.notes}</p>}

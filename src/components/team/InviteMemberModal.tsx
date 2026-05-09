@@ -94,7 +94,7 @@ export function InviteMemberModal({ farmId, onClose, onSuccess }: InviteMemberMo
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Link ready</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Send this link to <strong>{email}</strong> — they sign in or sign up, then they join this farm.
+                Send this link to <strong>{email}</strong> - they sign in or sign up, then they join this farm.
               </p>
 
               {inviteToken && (

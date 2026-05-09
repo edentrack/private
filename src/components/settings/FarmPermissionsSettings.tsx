@@ -102,8 +102,8 @@ function buildManagerGroups(v: PermissionVocab, isFr: boolean): PermissionGroup[
       ],
     },
     {
-      title: isFr ? 'Zone dangereuse — données' : 'Data Danger Zone',
-      description: isFr ? 'Opérations irréversibles — accordez avec précaution' : 'Irreversible operations — grant with care',
+      title: isFr ? 'Zone dangereuse - données' : 'Data Danger Zone',
+      description: isFr ? 'Opérations irréversibles - accordez avec précaution' : 'Irreversible operations - grant with care',
       permissions: [
         {
           key: 'managers_can_delete_records',
@@ -338,7 +338,7 @@ export function FarmPermissionsSettings() {
       {activeTab === 'manager' && (
         <>
           <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-800">
-            <strong>{isFr ? 'Gestionnaire' : 'Manager'}</strong> — {isFr ? "chef d'équipe de confiance. Choisissez un préréglage ou configurez individuellement ci-dessous." : 'trusted team lead. Pick a preset or configure individually below.'}
+            <strong>{isFr ? 'Gestionnaire' : 'Manager'}</strong> - {isFr ? "chef d'équipe de confiance. Choisissez un préréglage ou configurez individuellement ci-dessous." : 'trusted team lead. Pick a preset or configure individually below.'}
           </div>
           <div className="mb-6">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{isFr ? 'Préréglages rapides' : 'Quick presets'}</p>
@@ -359,14 +359,14 @@ export function FarmPermissionsSettings() {
                 <div className="text-amber-600 font-normal mt-0.5">{isFr ? 'Ventes & dépenses uniquement' : 'Sales & expenses only'}</div>
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-2">{isFr ? "L'application d'un préréglage remplit tous les commutateurs ci-dessous — vous pouvez ajuster individuellement après." : 'Applying a preset fills in all toggles below — you can still adjust individually after.'}</p>
+            <p className="text-xs text-gray-400 mt-2">{isFr ? "L'application d'un préréglage remplit tous les commutateurs ci-dessous - vous pouvez ajuster individuellement après." : 'Applying a preset fills in all toggles below - you can still adjust individually after.'}</p>
           </div>
         </>
       )}
       {activeTab === 'worker' && (
         <>
           <div className="mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-800">
-            <strong>{isFr ? 'Ouvrier' : 'Worker'}</strong> — {isFr ? 'personnel de terrain. Ne peut pas toucher aux finances ou paramètres sauf si activé ci-dessous.' : "hands-on farm staff. Can't touch financials or settings unless enabled below."}
+            <strong>{isFr ? 'Ouvrier' : 'Worker'}</strong> - {isFr ? 'personnel de terrain. Ne peut pas toucher aux finances ou paramètres sauf si activé ci-dessous.' : "hands-on farm staff. Can't touch financials or settings unless enabled below."}
           </div>
           <div className="mb-6">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{isFr ? 'Préréglages rapides' : 'Quick presets'}</p>
@@ -390,13 +390,13 @@ export function FarmPermissionsSettings() {
                 </div>
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-2">{isFr ? "L'application d'un préréglage remplit les commutateurs ci-dessous — ajustez individuellement après si nécessaire." : 'Applying a preset fills in toggles below — adjust individually after if needed.'}</p>
+            <p className="text-xs text-gray-400 mt-2">{isFr ? "L'application d'un préréglage remplit les commutateurs ci-dessous - ajustez individuellement après si nécessaire." : 'Applying a preset fills in toggles below - adjust individually after if needed.'}</p>
           </div>
         </>
       )}
       {activeTab === 'viewer' && (
         <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-700">
-          <strong>{isFr ? 'Lecteur' : 'Viewer'}</strong> — {isFr ? "accès en lecture seule à la plupart des données. Utile pour investisseurs, conseillers ou auditeurs externes. Ne peut rien créer, modifier ou supprimer. Aucune configuration nécessaire." : 'read-only access to most data. Useful for investors, advisors, or external auditors. Cannot create, edit, or delete anything. No configuration needed.'}
+          <strong>{isFr ? 'Lecteur' : 'Viewer'}</strong> - {isFr ? "accès en lecture seule à la plupart des données. Utile pour investisseurs, conseillers ou auditeurs externes. Ne peut rien créer, modifier ou supprimer. Aucune configuration nécessaire." : 'read-only access to most data. Useful for investors, advisors, or external auditors. Cannot create, edit, or delete anything. No configuration needed.'}
         </div>
       )}
 

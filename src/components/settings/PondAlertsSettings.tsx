@@ -26,7 +26,7 @@ const ALERT_TYPES: Array<{
 }> = [
   { value: 'mortality_per_day', label: 'Mortality per day exceeds', unit: 'fish', defaultThreshold: 5, hint: 'Trigger when daily deaths cross this number' },
   { value: 'no_inspection_days', label: 'No inspection logged for', unit: 'days', defaultThreshold: 3, hint: 'Reminder if you haven\'t inspected the pond in N days' },
-  { value: 'do_below', label: 'DO drops below', unit: 'mg/L', defaultThreshold: 3, hint: 'Critical for fish — typically 3 mg/L is the emergency line' },
+  { value: 'do_below', label: 'DO drops below', unit: 'mg/L', defaultThreshold: 3, hint: 'Critical for fish - typically 3 mg/L is the emergency line' },
   { value: 'ammonia_above', label: 'Ammonia rises above', unit: 'mg/L', defaultThreshold: 0.1, hint: 'Toxic above 0.5 mg/L; warn at 0.1 to give time to react' },
   { value: 'ph_below', label: 'pH drops below', unit: '', defaultThreshold: 6.5, hint: 'Below 6.5 stresses fish; below 6 is critical' },
   { value: 'ph_above', label: 'pH rises above', unit: '', defaultThreshold: 9, hint: 'Above 9 amplifies ammonia toxicity' },
@@ -102,7 +102,7 @@ export function PondAlertsSettings({ onClose }: PondAlertsSettingsProps) {
     if (error) {
       if (error.code === '42P01' || error.message?.includes('pond_alerts')) {
         setAlerts([]);
-        toast.info(isFr ? 'Table des alertes d\'étang non appliquée — exécutez la migration 20260506000001 pour l\'activer.' : 'Pond alerts table not yet applied — run migration 20260506000001 to enable.');
+        toast.info(isFr ? 'Table des alertes d\'étang non appliquée - exécutez la migration 20260506000001 pour l\'activer.' : 'Pond alerts table not yet applied - run migration 20260506000001 to enable.');
       } else {
         toast.error(isFr ? 'Échec du chargement des alertes' : 'Failed to load alerts');
       }

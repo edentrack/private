@@ -41,14 +41,14 @@ export function calculateRabbitFCR({
   rabbitType = 'Meat Rabbits',
 }: RabbitFcrInput): RabbitFcrResult {
   if (feedKg <= 0) {
-    return { fcr: null, status: 'invalid', color: 'gray', label: '—', reason: 'No feed logged in period' };
+    return { fcr: null, status: 'invalid', color: 'gray', label: ' - ', reason: 'No feed logged in period' };
   }
   if (liveweightGainedKg <= 0) {
     return {
       fcr: null,
       status: 'invalid',
       color: 'gray',
-      label: '—',
+      label: ' - ',
       reason: 'No liveweight gain (need 2+ weight samples)',
     };
   }
@@ -72,10 +72,10 @@ export function classifyRabbitFCR(
   if (fcr <= acceptableMax) {
     return { fcr, status: 'acceptable', color: 'amber', label: 'Acceptable' };
   }
-  return { fcr, status: 'high', color: 'red', label: 'High — review feeding plan' };
+  return { fcr, status: 'high', color: 'red', label: 'High - review feeding plan' };
 }
 
 export function formatRabbitFCR(fcr: number | null): string {
-  if (fcr === null) return '—';
+  if (fcr === null) return ' - ';
   return fcr.toFixed(2);
 }

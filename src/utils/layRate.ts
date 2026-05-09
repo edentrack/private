@@ -105,7 +105,7 @@ export function computeLayRate(
  */
 export function formatLayRateExplainer(r: LayRateResult): string {
   if (r.layingHenCount === 0) {
-    return 'No layer hens past point-of-lay (week 18) yet — the rate stays 0% until they start producing.';
+    return 'No layer hens past point-of-lay (week 18) yet - the rate stays 0% until they start producing.';
   }
   if (r.daysWithData === 0) {
     return `Across ${r.layingHenCount.toLocaleString()} hens past point-of-lay, no collections logged yet in this window.`;

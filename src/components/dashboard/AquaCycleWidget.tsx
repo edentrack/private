@@ -197,7 +197,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
       setNextPhaseData(phases[idx + 1] || null);
     } else if (week >= tw) {
       setCurrentPhase('Harvest ready');
-      setFeedType('—');
+      setFeedType(' - ');
       setCurrentPhaseData(null);
       setNextPhaseData(null);
     } else {
@@ -383,8 +383,8 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
           ) : (
             <p className="text-xs text-gray-500 mt-1">
               {isFr
-                ? `Semaine ${currentWeek} sur ${targetWeek} ciblées — ${Math.min(100, (currentWeek / targetWeek) * 100).toFixed(1)}%`
-                : `Week ${currentWeek} of ${targetWeek} target — ${Math.min(100, (currentWeek / targetWeek) * 100).toFixed(1)}%`}
+                ? `Semaine ${currentWeek} sur ${targetWeek} ciblées - ${Math.min(100, (currentWeek / targetWeek) * 100).toFixed(1)}%`
+                : `Week ${currentWeek} of ${targetWeek} target - ${Math.min(100, (currentWeek / targetWeek) * 100).toFixed(1)}%`}
             </p>
           )}
         </div>
@@ -520,7 +520,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
               {sgr && sgr.status !== 'invalid' && (
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(sgr.color)}`}
-                  title={isFr ? `Taux de croissance spécifique : ${formatSGR(sgr.sgr)} — ${sgr.label}` : `Specific Growth Rate: ${formatSGR(sgr.sgr)} — ${sgr.label}`}
+                  title={isFr ? `Taux de croissance spécifique : ${formatSGR(sgr.sgr)} - ${sgr.label}` : `Specific Growth Rate: ${formatSGR(sgr.sgr)} - ${sgr.label}`}
                 >
                   SGR {formatSGR(sgr.sgr)}
                 </span>
@@ -544,7 +544,7 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
               {fcr && fcr.fcr !== null && (
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${colorClass(fcr.color)}`}
-                  title={isFr ? `Indice de conversion alimentaire : ${formatFCR(fcr.fcr)} kg aliment / kg gain — ${fcr.label}` : `Feed Conversion Ratio: ${formatFCR(fcr.fcr)} kg feed / kg gain — ${fcr.label}`}
+                  title={isFr ? `Indice de conversion alimentaire : ${formatFCR(fcr.fcr)} kg aliment / kg gain - ${fcr.label}` : `Feed Conversion Ratio: ${formatFCR(fcr.fcr)} kg feed / kg gain - ${fcr.label}`}
                 >
                   FCR {formatFCR(fcr.fcr)}
                 </span>
@@ -596,8 +596,8 @@ export function AquaCycleWidget({ pond, onNavigate }: AquaCycleWidgetProps) {
                         ? `Passez à l'aliment ${nextPhaseData.feedType} et entrez dans la phase ${phaseLabelFr(nextPhaseData.name)}.`
                         : `Switch feed to ${nextPhaseData.feedType} and move into the ${nextPhaseData.name} phase.`)
                     : (isFr
-                        ? `Votre étang a terminé la phase ${phaseLabelFr(currentPhaseData.name)} — les poissons ont atteint la taille du marché.`
-                        : `Your pond has completed ${currentPhaseData.name} — fish are at market size.`)}
+                        ? `Votre étang a terminé la phase ${phaseLabelFr(currentPhaseData.name)} - les poissons ont atteint la taille du marché.`
+                        : `Your pond has completed ${currentPhaseData.name} - fish are at market size.`)}
                 </p>
               </div>
             </div>

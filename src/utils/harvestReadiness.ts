@@ -112,7 +112,7 @@ export function calculateHarvestReadiness({
       status: 'unknown',
       daysToTarget: null,
       recommendation: 'Take a weight sample to assess harvest readiness.',
-      message: 'No weight sample yet — sample 5–10 fish to enable this calculation.',
+      message: 'No weight sample yet - sample 5–10 fish to enable this calculation.',
       color: 'gray',
       targetWeightG: targetG,
     };
@@ -138,7 +138,7 @@ export function calculateHarvestReadiness({
       return {
         status: 'overdue',
         daysToTarget: 0,
-        recommendation: 'Harvest now — past optimal',
+        recommendation: 'Harvest now - past optimal',
         message: `Fish are at or above target weight (${currentAbwG.toFixed(0)} g ≥ ${targetG} g) and past week ${spec.latestWeek}. Holding longer eats into margin via feed cost without much weight gain.`,
         color: 'red',
         targetWeightG: targetG,

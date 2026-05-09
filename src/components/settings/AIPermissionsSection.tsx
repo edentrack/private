@@ -75,8 +75,8 @@ const buildPermissionDefs = (isFr: boolean): PermissionDef[] => [
     key: 'can_void_records',
     label: isFr ? 'Supprimer / annuler des enregistrements' : 'Delete / void records',
     desc: isFr
-      ? "Eden peut supprimer définitivement les enregistrements que vous lui demandez — c'est irréversible"
-      : 'Eden can permanently delete records you ask it to remove — this cannot be undone',
+      ? "Eden peut supprimer définitivement les enregistrements que vous lui demandez - c'est irréversible"
+      : 'Eden can permanently delete records you ask it to remove - this cannot be undone',
     risk: 'high',
   },
 ];

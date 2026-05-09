@@ -47,7 +47,7 @@ export function calculateKindlingRate({
       kitsPerDoePerYear: 0,
       status: 'invalid',
       color: 'gray',
-      label: '—',
+      label: ' - ',
       message: 'Need active breeding does and a measurement window.',
     };
   }
@@ -64,7 +64,7 @@ export function classifyKindlingRate(kitsPerDoePerYear: number): KindlingRateRes
       status: 'excellent',
       color: 'green',
       label: 'Excellent',
-      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year — top-tier efficiency.`,
+      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year - top-tier efficiency.`,
     };
   }
   if (kitsPerDoePerYear >= 30) {
@@ -73,7 +73,7 @@ export function classifyKindlingRate(kitsPerDoePerYear: number): KindlingRateRes
       status: 'good',
       color: 'green',
       label: 'Good',
-      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year — healthy commercial-tier output.`,
+      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year - healthy commercial-tier output.`,
     };
   }
   if (kitsPerDoePerYear >= 20) {
@@ -82,7 +82,7 @@ export function classifyKindlingRate(kitsPerDoePerYear: number): KindlingRateRes
       status: 'fair',
       color: 'amber',
       label: 'Fair',
-      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year — room to improve via tighter breeding rest period or kit survival.`,
+      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year - room to improve via tighter breeding rest period or kit survival.`,
     };
   }
   if (kitsPerDoePerYear > 0) {
@@ -91,7 +91,7 @@ export function classifyKindlingRate(kitsPerDoePerYear: number): KindlingRateRes
       status: 'poor',
       color: 'red',
       label: 'Below benchmark',
-      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year — investigate nutrition, doe age, buck-to-doe ratio, weaning survival.`,
+      message: `${kitsPerDoePerYear.toFixed(0)} kits/doe/year - investigate nutrition, doe age, buck-to-doe ratio, weaning survival.`,
     };
   }
   return {

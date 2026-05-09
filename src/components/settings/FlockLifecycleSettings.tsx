@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Save, Plus, Trash2, Edit2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTranslation } from 'react-i18next';;
+import { useTranslation } from 'react-i18next';
 
 interface Phase {
   name: string;
@@ -267,7 +267,7 @@ export function FlockLifecycleSettings() {
       </div>
 
       {message && (
-        <div className={`p-4 rounded-lg border ${message.includes('success') ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
+        <div className={`p-4 rounded-lg border ${message.includes('success') || message.includes('succès') ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
           {message}
         </div>
       )}

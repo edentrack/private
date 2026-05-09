@@ -57,7 +57,7 @@ export function calculateFishFCR({
       fcr: null,
       status: 'invalid',
       color: 'gray',
-      label: '—',
+      label: ' - ',
       reason: 'No feed logged in period',
     };
   }
@@ -66,7 +66,7 @@ export function calculateFishFCR({
       fcr: null,
       status: 'invalid',
       color: 'gray',
-      label: '—',
+      label: ' - ',
       reason: 'No biomass gain (need 2+ weight samples)',
     };
   }
@@ -88,11 +88,11 @@ export function classifyFishFCR(fcr: number, species: FishSpeciesType): FishFcrR
     fcr,
     status: 'high',
     color: 'red',
-    label: 'High — investigate feeding plan',
+    label: 'High - investigate feeding plan',
   };
 }
 
 export function formatFCR(fcr: number | null): string {
-  if (fcr === null) return '—';
+  if (fcr === null) return ' - ';
   return fcr.toFixed(2);
 }

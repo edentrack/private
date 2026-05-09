@@ -187,7 +187,7 @@ export function AquaculturePondWidget({ pond, onNavigate }: AquaculturePondWidge
             <span className="text-[10px] font-medium text-cyan-700 uppercase tracking-wide">{isFr ? 'O₂ dissous' : 'Dissolved O₂'}</span>
           </div>
           <p className={`text-xl font-bold ${doColor}`}>
-            {doStatus != null ? `${doStatus} mg/L` : '—'}
+            {doStatus != null ? `${doStatus} mg/L` : ' - '}
           </p>
           <p className={`text-[10px] mt-0.5 ${doColor}`}>{doLabel}</p>
         </div>
