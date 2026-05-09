@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Eye, EyeOff, ArrowRight, Check, Zap, Brain, Wifi, Building2, Wheat, Fish, Rabbit } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_COUNTRIES } from '../../utils/currency';
 import type { FarmKind } from '../../types/database';
+import { AuthLanguageToggle } from './AuthLanguageToggle';
 
 interface SignUpScreenProps {
   onToggle: () => void;
@@ -12,6 +14,8 @@ interface SignUpScreenProps {
 
 export function SignUpScreen({ onToggle }: SignUpScreenProps) {
   const { signUp } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,10 +56,10 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
   }, []);
 
   const validatePassword = () => {
-    if (password.length < 8) return 'Password must be at least 8 characters long';
-    if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
-    if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
-    if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+    if (password.length < 8) return isFr ? 'Le mot de passe doit contenir au moins 8 caractères' : 'Password must be at least 8 characters long';
+    if (!/[A-Z]/.test(password)) return isFr ? 'Le mot de passe doit contenir au moins une majuscule' : 'Password must contain at least one uppercase letter';
+    if (!/[a-z]/.test(password)) return isFr ? 'Le mot de passe doit contenir au moins une minuscule' : 'Password must contain at least one lowercase letter';
+    if (!/[0-9]/.test(password)) return isFr ? 'Le mot de passe doit contenir au moins un chiffre' : 'Password must contain at least one number';
     return null;
   };
 
@@ -72,10 +76,10 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
     setSuccess('');
 
     if (!isJoiningFarm && !farmName.trim()) {
-      setError('Please enter your farm name.');
+      setError(isFr ? 'Veuillez saisir le nom de votre ferme.' : 'Please enter your farm name.');
       return;
     }
-    if (password !== confirmPassword) { setError('Passwords do not match'); return; }
+    if (password !== confirmPassword) { setError(isFr ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'); return; }
     const passwordError = validatePassword();
     if (passwordError) { setError(passwordError); return; }
 
@@ -142,19 +146,28 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
         const planParam = new URLSearchParams(hashQuery).get('plan');
         if (planParam) localStorage.setItem('pending_subscribe_plan', planParam);
 
+        // Persist the language choice from the signup screen so it
+        // survives the email-verification redirect — App.tsx then writes
+        // it to profiles.preferred_language as soon as the user logs in,
+        // which means Eden's first reply is already in their language.
+        localStorage.setItem('pending_preferred_language', language);
         await signUp(email, password, fullName);
-        setSuccess('Account created! Check your email and tap the confirmation link to get started.');
+        setSuccess(isFr
+          ? 'Compte créé ! Vérifiez votre email et appuyez sur le lien de confirmation pour commencer.'
+          : 'Account created! Check your email and tap the confirmation link to get started.');
       }
     } catch (err: any) {
       localStorage.removeItem('pending_farm_name');
       localStorage.removeItem('pending_farm_country');
       localStorage.removeItem('pending_farm_type');
       if (err.message?.includes('already registered') || err.message?.includes('User already registered') || err.message?.toLowerCase().includes('already exists')) {
-        setError('An account with this email already exists. Sign in instead, or use "Forgot password?" on the sign-in page to reset your password.');
+        setError(isFr
+          ? 'Un compte avec cet email existe déjà. Connectez-vous ou utilisez « Mot de passe oublié ? » pour réinitialiser votre mot de passe.'
+          : 'An account with this email already exists. Sign in instead, or use "Forgot password?" on the sign-in page to reset your password.');
       } else if (err.message?.includes('invalid email')) {
-        setError('Please enter a valid email address.');
+        setError(isFr ? 'Veuillez saisir une adresse email valide.' : 'Please enter a valid email address.');
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to sign up');
+        setError(err instanceof Error ? err.message : (isFr ? "Échec de l'inscription" : 'Failed to sign up'));
       }
     } finally {
       setLoading(false);
@@ -162,7 +175,15 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative">
+      {/* Top-right language toggle — first thing French users see when
+          they land. Auto-detect (browser/OS locale) flips this for them
+          on first visit; the toggle is the manual override and the
+          choice carries through to the user's profile after signup so
+          Eden AI's first reply is already in their language. */}
+      <div className="absolute top-4 right-4 z-20">
+        <AuthLanguageToggle />
+      </div>
       <style>{`
         @keyframes neonFlicker {
           0%, 18%, 22%, 25%, 53%, 57%, 100% {
@@ -196,20 +217,28 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
         <div className="relative space-y-8">
           <div>
             <h2 className="text-4xl font-extrabold text-white leading-tight mb-4 tracking-tight">
-              Start your journey<br />
-              <span style={{ color: '#ffdd00' }}>to smarter farming</span>
+              {isFr ? <>Démarrez votre parcours<br /><span style={{ color: '#ffdd00' }}>vers un élevage plus intelligent</span></> : <>Start your journey<br /><span style={{ color: '#ffdd00' }}>to smarter farming</span></>}
             </h2>
             <p className="text-gray-400 text-lg leading-relaxed max-w-sm">
-              Join farmers worldwide who use Edentrack to run their poultry, fish and rabbit operations like a professional.
+              {isFr
+                ? "Rejoignez les éleveurs du monde entier qui utilisent Edentrack pour gérer leurs activités volailles, poissons et lapins comme des professionnels."
+                : 'Join farmers worldwide who use Edentrack to run their poultry, fish and rabbit operations like a professional.'}
             </p>
           </div>
           <div className="space-y-4">
-            {[
-              { icon: Zap, label: 'Free forever on Starter. No card needed' },
-              { icon: Brain, label: 'Eden AI helps you log and diagnose from day one' },
-              { icon: Wifi, label: 'Works offline on any smartphone' },
-              { icon: CheckCircle, label: 'Set up your farm in under 60 seconds' },
-            ].map(({ icon: Icon, label }) => (
+            {(isFr
+              ? [
+                  { icon: Zap, label: 'Gratuit à vie en Starter. Aucune carte requise' },
+                  { icon: Brain, label: "Eden AI vous aide à enregistrer et diagnostiquer dès le premier jour" },
+                  { icon: Wifi, label: "Fonctionne hors-ligne sur tous les smartphones" },
+                  { icon: CheckCircle, label: 'Configurez votre ferme en moins de 60 secondes' },
+                ]
+              : [
+                  { icon: Zap, label: 'Free forever on Starter. No card needed' },
+                  { icon: Brain, label: 'Eden AI helps you log and diagnose from day one' },
+                  { icon: Wifi, label: 'Works offline on any smartphone' },
+                  { icon: CheckCircle, label: 'Set up your farm in under 60 seconds' },
+                ]).map(({ icon: Icon, label }) => (
               <div key={label} className="flex items-center gap-3 text-sm text-gray-300">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: 'rgba(255,221,0,0.1)', border: '1px solid rgba(255,221,0,0.2)' }}>
@@ -222,11 +251,11 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
             style={{ background: 'rgba(255,221,0,0.08)', border: '1px solid rgba(255,221,0,0.2)', color: '#ffdd00' }}>
             <Zap className="w-4 h-4" />
-            Start free, upgrade when ready
+            {isFr ? 'Commencez gratuitement, passez au plan supérieur quand vous serez prêt' : 'Start free, upgrade when ready'}
           </div>
         </div>
         <div className="relative">
-          <p className="text-xs text-gray-600">No credit card required. Cancel anytime.</p>
+          <p className="text-xs text-gray-600">{isFr ? 'Aucune carte de crédit requise. Annulable à tout moment.' : 'No credit card required. Cancel anytime.'}</p>
         </div>
       </div>
 
@@ -247,19 +276,19 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
                 <Building2 className="w-4 h-4 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-bold text-green-800">You're joining: {joiningFarmName}</p>
-                <p className="text-xs text-green-600 mt-0.5">Create your account below to get started</p>
+                <p className="text-sm font-bold text-green-800">{isFr ? `Vous rejoignez : ${joiningFarmName}` : `You're joining: ${joiningFarmName}`}</p>
+                <p className="text-xs text-green-600 mt-0.5">{isFr ? 'Créez votre compte ci-dessous pour commencer' : 'Create your account below to get started'}</p>
               </div>
             </div>
           )}
 
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-1 tracking-tight">Create your account</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 mb-1 tracking-tight">{isFr ? 'Créez votre compte' : 'Create your account'}</h1>
           <p className="text-gray-400 mb-8 text-sm">
             {joiningFarmName
-              ? `You'll be added to ${joiningFarmName} as a worker`
+              ? (isFr ? `Vous serez ajouté à ${joiningFarmName} en tant qu'ouvrier` : `You'll be added to ${joiningFarmName} as a worker`)
               : isJoiningFarm
-              ? "You've been invited. Create your account to join the farm instantly"
-              : 'Get started. Your farm will be ready the moment you verify your email'}
+                ? (isFr ? "Vous avez été invité. Créez votre compte pour rejoindre la ferme instantanément" : "You've been invited. Create your account to join the farm instantly")
+                : (isFr ? "Commencez. Votre ferme sera prête dès que vous aurez vérifié votre email" : 'Get started. Your farm will be ready the moment you verify your email')}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -300,7 +329,7 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
               <>
                 <div>
                   <label htmlFor="farmName" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Farm Name <span className="text-red-400">*</span>
+                    {isFr ? 'Nom de la ferme' : 'Farm Name'} <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="farmName"
@@ -310,13 +339,13 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
                     required
                     disabled={loading || !!success}
                     className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all disabled:opacity-50"
-                    placeholder="e.g., Sunrise Poultry Farm"
+                    placeholder={isFr ? 'ex. Ferme Avicole Aurore' : 'e.g., Sunrise Poultry Farm'}
                   />
                 </div>
 
                 <div>
                   <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Country
+                    {isFr ? 'Pays' : 'Country'}
                   </label>
                   <select
                     id="country"
@@ -341,14 +370,20 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
                  */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    What do you raise? <span className="text-red-400">*</span>
+                    {isFr ? "Qu'élevez-vous ?" : 'What do you raise?'} <span className="text-red-400">*</span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { id: 'poultry', label: 'Poultry', sub: 'Chickens', Icon: Wheat },
-                      { id: 'aquaculture', label: 'Fish', sub: 'Tilapia, catfish', Icon: Fish },
-                      { id: 'rabbits', label: 'Rabbits', sub: 'Meat / breeders', Icon: Rabbit },
-                    ] as const).map(({ id, label, sub, Icon }) => {
+                    {(isFr
+                      ? [
+                          { id: 'poultry' as FarmKind, label: 'Volaille', sub: 'Poulets', Icon: Wheat },
+                          { id: 'aquaculture' as FarmKind, label: 'Poisson', sub: 'Tilapia, poisson-chat', Icon: Fish },
+                          { id: 'rabbits' as FarmKind, label: 'Lapins', sub: 'Viande / reproducteurs', Icon: Rabbit },
+                        ]
+                      : [
+                          { id: 'poultry' as FarmKind, label: 'Poultry', sub: 'Chickens', Icon: Wheat },
+                          { id: 'aquaculture' as FarmKind, label: 'Fish', sub: 'Tilapia, catfish', Icon: Fish },
+                          { id: 'rabbits' as FarmKind, label: 'Rabbits', sub: 'Meat / breeders', Icon: Rabbit },
+                        ]).map(({ id, label, sub, Icon }) => {
                       const active = farmType === id;
                       return (
                         <button
@@ -441,7 +476,7 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
             {/* Confirm password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
-                Confirm password
+                {isFr ? 'Confirmer le mot de passe' : 'Confirm password'}
               </label>
               <div className="relative">
                 <input
@@ -462,7 +497,7 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
                 </button>
               </div>
               {confirmPassword && password !== confirmPassword && (
-                <p className="text-xs text-red-500 mt-2">Passwords do not match</p>
+                <p className="text-xs text-red-500 mt-2">{isFr ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match'}</p>
               )}
               {confirmPassword && password === confirmPassword && confirmPassword.length >= 8 && (
                 <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1">

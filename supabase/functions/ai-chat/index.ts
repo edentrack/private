@@ -142,6 +142,19 @@ interface ChatRequest {
    * from the system-prompt example. (BUG #1/#8 fix, May 2026.)
    */
   user_country?: string;
+  /**
+   * Preferred output language ('en' | 'fr'). Comes from the user's
+   * profile.preferred_language (or the auth-screen toggle for brand
+   * new users still in the email-verification flow). When 'fr', Eden
+   * is instructed to write its full reply in French — which means the
+   * very first message Eden sends a French signup is already in
+   * French, no language switch required.
+   *
+   * The structured action blocks (CREATE_FARM, [LOG], etc.) stay in
+   * English because the parser is English-keyed; only Eden's prose to
+   * the user changes language.
+   */
+  language?: 'en' | 'fr';
 }
 
 async function getFarmContext(supabase: any, farmId: string): Promise<{ context: string; setupConfig: any; farmType: string }> {
@@ -1149,7 +1162,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: ChatRequest = await req.json();
-    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel, onboarding_mode, user_country } = body;
+    const { farm_id, cross_farm, cross_farm_farm_ids, messages, include_context, model: requestedModel, onboarding_mode, user_country, language: requestedLanguage } = body;
 
     const isCrossFarm = cross_farm === true && Array.isArray(cross_farm_farm_ids) && cross_farm_farm_ids.length > 0;
     const isOnboarding = onboarding_mode === true;
@@ -1385,9 +1398,22 @@ Deno.serve(async (req: Request) => {
       ? `\n\n## USER COUNTRY\nThe user picked "${trustedCountry}" at signup. Use this exact string as the "country" field in your CREATE_FARM action — do NOT use the example country from the steps above. Do NOT ask the user for their country again.\n`
       : `\n\n## USER COUNTRY\nThe user did not pick a country at signup.\n\n**Where to ask**: ask the country question in your reply RIGHT AFTER the user answers the species question (Step 2), at the same time as you confirm the species. Do NOT ask before species. Do NOT ask twice. Example after the user says "chickens":\n\`\`\`\nGot it, chickens. Which country are you farming in?\n\`\`\`\nThen, after the user answers the country (e.g. "Cameroon"), emit the CREATE_FARM block with that country and proceed to Step 3 (first flock). Audit caught Eden asking the country question twice — once before species and once after. Only ask once, after species.\n`;
 
+    // Resolve the user's preferred language for Eden's prose. The client
+    // passes it in `language` (read from profile.preferred_language on
+    // the way in). If it's missing (older clients), default to English.
+    const resolvedLanguage: 'en' | 'fr' =
+      requestedLanguage === 'fr' ? 'fr' : 'en';
+
+    // The action blocks ([LOG], CREATE_FARM, etc.) stay in English —
+    // they're parsed deterministically and the parser is English-keyed.
+    // Only Eden's prose to the farmer changes language.
+    const languageBanner = resolvedLanguage === 'fr'
+      ? `\n\n## OUTPUT LANGUAGE\nThe user's preferred language is **French**. Write your ENTIRE prose reply (greetings, explanations, questions, summaries, advice) in natural, friendly French. The structured action blocks ([LOG], CREATE_FARM, [ONBOARDING_COMPLETE], [SWITCH_TO_FORM], JSON in those blocks) MUST stay in English — they're parsed by code that expects English keys. Inside JSON values that are user-facing strings (e.g. notes, descriptions), prefer French. Never reply in English when the user's language is French.\n`
+      : `\n\n## OUTPUT LANGUAGE\nThe user's preferred language is English. Write your reply in English.\n`;
+
     const systemMessage = isOnboarding
-      ? ONBOARDING_SYSTEM_PROMPT + todayBanner + onboardingCountryBanner
-      : SYSTEM_PROMPT + speciesNote + tierNote + farmCapNote + roleNote + greetingNote + todayBanner + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
+      ? ONBOARDING_SYSTEM_PROMPT + todayBanner + onboardingCountryBanner + languageBanner
+      : SYSTEM_PROMPT + speciesNote + tierNote + farmCapNote + roleNote + greetingNote + todayBanner + languageBanner + (contextPrompt ? `\n\n---\n${contextPrompt}` : "");
 
     // Build Claude messages — support multimodal (images)
     // Keep fewer turns on long conversations to stay within context limits

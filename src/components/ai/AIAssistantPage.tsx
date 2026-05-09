@@ -1645,6 +1645,10 @@ export function AIAssistantPage() {
         farm_id: anchorFarmId,
         messages: allMessages,
         include_context: true,
+        // Tell Eden which language to write its prose in. Without this,
+        // a French user with the UI in French still gets English replies
+        // because the model has no signal about the user's language.
+        language,
       };
       if (crossFarm && allFarms && allFarms.length > 0) {
         requestBody.cross_farm = true;

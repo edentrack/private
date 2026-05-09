@@ -298,9 +298,20 @@ function AppContent() {
       pendingFarmTypeRaw === 'aquaculture' || pendingFarmTypeRaw === 'rabbits'
         ? pendingFarmTypeRaw
         : 'poultry';
+    // Language picked on the signup screen (or auto-detected from
+    // browser/OS) — copy it to the profile so Eden's first reply
+    // is already in the right language. Without this, the user's
+    // first chat with Eden was in English even when their UI was
+    // French because the model only reads profile.preferred_language.
+    const pendingPreferredLanguage = localStorage.getItem('pending_preferred_language');
+    const preferredLanguage: 'en' | 'fr' | null =
+      pendingPreferredLanguage === 'fr' || pendingPreferredLanguage === 'en'
+        ? pendingPreferredLanguage
+        : null;
     localStorage.removeItem('pending_farm_name');
     localStorage.removeItem('pending_farm_country');
     localStorage.removeItem('pending_farm_type');
+    localStorage.removeItem('pending_preferred_language');
 
     import('./lib/supabaseClient').then(async ({ supabase }) => {
       // Don't create if already has a farm membership
@@ -310,7 +321,9 @@ function AppContent() {
         .eq('user_id', user.id)
         .maybeSingle();
       if (existing) {
-        await supabase.from('profiles').update({ onboarding_completed: true }).eq('id', user.id);
+        const profileUpdate: Record<string, any> = { onboarding_completed: true };
+        if (preferredLanguage) profileUpdate.preferred_language = preferredLanguage;
+        await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
         refreshSession?.();
         return;
       }
@@ -328,9 +341,12 @@ function AppContent() {
         return;
       }
 
+      const profileUpdate: Record<string, any> = { onboarding_completed: true, country: pendingCountry };
+      if (preferredLanguage) profileUpdate.preferred_language = preferredLanguage;
+
       await Promise.all([
         supabase.from('farm_members').insert({ farm_id: farm.id, user_id: user.id, role: 'owner', is_active: true }),
-        supabase.from('profiles').update({ onboarding_completed: true, country: pendingCountry }).eq('id', user.id),
+        supabase.from('profiles').update(profileUpdate).eq('id', user.id),
       ]);
 
       refreshSession?.();

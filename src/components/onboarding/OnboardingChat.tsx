@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { EdenAvatarAnimated } from '../ai/EdenAvatarAnimated';
 import { trackEvent } from '../../utils/analytics';
@@ -106,6 +107,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
   const { user, refreshSession } = useAuth();
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const { language } = useLanguage();
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: 'assistant',
@@ -437,6 +439,10 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
           include_context: false,
           messages: history,
           user_country: userCountry,
+          // Onboarding is the FIRST chat a brand-new user has with Eden.
+          // Pass the current UI language so Eden's first reply (and the
+          // entire onboarding wizard) is already in the user's language.
+          language,
         }),
       });
 
