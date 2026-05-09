@@ -4,6 +4,8 @@ import posthog from 'posthog-js';
 import App from './App.tsx';
 import './index.css';
 import './lib/i18n';
+import { Capacitor } from '@capacitor/core';
+import { initCapacitorPush } from './lib/capacitorPush';
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 if (POSTHOG_KEY) {
@@ -28,7 +30,26 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-if ('serviceWorker' in navigator) {
+// Native shell init: only fires inside the Capacitor iOS/Android wrapper.
+// In a regular browser these are no-ops, so the web build is untouched.
+if (Capacitor.isNativePlatform()) {
+  initCapacitorPush();
+  // Set the iOS status bar tint to match the brand. On Android this is
+  // configured via capacitor.config.ts (StatusBar plugin).
+  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+  });
+  // Auto-hide the splash once React has mounted. capacitor.config.ts
+  // already sets a 1.5s ceiling but hiding earlier feels faster.
+  import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+    setTimeout(() => SplashScreen.hide().catch(() => {}), 200);
+  });
+}
+
+// Service worker is for the WEB build only. Inside the Capacitor shell
+// the WebView ignores SW registration anyway, but skipping the call
+// avoids noisy console errors on iOS.
+if (!Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     if (import.meta.env.DEV) {
       // Unregister all SWs in dev so stale caches never interfere
