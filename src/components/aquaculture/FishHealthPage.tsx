@@ -114,7 +114,7 @@ export function FishHealthPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast.error(isFr ? 'Photo trop grande — 10 Mo maximum' : 'Photo too large — max 10 MB');
+      toast.error(isFr ? 'Photo trop grande - 10 Mo maximum' : 'Photo too large - max 10 MB');
       return;
     }
     setImageFile(file);
@@ -514,8 +514,8 @@ export function FishHealthPage() {
                 <p className="text-xs text-purple-800 mt-0.5">
                   {sonnetResult?.uncertain
                     ? (isFr
-                        ? "Eden n'a pas pu se prononcer. Le modèle expert peut regarder de plus près — plus lent mais meilleur pour différencier des maladies visuellement similaires."
-                        : 'Eden was uncertain. The expert-tier model can take a closer look — it is slower but better at differentiating visually similar diseases.')
+                        ? "Eden n'a pas pu se prononcer. Le modèle expert peut regarder de plus près - plus lent mais meilleur pour différencier des maladies visuellement similaires."
+                        : 'Eden was uncertain. The expert-tier model can take a closer look - it is slower but better at differentiating visually similar diseases.')
                     : (isFr
                         ? `Le diagnostic principal est en dessous de ${Math.round(EXPERT_REVIEW_CONFIDENCE_THRESHOLD * 100)} % de confiance. Le modèle expert peut réexaminer la photo avec plus de rigueur.`
                         : `The top diagnosis is below ${Math.round(EXPERT_REVIEW_CONFIDENCE_THRESHOLD * 100)}% confidence. The expert-tier model can re-examine the photo with more rigour.`)}

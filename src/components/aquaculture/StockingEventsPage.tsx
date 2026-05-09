@@ -272,7 +272,7 @@ export function StockingEventsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">{isFr ? 'Empoissonnements' : 'Stocking Events'}</h1>
-            <p className="text-sm text-gray-500">{isFr ? "Enregistrez les alevins introduits dans vos étangs — empoissonnement initial et rempoissonnements en cours de cycle." : 'Log fingerlings stocked into your ponds — initial stocking and mid-cycle restocks.'}</p>
+            <p className="text-sm text-gray-500">{isFr ? "Enregistrez les alevins introduits dans vos étangs - empoissonnement initial et rempoissonnements en cours de cycle." : 'Log fingerlings stocked into your ponds - initial stocking and mid-cycle restocks.'}</p>
           </div>
         </div>
         <button
@@ -300,7 +300,7 @@ export function StockingEventsPage() {
               <span className="text-xs font-medium">{isFr ? "Dépense totale d'empoissonnement" : 'Total Spend on Stocking'}</span>
             </div>
             <p className="text-2xl font-bold text-[#3D5F42]">
-              {totals.totalSpend > 0 ? formatCurrency(totals.totalSpend, currency) : '—'}
+              {totals.totalSpend > 0 ? formatCurrency(totals.totalSpend, currency) : ' - '}
             </p>
           </div>
         </div>
@@ -459,8 +459,8 @@ export function StockingEventsPage() {
             <h3 className="text-sm font-semibold text-gray-700 mb-1">{isFr ? 'Aucun empoissonnement enregistré pour le moment' : 'No stocking events yet'}</h3>
             <p className="text-xs text-gray-400 max-w-xs">
               {isFr
-                ? "Enregistrez chaque lot d'alevins que vous mettez dans un étang — empoissonnement initial, rempoissonnements, ajouts mixtes."
-                : 'Log every batch of fingerlings you put in a pond — initial stocking, restocks, mixed-batch additions.'}
+                ? "Enregistrez chaque lot d'alevins que vous mettez dans un étang - empoissonnement initial, rempoissonnements, ajouts mixtes."
+                : 'Log every batch of fingerlings you put in a pond - initial stocking, restocks, mixed-batch additions.'}
             </p>
             <button
               onClick={() => { setShowForm(true); resetForm(); }}

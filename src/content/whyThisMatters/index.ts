@@ -7,12 +7,12 @@ export const WHY_THIS_MATTERS = {
   },
   sample_size_recommendation: {
     title: 'Sample Size for ABW',
-    summary: 'Weigh 30–50 fish per pond for reliable ABW. Fewer than 10 fish skews the result — one unusually large fish can shift your average by 10%+ and cause over- or under-feeding.',
+    summary: 'Weigh 30–50 fish per pond for reliable ABW. Fewer than 10 fish skews the result - one unusually large fish can shift your average by 10%+ and cause over- or under-feeding.',
     learnMorePrompt: 'How many fish should I weigh when sampling my pond to get a reliable Average Body Weight? What happens if I sample too few fish?',
   },
   sgr: {
     title: 'Specific Growth Rate (SGR)',
-    summary: 'SGR measures daily growth as a % of body weight. Healthy catfish/tilapia grow at 2–4% SGR. Below 1% means something is wrong — check feed quality, water quality, and stocking density.',
+    summary: 'SGR measures daily growth as a % of body weight. Healthy catfish/tilapia grow at 2–4% SGR. Below 1% means something is wrong - check feed quality, water quality, and stocking density.',
     formula: 'SGR = (ln(W₂) − ln(W₁)) ÷ Δdays × 100',
     learnMorePrompt: 'What is Specific Growth Rate (SGR) and how do I interpret it for my catfish or tilapia pond? What causes a low SGR and how do I fix it?',
   },
@@ -24,7 +24,7 @@ export const WHY_THIS_MATTERS = {
   },
   dissolved_oxygen: {
     title: 'Dissolved Oxygen (DO)',
-    summary: 'DO is the oxygen fish breathe from water. Below 3 mg/L is lethal. DO crashes overnight and is lowest at dawn — check early morning. Emergency response: run aerators, stop feeding, and do a water exchange.',
+    summary: 'DO is the oxygen fish breathe from water. Below 3 mg/L is lethal. DO crashes overnight and is lowest at dawn - check early morning. Emergency response: run aerators, stop feeding, and do a water exchange.',
     learnMorePrompt: 'Explain dissolved oxygen in fish ponds: what the safe levels are, why DO crashes at dawn, and what I should do immediately if my fish are gasping at the surface.',
   },
   ammonia: {
@@ -44,18 +44,18 @@ export const WHY_THIS_MATTERS = {
   },
   water_temperature: {
     title: 'Water Temperature',
-    summary: 'Tropical fish grow fastest at 26–30°C. Below 22°C metabolism slows and immunity drops; above 33°C DO falls and stress rises. Check temperature at dawn — it is the daily minimum.',
+    summary: 'Tropical fish grow fastest at 26–30°C. Below 22°C metabolism slows and immunity drops; above 33°C DO falls and stress rises. Check temperature at dawn - it is the daily minimum.',
     learnMorePrompt: 'How does water temperature affect catfish and tilapia growth? What temperature range is ideal and what should I do if it is too hot or too cold?',
   },
   fcr: {
     title: 'Feed Conversion Ratio (FCR)',
-    summary: 'FCR is kg of feed needed to produce 1 kg of live weight gain. Lower is better. Good FCR: broilers 1.6–1.8, catfish 1.2–1.5, rabbits 3.0–3.5. A rising FCR is a warning — check feed quality, health, and stocking density.',
+    summary: 'FCR is kg of feed needed to produce 1 kg of live weight gain. Lower is better. Good FCR: broilers 1.6–1.8, catfish 1.2–1.5, rabbits 3.0–3.5. A rising FCR is a warning - check feed quality, health, and stocking density.',
     formula: 'FCR = feed consumed (kg) ÷ weight gained (kg)',
     learnMorePrompt: 'Explain Feed Conversion Ratio (FCR): what is a good FCR for broilers, fish, and rabbits, and what causes FCR to be too high on a farm?',
   },
   mortality_threshold: {
     title: 'Mortality Rate Thresholds',
-    summary: 'Target: broilers < 5% per cycle, rabbits < 10% kit-to-weaning, fish < 2% per month. A sudden spike in any species demands immediate investigation — disease, water quality failure, or management breakdown.',
+    summary: 'Target: broilers < 5% per cycle, rabbits < 10% kit-to-weaning, fish < 2% per month. A sudden spike in any species demands immediate investigation - disease, water quality failure, or management breakdown.',
     learnMorePrompt: 'What is an acceptable mortality rate for broilers, fish, and rabbits? How do I investigate a sudden spike in mortality on my farm?',
   },
   stocking_density: {

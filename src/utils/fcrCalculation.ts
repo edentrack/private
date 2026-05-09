@@ -84,7 +84,7 @@ export async function calculateFCRForFarm(
         isMixedFarm: true,
         feedConsumedKg: 0,
         weightGainedKg: 0,
-        reasonIfNull: 'Mixed farm — FCR unavailable (broilers and layers share feed logs)',
+        reasonIfNull: 'Mixed farm - FCR unavailable (broilers and layers share feed logs)',
       };
     }
 

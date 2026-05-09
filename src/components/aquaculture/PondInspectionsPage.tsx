@@ -135,7 +135,7 @@ export function PondInspectionsPage() {
       // helpful empty state rather than a crash.
       if (error.code === '42P01' || error.message?.includes('pond_inspections')) {
         setInspections([]);
-        toast.info(isFr ? "Table d'inspections d'étang non encore appliquée — exécutez la migration 20260506000001 pour activer." : 'Pond inspections table not yet applied — run migration 20260506000001 to enable.');
+        toast.info(isFr ? "Table d'inspections d'étang non encore appliquée - exécutez la migration 20260506000001 pour activer." : 'Pond inspections table not yet applied - run migration 20260506000001 to enable.');
       } else {
         toast.error(isFr ? "Échec du chargement des inspections d'étang" : 'Failed to load pond inspections');
       }
@@ -247,7 +247,7 @@ export function PondInspectionsPage() {
                 onChange={e => setFormClarity(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               >
-                <option value="">{isFr ? '— sélectionner —' : '— select —'}</option>
+                <option value="">{isFr ? ' - sélectionner - ' : ' - select - '}</option>
                 {CLARITY_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
@@ -260,7 +260,7 @@ export function PondInspectionsPage() {
                 onChange={e => setFormBehavior(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               >
-                <option value="">{isFr ? '— sélectionner —' : '— select —'}</option>
+                <option value="">{isFr ? ' - sélectionner - ' : ' - select - '}</option>
                 {BEHAVIOR_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
@@ -273,7 +273,7 @@ export function PondInspectionsPage() {
                 onChange={e => setFormFeeding(e.target.value)}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
               >
-                <option value="">{isFr ? '— sélectionner —' : '— select —'}</option>
+                <option value="">{isFr ? ' - sélectionner - ' : ' - select - '}</option>
                 {FEEDING_OPTIONS.map(o => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
@@ -296,7 +296,7 @@ export function PondInspectionsPage() {
                 value={formNotes}
                 onChange={e => setFormNotes(e.target.value)}
                 rows={2}
-                placeholder={isFr ? "Tout ce que vous avez remarqué — efflorescence d'algues, traces de prédateur, odeur, etc." : 'Anything else you noticed — algae bloom, predator marks, smell, etc.'}
+                placeholder={isFr ? "Tout ce que vous avez remarqué - efflorescence d'algues, traces de prédateur, odeur, etc." : 'Anything else you noticed - algae bloom, predator marks, smell, etc.'}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30 resize-none"
               />
             </div>

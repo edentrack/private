@@ -148,7 +148,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
   const shareLink = async () => {
     if (!joinLink) return;
-    const text = `Join my farm on Edentrack — tap the link to create your account:`;
+    const text = `Join my farm on Edentrack - tap the link to create your account:`;
     if (navigator.share) {
       try { await navigator.share({ title: 'Join my farm on Edentrack', text, url: joinLink }); return; } catch {}
     }
@@ -295,7 +295,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           <div className="text-center space-y-1">
             <p className="text-xs font-semibold text-amber-600 uppercase tracking-widest">Step 2 of 3</p>
             <h1 className="text-2xl font-extrabold text-gray-900">First flock</h1>
-            <p className="text-gray-400 text-sm">Add your birds — you can update details later.</p>
+            <p className="text-gray-400 text-sm">Add your birds - you can update details later.</p>
           </div>
 
           {error && (
@@ -394,7 +394,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                 <span className="text-sm">👥</span>
                 <p className="text-xs text-gray-600">
-                  Send this to one worker at a time. The link changes after each use — forward it again for the next person.
+                  Send this to one worker at a time. The link changes after each use - forward it again for the next person.
                 </p>
               </div>
 

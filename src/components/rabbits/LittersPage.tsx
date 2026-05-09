@@ -200,7 +200,7 @@ export function LittersPage() {
                   }}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
                 >
-                  <option value="">{isFr ? '— aucun —' : '— none —'}</option>
+                  <option value="">{isFr ? ' - aucun - ' : ' - none - '}</option>
                   {breedingOptions.map(o => (
                     <option key={o.id} value={o.id}>
                       {o.doe_tag} × {o.buck_tag} ({fmtDate(o.mating_date)})

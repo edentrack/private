@@ -98,7 +98,7 @@ function generateTaskInstancesFromTemplate(
       if (template.scheduled_times && template.scheduled_times.length > 0) {
         template.scheduled_times.forEach((time, index) => {
           const periodLabel = getPeriodLabel(time, index, template.scheduled_times!.length);
-          const title = `${template.title} — ${periodLabel}`;
+          const title = `${template.title} - ${periodLabel}`;
           instances.push({ title, scheduled_time: time });
         });
       }

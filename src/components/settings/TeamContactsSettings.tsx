@@ -3,6 +3,7 @@ import { Plus, Trash2, Phone, User, Briefcase, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface TeamContact {
   id: string;
@@ -15,6 +16,8 @@ interface TeamContact {
 
 export function TeamContactsSettings() {
   const { t } = useTranslation();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { user } = useAuth();
   const [contacts, setContacts] = useState<TeamContact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,7 +115,7 @@ export function TeamContactsSettings() {
   };
 
   const handleDeleteContact = async (contactId: string) => {
-    if (!confirm(t('settings.confirm_delete_contact') || 'Are you sure you want to delete this contact?')) return;
+    if (!confirm(isFr ? 'Êtes-vous sûr de vouloir supprimer ce contact ?' : (t('settings.confirm_delete_contact') || 'Are you sure you want to delete this contact?'))) return;
 
     try {
       const { error } = await supabase
@@ -151,7 +154,7 @@ export function TeamContactsSettings() {
     return (
       <div className="bg-white rounded-3xl p-8 text-center">
         <div className="w-8 h-8 border-2 border-gray-200 border-t-[#3D5F42] rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">{t('settings.loading_team_contacts') || 'Loading team contacts...'}</p>
+        <p className="text-gray-600">{isFr ? "Chargement des contacts d'équipe..." : (t('settings.loading_team_contacts') || 'Loading team contacts...')}</p>
       </div>
     );
   }
@@ -159,9 +162,11 @@ export function TeamContactsSettings() {
   return (
     <div className="bg-white rounded-3xl p-4">
       <div className="mb-4">
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{t('settings.team_contacts') || 'Team Contacts'}</h3>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{isFr ? "Contacts d'équipe" : (t('settings.team_contacts') || 'Team Contacts')}</h3>
         <p className="text-gray-600">
-          {t('settings.team_contacts_desc') || 'Add team members for quick report sharing via WhatsApp'}
+          {isFr
+            ? "Ajoutez des membres d'équipe pour un partage rapide des rapports via WhatsApp"
+            : (t('settings.team_contacts_desc') || 'Add team members for quick report sharing via WhatsApp')}
         </p>
       </div>
 
@@ -200,7 +205,7 @@ export function TeamContactsSettings() {
                     onChange={() => toggleReportReceiving(contact.id, contact.can_receive_reports)}
                     className="w-4 h-4 text-[#3D5F42] rounded focus:ring-[#3D5F42]"
                   />
-                  <span className="text-sm text-gray-600">{t('settings.reports') || 'Reports'}</span>
+                  <span className="text-sm text-gray-600">{isFr ? 'Rapports' : (t('settings.reports') || 'Reports')}</span>
                 </label>
 
                 <button
@@ -221,14 +226,14 @@ export function TeamContactsSettings() {
           className="flex items-center gap-2 text-[#3D5F42] hover:text-[#2F4A34] font-medium transition-colors"
         >
           <Plus className="w-5 h-5" />
-          {t('settings.add_new_contact') || 'Add New Contact'}
+          {isFr ? 'Ajouter un nouveau contact' : (t('settings.add_new_contact') || 'Add New Contact')}
         </button>
       )}
 
       {showAddForm && (
         <div className="border-t-2 border-gray-200 pt-4 mt-4">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="font-bold text-gray-900">{t('settings.add_new_contact') || 'Add New Contact'}</h4>
+            <h4 className="font-bold text-gray-900">{isFr ? 'Ajouter un nouveau contact' : (t('settings.add_new_contact') || 'Add New Contact')}</h4>
             <button
               onClick={() => {
                 setShowAddForm(false);
@@ -236,20 +241,20 @@ export function TeamContactsSettings() {
               }}
               className="text-gray-500 hover:text-gray-700 text-sm"
             >
-              {t('common.cancel') || 'Cancel'}
+              {isFr ? 'Annuler' : (t('common.cancel') || 'Cancel')}
             </button>
           </div>
 
           <form onSubmit={handleAddContact} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('settings.contact_name') || 'Name'} <span className="text-red-600">*</span>
+                {isFr ? 'Nom' : (t('settings.contact_name') || 'Name')} <span className="text-red-600">*</span>
               </label>
               <input
                 type="text"
                 value={newContact.name}
                 onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                placeholder={t('settings.contact_name_placeholder') || 'e.g., John Manager'}
+                placeholder={isFr ? 'ex. Jean Gérant' : (t('settings.contact_name_placeholder') || 'e.g., John Manager')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all bg-white text-gray-900"
                 required
               />
@@ -257,43 +262,45 @@ export function TeamContactsSettings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('settings.role_position') || 'Role / Position'}
+                {isFr ? 'Rôle / Poste' : (t('settings.role_position') || 'Role / Position')}
               </label>
               <input
                 type="text"
                 value={newContact.role}
                 onChange={(e) => setNewContact({ ...newContact, role: e.target.value })}
-                placeholder={t('settings.role_position_placeholder') || 'e.g., Farm Manager, Veterinarian'}
+                placeholder={isFr ? 'ex. Gérant de ferme, Vétérinaire' : (t('settings.role_position_placeholder') || 'e.g., Farm Manager, Veterinarian')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all bg-white text-gray-900"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('settings.phone_number') || 'Phone Number'} <span className="text-red-600">*</span>
+                {isFr ? 'Numéro de téléphone' : (t('settings.phone_number') || 'Phone Number')} <span className="text-red-600">*</span>
               </label>
               <input
                 type="tel"
                 value={newContact.phone}
                 onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                placeholder={t('settings.phone_number_placeholder') || '+237XXXXXXXXX or 6XXXXXXXX'}
+                placeholder={isFr ? '+237XXXXXXXXX ou 6XXXXXXXX' : (t('settings.phone_number_placeholder') || '+237XXXXXXXXX or 6XXXXXXXX')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all bg-white text-gray-900"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                {t('settings.phone_number_desc') || "Include country code (e.g., +237 for Cameroon) or we'll add it automatically"}
+                {isFr
+                  ? "Incluez l'indicatif du pays (ex. +237 pour le Cameroun) ou nous l'ajouterons automatiquement"
+                  : (t('settings.phone_number_desc') || "Include country code (e.g., +237 for Cameroon) or we'll add it automatically")}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('settings.email_optional') || 'Email (Optional)'}
+                {isFr ? 'E-mail (Optionnel)' : (t('settings.email_optional') || 'Email (Optional)')}
               </label>
               <input
                 type="email"
                 value={newContact.email}
                 onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                placeholder={t('settings.email_placeholder') || 'contact@example.com'}
+                placeholder={isFr ? 'contact@exemple.com' : (t('settings.email_placeholder') || 'contact@example.com')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3D5F42] focus:border-transparent transition-all bg-white text-gray-900"
               />
             </div>
@@ -310,12 +317,12 @@ export function TeamContactsSettings() {
               {saving ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  {t('settings.adding') || 'Adding...'}
+                  {isFr ? 'Ajout en cours...' : (t('settings.adding') || 'Adding...')}
                 </>
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  {t('settings.add_contact') || 'Add Contact'}
+                  {isFr ? 'Ajouter un contact' : (t('settings.add_contact') || 'Add Contact')}
                 </>
               )}
             </button>
@@ -326,9 +333,11 @@ export function TeamContactsSettings() {
       {contacts.length === 0 && !showAddForm && (
         <div className="text-center py-8">
           <Phone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-600">{t('settings.no_contacts_yet') || 'No contacts added yet'}</p>
+          <p className="text-gray-600">{isFr ? 'Aucun contact ajouté pour le moment' : (t('settings.no_contacts_yet') || 'No contacts added yet')}</p>
           <p className="text-sm text-gray-500 mt-1">
-            {t('settings.add_contacts_desc') || 'Add contacts to quickly share reports via WhatsApp'}
+            {isFr
+              ? 'Ajoutez des contacts pour partager rapidement des rapports via WhatsApp'
+              : (t('settings.add_contacts_desc') || 'Add contacts to quickly share reports via WhatsApp')}
           </p>
         </div>
       )}

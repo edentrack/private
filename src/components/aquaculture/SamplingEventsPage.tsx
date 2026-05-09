@@ -262,7 +262,7 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
                       {onNavigate && <WhyThisMatters topic="abw_sampling" onNavigate={onNavigate} />}
                     </div>
                     <div className="text-lg font-bold text-indigo-900">
-                      {latest.abw_g ? `${latest.abw_g.toFixed(1)} g` : '—'}
+                      {latest.abw_g ? `${latest.abw_g.toFixed(1)} g` : ' - '}
                     </div>
                     <div className="text-[10px] text-indigo-600 mt-0.5">{formatDate(latest.sampled_at)}</div>
                   </div>
@@ -272,7 +272,7 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
                       {onNavigate && <WhyThisMatters topic="biomass_projection" onNavigate={onNavigate} />}
                     </div>
                     <div className="text-lg font-bold text-emerald-900">
-                      {biomass != null ? `${biomass.toFixed(1)} kg` : '—'}
+                      {biomass != null ? `${biomass.toFixed(1)} kg` : ' - '}
                     </div>
                     <div className="text-[10px] text-emerald-600 mt-0.5">{f.current_count.toLocaleString()} {isFr ? 'poissons' : 'fish'}</div>
                   </div>
@@ -282,7 +282,7 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
                       {onNavigate && <WhyThisMatters topic="sgr" onNavigate={onNavigate} />}
                     </div>
                     <div className="text-lg font-bold text-amber-900">
-                      {sgr != null ? `${sgr.toFixed(2)} ${isFr ? '%/jour' : '%/day'}` : '—'}
+                      {sgr != null ? `${sgr.toFixed(2)} ${isFr ? '%/jour' : '%/day'}` : ' - '}
                     </div>
                     <div className="text-[10px] text-amber-600 mt-0.5">
                       {sgr == null
@@ -290,8 +290,8 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
                         : sgr >= 2
                           ? (isFr ? 'Croissance saine' : 'Healthy grow-out')
                           : sgr >= 1
-                            ? (isFr ? "Ralentit — vérifiez l'alimentation" : 'Slowing — review feed')
-                            : (isFr ? 'Lent — à investiguer' : 'Slow — investigate')}
+                            ? (isFr ? "Ralentit - vérifiez l'alimentation" : 'Slowing - review feed')
+                            : (isFr ? 'Lent - à investiguer' : 'Slow - investigate')}
                     </div>
                   </div>
                 </div>
@@ -338,7 +338,7 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
             <div className="flex items-center justify-between mb-2">
               <label className="flex items-center text-xs font-medium text-gray-600">
                 {isFr ? 'Poids individuels (grammes)' : 'Individual Weights (grams)'}
-                <span className="ml-2 text-gray-400 font-normal">{isFr ? '— au moins 5, idéalement 10–20' : '— at least 5, ideally 10–20'}</span>
+                <span className="ml-2 text-gray-400 font-normal">{isFr ? ' - au moins 5, idéalement 10–20' : ' - at least 5, ideally 10–20'}</span>
                 {onNavigate && <WhyThisMatters topic="sample_size_recommendation" onNavigate={onNavigate} />}
               </label>
               {previewAbw != null && (
@@ -365,7 +365,7 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
               {validWeights.length < 5 && (
                 <p className="text-[10px] text-amber-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  {isFr ? `Au moins 5 poids requis — actuellement ${validWeights.length}` : `Need at least 5 weights — currently ${validWeights.length}`}
+                  {isFr ? `Au moins 5 poids requis - actuellement ${validWeights.length}` : `Need at least 5 weights - currently ${validWeights.length}`}
                 </p>
               )}
               {formWeights.length < 100 && (
@@ -442,7 +442,7 @@ export function SamplingEventsPage({ onNavigate }: SamplingEventsPageProps) {
                     <div className="flex flex-wrap gap-2 mt-1.5">
                       <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
                         <Scale className="w-3 h-3" />
-                        {isFr ? 'PVM' : 'ABW'} {e.abw_g ? `${e.abw_g.toFixed(1)} g` : '—'}
+                        {isFr ? 'PVM' : 'ABW'} {e.abw_g ? `${e.abw_g.toFixed(1)} g` : ' - '}
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs bg-gray-50 text-gray-700 px-2 py-0.5 rounded-full">
                         n = {e.sample_size}

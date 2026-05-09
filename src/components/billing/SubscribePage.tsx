@@ -49,7 +49,7 @@ function buildPlans(args: { groupTermPluralLower: string; lossNounPluralLower: s
       icon: <Crown className="w-6 h-6" />,
       borderColor: 'border-amber-300',
       ringColor: '',
-      features: [`Unlimited ${groupTermPluralLower} & team members`, 'Eden AI — 200 msg/mo + 30 photo diagnoses', 'Smart import with receipt photos', 'Payroll & shift management', 'Benchmarking vs similar farms', 'Loan-readiness PDF report', 'Priority WhatsApp support'],
+      features: [`Unlimited ${groupTermPluralLower} & team members`, 'Eden AI - 200 msg/mo + 30 photo diagnoses', 'Smart import with receipt photos', 'Payroll & shift management', 'Benchmarking vs similar farms', 'Loan-readiness PDF report', 'Priority WhatsApp support'],
       limits: 'For serious commercial operations',
     },
     {
@@ -57,7 +57,7 @@ function buildPlans(args: { groupTermPluralLower: string; lossNounPluralLower: s
       icon: <Building2 className="w-6 h-6" />,
       borderColor: 'border-blue-400',
       ringColor: '',
-      features: ['Up to 10 farms', 'Multi-farm dashboard', 'Eden AI — unlimited', 'Custom-branded PDF reports', 'Excel/CSV export', 'Webhook API', 'Dedicated support line', 'Onboarding call', 'White-label option'],
+      features: ['Up to 10 farms', 'Multi-farm dashboard', 'Eden AI - unlimited', 'Custom-branded PDF reports', 'Excel/CSV export', 'Webhook API', 'Dedicated support line', 'Onboarding call', 'White-label option'],
       limits: 'For agribusiness & integrators',
     },
   ];
@@ -197,7 +197,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
       setSuccess(true);
       await refreshSession?.();
     } catch (err: any) {
-      setError(`Payment received but could not verify. Contact support — ref: ${reference}`);
+      setError(`Payment received but could not verify. Contact support - ref: ${reference}`);
     }
   };
 
@@ -285,7 +285,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
         await refreshSession?.();
       } else {
         const body = await res.json().catch(() => ({}));
-        setError(body.error || `Payment received but verification failed. Contact support — ref: ${txRef}`);
+        setError(body.error || `Payment received but verification failed. Contact support - ref: ${txRef}`);
       }
     } catch {
       setError(`Could not verify payment. Please contact support.`);
@@ -562,7 +562,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
                 <div className="flex-1">
                   <p className="text-agri-brown-500">
                     Auto-renews{expiryDate ? <> on <strong>{expiryDate}</strong></> : ''}.
-                    Cancel anytime — you keep access until the end of your billing period. No refunds issued.
+                    Cancel anytime - you keep access until the end of your billing period. No refunds issued.
                   </p>
                 </div>
                 <button type="button" onClick={cancelStripe} disabled={cancelLoading}

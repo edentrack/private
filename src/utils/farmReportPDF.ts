@@ -213,7 +213,7 @@ export async function generateFarmReportPDF(data: FarmReportData): Promise<Blob>
         formatDate(v.date),
         v.flockName,
         v.vaccineName,
-        v.notes || '—',
+        v.notes || ' - ',
       ]),
       theme: 'striped',
       headStyles: { fillColor: TONE_GREEN, textColor: 255, fontSize: 9 },

@@ -51,8 +51,8 @@ export function FarmJoinCodeSection() {
 
   const shareLink = async () => {
     const text = isFr
-      ? `Rejoignez ma ferme « ${currentFarm.name} » sur Edentrack — appuyez sur le lien pour créer votre compte :`
-      : `Join my farm "${currentFarm.name}" on Edentrack — tap the link to create your account:`;
+      ? `Rejoignez ma ferme « ${currentFarm.name} » sur Edentrack - appuyez sur le lien pour créer votre compte :`
+      : `Join my farm "${currentFarm.name}" on Edentrack - tap the link to create your account:`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -72,8 +72,8 @@ export function FarmJoinCodeSection() {
         <Users className="w-4 h-4 text-[#3D5F42] mt-0.5 shrink-0" />
         <p className="text-xs text-gray-600">
           {isFr
-            ? "Partagez ce lien avec un seul ouvrier à la fois. Après son inscription, le lien change automatiquement — le transmettre à quelqu'un d'autre ne fonctionnera pas."
-            : "Share this link with one worker at a time. After they join, the link automatically changes — forward it to someone else won't work."}
+            ? "Partagez ce lien avec un seul ouvrier à la fois. Après son inscription, le lien change automatiquement - le transmettre à quelqu'un d'autre ne fonctionnera pas."
+            : "Share this link with one worker at a time. After they join, the link automatically changes - forward it to someone else won't work."}
         </p>
       </div>
 

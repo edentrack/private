@@ -59,15 +59,17 @@ export function ReferralSection() {
     await navigator.clipboard.writeText(referralLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    showToast('Referral link copied!', 'success');
+    showToast(isFr ? 'Lien de parrainage copié !' : 'Referral link copied!', 'success');
   };
 
   const shareLink = async () => {
     if (!referralLink) return;
     if (navigator.share) {
       await navigator.share({
-        title: 'Join me on Edentrack',
-        text: `I use Edentrack to manage my poultry farm — we both get a free month when you subscribe! Use my code: ${referralCode}`,
+        title: isFr ? 'Rejoignez-moi sur Edentrack' : 'Join me on Edentrack',
+        text: isFr
+          ? `J'utilise Edentrack pour gérer ma ferme avicole - nous recevons tous les deux un mois gratuit lorsque vous vous abonnez ! Utilisez mon code: ${referralCode}`
+          : `I use Edentrack to manage my poultry farm - we both get a free month when you subscribe! Use my code: ${referralCode}`,
         url: referralLink,
       });
     } else {
@@ -96,7 +98,7 @@ export function ReferralSection() {
   const saveCode = async () => {
     const trimmed = editValue.trim();
     if (trimmed.length < 4) {
-      setEditError('At least 4 characters required');
+      setEditError(isFr ? 'Au moins 4 caractères requis' : 'At least 4 characters required');
       return;
     }
     setSaving(true);
@@ -105,15 +107,15 @@ export function ReferralSection() {
       const { data, error } = await supabase.rpc('update_referral_code', { p_new_code: trimmed });
       if (error) throw error;
       if (!data?.ok) {
-        setEditError(data?.error || 'Could not save code');
+        setEditError(data?.error || (isFr ? "Impossible d'enregistrer le code" : 'Could not save code'));
         return;
       }
       setReferralCode(data.code);
       setEditsRemaining(data.edits_remaining ?? 0);
       setEditing(false);
-      showToast('Referral code updated!', 'success');
+      showToast(isFr ? 'Code de parrainage mis à jour !' : 'Referral code updated!', 'success');
     } catch (e: any) {
-      setEditError(e.message || 'Failed to save');
+      setEditError(e.message || (isFr ? "Échec de l'enregistrement" : 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -126,13 +128,13 @@ export function ReferralSection() {
       const { data, error } = await supabase.rpc('apply_referral_code', { p_code: applyCode.trim() });
       if (error) throw error;
       if (data?.ok) {
-        showToast('Code applied! Your friend gets rewarded when you make your first payment.', 'success');
+        showToast(isFr ? 'Code appliqué ! Votre ami sera récompensé lorsque vous effectuerez votre premier paiement.' : 'Code applied! Your friend gets rewarded when you make your first payment.', 'success');
         setApplyCode('');
       } else {
-        showToast(data?.error || 'Invalid referral code', 'error');
+        showToast(data?.error || (isFr ? 'Code de parrainage invalide' : 'Invalid referral code'), 'error');
       }
     } catch (e: any) {
-      showToast(e.message || 'Failed to apply code', 'error');
+      showToast(e.message || (isFr ? "Échec de l'application du code" : 'Failed to apply code'), 'error');
     } finally {
       setApplying(false);
     }
@@ -149,9 +151,9 @@ export function ReferralSection() {
           <h3 className="font-bold text-gray-900">{isFr ? 'Programme de parrainage' : 'Referral Program'}</h3>
           <p className="text-sm text-gray-500">
             {isFr ? (
-              <>Parrainez un ami — vous <strong>recevez tous les deux 1 mois gratuit</strong> lors de son premier paiement</>
+              <>Parrainez un ami - vous <strong>recevez tous les deux 1 mois gratuit</strong> lors de son premier paiement</>
             ) : (
-              <>Refer a friend — you <strong>both get 1 free month</strong> when they make their first payment</>
+              <>Refer a friend - you <strong>both get 1 free month</strong> when they make their first payment</>
             )}
           </p>
         </div>
@@ -209,7 +211,7 @@ export function ReferralSection() {
                   className="px-4 py-2 rounded-xl bg-[#3D5F42] text-white text-sm font-semibold hover:bg-[#2F4A34] disabled:opacity-50 flex items-center gap-1.5"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  {saving ? 'Saving…' : 'Save'}
+                  {saving ? (isFr ? 'Enregistrement…' : 'Saving…') : (isFr ? 'Enregistrer' : 'Save')}
                 </button>
                 <button
                   onClick={cancelEdit}
@@ -255,8 +257,8 @@ export function ReferralSection() {
           )}
           <p className="text-xs text-gray-400 mt-1.5">
             {isFr
-              ? "Partagez ce code ou ce lien — la récompense est créditée lors du premier paiement de votre ami"
-              : 'Share this code or link — reward is credited when your friend pays for their first plan'}
+              ? "Partagez ce code ou ce lien - la récompense est créditée lors du premier paiement de votre ami"
+              : 'Share this code or link - reward is credited when your friend pays for their first plan'}
           </p>
         </div>
       )}
@@ -283,13 +285,13 @@ export function ReferralSection() {
 
       {/* Apply a code */}
       <div>
-        <p className="text-xs font-semibold text-gray-600 mb-2">Have a friend's code?</p>
+        <p className="text-xs font-semibold text-gray-600 mb-2">{isFr ? "Vous avez le code d'un ami ?" : "Have a friend's code?"}</p>
         <div className="flex gap-2">
           <input
             type="text"
             value={applyCode}
             onChange={e => setApplyCode(e.target.value.toUpperCase().replace(/[^A-Z0-9\-]/g, ''))}
-            placeholder="Enter code e.g. SUNRISEFARM"
+            placeholder={isFr ? 'Saisissez le code ex. SUNRISEFARM' : 'Enter code e.g. SUNRISEFARM'}
             maxLength={15}
             className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#3D5F42] uppercase tracking-widest font-mono"
           />
@@ -298,7 +300,7 @@ export function ReferralSection() {
             disabled={applying || !applyCode.trim()}
             className="px-4 py-2 bg-[#3D5F42] text-white rounded-xl text-sm font-semibold hover:bg-[#2F4A34] disabled:opacity-50"
           >
-            {applying ? '…' : 'Apply'}
+            {applying ? '…' : (isFr ? 'Appliquer' : 'Apply')}
           </button>
         </div>
       </div>

@@ -280,7 +280,7 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                   onClick={() => onNavigate('subscribe')}
                   className="btn-primary inline-flex items-center justify-center flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600"
                 >
-                  Upgrade — {flocks.length}/{max} {groupTermPlural.toLowerCase()} used
+                  Upgrade - {flocks.length}/{max} {groupTermPlural.toLowerCase()} used
                 </button>
               );
             }
@@ -318,10 +318,10 @@ export function FlockManagement({ onSelectFlock, onNavigate }: FlockManagementPr
                 ? t('flocks.no_flocks_worker_message')
                 : `Your manager hasn't added any ${groupTermPlural.toLowerCase()} yet. Check back soon.`
               : isAquaculture
-                ? 'A pond is how Edentrack tracks your fish — stocking, water quality, feed, and harvest all tie back to it.'
+                ? 'A pond is how Edentrack tracks your fish - stocking, water quality, feed, and harvest all tie back to it.'
                 : isPoultryView
                   ? t('flocks.no_flocks_owner_message')
-                  : `A ${groupTerm.toLowerCase()} is how Edentrack tracks your ${farmSpecies.animalTermPlural.toLowerCase()} — feed, health, growth, and harvest all tie back to it.`;
+                  : `A ${groupTerm.toLowerCase()} is how Edentrack tracks your ${farmSpecies.animalTermPlural.toLowerCase()} - feed, health, growth, and harvest all tie back to it.`;
 
             return (
               <>

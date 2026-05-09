@@ -351,7 +351,7 @@ export function QuickEggCollectionWidget({ onSuccess }: QuickEggCollectionWidget
 
     let msg = `*🥚 EGG COLLECTION REPORT*\n`;
     if (shareOptions.flockAndDate) {
-      msg += `*${dateLabel} — ${flockName}*\n`;
+      msg += `*${dateLabel} - ${flockName}*\n`;
     }
     msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 

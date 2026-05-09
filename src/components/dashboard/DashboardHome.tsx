@@ -302,7 +302,7 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
       lines.push(`⚠️ *${lossLabelUpper} TODAY: ${totalDeaths} ${animalTermPluralLower}*`);
       todayMortality.forEach(m => {
         const flock = flocks.find(f => f.id === m.flock_id);
-        const cause = m.cause ? ` — ${m.cause}` : '';
+        const cause = m.cause ? ` - ${m.cause}` : '';
         lines.push(`• ${flock?.name ?? `Unknown ${farmSpecies.groupTerm.toLowerCase()}`}: ${Number(m.count) || 0} ${animalTermPluralLower}${cause}`);
       });
       lines.push('');
@@ -438,18 +438,18 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
             ? "Votre gestionnaire n'a encore ajouté aucun étang. Revenez bientôt."
             : "Your manager hasn't added any ponds yet. Check back soon.",
           ownerBody: isFr
-            ? "Un étang permet à Edentrack de suivre vos poissons — empoissonnement, qualité de l'eau, alimentation et récolte y sont tous reliés."
-            : 'A pond is how Edentrack tracks your fish — stocking, water quality, feed, and harvest all tie back to it.',
+            ? "Un étang permet à Edentrack de suivre vos poissons - empoissonnement, qualité de l'eau, alimentation et récolte y sont tous reliés."
+            : 'A pond is how Edentrack tracks your fish - stocking, water quality, feed, and harvest all tie back to it.',
           steps: [
             { n: '1', text: isFr ? "Créer un étang (espèce, nombre, date d'empoissonnement)" : 'Create a pond (species, count, stocking date)' },
-            { n: '2', text: isFr ? "Enregistrer la qualité de l'eau — température, OD, pH" : 'Log water quality — temperature, DO, pH' },
+            { n: '2', text: isFr ? "Enregistrer la qualité de l'eau - température, OD, pH" : 'Log water quality - temperature, DO, pH' },
             { n: '3', text: isFr ? 'Enregistrer les récoltes et voir vos revenus croître' : 'Record harvests and watch your revenue grow' },
           ],
           btnBg: '#3b82f6',
           btnShadow: '0 4px 16px rgba(59,130,246,0.30)',
           btnText: 'white',
           btnLabel: isFr ? 'Créer mon premier étang' : 'Create My First Pond',
-          hint: isFr ? 'Vous pouvez gérer plusieurs étangs — poisson-chat, tilapia ou mixte.' : 'You can manage multiple ponds — catfish, tilapia, or mixed.',
+          hint: isFr ? 'Vous pouvez gérer plusieurs étangs - poisson-chat, tilapia ou mixte.' : 'You can manage multiple ponds - catfish, tilapia, or mixed.',
         }
       : isRabbits
       ? {
@@ -463,18 +463,18 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
             ? "Votre gestionnaire n'a encore ajouté aucun élevage. Revenez bientôt."
             : "Your manager hasn't added any rabbitries yet. Check back soon.",
           ownerBody: isFr
-            ? "Un élevage permet à Edentrack de suivre vos lapins — alimentation, santé, croissance et récolte y sont tous reliés."
-            : 'A rabbitry is how Edentrack tracks your rabbits — feed, health, growth, and harvest all tie back to it.',
+            ? "Un élevage permet à Edentrack de suivre vos lapins - alimentation, santé, croissance et récolte y sont tous reliés."
+            : 'A rabbitry is how Edentrack tracks your rabbits - feed, health, growth, and harvest all tie back to it.',
           steps: [
             { n: '1', text: isFr ? "Créer un élevage (race, nombre, date d'arrivée)" : 'Create a rabbitry (breed, count, arrival date)' },
-            { n: '2', text: isFr ? 'Enregistrer les tâches quotidiennes — alimentation, contrôles santé, mortalités' : 'Log daily tasks — feeding, health checks, deaths' },
+            { n: '2', text: isFr ? 'Enregistrer les tâches quotidiennes - alimentation, contrôles santé, mortalités' : 'Log daily tasks - feeding, health checks, deaths' },
             { n: '3', text: isFr ? 'Suivre la croissance par semaine et planifier la récolte' : 'Track growth by week and plan your harvest' },
           ],
           btnBg: '#059669',
           btnShadow: '0 4px 16px rgba(5,150,105,0.30)',
           btnText: 'white',
           btnLabel: isFr ? 'Créer mon premier élevage' : 'Create My First Rabbitry',
-          hint: isFr ? 'Vous pouvez gérer plusieurs élevages — lapins de chair, reproducteurs, ou les deux.' : 'You can manage multiple rabbitries — meat rabbits, breeders, or both.',
+          hint: isFr ? 'Vous pouvez gérer plusieurs élevages - lapins de chair, reproducteurs, ou les deux.' : 'You can manage multiple rabbitries - meat rabbits, breeders, or both.',
         }
       : {
           strip: 'linear-gradient(90deg, #ffdd00 0%, #f59e0b 100%)',
@@ -487,18 +487,18 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
             ? "Votre gestionnaire n'a encore ajouté aucun troupeau. Revenez bientôt."
             : "Your manager hasn't added any flocks yet. Check back soon.",
           ownerBody: isFr
-            ? 'Un troupeau permet à Edentrack de tout suivre — mortalité, poids, aliment, dépenses et ventes y sont tous reliés.'
-            : 'A flock is how Edentrack tracks everything — mortality, weight, feed, expenses, and sales all tie back to it.',
+            ? 'Un troupeau permet à Edentrack de tout suivre - mortalité, poids, aliment, dépenses et ventes y sont tous reliés.'
+            : 'A flock is how Edentrack tracks everything - mortality, weight, feed, expenses, and sales all tie back to it.',
           steps: [
             { n: '1', text: isFr ? 'Créer un troupeau (race, nombre, date de démarrage)' : 'Create a flock (breed, count, start date)' },
-            { n: '2', text: isFr ? 'Enregistrer les tâches quotidiennes — aliment, eau, mortalité' : 'Log daily tasks — feed, water, mortality' },
+            { n: '2', text: isFr ? 'Enregistrer les tâches quotidiennes - aliment, eau, mortalité' : 'Log daily tasks - feed, water, mortality' },
             { n: '3', text: isFr ? "Voir vos KPI et insights IA s'afficher" : 'Watch your KPIs & AI insights populate' },
           ],
           btnBg: '#ffdd00',
           btnShadow: '0 4px 16px rgba(255,221,0,0.3)',
           btnText: 'text-gray-900',
           btnLabel: isFr ? 'Créer mon premier troupeau' : 'Create My First Flock',
-          hint: isFr ? 'Vous pouvez gérer plusieurs troupeaux — poulets de chair, pondeuses ou les deux.' : 'You can manage multiple flocks — broilers, layers, or both.',
+          hint: isFr ? 'Vous pouvez gérer plusieurs troupeaux - poulets de chair, pondeuses ou les deux.' : 'You can manage multiple flocks - broilers, layers, or both.',
         };
 
     return (
@@ -575,7 +575,7 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
           <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-red-800 text-sm">
-              ⚠️ {farmSpecies.lossNoun} spike in {alert.flock_name} — {alert.today_deaths} {farmSpecies.lossNounPlural.toLowerCase()} today ({alert.spike_ratio?.toFixed(1)}× above normal)
+              ⚠️ {farmSpecies.lossNoun} spike in {alert.flock_name} - {alert.today_deaths} {farmSpecies.lossNounPlural.toLowerCase()} today ({alert.spike_ratio?.toFixed(1)}× above normal)
             </p>
             <p className="text-red-700 text-xs mt-1">
               Likely causes: {alert.likely_causes?.join(', ')}. Isolate affected {farmSpecies.animalTermPlural.toLowerCase()} and check water/feed immediately.

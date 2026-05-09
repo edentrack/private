@@ -364,8 +364,8 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
             {aggregateOnlyCount > 0 && (
               <span className="text-xs text-gray-500 ml-2">
                 {isFr
-                  ? `(${aggregateOnlyCount} membre${aggregateOnlyCount !== 1 ? 's' : ''} ne partageant que des agrégats — exclu${aggregateOnlyCount !== 1 ? 's' : ''} de la synthèse)`
-                  : `(${aggregateOnlyCount} member${aggregateOnlyCount !== 1 ? 's' : ''} sharing aggregates only — excluded from rollup)`}
+                  ? `(${aggregateOnlyCount} membre${aggregateOnlyCount !== 1 ? 's' : ''} ne partageant que des agrégats - exclu${aggregateOnlyCount !== 1 ? 's' : ''} de la synthèse)`
+                  : `(${aggregateOnlyCount} member${aggregateOnlyCount !== 1 ? 's' : ''} sharing aggregates only - excluded from rollup)`}
               </span>
             )}
           </div>
@@ -596,7 +596,7 @@ export function CooperativeDashboard({ cooperativeId, onBack }: Props) {
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-gray-500">{isFr ? 'Région' : 'Region'}</dt>
-              <dd>{[coop.region, coop.country].filter(Boolean).join(', ') || '—'}</dd>
+              <dd>{[coop.region, coop.country].filter(Boolean).join(', ') || ' - '}</dd>
             </div>
           </dl>
         </div>

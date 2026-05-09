@@ -181,11 +181,11 @@ export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLab
         ? "La santé de la ferme est en mode Configuration pendant que vous ajoutez votre premier troupeau/étang/élevage. Dès que vous enregistrez votre premier événement, l'anneau commencera à évaluer la santé opérationnelle."
         : 'Farm Health is in Setup mode while you add your first flock/pond/rabbitry. Once you log your first event, the ring will start scoring you on operational health.')
     : (isFr
-        ? `Santé de la ferme : ${score}% — ${label}.\n` +
+        ? `Santé de la ferme : ${score}% - ${label}.\n` +
           `Combine la complétude de la configuration de la ferme (travailleurs ajoutés, prix définis, aliments suivis) ` +
           `avec la santé opérationnelle (taux de mortalité, tâches en retard, activité récente). ` +
           `Ajoutez des données quotidiennement pour augmenter le score.`
-        : `Farm Health: ${score}% — ${label}.\n` +
+        : `Farm Health: ${score}% - ${label}.\n` +
           `Combines farm setup completeness (workers added, prices set, feed tracked) ` +
           `with operational health (mortality rate, overdue tasks, recent activity). ` +
           `Add data daily to raise the score.`);

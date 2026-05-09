@@ -601,7 +601,7 @@ export function ExpenseTracking() {
     });
 
     const periodLabels: Record<string, string> = {
-      today: `Today — ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      today: `Today - ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
       week: 'Last 7 Days',
       month: 'Last 30 Days',
       all: 'All Time',
@@ -609,7 +609,7 @@ export function ExpenseTracking() {
 
     const cur = currency;
     let msg = `*💸 EXPENSE REPORT*\n`;
-    msg += `*${periodLabels[period]} — ${currentFarm.name || 'My Farm'}*\n`;
+    msg += `*${periodLabels[period]} - ${currentFarm.name || 'My Farm'}*\n`;
     msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
     msg += `*Total Expenses:* ${convertAmount(total)} ${cur}\n`;
     if (totalRevenueGenerated > 0 && !hideFinancials) {

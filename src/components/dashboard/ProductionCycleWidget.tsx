@@ -302,11 +302,11 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
     const foundPhase = phases.find(p => week >= p.startWeek && week <= p.endWeek);
     if (foundPhase) {
       setCurrentPhase(foundPhase.name);
-      setFeedType('—');
-      setCurrentPhaseData({ ...foundPhase, feedType: '—' });
+      setFeedType(' - ');
+      setCurrentPhaseData({ ...foundPhase, feedType: ' - ' });
     } else {
       setCurrentPhase('Market-ready');
-      setFeedType('—');
+      setFeedType(' - ');
       setCurrentPhaseData(null);
     }
     setNextPhaseData(null);
@@ -610,7 +610,7 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
                       ? 'bg-amber-100 text-amber-800 border-amber-200'
                       : 'bg-red-100 text-red-800 border-red-200'
                 }`}
-                title={`Rabbit FCR: ${formatRabbitFCR(rabbitMetrics.fcr.fcr)} kg feed / kg gain — ${rabbitMetrics.fcr.label}`}
+                title={`Rabbit FCR: ${formatRabbitFCR(rabbitMetrics.fcr.fcr)} kg feed / kg gain - ${rabbitMetrics.fcr.label}`}
               >
                 FCR {formatRabbitFCR(rabbitMetrics.fcr.fcr)}
               </span>
@@ -663,7 +663,7 @@ export function ProductionCycleWidget({ flock, onNavigate }: ProductionCycleWidg
                 <p className={`text-xs mt-0.5 ${nextPhaseData ? 'text-amber-700' : 'text-green-700'}`}>
                   {nextPhaseData
                     ? `Switch feed to ${nextPhaseData.feedType} and move birds to ${nextPhaseData.name} phase.`
-                    : `Your birds have completed the ${currentPhaseData.name} phase — they're ready to sell.`}
+                    : `Your birds have completed the ${currentPhaseData.name} phase - they're ready to sell.`}
                 </p>
               </div>
             </div>

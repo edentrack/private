@@ -704,9 +704,9 @@ export function InsightsPage() {
     const netProfit = totalRev - totalExp;
 
     const labels: Record<string, string> = {
-      daily: `Daily Report — ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
-      weekly: `Weekly Report — Last 7 Days`,
-      monthly: `Monthly Report — Last 30 Days`,
+      daily: `Daily Report - ${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+      weekly: `Weekly Report - Last 7 Days`,
+      monthly: `Monthly Report - Last 30 Days`,
     };
 
     const trays = eggsPerTray > 0 ? Math.floor(totalEggsCollected / eggsPerTray) : 0;

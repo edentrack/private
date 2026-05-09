@@ -413,7 +413,7 @@ export function CoreKPISection({ refreshTrigger, onNavigate }: CoreKPISectionPro
             ) : kpiData.fcr !== null ? (
               <span className={`text-lg font-bold ${getFCRStatus(kpiData.fcr).color}`}>{kpiData.fcr.toFixed(2)}</span>
             ) : (
-              <span className="text-lg font-bold text-gray-500">—</span>
+              <span className="text-lg font-bold text-gray-500"> - </span>
             )}
           </div>
           <p className="text-xs text-gray-600">

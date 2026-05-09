@@ -3,6 +3,7 @@ import { Bell, Clock, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const TIMEZONES = [
   { value: 'Africa/Douala', label: 'Cameroon (Douala)' },
@@ -17,7 +18,7 @@ const TIMEZONES = [
   { value: 'Asia/Kolkata', label: 'India (New Delhi)' },
 ];
 
-const DAYS_OF_WEEK = [
+const DAYS_OF_WEEK_EN = [
   { value: 0, label: 'Sunday' },
   { value: 1, label: 'Monday' },
   { value: 2, label: 'Tuesday' },
@@ -27,8 +28,21 @@ const DAYS_OF_WEEK = [
   { value: 6, label: 'Saturday' },
 ];
 
+const DAYS_OF_WEEK_FR = [
+  { value: 0, label: 'Dimanche' },
+  { value: 1, label: 'Lundi' },
+  { value: 2, label: 'Mardi' },
+  { value: 3, label: 'Mercredi' },
+  { value: 4, label: 'Jeudi' },
+  { value: 5, label: 'Vendredi' },
+  { value: 6, label: 'Samedi' },
+];
+
 export function DailyReportSettings() {
   useTranslation(); // copy hardcoded for now; wire `t` if/when translated
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
+  const DAYS_OF_WEEK = isFr ? DAYS_OF_WEEK_FR : DAYS_OF_WEEK_EN;
   const { currentFarm } = useAuth();
   const [reportScheduleEnabled, setReportScheduleEnabled] = useState(false);
   const [reportTimezone, setReportTimezone] = useState('Africa/Douala');
@@ -63,7 +77,7 @@ export function DailyReportSettings() {
     } catch (error) {
       console.error('Error loading report settings:', error);
       setMessageType('error');
-      setMessage('Failed to load report settings');
+      setMessage(isFr ? 'Échec du chargement des paramètres du rapport' : 'Failed to load report settings');
     }
   };
 
@@ -85,19 +99,21 @@ export function DailyReportSettings() {
 
       if (error) throw error;
 
-      const dayName = DAYS_OF_WEEK.find((d) => d.value === reportDayOfWeek)?.label ?? 'Monday';
+      const dayName = DAYS_OF_WEEK.find((d) => d.value === reportDayOfWeek)?.label ?? (isFr ? 'Lundi' : 'Monday');
       setMessageType('success');
       setMessage(
         reportScheduleEnabled
-          ? `Weekly reports will be sent every ${dayName} at 6 PM ${reportTimezone} timezone`
-          : 'Weekly report scheduling disabled'
+          ? (isFr
+              ? `Les rapports hebdomadaires seront envoyés chaque ${dayName} à 18h00 (fuseau ${reportTimezone})`
+              : `Weekly reports will be sent every ${dayName} at 6 PM ${reportTimezone} timezone`)
+          : (isFr ? 'Planification du rapport hebdomadaire désactivée' : 'Weekly report scheduling disabled')
       );
 
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error saving report settings:', error);
       setMessageType('error');
-      setMessage('Failed to save settings. Please try again.');
+      setMessage(isFr ? "Échec de l'enregistrement des paramètres. Veuillez réessayer." : 'Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -109,10 +125,12 @@ export function DailyReportSettings() {
         <Bell className="w-5 h-5 mt-1 text-blue-600 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <h3 className="text-lg font-semibold text-gray-900">
-            Auto-send Weekly Report by Email
+            {isFr ? "Envoi automatique du rapport hebdomadaire par e-mail" : 'Auto-send Weekly Report by Email'}
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Automatically send your weekly farm summary via email once a week at 6 PM in your farm&apos;s local timezone.
+            {isFr
+              ? "Envoyez automatiquement le résumé hebdomadaire de votre ferme par e-mail une fois par semaine à 18h00 dans le fuseau horaire local de votre ferme."
+              : "Automatically send your weekly farm summary via email once a week at 6 PM in your farm's local timezone."}
           </p>
         </div>
       </div>
@@ -129,7 +147,7 @@ export function DailyReportSettings() {
             disabled={saving}
           />
           <label htmlFor="report_schedule_enabled" className="text-sm font-medium text-gray-700">
-            Enable automatic weekly reports
+            {isFr ? 'Activer les rapports hebdomadaires automatiques' : 'Enable automatic weekly reports'}
           </label>
         </div>
 
@@ -140,7 +158,7 @@ export function DailyReportSettings() {
             <div className="space-y-1">
               <label htmlFor="report_day" className="block text-sm font-medium text-gray-700">
                 <Clock className="w-4 h-4 inline mr-2" />
-                Send report on
+                {isFr ? 'Envoyer le rapport le' : 'Send report on'}
               </label>
               <select
                 id="report_day"
@@ -160,7 +178,7 @@ export function DailyReportSettings() {
             {/* Timezone */}
             <div className="space-y-1">
               <label htmlFor="report_timezone" className="block text-sm font-medium text-gray-700">
-                Timezone
+                {isFr ? 'Fuseau horaire' : 'Timezone'}
               </label>
               <select
                 id="report_timezone"
@@ -176,7 +194,7 @@ export function DailyReportSettings() {
                 ))}
               </select>
               <p className="text-xs text-gray-500">
-                Report will be sent at 6 PM (18:00) in the selected timezone
+                {isFr ? 'Le rapport sera envoyé à 18h00 dans le fuseau horaire sélectionné' : 'Report will be sent at 6 PM (18:00) in the selected timezone'}
               </p>
             </div>
           </div>
@@ -187,12 +205,23 @@ export function DailyReportSettings() {
           <div className="flex gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-blue-700">
-              <p className="font-semibold mb-1">How it works:</p>
+              <p className="font-semibold mb-1">{isFr ? 'Comment ça marche:' : 'How it works:'}</p>
               <ul className="space-y-1 ml-2">
-                <li>• Your weekly farm report covers the past 7 days of activity</li>
-                <li>• Sent to your registered email address</li>
-                <li>• Scheduled for 6 PM on your chosen day in your farm&apos;s timezone</li>
-                <li>• Same report content as the manual &quot;Share Weekly Report&quot; button</li>
+                {isFr ? (
+                  <>
+                    <li>• Votre rapport hebdomadaire couvre les 7 derniers jours d'activité</li>
+                    <li>• Envoyé à votre adresse e-mail enregistrée</li>
+                    <li>• Planifié pour 18h00 le jour de votre choix dans le fuseau horaire de votre ferme</li>
+                    <li>• Même contenu que le bouton manuel "Partager le rapport hebdomadaire"</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Your weekly farm report covers the past 7 days of activity</li>
+                    <li>• Sent to your registered email address</li>
+                    <li>• Scheduled for 6 PM on your chosen day in your farm's timezone</li>
+                    <li>• Same report content as the manual "Share Weekly Report" button</li>
+                  </>
+                )}
               </ul>
             </div>
           </div>
@@ -219,7 +248,7 @@ export function DailyReportSettings() {
           disabled={saving}
           className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          {saving ? 'Saving...' : 'Save Settings'}
+          {saving ? (isFr ? 'Enregistrement...' : 'Saving...') : (isFr ? 'Enregistrer les paramètres' : 'Save Settings')}
         </button>
       </div>
     </div>

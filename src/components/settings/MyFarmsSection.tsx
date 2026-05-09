@@ -143,8 +143,8 @@ export function MyFarmsSection() {
                   */}
                   <p className="text-[11px] text-gray-500 italic px-1">
                     {isFr
-                      ? `L'espèce (${farm.farm_type}) est verrouillée. Pour changer d'espèce, supprimez cette ferme et créez-en une nouvelle — ou modifiez chaque troupeau/étang via son icône crayon pour corriger un type d'animal erroné.`
-                      : `Species (${farm.farm_type}) is locked. To change species, delete this farm and create a new one — or edit individual flocks/ponds via their pencil icon to fix wrong fish/bird type.`}
+                      ? `L'espèce (${farm.farm_type}) est verrouillée. Pour changer d'espèce, supprimez cette ferme et créez-en une nouvelle - ou modifiez chaque troupeau/étang via son icône crayon pour corriger un type d'animal erroné.`
+                      : `Species (${farm.farm_type}) is locked. To change species, delete this farm and create a new one - or edit individual flocks/ponds via their pencil icon to fix wrong fish/bird type.`}
                   </p>
                   <div className="flex gap-2">
                     <button onClick={() => setEditingId(null)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50">

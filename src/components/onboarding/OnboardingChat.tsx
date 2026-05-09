@@ -525,7 +525,7 @@ export function OnboardingChat({ onComplete, onSwitchToForm }: Props) {
         ...prev,
         {
           role: 'assistant',
-          content: visibleText || (pills.length > 0 ? '' : "I'm here — what's next?"),
+          content: visibleText || (pills.length > 0 ? '' : "I'm here - what's next?"),
           pills: pills.length > 0 ? pills : undefined,
           timestamp: Date.now(),
         },

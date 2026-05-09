@@ -86,14 +86,14 @@ export function formatAquacultureReportMarkdown(r: AquaculturePondReport): strin
 ${r.stocking.sourceHatchery ? `- Source: ${r.stocking.sourceHatchery}` : ''}
 
 ## Current State (Week ${r.current.week})
-- ABW: ${r.current.abwG !== null ? `${r.current.abwG.toFixed(1)} g` : '—'}
+- ABW: ${r.current.abwG !== null ? `${r.current.abwG.toFixed(1)} g` : ' - '}
 - Biomass: ${fmt(r.current.biomassKg, 1)} kg
 - Survival: ${r.current.survivalPct.toFixed(1)}%
-- Density: ${r.current.densityFishPerSqm !== null ? `${r.current.densityFishPerSqm.toFixed(1)} fish/m²` : '—'}
+- Density: ${r.current.densityFishPerSqm !== null ? `${r.current.densityFishPerSqm.toFixed(1)} fish/m²` : ' - '}
 
 ## Growth
-- SGR: ${r.growth.sgrPercentDay !== null ? `${r.growth.sgrPercentDay.toFixed(2)} %/day` : '—'}
-- FCR: ${r.growth.fcr !== null ? r.growth.fcr.toFixed(2) : '—'}
+- SGR: ${r.growth.sgrPercentDay !== null ? `${r.growth.sgrPercentDay.toFixed(2)} %/day` : ' - '}
+- FCR: ${r.growth.fcr !== null ? r.growth.fcr.toFixed(2) : ' - '}
 - Total weight gain: ${fmt(r.growth.weightGainKg, 1)} kg
 
 ## Feed
@@ -104,8 +104,8 @@ ${r.feed.feedTypes.map(ft => `  - ${ft.name}: ${fmt(ft.quantityKg, 1)} kg`).join
 ## Water Quality
 - Samples taken: ${r.waterQuality.samplesTaken}
 - Emergency events: ${r.waterQuality.emergencyEventsCount}
-- Avg DO: ${r.waterQuality.avgDoMgL !== null ? `${r.waterQuality.avgDoMgL.toFixed(2)} mg/L` : '—'}
-- Avg pH: ${r.waterQuality.avgPh !== null ? r.waterQuality.avgPh.toFixed(2) : '—'}
+- Avg DO: ${r.waterQuality.avgDoMgL !== null ? `${r.waterQuality.avgDoMgL.toFixed(2)} mg/L` : ' - '}
+- Avg pH: ${r.waterQuality.avgPh !== null ? r.waterQuality.avgPh.toFixed(2) : ' - '}
 
 ## Mortality
 - Total deaths: ${fmt(r.mortality.totalDeaths)}

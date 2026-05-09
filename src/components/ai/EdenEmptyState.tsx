@@ -57,8 +57,8 @@ export function EdenEmptyState({
 
   const greetingBody = crossFarm
     ? (isFr
-        ? "Posez-moi n'importe quelle question sur n'importe quelle ferme — je confirmerai toujours avant d'enregistrer des changements."
-        : "Ask me anything about any farm — I'll always confirm before logging changes.")
+        ? "Posez-moi n'importe quelle question sur n'importe quelle ferme - je confirmerai toujours avant d'enregistrer des changements."
+        : "Ask me anything about any farm - I'll always confirm before logging changes.")
     : statusLine
     ? statusLine
     : (isFr ? "Avec quoi puis-je vous aider aujourd'hui ?" : 'What can I help with today?');
