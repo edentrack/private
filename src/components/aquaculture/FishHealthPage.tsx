@@ -196,6 +196,11 @@ export function FishHealthPage() {
           },
         ],
         mode: 'disease-diagnosis',
+        // Diagnosis JSON is parsed structurally; the model instruction
+        // remains the buildPrompt() text. We still pass language so
+        // future free-text fields (reasoning, recommendations) come out
+        // in the user's language. Output JSON keys stay English (parser).
+        language: isFr ? 'fr' : 'en',
       },
     });
     if (error) throw new Error(error.message || 'Eden AI call failed');

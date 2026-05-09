@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { AlertCircle, Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
+import { AuthLanguageToggle } from './AuthLanguageToggle';
 
 interface LoginScreenProps {
   onToggle: () => void;
@@ -10,6 +12,8 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
   const { signIn } = useAuth();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,11 +29,15 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
       await signIn(email, password);
     } catch (err: any) {
       if (err.message?.includes('Invalid login credentials') || (err.message?.toLowerCase().includes('invalid') && err.message?.toLowerCase().includes('password'))) {
-        setError('Invalid email or password. If you were invited to a farm and haven\'t set a password yet, use "Forgot password?" below to set one.');
+        setError(isFr
+          ? "Email ou mot de passe incorrect. Si vous avez été invité à une ferme sans avoir défini de mot de passe, utilisez « Mot de passe oublié ? » ci-dessous."
+          : 'Invalid email or password. If you were invited to a farm and haven\'t set a password yet, use "Forgot password?" below to set one.');
       } else if (err.message?.includes('Email not confirmed')) {
-        setError('Please verify your email address before signing in.');
+        setError(isFr
+          ? 'Veuillez vérifier votre adresse email avant de vous connecter.'
+          : 'Please verify your email address before signing in.');
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to sign in');
+        setError(err instanceof Error ? err.message : (isFr ? 'Échec de la connexion' : 'Failed to sign in'));
       }
     } finally {
       setLoading(false);
@@ -37,7 +45,14 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative">
+      {/* Top-right language toggle — visible on every breakpoint so a
+          first-time French user can flip without scrolling. Auto-detect
+          (browser/OS locale → src/lib/i18n.ts) usually picks the right
+          one already; this is the manual override. */}
+      <div className="absolute top-4 right-4 z-20">
+        <AuthLanguageToggle />
+      </div>
       <style>{`
         @keyframes neonFlicker {
           0%, 18%, 22%, 25%, 53%, 57%, 100% {
@@ -76,21 +91,29 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
         <div className="relative space-y-8">
           <div>
             <h2 className="text-4xl font-extrabold text-white leading-tight mb-4 tracking-tight">
-              Run your farm<br />
-              <span style={{ color: '#ffdd00' }}>like a professional</span>
+              {isFr ? <>Gérez votre ferme<br /><span style={{ color: '#ffdd00' }}>comme un professionnel</span></> : <>Run your farm<br /><span style={{ color: '#ffdd00' }}>like a professional</span></>}
             </h2>
             <p className="text-gray-400 text-lg leading-relaxed max-w-sm">
-              Everything you need to manage your farm. Poultry, fish or rabbits. In one app that works even without internet.
+              {isFr
+                ? "Tout ce qu'il faut pour gérer votre ferme. Volailles, poissons ou lapins. Dans une seule application qui fonctionne même sans internet."
+                : 'Everything you need to manage your farm. Poultry, fish or rabbits. In one app that works even without internet.'}
             </p>
           </div>
 
           <ul className="space-y-4">
-            {[
-              'Track flocks, ponds, hutches and expenses',
-              'Eden AI diagnoses health and logs data',
-              'Offline-first, works with no signal',
-              'Weekly email reports, auto-generated',
-            ].map(item => (
+            {(isFr
+              ? [
+                  'Suivez troupeaux, étangs, clapiers et dépenses',
+                  "Eden AI diagnostique la santé et enregistre les données",
+                  'Fonctionne hors-ligne, sans signal',
+                  'Rapports email hebdomadaires, générés automatiquement',
+                ]
+              : [
+                  'Track flocks, ponds, hutches and expenses',
+                  'Eden AI diagnoses health and logs data',
+                  'Offline-first, works with no signal',
+                  'Weekly email reports, auto-generated',
+                ]).map(item => (
               <li key={item} className="flex items-center gap-3 text-sm text-gray-300">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,221,0,0.15)', border: '1px solid rgba(255,221,0,0.3)' }}>
                   <CheckCircle className="w-3 h-3" style={{ color: '#ffdd00' }} />
@@ -103,7 +126,7 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
 
         {/* Bottom */}
         <div className="relative">
-          <p className="text-xs text-gray-600">Trusted by farmers worldwide.</p>
+          <p className="text-xs text-gray-600">{isFr ? 'Adoptée par des éleveurs partout dans le monde.' : 'Trusted by farmers worldwide.'}</p>
         </div>
       </div>
 
