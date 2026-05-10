@@ -23,11 +23,12 @@ function json(data: unknown, status = 200, corsHeaders: Record<string, string>) 
   });
 }
 
-// Plan → USD price map — must match FIXED_PRICES in src/utils/regionalPayment.ts
+// Plan → USD price map — MUST match FIXED_PRICES in src/utils/regionalPayment.ts.
+// USD ladder: $7 / $19 / $49 monthly (Grower / Farm Boss / Industry).
 const PLAN_PRICES_USD: Record<string, Record<string, number>> = {
-  monthly:   { pro: 12,  enterprise: 35,  industry: 89  },
-  quarterly: { pro: 30,  enterprise: 87,  industry: 222 },
-  yearly:    { pro: 108, enterprise: 300, industry: 800 },
+  monthly:   { pro: 7,  enterprise: 19,  industry: 49  },
+  quarterly: { pro: 18, enterprise: 50,  industry: 130 },
+  yearly:    { pro: 60, enterprise: 180, industry: 480 },
 };
 
 // Convert USD to local currency amount in minor units (kobo, pesewas, etc.)

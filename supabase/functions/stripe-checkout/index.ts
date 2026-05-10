@@ -22,19 +22,21 @@ function json(data: unknown, status = 200, h: Record<string, string>) {
   return new Response(JSON.stringify(data), { status, headers: { ...h, "Content-Type": "application/json" } });
 }
 
-// Prices in smallest currency unit (cents for USD, etc.) — must match PricingSection.tsx
+// Prices in smallest currency unit (cents for USD, etc.).
+// Must match FIXED_PRICES in src/utils/regionalPayment.ts exactly.
+// USD ladder: $7 / $19 / $49 monthly. See that file for ratios + sources.
 const PRICES_USD_CENTS: Record<string, Record<string, number>> = {
-  monthly:   { pro: 1200,  enterprise: 3500,  industry: 8900  },
-  quarterly: { pro: 3000,  enterprise: 8700,  industry: 22200 },
-  yearly:    { pro: 10800, enterprise: 30000, industry: 80000 },
+  monthly:   { pro: 700,   enterprise: 1900,  industry: 4900  },
+  quarterly: { pro: 1800,  enterprise: 5000,  industry: 13000 },
+  yearly:    { pro: 6000,  enterprise: 18000, industry: 48000 },
 };
 
 const PRICES_LOCAL: Record<string, Record<string, Record<string, number>>> = {
-  gbp: { monthly: { pro: 999,   enterprise: 2799,  industry: 6999  }, quarterly: { pro: 2499, enterprise: 6999, industry: 17499  }, yearly: { pro: 8999,  enterprise: 23999, industry: 63999 } },
-  eur: { monthly: { pro: 1099,  enterprise: 3299,  industry: 8199  }, quarterly: { pro: 2799, enterprise: 7999, industry: 20499  }, yearly: { pro: 9999,  enterprise: 27499, industry: 73999 } },
-  cad: { monthly: { pro: 1599,  enterprise: 4799,  industry: 11999 }, quarterly: { pro: 3999, enterprise: 11999, industry: 29999 }, yearly: { pro: 14499, enterprise: 40999, industry: 107999 } },
-  aud: { monthly: { pro: 1899,  enterprise: 5499,  industry: 13999 }, quarterly: { pro: 4699, enterprise: 13699, industry: 34999 }, yearly: { pro: 16999, enterprise: 47999, industry: 124999 } },
-  zar: { monthly: { pro: 21999, enterprise: 64999, industry: 162999 }, quarterly: { pro: 54999, enterprise: 161999, industry: 405999 }, yearly: { pro: 199999, enterprise: 549999, industry: 1399999 } },
+  gbp: { monthly: { pro: 599,   enterprise: 1499,  industry: 3999  }, quarterly: { pro: 1499, enterprise: 3999,  industry: 9999   }, yearly: { pro: 5399,  enterprise: 13999, industry: 36999  } },
+  eur: { monthly: { pro: 699,   enterprise: 1799,  industry: 4799  }, quarterly: { pro: 1699, enterprise: 4599,  industry: 11999  }, yearly: { pro: 5999,  enterprise: 15999, industry: 42999  } },
+  cad: { monthly: { pro: 899,   enterprise: 2599,  industry: 6499  }, quarterly: { pro: 2299, enterprise: 6499,  industry: 16999  }, yearly: { pro: 8499,  enterprise: 23999, industry: 62999  } },
+  aud: { monthly: { pro: 1099,  enterprise: 2999,  industry: 7999  }, quarterly: { pro: 2699, enterprise: 7699,  industry: 19999  }, yearly: { pro: 9999,  enterprise: 26999, industry: 72999  } },
+  zar: { monthly: { pro: 13000, enterprise: 38000, industry: 97000 }, quarterly: { pro: 32500, enterprise: 93500, industry: 238000 }, yearly: { pro: 115500, enterprise: 325000, industry: 858000 } },
 };
 
 // plan IDs: 'pro' = Grower, 'enterprise' = Farm Boss, 'industry' = Industry

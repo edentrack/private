@@ -22,9 +22,13 @@ function json(data: unknown, status = 200, h: Record<string, string>) {
   return new Response(JSON.stringify(data), { status, headers: { ...h, "Content-Type": "application/json" } });
 }
 
+// MUST match FIXED_PRICES in src/utils/regionalPayment.ts.
+// USD ladder: $7 / $19 / $49 monthly. Campay (Cameroon) only offers
+// quarterly + yearly at the moment (its mobile-money flow is friction-y
+// for monthly). Numbers are USD; CFA conversion happens at checkout.
 const PLAN_PRICES_USD: Record<string, Record<string, number>> = {
-  quarterly: { pro: 14.99, enterprise: 34.99, industry: 99.99 },
-  yearly:    { pro: 49.99, enterprise: 114.99, industry: 329.99 },
+  quarterly: { pro: 18,  enterprise: 50,  industry: 130 },
+  yearly:    { pro: 60,  enterprise: 180, industry: 480 },
 };
 
 async function getCampayToken(): Promise<string> {
