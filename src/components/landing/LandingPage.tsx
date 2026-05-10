@@ -38,8 +38,8 @@ const PLANS = [
     name: 'Grower',
     icon: <Sprout className="w-5 h-5" />,
     iconBg: 'bg-yellow-100 text-yellow-800',
-    price: 15,
-    priceSub: 'every 3 months',
+    // Price is rendered live by landingPrice() from FIXED_PRICES;
+    // these PLANS rows only carry display copy + feature lists.
     badge: 'Most Popular',
     highlighted: true,
     ctaLabel: 'Start free trial',
@@ -61,8 +61,7 @@ const PLANS = [
     name: 'Farm Boss',
     icon: <Crown className="w-5 h-5" />,
     iconBg: 'bg-amber-100 text-amber-700',
-    price: 33,
-    priceSub: 'every 3 months',
+    // Price is rendered live by landingPrice() from FIXED_PRICES.
     badge: null,
     highlighted: false,
     ctaLabel: 'Subscribe',
@@ -83,8 +82,7 @@ const PLANS = [
     name: 'Industry',
     icon: <Building2 className="w-5 h-5" />,
     iconBg: 'bg-blue-100 text-blue-700',
-    price: 99,
-    priceSub: 'every 3 months',
+    // Price is rendered live by landingPrice() from FIXED_PRICES.
     badge: 'Large Operations',
     highlighted: false,
     ctaLabel: 'Contact us',

@@ -973,6 +973,27 @@ function AppContent() {
     // Check hash directly for auth routes (use state to ensure re-render on change)
     const hash = currentHash || window.location.hash;
     if (hash.includes('#/signup') || hash.includes('#/auth/signup')) {
+      // Native: account creation goes to web. Sign-up forms inside the
+      // app are a fast path to App Store rejection (paywall, pricing,
+      // collection of payment data outside IAP). On native, kick the
+      // user to edentrack.app/#/signup in an in-app browser sheet,
+      // then drop them on the Login screen so when they return after
+      // signing up + paying on the web, they can immediately sign in.
+      if ((window as any).Capacitor?.isNativePlatform?.()) {
+        import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
+          openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+        });
+        return (
+          <LoginScreen
+            onToggle={() => {
+              import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
+                openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+              });
+            }}
+            onForgotPassword={() => navigateToAuth('forgot-password')}
+          />
+        );
+      }
       return <SignUpScreen onToggle={() => navigateToAuth('login')} />;
     }
     if (hash.includes('#/forgot-password') || hash.includes('#/auth/forgot-password')) {
@@ -1011,7 +1032,31 @@ function AppContent() {
       );
     }
     
-    // Show landing page by default when not authenticated
+    // Native shell: skip the marketing landing page entirely and drop
+    // straight into Sign In. The landing page is a paywall + pricing
+    // pitch for new visitors on the web; inside the iOS/Android app,
+    // every user is either an existing customer signing back in or a
+    // brand-new user who'll do the signup flow. Pricing UI inside the
+    // app risks Apple Guideline 3.1 review issues anyway.
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      return (
+        <LoginScreen
+          onToggle={() => {
+            // "Don't have an account? Sign Up" → open the web signup
+            // in an in-app Safari sheet. Account creation + initial
+            // payment happen on edentrack.app; once they're back,
+            // they sign in here. This keeps the App Store reviewer
+            // from seeing a paywall inside the native shell.
+            import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
+              openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+            });
+          }}
+          onForgotPassword={() => navigateToAuth('forgot-password')}
+        />
+      );
+    }
+
+    // Web: show landing page by default when not authenticated
     return <LandingPage />;
   }
 
