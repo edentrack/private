@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Stethoscope, Calendar, User, Pill, AlertCircle, Trash2, Edit2, X, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Stethoscope, Calendar, User, Pill, AlertCircle, Trash2, Edit2, X, Check, ChevronDown, ChevronUp, ScanLine } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -7,6 +7,8 @@ import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { todayLocal } from '../../utils/dateUtils';
+import { Capacitor } from '@capacitor/core';
+import { scanBarcode, tapLight } from '../../lib/capacitorNative';
 
 interface VetLog {
   id: string;
@@ -105,6 +107,66 @@ export function VetLog() {
   };
 
   const closeForm = () => { setShowForm(false); setEditingId(null); };
+
+  /**
+   * Parse a vaccine vial QR/barcode and pre-fill whatever we can.
+   *
+   * Most vaccine vials use GS1 DataMatrix with these AIs:
+   *   (01) GTIN, (10) batch/lot, (17) expiry YYMMDD, (21) serial
+   *
+   * We do a best-effort regex pull. If the scan is just a free-form
+   * string (most common in our markets — local-printed QR codes encode
+   * the batch number directly), we drop it into the notes field with a
+   * "Scanned:" prefix so the farmer can clean it up.
+   */
+  const handleScanVaccine = async () => {
+    if (!Capacitor.isNativePlatform()) {
+      toast.error(isFr ? 'Le scan est disponible uniquement sur mobile' : 'Barcode scanning is mobile-only');
+      return;
+    }
+    const raw = await scanBarcode();
+    if (!raw) {
+      // User cancelled or denied camera. Don't beep — silent return is friendlier.
+      return;
+    }
+    await tapLight();
+
+    // Try to pull a GS1 expiry (17 + YYMMDD) out of the string.
+    const expiryMatch = raw.match(/(?<![\d])17(\d{6})(?![\d])/);
+    let withdrawalDays: string | undefined;
+    if (expiryMatch) {
+      const yy = parseInt(expiryMatch[1].slice(0, 2));
+      const mm = parseInt(expiryMatch[1].slice(2, 4)) - 1;
+      const dd = parseInt(expiryMatch[1].slice(4, 6));
+      const year = 2000 + yy;
+      const expiry = new Date(year, mm, dd);
+      const visit = new Date(form.visit_date);
+      const days = Math.max(0, Math.round((expiry.getTime() - visit.getTime()) / 86400000));
+      // Only suggest a withdrawal if expiry is reasonable (< 5 years out).
+      if (days > 0 && days < 365 * 5) withdrawalDays = String(Math.min(days, 30));
+    }
+
+    // GS1 batch (10) — variable length, runs to end-of-string or to next AI.
+    const batchMatch = raw.match(/(?<![\d])10([A-Z0-9]+?)(?:17\d{6}|21|$)/i);
+    const batch = batchMatch?.[1];
+
+    setForm(prev => ({
+      ...prev,
+      // If medication is empty, dump the scan there so the farmer sees
+      // *something* immediately and knows the scan worked.
+      medication: prev.medication || (batch ? `Batch ${batch}` : raw),
+      // Append scan metadata to notes without clobbering existing notes.
+      notes: prev.notes
+        ? `${prev.notes}\n\n[Scanned] ${raw}`
+        : `[Scanned] ${raw}`,
+      withdrawal_period_days: prev.withdrawal_period_days || withdrawalDays || '',
+    }));
+    toast.success(isFr ? 'Code scanné - vérifiez les champs pré-remplis' : 'Scan captured - verify the pre-filled fields');
+  };
+
+  // Native-only flag drives whether we render the scan button. On web
+  // we hide it entirely (the helper would just toast an error).
+  const isNative = Capacitor.isNativePlatform();
 
   const handleSave = async () => {
     if (!currentFarm?.id || !profile?.id) return;
@@ -248,6 +310,21 @@ export function VetLog() {
                 <input type="text" value={form.diagnosis} onChange={e => setForm(p => ({ ...p, diagnosis: e.target.value }))}
                   placeholder="e.g. Newcastle disease, Coccidiosis" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]" />
               </div>
+
+              {/* Scan QR / barcode on the vaccine vial. We try to pull
+                  the batch number and expiry out of GS1 DataMatrix
+                  encoding, but the raw scan also drops into Notes so
+                  nothing is lost. Mobile-only (camera APIs). */}
+              {isNative && (
+                <button
+                  type="button"
+                  onClick={handleScanVaccine}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 border-2 border-dashed border-[#3D5F42]/30 text-[#3D5F42] rounded-lg text-sm font-semibold hover:bg-[#3D5F42]/5 transition-colors"
+                >
+                  <ScanLine className="w-4 h-4" />
+                  {isFr ? "Scanner le QR code du vaccin" : 'Scan vaccine QR / barcode'}
+                </button>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

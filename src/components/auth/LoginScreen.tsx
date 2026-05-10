@@ -1,9 +1,17 @@
-import { useState } from 'react';
-import { AlertCircle, Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertCircle, Eye, EyeOff, ArrowRight, CheckCircle, Fingerprint, ScanFace } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { AuthLanguageToggle } from './AuthLanguageToggle';
+import {
+  biometricAvailable,
+  biometricUnlock,
+  enableBiometricLogin,
+  disableBiometricLogin,
+  tapSuccess,
+  tapWarning,
+} from '../../lib/capacitorNative';
 
 interface LoginScreenProps {
   onToggle: () => void;
@@ -20,6 +28,28 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Biometric state — driven entirely by what the device tells us. None of
+  // this kicks in on web (the helpers no-op outside Capacitor).
+  const [bioType, setBioType] = useState<'faceId' | 'touchId' | 'fingerprint' | 'multiple' | 'none'>('none');
+  const [bioReady, setBioReady] = useState(false); // device has biometry AND we have saved creds for this device
+  const [showEnablePrompt, setShowEnablePrompt] = useState(false); // post-success "save for next time?" prompt
+  const [pendingCreds, setPendingCreds] = useState<{ email: string; password: string } | null>(null);
+
+  // On mount, ask the OS what biometry is available + whether we already
+  // have a saved login. Both must be true before we surface the unlock
+  // button (otherwise the button does nothing and confuses the user).
+  useEffect(() => {
+    (async () => {
+      const probe = await biometricAvailable();
+      if (!probe.available) return;
+      setBioType(probe.type);
+      // Try a "silent" check: does the keychain have credentials for our
+      // server tag? We can't ask without prompting biometry, so we instead
+      // just optimistically show the button and let the user try.
+      // (Actual auth happens on tap.)
+      setBioReady(true);
+    })();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +57,17 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
     setLoading(true);
     try {
       await signIn(email, password);
+      // Success. If biometry is available on this device AND we don't
+      // already have creds saved (or they're stale), offer to enable.
+      // We can't introspect the keychain without a prompt, so always offer
+      // — re-saving is a no-op if it's the same email/password.
+      if (bioType !== 'none') {
+        await tapSuccess();
+        setPendingCreds({ email, password });
+        setShowEnablePrompt(true);
+      }
     } catch (err: any) {
+      await tapWarning();
       if (err.message?.includes('Invalid login credentials') || (err.message?.toLowerCase().includes('invalid') && err.message?.toLowerCase().includes('password'))) {
         setError(isFr
           ? "Email ou mot de passe incorrect. Si vous avez été invité à une ferme sans avoir défini de mot de passe, utilisez « Mot de passe oublié ? » ci-dessous."
@@ -43,6 +83,64 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
       setLoading(false);
     }
   };
+
+  // Tap the Face ID / fingerprint button. This prompts biometry, pulls
+  // saved creds out of the keychain, and runs the same Supabase password
+  // sign-in we'd run on the manual form. Returning the password here is
+  // safe — the keychain entry is hardware-encrypted and gated by biometry.
+  const handleBiometricUnlock = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const creds = await biometricUnlock();
+      if (!creds) {
+        // User cancelled, biometry failed, or no creds saved. Don't show
+        // a scary error — just silently let them fall through to typing.
+        setLoading(false);
+        return;
+      }
+      await signIn(creds.email, creds.secret);
+      await tapSuccess();
+    } catch (err: any) {
+      await tapWarning();
+      // If the password was rotated server-side, the saved creds are now
+      // stale. Wipe them so the next launch shows the manual form clean,
+      // and surface a helpful message instead of the raw Supabase error.
+      if (err.message?.includes('Invalid login credentials')) {
+        await disableBiometricLogin();
+        setBioReady(false);
+        setError(isFr
+          ? 'Le mot de passe enregistré a expiré. Veuillez vous reconnecter manuellement.'
+          : 'Saved password is out of date. Please sign in manually once.');
+      } else {
+        setError(err instanceof Error ? err.message : (isFr ? 'Échec de la connexion' : 'Failed to sign in'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEnableBiometric = async () => {
+    if (!pendingCreds) { setShowEnablePrompt(false); return; }
+    await enableBiometricLogin(pendingCreds.email, pendingCreds.password);
+    await tapSuccess();
+    setShowEnablePrompt(false);
+    setPendingCreds(null);
+    // Auth context will navigate away on session change anyway.
+  };
+
+  const handleDeclineBiometric = () => {
+    setShowEnablePrompt(false);
+    setPendingCreds(null);
+  };
+
+  // Pick the right icon + label for the device's biometry type.
+  const bioLabel = bioType === 'faceId'
+    ? (isFr ? 'Déverrouiller avec Face ID' : 'Unlock with Face ID')
+    : bioType === 'touchId'
+    ? (isFr ? 'Déverrouiller avec Touch ID' : 'Unlock with Touch ID')
+    : (isFr ? 'Déverrouiller avec empreinte' : 'Unlock with fingerprint');
+  const BioIcon = bioType === 'faceId' ? ScanFace : Fingerprint;
 
   return (
     <div className="min-h-screen flex relative">
@@ -224,6 +322,22 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
                 </>
               )}
             </button>
+
+            {/* Biometric unlock — only renders when the device has Face ID /
+                Touch ID / fingerprint enrolled. We don't gate on whether
+                creds are saved (we can't introspect without prompting), so
+                tapping when no creds are saved just no-ops silently. */}
+            {bioReady && (
+              <button
+                type="button"
+                onClick={handleBiometricUnlock}
+                disabled={loading}
+                className="w-full h-12 flex items-center justify-center gap-2 rounded-xl font-semibold text-sm text-gray-700 border border-gray-200 hover:bg-gray-50 transition-all disabled:opacity-50"
+              >
+                <BioIcon className="w-4 h-4" />
+                {bioLabel}
+              </button>
+            )}
           </form>
 
           <p className="mt-8 text-center text-sm text-gray-400">
@@ -238,6 +352,49 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
           </p>
         </div>
       </div>
+
+      {/* Post-login prompt: "Save credentials for biometric unlock?"
+          Shows once after a successful manual sign-in. The session is
+          already live by the time this renders — choosing skip just
+          means the user types the password again next time. */}
+      {showEnablePrompt && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full sm:max-w-sm p-6 space-y-4">
+            <div className="flex justify-center">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,221,0,0.15)' }}>
+                <BioIcon className="w-7 h-7" style={{ color: '#d97706' }} />
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center">
+              {bioType === 'faceId'
+                ? (isFr ? 'Activer Face ID ?' : 'Enable Face ID?')
+                : bioType === 'touchId'
+                ? (isFr ? 'Activer Touch ID ?' : 'Enable Touch ID?')
+                : (isFr ? 'Activer la connexion par empreinte ?' : 'Enable fingerprint sign-in?')}
+            </h3>
+            <p className="text-sm text-gray-600 text-center leading-relaxed">
+              {isFr
+                ? 'Connectez-vous plus rapidement la prochaine fois sans saisir votre mot de passe. Vos identifiants sont stockés dans le trousseau sécurisé de votre appareil.'
+                : 'Sign in faster next time without typing your password. Credentials are stored in your device\'s secure keychain.'}
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleDeclineBiometric}
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                {isFr ? 'Pas maintenant' : 'Not now'}
+              </button>
+              <button
+                onClick={handleEnableBiometric}
+                className="flex-1 h-11 rounded-xl text-sm font-bold text-gray-900 transition-all hover:brightness-105"
+                style={{ background: '#ffdd00' }}
+              >
+                {isFr ? 'Activer' : 'Enable'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
