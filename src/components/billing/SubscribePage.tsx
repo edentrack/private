@@ -385,6 +385,54 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
     );
   }
 
+  // ─── iOS / Android native: hide payment UI ──────────────────────────────
+  // Apple's App Store guidelines around in-app payment are strict for
+  // anything that even resembles a digital subscription. To keep the
+  // first review clean (and avoid Guideline 3.1.1 / 3.1.3 rejections),
+  // we don't show pricing, payment buttons, or plan-comparison tables
+  // inside the native shell at all. Users tap "Upgrade" anywhere in
+  // the app and land on this screen, which just tells them to manage
+  // their plan on edentrack.app and offers a button that opens the
+  // billing page in an in-app Safari sheet.
+  //
+  // The web build at edentrack.app keeps the full pricing + checkout
+  // flow exactly as it was. We only gate this on native.
+  if (Capacitor.isNativePlatform()) {
+    return (
+      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 shadow-lg max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Crown className="w-8 h-8 text-amber-700" />
+          </div>
+          <h1 className="text-xl font-bold text-agri-brown-900 mb-2">
+            Manage your plan on edentrack.app
+          </h1>
+          <p className="text-sm text-agri-brown-500 mb-6 leading-relaxed">
+            To change your plan or update payment, visit Edentrack on the web. Your changes sync back to this app within a minute.
+          </p>
+          <button
+            type="button"
+            onClick={() => openInAppBrowser('https://edentrack.app/#/subscribe', { fullscreen: true })}
+            className="w-full bg-[#3D5F42] text-white py-3 rounded-2xl font-semibold hover:bg-[#2F4A34] transition-colors mb-3 flex items-center justify-center gap-2"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Open Edentrack on the web
+          </button>
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-full text-agri-brown-500 py-3 rounded-2xl font-semibold hover:bg-agri-brown-50 transition-colors"
+          >
+            Back
+          </button>
+          <p className="text-[11px] text-agri-brown-400 mt-6 leading-relaxed">
+            Your current plan: <span className="font-semibold text-agri-brown-700 capitalize">{profile?.subscription_tier || 'Free'}</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F0E8] p-4 pb-12">
 
