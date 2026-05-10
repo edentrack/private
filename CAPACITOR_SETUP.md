@@ -354,32 +354,34 @@ The Capacitor wrapper is purely additive.
 
 ---
 
-## Signing on a Personal Team while Apple Developer is processing
+## Signing checklist (paid Apple Developer team)
 
-If you've paid for Apple Developer Program but Xcode still shows you as "(Personal Team)", that's because Xcode hasn't picked up the new paid team yet. The `app.entitlements` file in this repo currently has Push Notifications and Associated Domains commented out so the Personal Team can sign the build for on-device development. You can run on a real iPhone today and re-enable the two capabilities once the paid team appears.
+Once your paid team appears in Xcode → Signing & Capabilities → Team dropdown (no "Personal Team" suffix), the app needs three things to sign cleanly:
 
-### Why this happens
+1. The `App.entitlements` file declares the capabilities (it does — Push + Associated Domains are in there)
+2. The App ID on developer.apple.com has those same capabilities enabled
+3. Xcode generates a provisioning profile that includes them
 
-Apple's payment confirmation email arrives within seconds, but the team can take 24–48 hours to provision in their backend. Xcode reads team membership from that backend, so until Apple flips the bit, Xcode keeps treating you as Personal regardless of what your inbox says.
+Xcode's "Automatically manage signing" tries to do steps 2 and 3 for you. When it fails with errors like "The capability associated with 'ASSOCIATED_DOMAINS' could not be determined" or "No profiles for 'app.edentrack' were found", it usually means step 2 didn't happen automatically and you need to toggle the App ID capabilities manually.
 
-### How to make the paid team appear in Xcode
+### Manually configure the App ID on developer.apple.com
 
-Try these in order:
+1. Go to https://developer.apple.com/account/resources/identifiers/list
+2. If `app.edentrack` is not in the list, click **+** to register it. Set Description = "Edentrack", Bundle ID = Explicit = `app.edentrack`, then under Capabilities check **Push Notifications** and **Associated Domains**, save
+3. If it is in the list, click it and check both capabilities are enabled (the boxes on the right)
+4. Save the changes
+5. Back in Xcode → Signing & Capabilities → click **Try Again**
 
-1. **Xcode → Settings → Accounts** → click your Apple ID → click **Download Manual Profiles**. This forces a refresh.
-2. **Sign out and back in** on the same screen if step 1 doesn't surface the new team.
-3. **developer.apple.com → Account → Agreements** — Apple sometimes adds a new License Agreement after payment that you must explicitly accept before the team activates.
-4. **Wait 24–48h** if none of the above surfaces it. Apple's docs confirm this is normal.
+### Refreshing Xcode if the team dropdown still shows Personal
 
-### How to restore Push Notifications + Universal Links once the paid team appears
+If your paid membership processed but Xcode hasn't picked it up:
 
-1. Open Xcode → click the App target (top of the file tree, blue icon) → **Signing & Capabilities**
-2. Switch the **Team** dropdown from "(Personal Team)" to your paid team
-3. Open `ios/App/App/App.entitlements` and uncomment the two `<key>` blocks (delete the wrapping `<!--` and `-->`)
-4. Back in Xcode → Signing & Capabilities → click **+ Capability** twice and re-add **Push Notifications** and **Associated Domains**
-5. Build and run — the "Cannot create provisioning profile" error clears
+1. **Xcode → Settings → Accounts** → click your Apple ID → click **Download Manual Profiles**
+2. If that doesn't help, sign out and back in on the same screen
+3. **developer.apple.com → Account → Agreements** — accept any pending License Agreement (Apple sometimes adds one post-payment that silently blocks team activation)
+4. Quit and relaunch Xcode (it caches team membership for the session)
 
-The app's push and Universal Links code paths are guarded so they silently no-op when entitlements are missing. Nothing else breaks while you're on Personal Team.
+Apple's payment-to-team-active lag is sometimes 24–48h even after the receipt email arrives, so a wait may be unavoidable.
 
 ---
 
