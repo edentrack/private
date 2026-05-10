@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		aps-environment: required for push notifications.
+		Set to "development" while building locally; Apple flips
+		this to "production" automatically for App Store builds.
+		Without this entry, registerForRemoteNotifications() returns
+		an error on iOS and no APNs token is generated.
+	-->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!--
+		Universal Links — let invite URLs like
+		https://edentrack.app/#/join/{farmId}/{secret} open the app
+		instead of Safari. Requires a matching apple-app-site-
+		association file at https://edentrack.app/.well-known/.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:edentrack.app</string>
+	</array>
+</dict>
+</plist>

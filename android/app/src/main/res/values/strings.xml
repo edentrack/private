@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Edentrack</string>
+    <string name="title_activity_main">Edentrack</string>
+    <string name="package_name">app.edentrack</string>
+    <string name="custom_url_scheme">app.edentrack</string>
+</resources>
