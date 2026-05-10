@@ -354,6 +354,68 @@ The Capacitor wrapper is purely additive.
 
 ---
 
+## Bonus features — biometric login, barcode scanner, live updates
+
+These three are additive and DON'T need paid Apple Developer to develop locally — they're community plugins / third-party services that ride on top of Capacitor. They're already wired up in this repo.
+
+### 1. Biometric login (Face ID / Touch ID / Android fingerprint)
+
+Plugin: `@capgo/capacitor-native-biometric`
+
+Why we want it: farmers re-open Edentrack a dozen times a day. Typing the password every time is painful, especially with gloves on. Biometrics let us cache the Supabase refresh token in the device keychain and unlock it with a glance.
+
+Helpers in `src/lib/capacitorNative.ts`:
+
+- `biometricAvailable()` — does this device have Face ID / Touch ID enrolled?
+- `enableBiometricLogin(email, refreshToken)` — call once after a normal email+password sign-in, when the user opts in to biometric unlock
+- `biometricUnlock()` — prompts Face ID; on success returns `{ email, secret }` to feed into `supabase.auth.setSession({ refresh_token: secret })`
+- `disableBiometricLogin()` — clear the keychain entry on logout
+
+iOS needs `NSFaceIDUsageDescription` in `Info.plist` (already added). Android needs nothing extra — biometric prompt is built in.
+
+To wire it into the UI: after a successful login, show a one-time "Unlock with Face ID next time?" prompt. If accepted, call `enableBiometricLogin`. On the login screen, if `biometricAvailable().available` is true and `isCredentialsSaved` returns true, show a Face ID button that calls `biometricUnlock`.
+
+### 2. Barcode / QR scanner
+
+Plugin: `@capacitor-mlkit/barcode-scanning` (Google ML Kit)
+
+Use cases on the farm:
+
+- Scan vaccine vial QR codes to auto-fill batch number + expiry on the vet log
+- Scan feed bag barcodes to log incoming inventory in one tap
+- Scan a buyer's join-link QR to add them as a marketplace contact
+- Scan an invite QR to join a co-op farm without typing the link
+
+Helper in `src/lib/capacitorNative.ts`:
+
+- `scanBarcode()` — opens camera full-screen, returns the first decoded value as a string, or `null` if the user cancels
+
+The first time it runs on Android, ML Kit downloads a small model (~3 MB) automatically. Camera permission is already in `AndroidManifest.xml` and `Info.plist`. No paid Apple Developer needed.
+
+### 3. Live updates (OTA JS bundle pushes)
+
+Plugin: `@capgo/capacitor-updater`
+
+Why we want it: the App Store review queue is 1–7 days. We ship features constantly, so waiting a week for a copy fix is not workable. Live Updates let us push a new JS bundle to all installed apps within minutes — they download in the background and apply on the next cold start. Apple permits this as long as the change is JS-only (no new native plugins, no behavioral changes that bypass review). See section 3.3.2 of the Apple Developer Program License Agreement.
+
+What's wired up:
+
+- `capacitor.config.ts` has the `CapacitorUpdater` plugin block configured
+- `src/main.tsx` calls `CapacitorUpdater.notifyAppReady()` on launch — without this, the plugin auto-rolls back to the previous bundle if the new one crashes before reaching it (10s timeout)
+
+What you still need to do (👤 you, after Apple Developer membership processes):
+
+1. Create a Capgo account: https://capgo.app — free for the first 1,000 monthly active users, then ~$15/month
+2. Run `npx @capgo/cli init` in the repo — it generates an API key, adds it to `capacitor.config.ts`, and creates a `production` channel
+3. To ship a JS update: `npm run build && npx @capgo/cli bundle upload --channel=production`
+4. All installed apps pick it up on next launch
+
+Alternative: Ionic Appflow ($499/month), more polished but pricier. Capgo is fine for our scale.
+
+**Important boundary:** Live updates can only ship JS / CSS / asset changes. If you ever need to add a new Capacitor plugin (e.g. add Bluetooth scanning), that requires native code changes which still need a real App Store / Play Store update. Plan accordingly.
+
+---
+
 ## Order of operations summary
 
 1. 🤖 Code is ready (this PR)

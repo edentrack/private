@@ -66,6 +66,29 @@ const config: CapacitorConfig = {
       style: 'DARK',
       backgroundColor: '#ffdd00',
     },
+    /**
+     * Live updates (Capgo). Lets us ship JS-only fixes (bug fixes, copy
+     * tweaks, new features that don't need a new native plugin) without
+     * waiting 1–7 days for App Store review. Capgo downloads the new
+     * bundle in the background; on the next cold start it boots into
+     * the new bundle. If main.tsx never calls `notifyAppReady()` (e.g.
+     * the new bundle crashes), the plugin auto-rolls back.
+     *
+     * autoUpdate stays true so updates ship silently. Add channel +
+     * statsUrl etc. once you create a Capgo account at https://capgo.app
+     * and run `npx @capgo/cli init`. Until then this just stays inert
+     * and the local bundle (shipped in the .ipa / .apk) is always used.
+     */
+    CapacitorUpdater: {
+      autoUpdate: true,
+      // Apple-friendly defaults: no UI flashes, no forced reload mid-session.
+      directUpdate: false,
+      resetWhenUpdate: true,
+      autoSplashscreen: false,
+      // Tells the plugin: if the new bundle hasn't called notifyAppReady
+      // within this window, treat it as broken and roll back.
+      appReadyTimeout: 10_000,
+    },
   },
 
   /**

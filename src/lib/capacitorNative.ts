@@ -23,6 +23,8 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Dialog } from '@capacitor/dialog';
 import { Browser } from '@capacitor/browser';
 import { Device } from '@capacitor/device';
+import { NativeBiometric, BiometryType } from '@capgo/capacitor-native-biometric';
+import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 
 const native = () => Capacitor.isNativePlatform();
 
@@ -345,5 +347,146 @@ export async function getDeviceInfo(): Promise<{
     };
   } catch {
     return { platform: 'web', model: 'unknown', osVersion: 'unknown', manufacturer: 'unknown' };
+  }
+}
+
+/* -------------------------------------------------------------------------
+ * Biometric login — Face ID / Touch ID / Android fingerprint
+ *
+ * Why we want it: farmers re-open Edentrack many times a day. Typing the
+ * Supabase email + password every cold-start is painful, especially with
+ * gloves on. Biometrics let us cache the password in the OS keychain and
+ * unlock it with a glance / fingerprint.
+ *
+ * Security model:
+ *   1. User signs in normally with email+password (Supabase magic link or
+ *      password). On success we call enableBiometricLogin().
+ *   2. We store the *Supabase refresh token* (not the password) in the
+ *      device keychain, gated behind biometry. Even if the phone is
+ *      stolen and unlocked, an attacker can't read it without Face ID.
+ *   3. On next cold-start the app calls biometricUnlock(). If the user
+ *      authenticates, we fetch the refresh token and hand it to Supabase
+ *      to start a fresh session.
+ *
+ * Works on free Apple ID — no special entitlement needed beyond the
+ * NSFaceIDUsageDescription string in Info.plist.
+ * ----------------------------------------------------------------------- */
+
+const BIOMETRIC_SERVER = 'app.edentrack.session';
+
+/** Probe whether the device has biometrics enrolled. */
+export async function biometricAvailable(): Promise<{
+  available: boolean;
+  type: 'faceId' | 'touchId' | 'fingerprint' | 'multiple' | 'none';
+}> {
+  if (!native()) return { available: false, type: 'none' };
+  try {
+    const res = await NativeBiometric.isAvailable({ useFallback: false });
+    let type: 'faceId' | 'touchId' | 'fingerprint' | 'multiple' | 'none' = 'none';
+    if (res.biometryType === BiometryType.FACE_ID || res.biometryType === BiometryType.FACE_AUTHENTICATION) type = 'faceId';
+    else if (res.biometryType === BiometryType.TOUCH_ID) type = 'touchId';
+    else if (res.biometryType === BiometryType.FINGERPRINT) type = 'fingerprint';
+    else if (res.biometryType === BiometryType.MULTIPLE) type = 'multiple';
+    return { available: res.isAvailable, type };
+  } catch {
+    return { available: false, type: 'none' };
+  }
+}
+
+/**
+ * Save the user's session token behind biometry. Call once after a fresh
+ * email+password login if the user opts in to biometric unlock.
+ *
+ * Pass the Supabase refresh token as `secret`. We never store passwords.
+ */
+export async function enableBiometricLogin(userEmail: string, secret: string): Promise<boolean> {
+  if (!native()) return false;
+  try {
+    await NativeBiometric.setCredentials({
+      username: userEmail,
+      password: secret,
+      server: BIOMETRIC_SERVER,
+    });
+    return true;
+  } catch (err) {
+    console.warn('[CapacitorNative] enableBiometricLogin failed:', err);
+    return false;
+  }
+}
+
+/**
+ * Prompt for biometry. On success returns the cached email + refresh token
+ * which the caller hands to supabase.auth.setSession(). Returns null if
+ * the user cancelled or biometry failed.
+ */
+export async function biometricUnlock(): Promise<{ email: string; secret: string } | null> {
+  if (!native()) return null;
+  try {
+    const saved = await NativeBiometric.isCredentialsSaved({ server: BIOMETRIC_SERVER });
+    if (!saved.isSaved) return null;
+    await NativeBiometric.verifyIdentity({
+      reason: 'Unlock Edentrack',
+      title: 'Unlock Edentrack',
+      subtitle: 'Use Face ID or your fingerprint to sign in',
+      negativeButtonText: 'Cancel',
+    });
+    const creds = await NativeBiometric.getCredentials({ server: BIOMETRIC_SERVER });
+    return { email: creds.username, secret: creds.password };
+  } catch {
+    return null;
+  }
+}
+
+/** Clear stored biometric credentials (e.g. on logout). */
+export async function disableBiometricLogin(): Promise<void> {
+  if (!native()) return;
+  try {
+    await NativeBiometric.deleteCredentials({ server: BIOMETRIC_SERVER });
+  } catch {}
+}
+
+/* -------------------------------------------------------------------------
+ * Barcode / QR scanner
+ *
+ * Use cases on the farm:
+ *   - Scan vaccine vial QR codes to auto-fill batch number + expiry
+ *   - Scan feed bag barcodes to log incoming inventory
+ *   - Scan a buyer's join-link QR to add them as a marketplace contact
+ *   - Scan an invite QR to join a co-op farm without typing the URL
+ *
+ * Uses Google ML Kit on Android and iOS. The first time it's called on
+ * Android, ML Kit may need to download a small model (~3MB) — that's
+ * handled transparently by the plugin.
+ * ----------------------------------------------------------------------- */
+
+/**
+ * Open the camera scanner full-screen and resolve with the first barcode
+ * detected, or null if the user closes the scanner / denies camera.
+ *
+ * Returns the *raw value* of the barcode (a string). For QR codes that's
+ * the encoded URL or text. For a UPC-A feed bag it's the 12-digit number.
+ */
+export async function scanBarcode(): Promise<string | null> {
+  if (!native()) {
+    // Web fallback: there's no good universal browser barcode API yet.
+    // Caller should show a "barcode scanning is mobile-only" hint.
+    return null;
+  }
+  try {
+    const supported = await BarcodeScanner.isSupported();
+    if (!supported.supported) return null;
+
+    const perm = await BarcodeScanner.checkPermissions();
+    if (perm.camera !== 'granted' && perm.camera !== 'limited') {
+      const req = await BarcodeScanner.requestPermissions();
+      if (req.camera !== 'granted' && req.camera !== 'limited') return null;
+    }
+
+    const result = await BarcodeScanner.scan();
+    if (!result.barcodes.length) return null;
+    return result.barcodes[0].rawValue ?? null;
+  } catch (err) {
+    console.warn('[CapacitorNative] scanBarcode failed:', err);
+    return null;
   }
 }
