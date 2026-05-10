@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CAPACITOR_DEBUG</key>
+	<string>$(CAPACITOR_DEBUG)</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+        <string>Edentrack</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	<!--
+		Permission usage strings.
+
+		Apple REQUIRES a human-readable explanation for every privacy-
+		sensitive API the app touches. Without these strings the App
+		Store reviewer rejects the build, AND iOS itself crashes the
+		app the moment the API is called. Each string shows up in the
+		permission prompt the user sees the first time the feature is
+		used. Keep them clear and farmer-friendly.
+	-->
+	<key>NSCameraUsageDescription</key>
+	<string>Edentrack uses the camera so you can take photos of sick fish, droppings, water samples, and weight checks for Eden AI to diagnose.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Edentrack accesses your photo library to upload existing farm photos for Eden AI analysis and record-keeping.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Edentrack saves farm photos and reports to your photo library so you can share them outside the app.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Edentrack uses your location to set your farm's coordinates for weather forecasts, supplier delivery estimates, and connecting with nearby farmers.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Edentrack uses the microphone for Eden AI voice logging so you can record mortality, feed and observations hands-free.</string>
+	<!--
+		Background modes the app needs.
+		- remote-notification: receive silent push that updates data
+		  without showing a banner (e.g. real-time mortality spike sync)
+		- fetch: occasional background refresh so dashboards are warm
+		  when the user opens the app
+	-->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+	<!--
+		Universal Links: when a French farmer taps an
+		https://edentrack.app/#/join/{farmId}/{secret} invite link, iOS
+		opens the Edentrack app instead of Safari. The /.well-known/
+		apple-app-site-association file on edentrack.app maps the
+		domain to this app's team ID + bundle ID. Without these
+		entries the link would still work but Safari would handle it.
+	-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
+</dict>
+</plist>
