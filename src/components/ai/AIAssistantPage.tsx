@@ -69,6 +69,15 @@ interface LogAction {
   unit?: string;
   purchase_date?: string;
   paid_from_profit?: boolean;
+  // Medication-specific add-ons. When inventory_category='Medication',
+  // the executor also creates a vet_logs row so the medication shows up
+  // in withdrawal-period tracking. The fields below let the AI pass
+  // through optional veterinary context the farmer mentioned (vet name,
+  // dosage, withdrawal). Missing fields fall back to sensible defaults.
+  vet_name?: string;
+  dosage?: string;
+  withdrawal_period_days?: number;
+  diagnosis?: string;
   // Weight
   avg_weight_kg?: number;
   sample_size?: number;
@@ -744,6 +753,30 @@ export function AIAssistantPage() {
         } else {
           await supabase.from('other_inventory').insert({ farm_id: farmId, item_name: logAction.item_name, category: invCat, quantity: logAction.quantity || 1, unit: logAction.unit || 'units' });
         }
+      }
+
+      // When the purchase is a medication, also drop a row into vet_logs
+      // so the medication shows up in withdrawal-period tracking on the
+      // Vet Log page. We do this last so a vet_logs RLS hiccup doesn't
+      // poison the expense+inventory chain that already succeeded.
+      // The farmer can edit/delete the auto-created entry from the Vet
+      // Log page if Eden got something wrong.
+      if (invCat === 'Medication') {
+        const vetPayload = {
+          farm_id: farmId,
+          flock_id: flock?.id || null,
+          visit_date: purchaseDate,
+          vet_name: logAction.vet_name || null,
+          diagnosis: logAction.diagnosis || null,
+          medication: logAction.item_name || null,
+          dosage: logAction.dosage || null,
+          withdrawal_period_days: typeof logAction.withdrawal_period_days === 'number' ? logAction.withdrawal_period_days : null,
+          notes: `[Auto-logged by Eden from purchase ${logAction.amount} ${currency}]`,
+          created_by: user?.id || null,
+          updated_at: new Date().toISOString(),
+        };
+        const { error: vetErr } = await supabase.from('vet_logs').insert(vetPayload);
+        if (vetErr) console.warn('[Eden LOG_PURCHASE] Vet log not created:', vetErr);
       }
 
     } else if (logAction.type === 'LOG_EXPENSE') {

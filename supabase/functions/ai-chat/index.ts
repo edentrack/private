@@ -738,7 +738,7 @@ expense: { type: "LOG_EXPENSE", category: string, amount: number, description: s
 - Map fuel/power/utilities expenses → 'other'; map chick purchases/transport to their exact category names
 - Use for labour, fuel/utilities (map to 'other'), transport, and other non-inventory expenses only
 
-purchase: { type: "LOG_PURCHASE", item_name: string, inventory_category: "feed"|"Medication"|"Equipment"|"Supplies", quantity: number, unit: string, amount: number, description: string, currency: string, purchase_date: string, paid_from_profit: boolean, flock_name?: string }
+purchase: { type: "LOG_PURCHASE", item_name: string, inventory_category: "feed"|"Medication"|"Equipment"|"Supplies", quantity: number, unit: string, amount: number, description: string, currency: string, purchase_date: string, paid_from_profit: boolean, flock_name?: string, vet_name?: string, dosage?: string, withdrawal_period_days?: number, diagnosis?: string }
 - Use when farmer mentions BUYING or PURCHASING physical items that go into inventory
 - inventory_category determines where the card appears in inventory:
   - "Equipment" → Equipment tab (REUSABLE. Not tracked daily, not on dashboard widget). Examples: machete, drinker, feeder, heater, tarpaulin, thermometer, sprayer, camera, generator
@@ -749,9 +749,16 @@ purchase: { type: "LOG_PURCHASE", item_name: string, inventory_category: "feed"|
 - Always create a card in inventory AND log the expense in one action
 - purchase_date: ISO date string "YYYY-MM-DD". If not mentioned by farmer, ASK before generating [LOG]
 - paid_from_profit: true if farmer paid using money earned from farm sales/revenue, false if it was external/fresh cash. ALWAYS ASK THIS before generating [LOG]. This is critical for financial tracking
+- **MEDICATION RULE:** When inventory_category is "Medication", the system also creates a Vet Log entry automatically (so withdrawal periods are tracked). If the farmer mentions any of these, INCLUDE THEM in the LOG block:
+  - vet_name: name of the vet who prescribed/administered (string)
+  - dosage: e.g. "1ml/L water for 5 days" (string)
+  - withdrawal_period_days: days before animals can be sold (number, usually 7-21 for poultry)
+  - diagnosis: what was being treated, e.g. "Newcastle disease" (string)
+  If the farmer didn't mention these, leave them out — don't guess.
 - **REQUIRED: Before generating a [LOG] block for a purchase, ask TWO questions in one message if not already answered:**
   1. "When was this purchased?" (if date not clear)
   2. "Was this paid from your farm revenue, or from external/fresh cash?" (always ask this. It tracks cash flow)
+  Plus, if it's a Medication purchase: also ask the withdrawal period if not stated, since this protects food safety.
 
 weight: { type: "LOG_WEIGHT", flock_name: string, avg_weight_kg: number, sample_size?: number, log_date?: string }
 - If user specifies a date, include log_date: "YYYY-MM-DD" in the LOG block

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, DollarSign, Calendar, Edit2, Trash2, Zap, Download, ChevronDown, MessageCircle } from 'lucide-react';
+import { Plus, DollarSign, Calendar, Edit2, Trash2, Zap, Download, ChevronDown, MessageCircle, ScanLine, Stethoscope } from 'lucide-react';
 import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
@@ -17,6 +17,8 @@ import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { parseLocalDate, formatLocalDate, todayLocalISO } from '../../utils/dateUtils';
+import { Capacitor } from '@capacitor/core';
+import { scanBarcode, tapLight } from '../../lib/capacitorNative';
 // jsPDF + jspdf-autotable are pulled in dynamically inside handleExport so
 // that 'pdf' chunk doesn't load on every Expenses page visit. See Phase 3
 // of CLAUDE_CODE_AUTONOMOUS_ROADMAP.md.
@@ -73,7 +75,7 @@ const getCategoryEmoji = (cat: string, species: SpeciesId = 'poultry'): string =
 
 export function ExpenseTracking() {
   const { t } = useTranslation();
-  const { user, currentFarm, currentRole } = useAuth();
+  const { user, profile, currentFarm, currentRole } = useAuth();
   const { language } = useLanguage();
   const isFr = language === 'fr';
   const { tryWrite, isNetworkError } = useOfflineWrite();
@@ -103,6 +105,14 @@ export function ExpenseTracking() {
   const [inventoryUnit, setInventoryUnit] = useState('bags');
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
+  // Scan + medication-as-vet-log state. The vet-log toggle is auto-on
+  // whenever category=medication so the farmer doesn't have to remember
+  // to check it (the most common case is "I bought wormer; it should
+  // also show in my vet records").
+  const [scannedRef, setScannedRef] = useState<string | null>(null);
+  const [logAsVetVisit, setLogAsVetVisit] = useState(false);
+  const [withdrawalDays, setWithdrawalDays] = useState('');
+  const isNative = Capacitor.isNativePlatform();
 
   const [showTaskSuggestion, setShowTaskSuggestion] = useState(false);
   const [newInventoryItem, setNewInventoryItem] = useState<{
@@ -321,6 +331,52 @@ export function ExpenseTracking() {
     }
   }, [currentFarm]);
 
+  // Auto-default the "log as vet visit" checkbox whenever category swaps
+  // to medication. We only set it ON the transition into medication so a
+  // farmer who deliberately unchecks the box stays unchecked even if
+  // they tab away and back. Same idea for inventory link → 'other'.
+  useEffect(() => {
+    if (category === 'medication') {
+      setLogAsVetVisit(true);
+      // Soft-default the inventory link to "other" + Medication
+      // sub-category so the farmer doesn't have to flip three switches
+      // every time. They can still turn it off.
+      if (!inventoryEnabled) {
+        setInventoryEnabled(true);
+        setInventoryType('other');
+        setNewItemCategory('Medication');
+        setInventoryUnit('units');
+      }
+    } else {
+      setLogAsVetVisit(false);
+    }
+    // We deliberately don't depend on inventoryEnabled here — touching
+    // it causes a re-trigger loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
+  /**
+   * Open the camera scanner and pre-fill description + new-item-name.
+   * Same heuristic as elsewhere: 8–14 digits = barcode (treat as ref),
+   * otherwise treat the QR/string as a brand name.
+   */
+  const handleScan = async () => {
+    if (!isNative) return;
+    setError('');
+    const raw = await scanBarcode();
+    if (!raw) return;
+    await tapLight();
+    setScannedRef(raw);
+    if (!description) {
+      const isNumeric = /^\d{8,14}$/.test(raw);
+      setDescription(isNumeric ? `Purchase ref ${raw.slice(-6)}` : raw);
+    }
+    if (inventoryEnabled && !newItemName) {
+      const isNumeric = /^\d{8,14}$/.test(raw);
+      setNewItemName(isNumeric ? `Item ${raw.slice(-6)}` : raw);
+    }
+  };
+
   const handleAdd = async () => {
     if (!amount || !selectedExpenseFlock || !description) {
       setError('Please fill in all required fields');
@@ -473,9 +529,53 @@ export function ExpenseTracking() {
         }
       }
 
-      const activityMessage = inventoryEnabled && inventoryType !== 'none'
-        ? `Added ${category} expense of ${amountNum} ${currency} and updated inventory (${quantityNum} ${inventoryUnit})`
-        : `Added ${category} expense of ${amountNum} ${currency}`;
+      // Medication purchases also get a corresponding vet-log row so the
+      // medication shows up in the Vet Log page's withdrawal-tracking UI.
+      // Best-effort: if the insert fails (e.g. RLS edge case) we still
+      // succeed on the expense itself — the warning surfaces in console
+      // rather than killing the save.
+      let vetLogCreated = false;
+      if (category === 'medication' && logAsVetVisit && profile?.id) {
+        const medName = inventoryEnabled && newItemName
+          ? newItemName.trim()
+          : description;
+        const wd = withdrawalDays ? parseInt(withdrawalDays) : null;
+        const vetPayload = {
+          farm_id: currentFarm!.id,
+          flock_id: selectedExpenseFlock || null,
+          visit_date: date,
+          vet_name: null,
+          diagnosis: null,
+          medication: medName || description,
+          dosage: null,
+          withdrawal_period_days: wd && !isNaN(wd) ? wd : null,
+          notes: `[Auto-logged from expense ${amountNum} ${currency}]${scannedRef ? ` ref:${scannedRef}` : ''}`,
+          created_by: profile.id,
+          updated_at: new Date().toISOString(),
+        };
+        const { error: vetErr } = await supabase.from('vet_logs').insert(vetPayload);
+        if (vetErr) {
+          if (isNetworkError(vetErr)) {
+            await tryWrite('vet_logs', 'insert', vetPayload);
+            vetLogCreated = true;
+          } else {
+            console.warn('[ExpenseTracking] Vet log not created:', vetErr);
+          }
+        } else {
+          vetLogCreated = true;
+        }
+      }
+
+      const activityParts: string[] = [`Added ${category} expense of ${amountNum} ${currency}`];
+      if (inventoryEnabled && inventoryType !== 'none') {
+        activityParts.push(`updated inventory (${quantityNum} ${inventoryUnit})`);
+      }
+      if (vetLogCreated) {
+        activityParts.push('created vet log entry');
+      }
+      const activityMessage = activityParts.length > 1
+        ? `${activityParts[0]} and ${activityParts.slice(1).join(' + ')}`
+        : activityParts[0];
 
       const { error: activityError } = await supabase.from('activity_logs').insert({
         user_id: user!.id,
@@ -506,6 +606,9 @@ export function ExpenseTracking() {
       setNewItemName('');
       setNewItemCategory('');
       setPaidFromProfit(false);
+      setScannedRef(null);
+      setLogAsVetVisit(false);
+      setWithdrawalDays('');
       setShowAddForm(false);
       await loadExpenses();
       await loadTotalExpenses();
@@ -1110,6 +1213,26 @@ export function ExpenseTracking() {
           )}
 
           <form onSubmit={(e) => { e.preventDefault(); handleAdd(); }} className="space-y-3">
+            {/* Scan barcode at the very top — pre-fills description and,
+                when inventory linking is on, the new-item-name field too.
+                Mobile-only: hidden in the browser since we don't have a
+                stable cross-browser camera-barcode API. */}
+            {isNative && (
+              <button
+                type="button"
+                onClick={handleScan}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed border-blue-300 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-50 transition-colors"
+              >
+                <ScanLine className="w-4 h-4" />
+                {isFr ? 'Scanner le code-barres / QR' : 'Scan barcode / QR'}
+              </button>
+            )}
+            {scannedRef && (
+              <div className="text-[10px] text-gray-500 bg-gray-50 rounded px-2 py-1">
+                {isFr ? 'Code scanné' : 'Scanned'}: <span className="font-mono">{scannedRef}</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -1223,6 +1346,54 @@ export function ExpenseTracking() {
               newItemCategory={newItemCategory}
               onNewItemCategoryChange={setNewItemCategory}
             />
+
+            {/* Auto-vet-log section — only visible for medication. The
+                checkbox is auto-checked when category flips to medication
+                so the farmer doesn't have to remember to enable it.
+                Saves to vet_logs in the same handler as the expense. */}
+            {category === 'medication' && (
+              <div className="border-2 border-green-200 bg-green-50/50 rounded-lg p-3 space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={logAsVetVisit}
+                    onChange={(e) => setLogAsVetVisit(e.target.checked)}
+                    className="mt-0.5 w-4 h-4"
+                  />
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
+                      <Stethoscope className="w-3.5 h-3.5 text-green-700" />
+                      {isFr ? 'Aussi enregistrer dans le journal vétérinaire' : 'Also log in veterinary records'}
+                    </div>
+                    <div className="text-[10px] text-gray-600 mt-0.5">
+                      {isFr
+                        ? 'Crée une entrée dans le Journal Vétérinaire pour suivre les délais de retrait avant la vente.'
+                        : 'Creates an entry in the Vet Log so withdrawal periods are tracked before sale.'}
+                    </div>
+                  </div>
+                </label>
+                {logAsVetVisit && (
+                  <div className="ml-6">
+                    <label className="block text-[10px] font-semibold text-gray-700 mb-1">
+                      {isFr ? 'Délai de retrait (jours, optionnel)' : 'Withdrawal period (days, optional)'}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={withdrawalDays}
+                      onChange={(e) => setWithdrawalDays(e.target.value)}
+                      placeholder={isFr ? 'ex. 7' : 'e.g. 7'}
+                      className="w-32 px-2 py-1 border border-green-200 rounded text-xs focus:outline-none focus:border-green-500"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      {isFr
+                        ? 'Jours après le traitement avant que les animaux puissent être vendus.'
+                        : 'Days after dosing before animals can be sold.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-2 pt-1">
               <button
