@@ -354,6 +354,35 @@ The Capacitor wrapper is purely additive.
 
 ---
 
+## Signing on a Personal Team while Apple Developer is processing
+
+If you've paid for Apple Developer Program but Xcode still shows you as "(Personal Team)", that's because Xcode hasn't picked up the new paid team yet. The `app.entitlements` file in this repo currently has Push Notifications and Associated Domains commented out so the Personal Team can sign the build for on-device development. You can run on a real iPhone today and re-enable the two capabilities once the paid team appears.
+
+### Why this happens
+
+Apple's payment confirmation email arrives within seconds, but the team can take 24–48 hours to provision in their backend. Xcode reads team membership from that backend, so until Apple flips the bit, Xcode keeps treating you as Personal regardless of what your inbox says.
+
+### How to make the paid team appear in Xcode
+
+Try these in order:
+
+1. **Xcode → Settings → Accounts** → click your Apple ID → click **Download Manual Profiles**. This forces a refresh.
+2. **Sign out and back in** on the same screen if step 1 doesn't surface the new team.
+3. **developer.apple.com → Account → Agreements** — Apple sometimes adds a new License Agreement after payment that you must explicitly accept before the team activates.
+4. **Wait 24–48h** if none of the above surfaces it. Apple's docs confirm this is normal.
+
+### How to restore Push Notifications + Universal Links once the paid team appears
+
+1. Open Xcode → click the App target (top of the file tree, blue icon) → **Signing & Capabilities**
+2. Switch the **Team** dropdown from "(Personal Team)" to your paid team
+3. Open `ios/App/App/App.entitlements` and uncomment the two `<key>` blocks (delete the wrapping `<!--` and `-->`)
+4. Back in Xcode → Signing & Capabilities → click **+ Capability** twice and re-add **Push Notifications** and **Associated Domains**
+5. Build and run — the "Cannot create provisioning profile" error clears
+
+The app's push and Universal Links code paths are guarded so they silently no-op when entitlements are missing. Nothing else breaks while you're on Personal Team.
+
+---
+
 ## Bonus features — biometric login, barcode scanner, live updates
 
 These three are additive and DON'T need paid Apple Developer to develop locally — they're community plugins / third-party services that ride on top of Capacitor. They're already wired up in this repo.

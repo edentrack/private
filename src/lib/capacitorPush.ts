@@ -35,7 +35,17 @@ export async function initCapacitorPush(): Promise<void> {
     return;
   }
 
-  await PushNotifications.register();
+  // On a Personal Apple Team (free), the aps-environment entitlement is
+  // not granted, so register() fires a registrationError event instead
+  // of throwing — but on some OS versions it throws synchronously here.
+  // Wrapping keeps a missing-entitlement scenario from crashing the
+  // whole boot path; the rest of the app stays fully usable.
+  try {
+    await PushNotifications.register();
+  } catch (err) {
+    console.warn('[CapacitorPush] register() failed (likely Personal Team / missing aps-environment):', err);
+    return;
+  }
 
   PushNotifications.addListener('registration', async (token: Token) => {
     // Store the device token under the current user's profile so the

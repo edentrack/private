@@ -3,23 +3,49 @@
 <plist version="1.0">
 <dict>
 	<!--
-		aps-environment: required for push notifications.
-		Set to "development" while building locally; Apple flips
-		this to "production" automatically for App Store builds.
-		Without this entry, registerForRemoteNotifications() returns
-		an error on iOS and no APNs token is generated.
+		================================================================
+		IMPORTANT — entitlements are temporarily stripped for Personal Team
+		================================================================
+
+		Personal Apple IDs (free tier) can NOT use these two capabilities:
+		  - aps-environment              (Push Notifications)
+		  - com.apple.developer.associated-domains  (Universal Links)
+
+		Until Xcode shows your paid Apple Developer team in the
+		Signing & Capabilities → Team dropdown, both entries below stay
+		commented out so the Personal Team can sign the build for
+		on-device development.
+
+		WHEN YOUR PAID TEAM APPEARS IN XCODE:
+		  1. Open Xcode → click the App target → Signing & Capabilities
+		  2. Switch the Team dropdown from "(Personal Team)" to your
+		     paid team
+		  3. Uncomment the two <key> blocks below (delete the wrapping
+		     <!-- and -->)
+		  4. In the Signing & Capabilities tab, click "+ Capability"
+		     and re-add "Push Notifications" + "Associated Domains"
+		  5. Build and run — the provisioning profile error clears
+
+		How to make the paid team show up:
+		  - Xcode → Settings → Accounts → click your Apple ID →
+		    click "Download Manual Profiles", or sign out and back in
+		  - On developer.apple.com, accept any pending agreement under
+		    Account → Agreements (Apple sometimes adds one post-payment)
+		  - Wait 24-48h after payment confirmation if neither of the
+		    above surfaces the team
+
+		Push notifications + Universal Links code paths in the app are
+		guarded so they no-op when entitlements are missing — nothing
+		else breaks while these are commented out.
 	-->
+
+	<!--
 	<key>aps-environment</key>
 	<string>development</string>
-	<!--
-		Universal Links — let invite URLs like
-		https://edentrack.app/#/join/{farmId}/{secret} open the app
-		instead of Safari. Requires a matching apple-app-site-
-		association file at https://edentrack.app/.well-known/.
-	-->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:edentrack.app</string>
 	</array>
+	-->
 </dict>
 </plist>

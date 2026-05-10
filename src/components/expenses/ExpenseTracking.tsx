@@ -331,27 +331,52 @@ export function ExpenseTracking() {
     }
   }, [currentFarm]);
 
-  // Auto-default the "log as vet visit" checkbox whenever category swaps
-  // to medication. We only set it ON the transition into medication so a
-  // farmer who deliberately unchecks the box stays unchecked even if
-  // they tab away and back. Same idea for inventory link → 'other'.
+  // Auto-link expense categories to the correct inventory destination.
+  //
+  // The four tangible inventory categories all auto-enable the link so
+  // a worker doesn't have to flip switches every purchase:
+  //   feed       → feed_inventory  (its own table)
+  //   medication → other_inventory[category='Medication']  + vet_logs row
+  //   equipment  → other_inventory[category='Equipment']   (one-off, reusable)
+  //   chicks p.  → no inventory  (chicks live in flocks, not a stockroom)
+  //
+  // Intangibles (labor, transport, "other" like utilities/fuel) stay
+  // OFF. Equipment is tangible but doesn't appear on the dashboard
+  // quick-tracker since it's reusable, not consumed.
+  //
+  // We only auto-set the link when the user hasn't manually configured
+  // it — once they touch the toggle, we respect their choice for the
+  // remainder of the form session.
   useEffect(() => {
-    if (category === 'medication') {
+    if (category === 'feed') {
+      setLogAsVetVisit(false);
+      if (!inventoryEnabled) {
+        setInventoryEnabled(true);
+        setInventoryType('feed');
+        setInventoryUnit('bags');
+        setNewItemCategory('');
+      }
+    } else if (category === 'medication') {
       setLogAsVetVisit(true);
-      // Soft-default the inventory link to "other" + Medication
-      // sub-category so the farmer doesn't have to flip three switches
-      // every time. They can still turn it off.
       if (!inventoryEnabled) {
         setInventoryEnabled(true);
         setInventoryType('other');
         setNewItemCategory('Medication');
+        setInventoryUnit('vials');
+      }
+    } else if (category === 'equipment') {
+      setLogAsVetVisit(false);
+      if (!inventoryEnabled) {
+        setInventoryEnabled(true);
+        setInventoryType('other');
+        setNewItemCategory('Equipment');
         setInventoryUnit('units');
       }
     } else {
+      // labor, transport, chicks purchase, other: tangible-but-flock-tied
+      // or intangible. Don't auto-toggle inventory.
       setLogAsVetVisit(false);
     }
-    // We deliberately don't depend on inventoryEnabled here — touching
-    // it causes a re-trigger loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
 
