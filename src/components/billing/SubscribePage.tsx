@@ -7,6 +7,9 @@ import {
   detectRegion, ALL_COUNTRIES, RegionConfig, COUNTRY_CONFIGS, FIXED_PRICES,
   getPrice, getPriceCurrency, formatPrice,
 } from '../../utils/regionalPayment';
+import { openInAppBrowser } from '../../lib/capacitorNative';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
 
@@ -261,14 +264,35 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create payment');
       if (!data.payment_link) throw new Error('No payment link received. Please try again.');
-      // Redirect to Flutterwave hosted checkout — same pattern as Stripe.
-      // When done, Flutterwave redirects back to origin and our useEffect verifies.
+
+      // On Capacitor native: open Flutterwave inside a SFSafariViewController
+      // (iOS) / Custom Tab (Android) so the user stays inside the Edentrack
+      // app shell. When they finish payment and dismiss the in-app browser,
+      // we listen for browserFinished and trigger a verify call optimistically.
+      // On web: classic full-page redirect.
+      if (Capacitor.isNativePlatform()) {
+        // Listener fires when the user closes the in-app browser. We then
+        // poll our backend for the most recent transaction status — works
+        // regardless of whether the redirect_url path was hit, which is
+        // important because in-app browsers don't deep-link back natively.
+        const listener = await Browser.addListener('browserFinished', async () => {
+          await listener.remove();
+          // Verify against the latest pending transaction. If the user
+          // bailed out, the verify call returns "not paid" and we just
+          // clear the loading state without erroring.
+          await refreshSession?.();
+          setLoading(null);
+        });
+        await openInAppBrowser(data.payment_link, { fullscreen: true });
+        // Don't clear loading here — wait for browserFinished above.
+        return;
+      }
       window.location.href = data.payment_link;
     } catch (err: any) {
       setError(err.message);
       setLoading(null);
     }
-  }, [billingPeriod, priceCurrency]);
+  }, [billingPeriod, priceCurrency, refreshSession]);
 
   const verifyFlutterwave = async (transactionId: string, txRef: string) => {
     setLoading('verifying');

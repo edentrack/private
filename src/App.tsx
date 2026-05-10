@@ -120,6 +120,14 @@ function CrispChat() {
   }, []);
 
   useEffect(() => {
+    // Skip Crisp entirely on Capacitor native builds. Two reasons:
+    //   1. Crisp's iframe injects an input that auto-focuses on load,
+    //      popping the iOS keyboard up before the user does anything.
+    //   2. Mobile users have other support paths (in-app help, email)
+    //      and a floating chat bubble feels off in a native shell.
+    // The web build at edentrack.app keeps Crisp untouched.
+    if ((window as any).Capacitor?.isNativePlatform?.()) return;
+
     const id = import.meta.env.VITE_CRISP_WEBSITE_ID;
     if (!id) return;
     (window as any).$crisp = [];

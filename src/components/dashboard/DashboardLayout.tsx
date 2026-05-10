@@ -268,7 +268,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       style={{ background: 'linear-gradient(135deg, #f5f0e8 0%, #ebe4d8 50%, #f0e9dd 100%)', ...(isAIView ? { height: `${vpHeight}px` } : {}) }}
     >
       <OfflineIndicator />
-      <nav className="sticky top-0 z-40 glass-light border-b border-white/20" style={isOffline ? { marginTop: '40px' } : undefined}>
+      {/* pt-safe pushes nav content below the iOS notch / status bar so
+          "Good morning, Great" doesn't get clipped. The glass background
+          extends INTO the inset area so the status bar tint blends with
+          the nav (standard iOS app pattern). */}
+      <nav className="sticky top-0 z-40 glass-light border-b border-white/20 pt-safe" style={isOffline ? { marginTop: '40px' } : undefined}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="flex items-center h-14 sm:h-16 gap-3 sm:gap-4 lg:gap-8">
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">

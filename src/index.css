@@ -28,9 +28,63 @@
   input, select, textarea {
     font-size: 16px !important;
   }
+
+  /*
+   * iOS safe-area insets.
+   *
+   * Without these, content scrolls UNDER the notch and home indicator
+   * because we set viewport-fit=cover so the WebView paints edge-to-
+   * edge. The body padding takes the system insets (44pt top on
+   * notched iPhones, 34pt bottom for the home bar).
+   *
+   * The CSS variables let any component opt-in or out:
+   *   - body picks up top + bottom by default → fixes "Good morning"
+   *     getting clipped by the status bar
+   *   - sticky/fixed headers can use `top: var(--safe-area-top)` so
+   *     they sit BELOW the notch instead of behind it
+   *   - bottom sheets / FABs use `bottom: var(--safe-area-bottom)` so
+   *     they don't sit on top of the iOS home indicator
+   *
+   * On Android + web these all resolve to 0, so no-op there.
+   */
+  :root {
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+    --keyboard-height: 0px;
+  }
+
+  body {
+    /* Native scroll inertia inside the WebView feels closer to a real
+       iOS app than the default web "snap-to-stop" behaviour. */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /*
+   * Note on why body itself is NOT padded:
+   *
+   * If we pad body with --safe-area-top, sticky headers (which use
+   * `position: sticky; top: 0`) will go behind the notch the moment
+   * the user scrolls — sticky positions stick to the VIEWPORT edge,
+   * not the body's padded edge. The iOS-correct pattern is the
+   * opposite: let nav backgrounds extend INTO the notch (so the
+   * tinted nav color fills the status bar area) and pad only the
+   * nav's CONTENT down by the safe-area inset. Use `.pt-safe` on
+   * the top-level nav for that.
+   */
 }
 
 @layer utilities {
+  /* Helpers any component can sprinkle in for finer-grained safe-area
+     control. Use these on sticky headers, bottom sheets, FABs, etc. */
+  .pt-safe { padding-top: var(--safe-area-top); }
+  .pb-safe { padding-bottom: var(--safe-area-bottom); }
+  .pl-safe { padding-left: var(--safe-area-left); }
+  .pr-safe { padding-right: var(--safe-area-right); }
+  .top-safe { top: var(--safe-area-top); }
+  .bottom-safe { bottom: var(--safe-area-bottom); }
+
   .touch-target {
     min-width: 44px;
     min-height: 44px;

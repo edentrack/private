@@ -312,9 +312,19 @@ export async function nativeAlert(message: string, title?: string): Promise<void
  *
  * On web this just opens a new tab.
  */
-export async function openInAppBrowser(url: string): Promise<void> {
+export async function openInAppBrowser(
+  url: string,
+  opts: { fullscreen?: boolean } = {},
+): Promise<void> {
   if (native()) {
-    await Browser.open({ url, presentationStyle: 'popover' });
+    // popover presentation is right for casual links (privacy policy,
+    // vet articles); fullscreen is right for committed flows like
+    // payment where the user needs to feel they're in a separate
+    // checkout context. iOS uses a sheet animation either way.
+    await Browser.open({
+      url,
+      presentationStyle: opts.fullscreen ? 'fullscreen' : 'popover',
+    });
   } else {
     window.open(url, '_blank', 'noopener');
   }
