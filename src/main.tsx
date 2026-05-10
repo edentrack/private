@@ -6,6 +6,7 @@ import './index.css';
 import './lib/i18n';
 import { Capacitor } from '@capacitor/core';
 import { initCapacitorPush } from './lib/capacitorPush';
+import { wireKeyboard } from './lib/capacitorNative';
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 if (POSTHOG_KEY) {
@@ -34,6 +35,7 @@ createRoot(document.getElementById('root')!).render(
 // In a regular browser these are no-ops, so the web build is untouched.
 if (Capacitor.isNativePlatform()) {
   initCapacitorPush();
+  wireKeyboard();
   // Set the iOS status bar tint to match the brand. On Android this is
   // configured via capacitor.config.ts (StatusBar plugin).
   import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
