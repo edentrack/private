@@ -28,7 +28,23 @@ interface WeightDataPoint {
   date: string;
 }
 
-// Breed standard weights
+/*
+ * Breed standard weights (grams). Used by the chart to render the
+ * "expected" reference band vs the actual recorded weights.
+ *
+ * Broilers run a short 7-9 week cycle. Layers run 18 weeks of growth
+ * then 50+ weeks of laying — the layer curve needs to extend through
+ * the full commercial lifecycle so the chart's expected line keeps
+ * drawing all the way to cull-out (typically week 72-100), not just
+ * the growth phase. Without these later weeks the chart goes flat
+ * after week 20 and farmers can't tell whether their hens are at
+ * the right weight during peak production or spent-layer windows.
+ *
+ * Numbers below align with Hy-Line / Lohmann commercial layer
+ * standards (≈2.0kg body weight at maturity, holding through lay).
+ * Min/max widen slightly in the late-lay window because hen weight
+ * variance grows as some birds molt and others don't.
+ */
 const BREED_STANDARDS: Record<string, Array<{ week: number; min: number; expected: number; max: number }>> = {
   broiler: [
     { week: 0, min: 40, expected: 45, max: 50 },
@@ -40,17 +56,46 @@ const BREED_STANDARDS: Record<string, Array<{ week: number; min: number; expecte
     { week: 6, min: 2500, expected: 2900, max: 3300 },
     { week: 7, min: 3000, expected: 3500, max: 4000 },
     { week: 8, min: 3400, expected: 4000, max: 4600 },
+    // Beyond week 8 broilers are typically processed. We add two
+    // sentinel points so the chart line doesn't snap up if anyone
+    // keeps recording weights past that age — flat at slaughter weight.
+    { week: 10, min: 3500, expected: 4100, max: 4800 },
+    { week: 12, min: 3500, expected: 4100, max: 4800 },
   ],
   layer: [
-    { week: 0, min: 35, expected: 40, max: 45 },
-    { week: 1, min: 120, expected: 150, max: 180 },
-    { week: 2, min: 200, expected: 250, max: 300 },
-    { week: 4, min: 400, expected: 500, max: 600 },
-    { week: 8, min: 800, expected: 900, max: 1000 },
+    // Brooding + growing phase (weeks 0-18)
+    { week: 0,  min: 35,   expected: 40,   max: 45   },
+    { week: 1,  min: 120,  expected: 150,  max: 180  },
+    { week: 2,  min: 200,  expected: 250,  max: 300  },
+    { week: 4,  min: 400,  expected: 500,  max: 600  },
+    { week: 8,  min: 800,  expected: 900,  max: 1000 },
     { week: 12, min: 1100, expected: 1200, max: 1300 },
     { week: 16, min: 1300, expected: 1450, max: 1600 },
     { week: 18, min: 1400, expected: 1550, max: 1700 },
-    { week: 20, min: 1400, expected: 1600, max: 1800 },
+    { week: 20, min: 1450, expected: 1600, max: 1800 },
+    // Pre-lay → peak laying phase (weeks 21-30)
+    { week: 22, min: 1650, expected: 1750, max: 1850 },
+    { week: 25, min: 1750, expected: 1850, max: 1950 },
+    { week: 28, min: 1800, expected: 1890, max: 1980 },
+    { week: 30, min: 1810, expected: 1900, max: 1990 },
+    // Maintenance / steady-lay phase (weeks 31-72). Weight plateaus
+    // around 1.95-2.02kg with mild variance. The chart's reference
+    // band sits flat across this entire span.
+    { week: 35, min: 1820, expected: 1920, max: 2020 },
+    { week: 40, min: 1830, expected: 1940, max: 2050 },
+    { week: 48, min: 1840, expected: 1960, max: 2080 },
+    { week: 56, min: 1860, expected: 1980, max: 2100 },
+    { week: 64, min: 1880, expected: 2000, max: 2120 },
+    { week: 72, min: 1890, expected: 2020, max: 2150 },
+    // Late lay (weeks 73-88) — production drops gradually. Weight
+    // still flat; variance widens as some hens enter natural molt.
+    { week: 80, min: 1880, expected: 2020, max: 2180 },
+    { week: 88, min: 1880, expected: 2030, max: 2200 },
+    // Spent layer / cull window (weeks 89-100). Most farmers sell
+    // here. Eden uses this band to nudge "consider scheduling
+    // cull-out — cost per egg has crossed break-even."
+    { week: 96,  min: 1870, expected: 2030, max: 2220 },
+    { week: 100, min: 1860, expected: 2040, max: 2240 },
   ],
 };
 

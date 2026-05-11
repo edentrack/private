@@ -9,6 +9,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { AddJournalEntryModal } from './AddJournalEntryModal';
 import { EntryReactions } from './EntryReactions';
 import { ChartBlock, type ChartConfig } from './ChartBlock';
+import { PreviousBatchWidget } from './PreviousBatchWidget';
 import type { AuthorRole } from '../../lib/journalLogger';
 
 /**
@@ -202,6 +203,12 @@ export function JournalPage() {
           Write a note
         </button>
       </div>
+
+      {/* Previous Batch lessons — shows carry-forward notes from any
+          earlier archived flock(s) on this farm so the owner walks
+          into a new batch with the lessons from the last one already
+          surfaced. Collapsible, auto-hidden when empty. */}
+      <PreviousBatchWidget farmId={farmId} />
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-gray-200">

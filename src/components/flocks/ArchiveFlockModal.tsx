@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Flock } from '../../types/database';
+import { CarryForwardModal } from '../journal/CarryForwardModal';
 
 interface ArchiveFlockModalProps {
   flock: Flock | null;
@@ -27,6 +28,11 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
   const [keepRecords, setKeepRecords] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // After the flock archive succeeds we open the curate-forward
+  // modal so the owner can pick which journal notes (lessons, vet
+  // diagnoses, milestones, Eden summaries) travel to the next batch.
+  // We don't auto-archive then auto-carry — the owner makes the call.
+  const [showCarryForward, setShowCarryForward] = useState(false);
 
   if (!flock) return null;
 
@@ -71,8 +77,10 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
       if (updateError) throw updateError;
 
       setLoading(false);
-      onClose();
-      onArchived();
+      // Don't close yet — show the carry-forward picker so the owner
+      // can curate which notes travel to the next batch. Closing
+      // (Skip) or saving both call onArchived to refresh the list.
+      setShowCarryForward(true);
     } catch (err) {
       console.error('Error archiving flock:', err);
       setError(err instanceof Error ? err.message : (isFr
@@ -81,6 +89,28 @@ export function ArchiveFlockModal({ flock, onClose, onArchived }: ArchiveFlockMo
       setLoading(false);
     }
   };
+
+  // Carry-forward picker takes over once the archive succeeds.
+  // Renders ABOVE the archive modal — when the owner saves or skips,
+  // we close everything and call onArchived to refresh the parent.
+  if (showCarryForward) {
+    return (
+      <CarryForwardModal
+        flockId={flock.id}
+        flockName={flock.name || (isFr ? `${groupTermLowerFr}` : groupTerm.toLowerCase())}
+        onClose={() => {
+          setShowCarryForward(false);
+          onClose();
+          onArchived();
+        }}
+        onSaved={() => {
+          setShowCarryForward(false);
+          onClose();
+          onArchived();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

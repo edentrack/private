@@ -228,6 +228,25 @@ export const LAYER_GROWTH_TARGETS: Record<number, WeeklyTarget> = {
   64: { weight: 2.00, description: 'Maintenance', feedIntakeGPerBird: 110, waterConsumptionMlPerBird: 193.5 },
   68: { weight: 2.01, description: 'Maintenance', feedIntakeGPerBird: 110, waterConsumptionMlPerBird: 193.5 },
   72: { weight: 2.02, description: 'Maintenance', feedIntakeGPerBird: 110, waterConsumptionMlPerBird: 193.5 },
+  // Late-lay phase (73-90): production drops gradually from ~85% to
+  // ~65%. Weight holds steady around 2.0kg — birds aren't growing,
+  // they're cycling nutrients into eggshell calcium. Feed intake
+  // edges down as the hens become less efficient. Many farmers
+  // cull at week 80; some take advantage of the molt-induced
+  // second peak and keep going to week 100.
+  76: { weight: 2.02, description: 'Late lay · production easing',  feedIntakeGPerBird: 109, waterConsumptionMlPerBird: 193 },
+  80: { weight: 2.02, description: 'Late lay · ~75% production',    feedIntakeGPerBird: 108, waterConsumptionMlPerBird: 192 },
+  84: { weight: 2.03, description: 'Late lay · ~70% production',    feedIntakeGPerBird: 107, waterConsumptionMlPerBird: 191 },
+  88: { weight: 2.03, description: 'Late lay · ~67% production',    feedIntakeGPerBird: 106, waterConsumptionMlPerBird: 190 },
+  // Spent-layer / cull window (91-100): production at ~60-65%, cost
+  // per egg climbs sharply, eggshell quality declines. Most farmers
+  // sell as spent layers here. Weight is essentially flat — if a
+  // hen has gained beyond this, she's likely overweight and laying
+  // poorly. Eden uses this band to nudge: "feed cost per egg has
+  // crossed your break-even. Consider scheduling cull-out."
+  92:  { weight: 2.03, description: 'Spent layer window · evaluate cull-out', feedIntakeGPerBird: 105, waterConsumptionMlPerBird: 190 },
+  96:  { weight: 2.03, description: 'Spent layer · approaching cull',         feedIntakeGPerBird: 104, waterConsumptionMlPerBird: 189 },
+  100: { weight: 2.04, description: 'End of commercial cycle · sell as spent layers', feedIntakeGPerBird: 103, waterConsumptionMlPerBird: 188 },
 };
 
 // Rabbit Growth Targets (Meat Rabbits)
