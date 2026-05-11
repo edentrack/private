@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { logActivity, formatActorName, type AuthorRole } from '../../lib/journalLogger';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import { FlockType } from '../../types/database';
@@ -19,7 +20,7 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
   const { t } = useTranslation();
   const { language } = useLanguage();
   const isFr = language === 'fr';
-  const { user, currentFarm, profile } = useAuth();
+  const { user, currentFarm, profile, currentRole } = useAuth();
 
   const farmKind = (currentFarm as any)?.farm_type ?? 'poultry';
   const isAquaculture = farmKind === 'aquaculture';
@@ -157,6 +158,31 @@ export function CreateFlockModal({ onClose, onCreated }: CreateFlockModalProps) 
             cause: 'Pre-app mortality',
             notes: 'Mortality that occurred before using Edentrack app',
             created_by: user.id,
+          });
+        }
+
+        // Farm Journal: log the new flock. "Three Samples (owner)
+        // created flock 'Layer Pen 1' with 500 birds (broiler)."
+        {
+          const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+          const actor = formatActorName({
+            fullName: profile?.full_name,
+            email: profile?.email,
+            role,
+          });
+          void logActivity({
+            farmId: currentFarm.id,
+            flockId: flockData.id,
+            entryType: 'flock_created',
+            actorRole: role,
+            body: `${actor} created flock "${name}" with ${currentCountNum} ${type}`,
+            metadata: {
+              linked_table: 'flocks',
+              flock_name: name,
+              type,
+              species,
+              initial_count: initialCountNum,
+            },
           });
         }
       }

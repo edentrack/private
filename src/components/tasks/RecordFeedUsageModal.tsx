@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Package, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { logActivity, formatActorName, type AuthorRole } from '../../lib/journalLogger';
 import { FeedStock } from '../../types/database';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
 
@@ -12,7 +13,7 @@ interface RecordFeedUsageModalProps {
 }
 
 export function RecordFeedUsageModal({ flockId, onClose, onSuccess }: RecordFeedUsageModalProps) {
-  const { user, currentFarm } = useAuth();
+  const { user, currentFarm, profile, currentRole } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const [feedStocks, setFeedStocks] = useState<FeedStock[]>([]);
   const [selectedFeedType, setSelectedFeedType] = useState('');
@@ -109,6 +110,31 @@ export function RecordFeedUsageModal({ flockId, onClose, onSuccess }: RecordFeed
         } else {
           throw taskError;
         }
+      }
+
+      // Farm Journal: log the feed usage. "Three Samples (worker)
+      // fed 2 bags of Layer Mash 50kg to Flock 1".
+      {
+        const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+        const actor = formatActorName({
+          fullName: profile?.full_name,
+          email: profile?.email,
+          role,
+        });
+        void logActivity({
+          farmId: currentFarm.id,
+          flockId: flockId || null,
+          entryType: 'feed_logged',
+          actorRole: role,
+          body: `${actor} fed ${bagsUsedNum} bag${bagsUsedNum === 1 ? '' : 's'} of ${selectedFeed.feed_type}`,
+          metadata: {
+            linked_table: 'feed_stock',
+            bags_used: bagsUsedNum,
+            feed_type: selectedFeed.feed_type,
+            new_stock: newStock,
+            notes: notes || null,
+          },
+        });
       }
 
       await supabase.from('activity_logs').insert({

@@ -42,7 +42,11 @@ interface LogAction {
     | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST'
     // Phase 6 onboarding — Eden creates the farm itself
     | 'CREATE_FARM' | 'CREATE_FLOCK' | 'CREATE_POND' | 'CREATE_RABBITRY'
-    | 'ONBOARDING_COMPLETE' | 'SWITCH_TO_FORM';
+    | 'ONBOARDING_COMPLETE' | 'SWITCH_TO_FORM'
+    // Farm Journal — Eden writes a free-form note to the timeline.
+    // Use for observations, milestones, summaries, anything Eden
+    // wants to surface without it being a structured log.
+    | 'LOG_JOURNAL';
   log_date?: string;  // universal ISO date override for bulk imports
   // Common
   flock_name?: string;
@@ -78,6 +82,10 @@ interface LogAction {
   dosage?: string;
   withdrawal_period_days?: number;
   diagnosis?: string;
+  // LOG_JOURNAL — Eden notes
+  journal_entry_type?: 'observation' | 'financial' | 'milestone' | 'personal' | 'health' | 'auto_summary';
+  journal_title?: string;
+  journal_body?: string;
   // Weight
   avg_weight_kg?: number;
   sample_size?: number;
@@ -796,6 +804,28 @@ export function AIAssistantPage() {
       }).select('id');
       if (expErr) throw new Error(`Expense save failed: ${expErr.message}`);
       if (!expData?.length) throw new Error('Expense not saved - possible permission issue.');
+
+    } else if (logAction.type === 'LOG_JOURNAL') {
+      // Eden writes a note to the Farm Journal. Uses the user's auth
+      // context so RLS lets the insert through, but author_kind is
+      // 'eden' so the timeline renders the sparkle icon + amber chip.
+      const flock = logAction.flock_name ? await findFlock(logAction.flock_name) : null;
+      const entryType = logAction.journal_entry_type || 'auto_summary';
+      const body = logAction.journal_body || logAction.notes || logAction.description || '';
+      if (!body.trim()) throw new Error('Journal entry requires a body.');
+      const { error: jErr } = await supabase.from('journal_entries').insert({
+        farm_id: farmId,
+        flock_id: flock?.id || null,
+        author_id: user?.id || null,
+        author_role: null,        // Eden has no farm role
+        author_kind: 'eden',      // → sparkle + amber chip in JournalPage
+        channel: 'notes',         // Eden writes notes, not activity rows
+        entry_type: entryType,
+        title: logAction.journal_title || null,
+        body,
+        metadata: { eden_generated: true, log_date: recordDate },
+      });
+      if (jErr) throw new Error(`Journal entry save failed: ${jErr.message}`);
 
     } else if (logAction.type === 'LOG_WEIGHT') {
       const flock = await findFlock(logAction.flock_name);

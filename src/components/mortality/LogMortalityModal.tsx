@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { logActivity, formatActorName, type AuthorRole } from '../../lib/journalLogger';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Flock } from '../../types/database';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
@@ -18,7 +19,7 @@ interface LogMortalityModalProps {
 }
 
 export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess, createTaskRecord = false }: LogMortalityModalProps) {
-  const { user, currentFarm } = useAuth();
+  const { user, currentFarm, profile, currentRole } = useAuth();
   const { language } = useLanguage();
   const isFr = language === 'fr';
   const species = useFarmSpecies();
@@ -121,6 +122,34 @@ export function LogMortalityModal({ flock, flockId, onClose, onLogged, onSuccess
         .eq('farm_id', currentFlock.farm_id);
 
       if (updateError) throw updateError;
+
+      // Farm Journal: log the mortality as an Activity entry. Body
+      // reads like "Three Samples (worker) logged 5 mortalities in
+      // Flock 1 (Newcastle suspected)".
+      {
+        const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+        const actor = formatActorName({
+          fullName: profile?.full_name,
+          email: profile?.email ?? user?.email,
+          role,
+        });
+        const causePart = reason ? ` (${reason})` : '';
+        const flockName = currentFlock.name || 'flock';
+        void logActivity({
+          farmId: currentFarm.id,
+          flockId: currentFlock.id,
+          entryType: 'mortality_logged',
+          actorRole: role,
+          body: `${actor} logged ${mortalityCount} ${animalTerm} mortalit${mortalityCount === 1 ? 'y' : 'ies'} in ${flockName}${causePart}`,
+          metadata: {
+            linked_table: 'mortality_logs',
+            count: mortalityCount,
+            cause: reason,
+            event_date: date,
+            flock_name: flockName,
+          },
+        });
+      }
 
       const { error: activityError } = await supabase.from('activity_logs').insert({
         user_id: user.id,

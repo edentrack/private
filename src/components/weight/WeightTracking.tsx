@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Scale, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { logActivity, formatActorName, type AuthorRole } from '../../lib/journalLogger';
 import { useTranslation } from 'react-i18next';;
 import { usePermissions } from '../../contexts/PermissionsContext';
 import { canPerformAction } from '../../utils/navigationPermissions';
@@ -40,7 +41,7 @@ function calculateConfidenceLevel(sampleSize: number, flockSize: number): string
 
 export function WeightTracking({ flock: flockProp, onNavigate }: WeightTrackingProps) {
   const { t } = useTranslation();
-  const { currentRole, user, currentFarm } = useAuth();
+  const { currentRole, user, currentFarm, profile } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const { farmPermissions } = usePermissions();
   const farmSpecies = useFarmSpecies();
@@ -145,6 +146,34 @@ export function WeightTracking({ flock: flockProp, onNavigate }: WeightTrackingP
         } else {
           throw error;
         }
+      }
+
+      // Farm Journal: log the weight check. "Three Samples (manager)
+      // recorded weight check on Flock 1: avg 1.42kg (sample 20).
+      // Market-ready: yes/no."
+      if (currentFarm?.id && flock) {
+        const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+        const actor = formatActorName({
+          fullName: profile?.full_name,
+          email: profile?.email ?? user?.email,
+          role,
+        });
+        const flockName = flock.name || 'flock';
+        const ready = results.marketStatus?.includes('READY') ? ' — market-ready' : '';
+        void logActivity({
+          farmId: currentFarm.id,
+          flockId: flock.id,
+          entryType: 'weight_logged',
+          actorRole: role,
+          body: `${actor} recorded weight check on ${flockName}: avg ${results.average.toFixed(2)}kg (sample ${results.count})${ready}`,
+          metadata: {
+            linked_table: 'weight_logs',
+            average_weight: results.average,
+            sample_size: results.count,
+            market_ready: results.marketStatus?.includes('READY') || false,
+            flock_name: flockName,
+          },
+        });
       }
 
       setAnalysisResults(results);

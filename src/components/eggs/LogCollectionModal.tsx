@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { logActivity, formatActorName, type AuthorRole } from '../../lib/journalLogger';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ConfirmEggCollectionModal } from './ConfirmEggCollectionModal';
 import { useOfflineWrite } from '../../hooks/useOfflineWrite';
@@ -16,7 +17,7 @@ interface LogCollectionModalProps {
 }
 
 export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskRecord = false }: LogCollectionModalProps) {
-  const { user, currentFarm } = useAuth();
+  const { user, currentFarm, profile, currentRole } = useAuth();
   const { language } = useLanguage();
   const isFr = language === 'fr';
   const { tryWrite, isNetworkError } = useOfflineWrite();
@@ -160,6 +161,36 @@ export function LogCollectionModal({ flockId, onClose, onSuccess, createTaskReco
         } else {
           throw insertError;
         }
+      }
+
+      // Farm Journal: log the egg collection. Includes total + size
+      // breakdown so the timeline reads "Three Samples (worker)
+      // collected 87 eggs (8 large, 70 medium, 9 small)".
+      if (currentFarm?.id) {
+        const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+        const actor = formatActorName({
+          fullName: profile?.full_name,
+          email: profile?.email ?? user?.email,
+          role,
+        });
+        const totalEggs = sizeTotals.small + sizeTotals.medium + sizeTotals.large + sizeTotals.jumbo;
+        const breakdown = [
+          sizeTotals.jumbo > 0 ? `${sizeTotals.jumbo} jumbo` : null,
+          sizeTotals.large > 0 ? `${sizeTotals.large} large` : null,
+          sizeTotals.medium > 0 ? `${sizeTotals.medium} medium` : null,
+          sizeTotals.small > 0 ? `${sizeTotals.small} small` : null,
+        ].filter(Boolean).join(', ');
+        void logActivity({
+          farmId: currentFarm.id,
+          entryType: 'egg_collected',
+          actorRole: role,
+          body: `${actor} collected ${totalEggs} eggs${breakdown ? ` (${breakdown})` : ''}`,
+          metadata: {
+            linked_table: 'egg_collections',
+            total_eggs: totalEggs,
+            sizes: sizeTotals,
+          },
+        });
       }
 
       // Keep egg_inventory in sync (good eggs only).

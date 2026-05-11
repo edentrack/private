@@ -7,6 +7,8 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddJournalEntryModal } from './AddJournalEntryModal';
+import { EntryReactions } from './EntryReactions';
+import { ChartBlock, type ChartConfig } from './ChartBlock';
 import type { AuthorRole } from '../../lib/journalLogger';
 
 /**
@@ -389,18 +391,31 @@ function EntryCard({
             </div>
           )}
 
-          {/* Deep-link to the underlying record for activity rows */}
+          {/* Inline chart — Eden emits one in metadata.chart for the
+              weekly summary (sparkline of daily eggs) and cycle close-
+              out (3-bar P&L). Component is null-safe if shape mismatches. */}
+          {entry.metadata?.chart != null && (
+            <ChartBlock config={entry.metadata.chart as ChartConfig} />
+          )}
+
+          {/* Deep-link to the underlying record for activity rows.
+              Maps linked_table to the right hash route. Fallbacks to
+              page-level views for tables without a per-row detail page. */}
           {entry.channel === 'activity' && entry.metadata?.linked_table != null && (
             <button
               className="mt-2 text-xs text-[#3D5F42] hover:underline inline-flex items-center gap-1"
-              onClick={() => {
-                // Phase 2: real navigation. For now, just hint at the link.
-                console.log('Deep link →', entry.metadata.linked_table, entry.metadata.linked_id);
-              }}
+              onClick={() => deepLinkToRecord(entry)}
             >
               View record <ChevronRight className="w-3 h-3" />
             </button>
           )}
+
+          {/* Reactions strip — phase 2. Hidden on Eden's auto rows
+              and on system-only rows for now, but kept on user-written
+              notes and on activity rows so the owner can 👍 a worker's
+              well-handled mortality entry. */}
+          <EntryReactions entryId={entry.id} />
+
 
           {/* Actions row */}
           {canEdit && (
@@ -424,6 +439,38 @@ function EntryCard({
       </div>
     </div>
   );
+}
+
+/**
+ * Take an activity entry's linked_table and navigate to the most
+ * useful surface in-app. The journal stores the linked row's id so
+ * future detail pages can scroll to / highlight it; for now we drop
+ * the user on the relevant list page where they can find the row.
+ */
+function deepLinkToRecord(entry: JournalEntry) {
+  const table = entry.metadata?.linked_table as string | undefined;
+  const hashByTable: Record<string, string> = {
+    bird_sales: '#/sales',
+    egg_sales: '#/sales',
+    expenses: '#/expenses',
+    feed_stock: '#/inventory',
+    feed_inventory: '#/inventory',
+    other_inventory: '#/inventory',
+    egg_collections: '#/egg-records',
+    mortality_logs: '#/mortality',
+    vet_logs: '#/vet-log',
+    weight_logs: '#/weight',
+    tasks: '#/tasks',
+    flocks: entry.flock_id ? '#/flocks' : '#/flocks',
+    farm_members: '#/team',
+  };
+  const target = table ? hashByTable[table] : null;
+  if (target) {
+    window.location.hash = target;
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } else {
+    console.warn('[journal] No deep-link defined for table:', table);
+  }
 }
 
 function formatDayLabel(isoDay: string): string {
