@@ -34,4 +34,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     minify: 'esbuild',
   },
+  test: {
+    // Provide stub env vars so supabaseClient.ts doesn't throw during unit tests
+    // that transitively import it (e.g. component files that have top-level imports).
+    // Tests never make real Supabase calls — only pure utility functions are exercised.
+    env: {
+      VITE_SUPABASE_URL: 'https://placeholder.supabase.co',
+      VITE_SUPABASE_ANON_KEY: 'placeholder-anon-key',
+    },
+  },
 });
