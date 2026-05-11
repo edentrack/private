@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getCurrentDiscountPct, applyDiscount, decimalsFor } from "../_shared/pricingDiscount.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -49,7 +50,13 @@ Deno.serve(async (_req: Request) => {
     const plan = p.subscription_tier as string;
     const period = (p.billing_period as string) || "quarterly";
     const currency = (p.flw_card_currency as string) || "USD";
-    const amount = lookupPrice(plan, period, currency);
+    // Auto-renewals honor the current admin discount too — so a
+    // farmer mid-promotion gets renewed at the promo price for the
+    // next cycle. If you want renewals to lock at the original
+    // price, snapshot at signup-time and ignore the discount here.
+    const baselineAmount = lookupPrice(plan, period, currency);
+    const discountPct = await getCurrentDiscountPct(supabase);
+    const amount = applyDiscount(baselineAmount, discountPct, decimalsFor(currency));
     const tx_ref = `renewal-flw-${p.id}-${Date.now()}`;
 
     try {
@@ -86,7 +93,7 @@ Deno.serve(async (_req: Request) => {
             reference: tx_ref,
             plan,
             billing_period: period,
-            amount_usd: lookupPrice(plan, period, "USD"),
+            amount_usd: applyDiscount(lookupPrice(plan, period, "USD"), discountPct, 2),
             currency: currency.toUpperCase(),
             status: "successful",
             flw_ref: data.data.flw_ref,

@@ -23,6 +23,8 @@ function json(data: unknown, status = 200, corsHeaders: Record<string, string>) 
   });
 }
 
+import { getCurrentDiscountPct, applyDiscount } from "../_shared/pricingDiscount.ts";
+
 // Plan → USD price map — MUST match FIXED_PRICES in src/utils/regionalPayment.ts.
 // USD ladder: $7 / $19 / $49 monthly (Grower / Farm Boss / Industry).
 const PLAN_PRICES_USD: Record<string, Record<string, number>> = {
@@ -58,8 +60,14 @@ Deno.serve(async (req: Request) => {
   if (action === "initialize") {
     if (!PAYSTACK_SECRET) return json({ error: "Paystack not configured" }, 503, corsHeaders);
 
-    const usdPrice = PLAN_PRICES_USD[billing_period]?.[plan];
-    if (!usdPrice) return json({ error: "Invalid plan" }, 400, corsHeaders);
+    const baselineUsd = PLAN_PRICES_USD[billing_period]?.[plan];
+    if (!baselineUsd) return json({ error: "Invalid plan" }, 400, corsHeaders);
+
+    // Apply the live admin discount to the USD price BEFORE local-
+    // currency conversion. So a 10% off promo discounts both the USD
+    // and the NGN/GHS amount Paystack actually charges.
+    const discountPct = await getCurrentDiscountPct(supabase);
+    const usdPrice = applyDiscount(baselineUsd, discountPct, 2);
 
     const { data: profile } = await supabase.from("profiles").select("email, full_name").eq("id", user.id).maybeSingle();
     const email = profile?.email || user.email || "";

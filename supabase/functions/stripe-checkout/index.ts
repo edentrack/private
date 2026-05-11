@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
+import { getCurrentDiscountPct, applyDiscount } from "../_shared/pricingDiscount.ts";
 
 const STRIPE_SECRET = Deno.env.get("STRIPE_SECRET_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -66,11 +67,17 @@ Deno.serve(async (req: Request) => {
     const cur = currency.toLowerCase();
 
     const localPrices = PRICES_LOCAL[cur];
-    const amountCents = localPrices
+    const baselineCents = localPrices
       ? localPrices[billing_period]?.[plan]
       : PRICES_USD_CENTS[billing_period]?.[plan];
 
-    if (!amountCents) return json({ error: "Invalid plan or currency" }, 400, h);
+    if (!baselineCents) return json({ error: "Invalid plan or currency" }, 400, h);
+
+    // Apply the current admin-set discount. Cents are integer so
+    // decimals=0 — applyDiscount rounds correctly. The result is what
+    // Stripe will actually charge.
+    const discountPct = await getCurrentDiscountPct(supabase);
+    const amountCents = applyDiscount(baselineCents, discountPct, 0);
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -100,7 +107,9 @@ Deno.serve(async (req: Request) => {
       reference,
       plan,
       billing_period,
-      amount_usd: PRICES_USD_CENTS[billing_period][plan] / 100,
+      // amount_usd reflects the actual charged USD (post-discount) so the
+      // payments table is the source of truth for finance reports.
+      amount_usd: applyDiscount(PRICES_USD_CENTS[billing_period][plan], discountPct, 0) / 100,
       currency: cur.toUpperCase(),
       status: "pending",
     });

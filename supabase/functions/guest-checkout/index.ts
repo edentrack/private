@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@14";
+import { getCurrentDiscountPct, applyDiscount, decimalsFor } from "../_shared/pricingDiscount.ts";
 
 const STRIPE_SECRET = Deno.env.get("STRIPE_SECRET_KEY")!;
 const FLW_SECRET = Deno.env.get("FLW_SECRET_KEY")!;
@@ -123,9 +124,13 @@ Deno.serve(async (req: Request) => {
     const { plan, billing_period = "quarterly" } = body;
     if (!plan) return json({ error: "plan is required" }, 400, h);
 
-    const amountCents = STRIPE_PRICES[billing_period]?.[plan];
-    if (!amountCents) return json({ error: "Invalid plan or billing period" }, 400, h);
+    const baselineCents = STRIPE_PRICES[billing_period]?.[plan];
+    if (!baselineCents) return json({ error: "Invalid plan or billing period" }, 400, h);
     if (!STRIPE_SECRET) return json({ error: "Stripe not configured" }, 503, h);
+
+    // Apply admin-set discount to Stripe charge amount.
+    const discountPctStripe = await getCurrentDiscountPct(supabase);
+    const amountCents = applyDiscount(baselineCents, discountPctStripe, 0);
 
     const stripe = new Stripe(STRIPE_SECRET, { apiVersion: "2024-04-10" });
     const months = BILLING_MONTHS[billing_period] ?? 3;
@@ -159,8 +164,12 @@ Deno.serve(async (req: Request) => {
     if (!FLW_SECRET) return json({ error: "Flutterwave not configured" }, 503, h);
 
     const cur = currency.toUpperCase();
-    const amount = FLW_PRICES[cur]?.[billing_period]?.[plan] ?? FLW_PRICES.USD[billing_period]?.[plan];
-    if (!amount) return json({ error: "Invalid plan or currency" }, 400, h);
+    const baselineAmount = FLW_PRICES[cur]?.[billing_period]?.[plan] ?? FLW_PRICES.USD[billing_period]?.[plan];
+    if (!baselineAmount) return json({ error: "Invalid plan or currency" }, 400, h);
+
+    // Apply admin-set discount to the local-currency amount.
+    const discountPctFlw = await getCurrentDiscountPct(supabase);
+    const amount = applyDiscount(baselineAmount, discountPctFlw, decimalsFor(cur));
 
     const { userId, fullName } = await findOrCreateUser(supabase, email);
 
@@ -175,7 +184,11 @@ Deno.serve(async (req: Request) => {
       reference,
       plan,
       billing_period,
-      amount_usd: STRIPE_PRICES[billing_period]?.[plan] ? STRIPE_PRICES[billing_period][plan] / 100 : 0,
+      // Reflect the actually-charged USD (post-discount) so the payments
+      // table mirrors what the customer paid, not the baseline.
+      amount_usd: STRIPE_PRICES[billing_period]?.[plan]
+        ? applyDiscount(STRIPE_PRICES[billing_period][plan], discountPctFlw, 0) / 100
+        : 0,
       currency: cur,
       status: "pending",
     });
