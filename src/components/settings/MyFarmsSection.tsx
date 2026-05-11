@@ -10,7 +10,7 @@ import type { FarmKind } from '../../types/database';
 import type { OwnedFarm } from '../../contexts/authContextRef';
 
 export function MyFarmsSection() {
-  const { currentFarm, allFarms, switchFarm, profile, refreshSession } = useAuth();
+  const { currentFarm, allFarms, switchFarm, profile, refreshSession, effectiveTier } = useAuth();
   const { language } = useLanguage();
   const isFr = language === 'fr';
   const { showToast } = useToast();
@@ -22,8 +22,7 @@ export function MyFarmsSection() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const tier = profile?.subscription_tier ?? 'free';
-  const maxFarms = getMaxFarms(tier);
+  const maxFarms = getMaxFarms(effectiveTier);
 
   const startEdit = (farm: OwnedFarm) => {
     setEditingId(farm.id);

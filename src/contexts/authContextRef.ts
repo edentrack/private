@@ -14,6 +14,10 @@ export interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  /** Effective subscription tier — accounts for 30-day Grower trial. Use instead of profile.subscription_tier for feature gates. */
+  effectiveTier: 'free' | 'pro' | 'enterprise' | 'industry';
+  /** Days remaining in Grower trial (0 when not on trial or trial expired). */
+  trialDaysRemaining: number;
   currentFarm: { id: string; name: string; currency?: string; currency_code?: string; broiler_price_per_bird?: number; broiler_price_per_kg?: number; farm_type?: FarmKind; location?: string | null } | null;
   currentMember: FarmMember | null;
   currentRole: MemberRole | null;

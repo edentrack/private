@@ -39,7 +39,7 @@ interface DashboardHomeProps {
 
 export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: DashboardHomeProps) {
   const { t } = useTranslation();
-  const { user, profile, currentFarm, currentRole } = useAuth();
+  const { user, profile, currentFarm, currentRole, effectiveTier } = useAuth();
   usePermissions(); // hook side-effects only — farmPermissions consumed by children
   const { showEggs, isAquaculture } = useFarmType();
   const isRabbits = (currentFarm as any)?.farm_type === 'rabbits';
@@ -828,13 +828,13 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
            is the billing source of truth. So drop the `farm` requirement
            and use `currentFarm` instead.
       */}
-      {currentRole && currentFarm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'kpis') && (
+      {currentRole && currentFarm && canViewAnalytics(currentRole as any) && hasFeatureAccess(effectiveTier, 'kpis') && (
         <div data-tour="kpi-section">
           <CoreKPISection refreshTrigger={eggRefreshTrigger} onNavigate={onNavigate} />
         </div>
       )}
 
-      {currentRole && currentFarm && canViewAnalytics(currentRole as any) && hasFeatureAccess(profile?.subscription_tier, 'daily_summary') && (
+      {currentRole && currentFarm && canViewAnalytics(currentRole as any) && hasFeatureAccess(effectiveTier, 'daily_summary') && (
         <div>
           <DailySummaryCard refreshTrigger={eggRefreshTrigger} />
         </div>

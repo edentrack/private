@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { RealtimeProvider } from './contexts/RealtimeContext';
@@ -13,6 +13,8 @@ import { RequireRole } from './components/common/RequireRole';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { SimpleModeProvider } from './contexts/SimpleModeContext';
 import { Flock } from './types/database';
+import { OverflowModal } from './components/billing/OverflowModal';
+import { getEffectiveTier, getMaxFarms, getMaxFlocks, getMaxTeamMembers } from './utils/planGating';
 
 // Auth screens — kept eager (shown before JS finishes loading)
 import { LoginScreen } from './components/auth/LoginScreen';
@@ -29,6 +31,7 @@ const lazy1 = <T extends { [k: string]: React.ComponentType<any> }>(path: () => 
 const LandingPage            = lazy(() => import('./components/landing/LandingPage'));
 const PrivacyPolicy          = lazy(() => import('./components/legal/PrivacyPolicy'));
 const TermsOfService         = lazy(() => import('./components/legal/TermsOfService'));
+const WelcomeAfterSignup     = lazy(() => import('./components/landing/WelcomeAfterSignup'));
 const DashboardLayout        = lazy1(() => import('./components/dashboard/DashboardLayout'), 'DashboardLayout');
 const DashboardHome          = lazy1(() => import('./components/dashboard/DashboardHome'), 'DashboardHome');
 const SmartDashboard         = lazy1(() => import('./components/dashboard/SmartDashboard'), 'SmartDashboard');
@@ -232,7 +235,7 @@ function CrispChat() {
 
 function AppContent() {
   const { t } = useTranslation();
-  const { user, profile, loading, refreshSession, currentRole, currentFarm } = useAuth();
+  const { user, profile, loading, refreshSession, currentRole, currentFarm, allFarms, effectiveTier } = useAuth();
   const { isImpersonating } = useImpersonation();
   const [authRoute, setAuthRoute] = useState<'login' | 'signup' | 'forgot-password' | 'reset-password' | 'invite'>('login');
   const [inviteToken, setInviteToken] = useState<string | null>(null);
@@ -244,6 +247,10 @@ function AppContent() {
   const [currentHash, setCurrentHash] = useState(window.location.hash);
   const [, setShowNoFarmMessage] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  // Overflow modal state — fires when trial expires and user has data exceeding free limits
+  const [overflowItems, setOverflowItems] = useState<Array<{ id: string; type: 'farm' | 'flock' | 'team_member'; name: string; context?: string; isCurrentlyActive: boolean }>>([]);
+  const [showOverflow, setShowOverflow] = useState(false);
+  const prevEffectiveTierRef = useRef<string | null>(null);
 
   // Detect Flutterwave payment return (lands at origin with ?status=...&tx_ref=...&transaction_id=...)
   useEffect(() => {
@@ -265,6 +272,51 @@ function AppContent() {
     }
   }, [user, currentFarm, loading]);
 
+  // Overflow detection — fires when effectiveTier drops (e.g. trial expires) and the user
+  // has data exceeding the new tier's limits. Runs 60s after tier is first seen so we
+  // don't flash the modal on initial page load while data is still loading.
+  useEffect(() => {
+    if (!user || !profile || loading) return;
+    const prev = prevEffectiveTierRef.current;
+    prevEffectiveTierRef.current = effectiveTier;
+    // Only trigger when tier has dropped (was higher, now lower)
+    const tierRank: Record<string, number> = { free: 0, pro: 1, enterprise: 2, industry: 3 };
+    if (prev !== null && (tierRank[prev] ?? 0) > (tierRank[effectiveTier] ?? 0)) {
+      // Query current data to see if anything overflows the new tier
+      const maxFarms = getMaxFarms(effectiveTier);
+      const maxFlocks = getMaxFlocks(effectiveTier);
+      const maxTeam = getMaxTeamMembers(effectiveTier);
+      import('./lib/supabaseClient').then(({ supabase }) => {
+        Promise.all([
+          supabase.from('farms').select('id,name').eq('owner_id', user.id),
+          supabase.from('flocks').select('id,name,farm_id,status').in('farm_id', allFarms.map(f => f.id)),
+          supabase.from('farm_members').select('id,user_id,farm_id').in('farm_id', allFarms.map(f => f.id)),
+        ]).then(([farmsRes, flocksRes, teamRes]) => {
+          const farms = farmsRes.data ?? [];
+          const flocks = (flocksRes.data ?? []).filter((fl: any) => fl.status === 'active');
+          const team = teamRes.data ?? [];
+          const items: typeof overflowItems = [];
+          farms.forEach((f: any, i: number) => {
+            if (i >= maxFarms) items.push({ id: f.id, type: 'farm', name: f.name, isCurrentlyActive: true });
+          });
+          flocks.forEach((fl: any, i: number) => {
+            if (i >= maxFlocks) {
+              const farmName = allFarms.find(f => f.id === fl.farm_id)?.name;
+              items.push({ id: fl.id, type: 'flock', name: fl.name, context: farmName ? `in ${farmName}` : undefined, isCurrentlyActive: true });
+            }
+          });
+          team.forEach((m: any, i: number) => {
+            if (i >= maxTeam) items.push({ id: m.id, type: 'team_member', name: m.user_id, isCurrentlyActive: true });
+          });
+          if (items.length > 0) {
+            setOverflowItems(items);
+            setShowOverflow(true);
+          }
+        });
+      });
+    }
+  }, [effectiveTier, user, profile, loading, allFarms]);
+
   // Only show "No farm assigned" for users who completed onboarding but lost their farm link (edge case).
   // New users who haven't completed onboarding go to the OnboardingWizard instead.
   useEffect(() => {
@@ -284,7 +336,27 @@ function AppContent() {
     }
 
     // Onboarding wizard removed - users go directly to dashboard after approval
-  }, [user, profile, currentRole, isImpersonating]);
+
+    // New-user welcome screen: show once to users with no farms who haven't seen it yet
+    if (
+      user &&
+      profile &&
+      !profile.is_super_admin &&
+      !loading &&
+      allFarms.length === 0 &&
+      !window.location.hash.includes('#/welcome') &&
+      !window.location.hash.includes('#/onboarding') &&
+      !window.location.hash.includes('#/invite')
+    ) {
+      try {
+        const seen = localStorage.getItem('eden_seen_welcome_after_signup');
+        if (!seen) {
+          window.location.hash = '#/welcome';
+          setCurrentView('welcome');
+        }
+      } catch { /* localStorage unavailable */ }
+    }
+  }, [user, profile, currentRole, isImpersonating, loading, allFarms]);
 
   useEffect(() => {
     if (user && pendingInviteToken) {
@@ -850,6 +922,10 @@ function AppContent() {
         setCurrentView('terms');
         return;
       }
+      if (hash.includes('#/welcome')) {
+        setCurrentView('welcome');
+        return;
+      }
       const coopMatch = hash.match(/#\/cooperatives\/([0-9a-f-]{36})/i);
       if (coopMatch) {
         setSelectedCooperativeId(coopMatch[1]);
@@ -953,6 +1029,12 @@ function AppContent() {
     window.location.hash = '';
     setCurrentView('dashboard');
   };
+
+  const pageFallback = (
+    <div className="flex items-center justify-center h-48">
+      <div className="w-8 h-8 border-2 border-[#3D5F42] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   if (loading) {
     return (
@@ -1066,12 +1148,21 @@ function AppContent() {
       );
     }
 
-    // Public legal pages — no auth required
+    // Public pages — no auth required
     if (window.location.hash.includes('#/privacy')) {
       return <Suspense fallback={pageFallback}><PrivacyPolicy /></Suspense>;
     }
     if (window.location.hash.includes('#/terms')) {
       return <Suspense fallback={pageFallback}><TermsOfService /></Suspense>;
+    }
+    if (window.location.hash.includes('#/welcome')) {
+      return (
+        <Suspense fallback={pageFallback}>
+          <WelcomeAfterSignup onContinue={() => {
+            window.location.hash = '#/dashboard';
+          }} />
+        </Suspense>
+      );
     }
 
     // Web: show landing page by default when not authenticated
@@ -1445,6 +1536,15 @@ function AppContent() {
             setCurrentView('dashboard');
           }} />
         );
+      case 'welcome':
+        return (
+          <Suspense fallback={pageFallback}>
+            <WelcomeAfterSignup onContinue={() => {
+              window.location.hash = '#/dashboard';
+              setCurrentView('dashboard');
+            }} />
+          </Suspense>
+        );
       case 'privacy':
         return <PrivacyPolicy />;
       case 'terms':
@@ -1497,12 +1597,6 @@ function AppContent() {
         );
     }
   };
-
-  const pageFallback = (
-    <div className="flex items-center justify-center h-48">
-      <div className="w-8 h-8 border-2 border-[#3D5F42] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
 
   if (currentView.startsWith('super-admin')) {
     return <Suspense fallback={pageFallback}>{renderView()}</Suspense>;
@@ -1562,6 +1656,18 @@ function AppContent() {
       `}</style>
       <BroadcastBanner />
       <ImpersonationBanner />
+      <OverflowModal
+        open={showOverflow}
+        onClose={() => setShowOverflow(false)}
+        effectiveTier={effectiveTier}
+        items={overflowItems}
+        onUpgrade={() => {
+          window.location.hash = '#/subscribe';
+          setCurrentView('subscribe');
+          setShowOverflow(false);
+        }}
+        onArchive={async () => setShowOverflow(false)}
+      />
       <Suspense fallback={null}>
         <DashboardLayout currentView={currentView} onNavigate={navigateToView}>
           <Suspense fallback={pageFallback}>

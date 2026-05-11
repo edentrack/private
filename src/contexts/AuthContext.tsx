@@ -3,6 +3,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import posthog from 'posthog-js';
 import { supabase } from '../lib/supabaseClient';
 import type { Profile, FarmMember, MemberRole, FarmKind } from '../types/database';
+import { getEffectiveTier, getTrialDaysRemaining } from '../utils/planGating';
 import { AuthContext } from './authContextRef';
 import type { OwnedFarm } from './authContextRef';
 
@@ -641,6 +642,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       session,
       profile,
+      effectiveTier: getEffectiveTier(profile),
+      trialDaysRemaining: getTrialDaysRemaining(profile),
       currentFarm,
       currentMember,
       currentRole,
