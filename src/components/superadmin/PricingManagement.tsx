@@ -102,7 +102,7 @@ export function PricingManagement() {
       toast.success(
         discountPct > 0
           ? `${discountPct}% discount applied across all plans`
-          : 'Discount cleared — prices back to baseline',
+          : 'Discount cleared. Prices back to baseline.',
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Save failed');

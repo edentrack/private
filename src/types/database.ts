@@ -124,6 +124,9 @@ export interface Profile {
   account_status?: 'pending' | 'active' | 'suspended' | 'rejected';
   subscription_tier?: 'free' | 'pro' | 'enterprise' | 'industry';
   subscription_expires_at?: string | null;
+  /** New signups get 30 days of Grower-tier access via this column.
+   *  Read alongside subscription_tier via getEffectiveTier() helper. */
+  trial_grower_until?: string | null;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
   cancel_at_period_end?: boolean | null;

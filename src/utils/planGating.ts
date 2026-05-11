@@ -1,11 +1,11 @@
 import { FarmPlan } from '../types/database';
 
-// Farm (account-level) limits per subscription tier
+// Farm (account-level) limits per subscription tier — locked matrix May 2026
 export const MAX_FARMS_PER_TIER: Record<string, number> = {
   free:       1,
-  pro:        2,
-  enterprise: 3,
-  industry:   999,
+  pro:        2,    // Grower
+  enterprise: 4,    // Farm Boss
+  industry:   10,
 };
 
 export function getMaxFarms(tier: string | undefined | null): number {
@@ -16,12 +16,12 @@ export function atFarmLimit(tier: string | undefined | null, ownedFarmCount: num
   return ownedFarmCount >= getMaxFarms(tier);
 }
 
-// Active flock limits per subscription tier
+// Active flocks PER FARM limit per subscription tier — locked matrix May 2026
 export const MAX_FLOCKS_PER_TIER: Record<string, number> = {
   free:       2,
-  pro:        5,
-  enterprise: 999,
-  industry:   999,
+  pro:        4,    // Grower
+  enterprise: 10,   // Farm Boss
+  industry:   20,
 };
 
 export function getMaxFlocks(tier: string | undefined | null): number {
@@ -30,6 +30,42 @@ export function getMaxFlocks(tier: string | undefined | null): number {
 
 export function atFlockLimit(tier: string | undefined | null, activeFlockCount: number): boolean {
   return activeFlockCount >= getMaxFlocks(tier);
+}
+
+// Team members per tier — locked matrix May 2026
+export const MAX_TEAM_MEMBERS_PER_TIER: Record<string, number> = {
+  free:       1,
+  pro:        4,
+  enterprise: 999,
+  industry:   999,
+};
+
+export function getMaxTeamMembers(tier: string | undefined | null): number {
+  return MAX_TEAM_MEMBERS_PER_TIER[tier ?? 'free'] ?? 1;
+}
+
+// Eden AI message limits PER WEEK — locked matrix May 2026
+export const EDEN_MESSAGES_PER_WEEK: Record<string, number> = {
+  free:       15,
+  pro:        100,
+  enterprise: 500,
+  industry:   -1,   // unlimited
+};
+
+export function getEdenMessageLimit(tier: string | undefined | null): number {
+  return EDEN_MESSAGES_PER_WEEK[tier ?? 'free'] ?? 15;
+}
+
+// Photo disease diagnosis PER MONTH — locked matrix May 2026
+export const PHOTO_DIAGNOSIS_PER_MONTH: Record<string, number> = {
+  free:       0,
+  pro:        3,
+  enterprise: 10,
+  industry:   -1,   // unlimited
+};
+
+export function getPhotoDiagnosisLimit(tier: string | undefined | null): number {
+  return PHOTO_DIAGNOSIS_PER_MONTH[tier ?? 'free'] ?? 0;
 }
 
 // Bird count limits per flock per plan
@@ -95,18 +131,89 @@ function isEnterpriseOrAbove(tier: AnyTier): boolean {
 
 export function hasFeatureAccess(
   tier: AnyTier,
-  feature: 'kpis' | 'alerts' | 'daily_summary' | 'advanced_analytics',
+  feature:
+    | 'kpis'
+    | 'alerts'
+    | 'daily_summary'
+    | 'advanced_analytics'
+    | 'voice_messages'           // Grower+
+    | 'photo_diagnosis'          // Grower+ (with monthly cap)
+    | 'whatsapp_receipts'        // Grower+
+    | 'reports_export'           // Grower+
+    | 'csv_import'               // Grower+
+    | 'payroll'                  // Grower+
+    | 'custom_onboarding'        // Grower+
+    | 'priority_support'         // Farm Boss+
+    | 'cooperative_dashboard'    // Industry only
+    | 'founder_support',         // Industry only
 ): boolean {
   switch (feature) {
     case 'kpis':
     case 'alerts':
     case 'daily_summary':
+    case 'voice_messages':
+    case 'photo_diagnosis':
+    case 'whatsapp_receipts':
+    case 'reports_export':
+    case 'csv_import':
+    case 'payroll':
+    case 'custom_onboarding':
       return isProOrAbove(tier);
     case 'advanced_analytics':
+    case 'priority_support':
       return isEnterpriseOrAbove(tier);
+    case 'cooperative_dashboard':
+    case 'founder_support':
+      return tier === 'industry';
     default:
       return true;
   }
+}
+
+/**
+ * Returns the user's effective subscription tier, accounting for the
+ * 30-day Grower trial that new signups get automatically.
+ *
+ * If the user is on Free but their trial_grower_until is still in the
+ * future, they get Grower-tier access until that timestamp passes.
+ * After that, getEffectiveTier() returns 'free' and OverflowModal
+ * kicks in if they have Grower-level data they need to scale back.
+ *
+ * Paid subscribers (subscription_tier !== 'free') are NEVER affected
+ * by the trial check — their actual tier wins.
+ */
+export function getEffectiveTier(
+  profile: Pick<import('../types/database').Profile, 'subscription_tier' | 'trial_grower_until'> | null | undefined,
+): 'free' | 'pro' | 'enterprise' | 'industry' {
+  const baseTier = (profile?.subscription_tier ?? 'free') as 'free' | 'pro' | 'enterprise' | 'industry';
+  if (baseTier !== 'free') return baseTier;
+
+  const trialUntil = profile?.trial_grower_until;
+  if (!trialUntil) return 'free';
+
+  const now = Date.now();
+  const trialEnds = typeof trialUntil === 'string' ? Date.parse(trialUntil) : new Date(trialUntil).getTime();
+  if (Number.isFinite(trialEnds) && trialEnds > now) {
+    return 'pro';   // Grower-tier access during trial window
+  }
+  return 'free';
+}
+
+/**
+ * Returns days remaining in the Grower trial. Returns 0 if no trial
+ * active or if the user is on a paid plan. Useful for UI countdowns.
+ */
+export function getTrialDaysRemaining(
+  profile: Pick<import('../types/database').Profile, 'subscription_tier' | 'trial_grower_until'> | null | undefined,
+): number {
+  if (!profile || profile.subscription_tier !== 'free' || !profile.trial_grower_until) return 0;
+  const trialEnds = typeof profile.trial_grower_until === 'string'
+    ? Date.parse(profile.trial_grower_until)
+    : new Date(profile.trial_grower_until).getTime();
+  if (!Number.isFinite(trialEnds)) return 0;
+  const msRemaining = trialEnds - Date.now();
+  if (msRemaining <= 0) return 0;
+  return Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
 }
 
 export function getPlanName(plan: FarmPlan): string {

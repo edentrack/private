@@ -36,3 +36,4 @@ supabase/.temp/
 .vercel
 .env*.local
 edentrack-video-pipeline/
+.claude/
