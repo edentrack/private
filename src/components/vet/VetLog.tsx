@@ -9,6 +9,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { todayLocal } from '../../utils/dateUtils';
 import { Capacitor } from '@capacitor/core';
 import { scanBarcode, tapLight } from '../../lib/capacitorNative';
+import { logActivity, formatActorName, type AuthorRole } from '../../lib/journalLogger';
 
 interface VetLog {
   id: string;
@@ -42,7 +43,7 @@ const emptyForm = {
 };
 
 export function VetLog() {
-  const { currentFarm, profile } = useAuth();
+  const { currentFarm, profile, currentRole } = useAuth();
   const { tryWrite, isNetworkError } = useOfflineWrite();
   const toast = useToast();
   const farmSpecies = useFarmSpecies();
@@ -201,6 +202,39 @@ export function VetLog() {
           }
         } else {
           toast.success(isFr ? 'Journal vétérinaire enregistré' : 'Vet log saved');
+        }
+
+        // Farm Journal: log the vet visit. "Three Samples (manager)
+        // logged vet visit: Newcastle disease — Oxytetracycline (7d
+        // withdrawal)".
+        if (currentFarm?.id) {
+          const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+          const actor = formatActorName({
+            fullName: profile?.full_name,
+            email: profile?.email,
+            role,
+          });
+          const dxPart = form.diagnosis ? `: ${form.diagnosis}` : '';
+          const medPart = form.medication ? ` — ${form.medication}` : '';
+          const wdPart = form.withdrawal_period_days
+            ? ` (${form.withdrawal_period_days}d withdrawal)`
+            : '';
+          void logActivity({
+            farmId: currentFarm.id,
+            flockId: form.flock_id || null,
+            entryType: 'vaccine_logged',
+            actorRole: role,
+            body: `${actor} logged vet visit${dxPart}${medPart}${wdPart}`,
+            metadata: {
+              linked_table: 'vet_logs',
+              vet_name: form.vet_name,
+              diagnosis: form.diagnosis,
+              medication: form.medication,
+              withdrawal_period_days: form.withdrawal_period_days
+                ? parseInt(form.withdrawal_period_days)
+                : null,
+            },
+          });
         }
       }
       closeForm();

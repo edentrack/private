@@ -363,6 +363,42 @@ export async function completeTask(
       details: { task_id: taskId, completed_at: now },
     });
 
+    // Farm Journal: log the task completion. Author role is fetched
+    // via a separate query because this helper takes only userId.
+    // Best-effort — failure doesn't block the task completion.
+    try {
+      const [{ data: actor }, { data: member }] = await Promise.all([
+        supabaseClient
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', userId)
+          .maybeSingle(),
+        supabaseClient
+          .from('farm_members')
+          .select('role')
+          .eq('farm_id', farmId)
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ]);
+      const display =
+        ((actor as { full_name: string | null; email: string | null } | null)?.full_name) ||
+        ((actor as { full_name: string | null; email: string | null } | null)?.email?.split('@')[0]) ||
+        'Someone';
+      const role = ((member as { role: string } | null)?.role) || 'worker';
+      await supabaseClient.from('journal_entries').insert({
+        farm_id: farmId,
+        author_id: userId,
+        author_role: role,
+        author_kind: 'system',
+        channel: 'activity',
+        entry_type: 'task_completed',
+        body: `${display} (${role}) completed task: ${taskTitle}`,
+        metadata: { linked_table: 'tasks', linked_id: taskId },
+      });
+    } catch (journalErr) {
+      console.warn('[completeTask] Journal log failed:', journalErr);
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error('Error completing task:', error);

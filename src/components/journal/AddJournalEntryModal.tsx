@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X, Check, EyeOff, Star } from 'lucide-react';
+import { X, Check, EyeOff, Star, ImagePlus, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { logNote, type NoteType, type AuthorRole } from '../../lib/journalLogger';
@@ -32,11 +33,67 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
   const [isPrivate, setIsPrivate] = useState(false);
   const [isImportant, setIsImportant] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Photo upload state. We stage files locally, upload on Save, and
+  // attach the resulting public URLs to the journal_entries.photo_urls
+  // array. Reusing the existing `inventory-photos` bucket so we don't
+  // need a new storage policy.
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   const actorRole: AuthorRole =
     (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker')
       ? currentRole
       : 'worker';
+
+  const handlePickPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const safe = files.filter(f => acceptedTypes.includes(f.type) && f.size < 8 * 1024 * 1024);
+    if (safe.length !== files.length) {
+      toast.error('Some files were skipped (JPEG/PNG/WebP under 8MB only).');
+    }
+    setPhotoFiles(prev => [...prev, ...safe].slice(0, 6));
+    setPhotoPreviews(prev => [...prev, ...safe.map(f => URL.createObjectURL(f))].slice(0, 6));
+    // Reset so picking the same file again still triggers onChange
+    e.target.value = '';
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotoFiles(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreviews(prev => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const uploadPhotos = async (): Promise<string[]> => {
+    if (!photoFiles.length) return [];
+    setUploadingPhotos(true);
+    const urls: string[] = [];
+    try {
+      for (const file of photoFiles) {
+        const ext = file.name.split('.').pop() ?? 'jpg';
+        const path = `${farmId}/journal/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from('inventory-photos')
+          .upload(path, file, { contentType: file.type });
+        if (uploadErr) {
+          console.warn('[journal] photo upload failed:', uploadErr);
+          continue;
+        }
+        const { data: urlData } = supabase.storage
+          .from('inventory-photos')
+          .getPublicUrl(path);
+        if (urlData?.publicUrl) urls.push(urlData.publicUrl);
+      }
+    } finally {
+      setUploadingPhotos(false);
+    }
+    return urls;
+  };
 
   const handleSave = async () => {
     if (!body.trim()) {
@@ -45,12 +102,17 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
     }
     setSaving(true);
     try {
+      // Upload any staged photos first. If upload fails for a file
+      // we skip it but keep going — the user can still save the note.
+      const photoUrls = await uploadPhotos();
+
       const id = await logNote({
         farmId,
         flockId,
         entryType,
         title: title.trim() || undefined,
         body: body.trim(),
+        photoUrls,
         isPrivate,
         isImportant,
         actorRole,
@@ -117,6 +179,41 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
             />
           </div>
 
+          {/* Photos — up to 6, JPEG/PNG/WebP under 8MB each. Stored
+              under inventory-photos/{farmId}/journal/. */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Photos <span className="text-gray-400 font-normal">(optional, up to 6)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {photoPreviews.map((url, i) => (
+                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(i)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-xs flex items-center justify-center"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {photoFiles.length < 6 && (
+                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 cursor-pointer transition-colors">
+                  <ImagePlus className="w-5 h-5" />
+                  <span className="text-[10px] mt-0.5">Add</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={handlePickPhotos}
+                    className="sr-only"
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+
           {/* Flags — keep these out of the way for fast entry */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
@@ -152,11 +249,11 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
 
           <button
             onClick={handleSave}
-            disabled={saving || !body.trim()}
+            disabled={saving || uploadingPhotos || !body.trim()}
             className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#2F4A34] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            {saving ? (
-              <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Saving…</>
+            {saving || uploadingPhotos ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> {uploadingPhotos ? 'Uploading photos…' : 'Saving…'}</>
             ) : (
               <><Check className="w-4 h-4" /> Save note</>
             )}

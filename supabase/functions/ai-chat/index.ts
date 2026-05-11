@@ -763,6 +763,16 @@ purchase: { type: "LOG_PURCHASE", item_name: string, inventory_category: "feed"|
 weight: { type: "LOG_WEIGHT", flock_name: string, avg_weight_kg: number, sample_size?: number, log_date?: string }
 - If user specifies a date, include log_date: "YYYY-MM-DD" in the LOG block
 
+journal: { type: "LOG_JOURNAL", journal_entry_type: "observation"|"financial"|"milestone"|"personal"|"health"|"auto_summary", journal_body: string, journal_title?: string, flock_name?: string }
+- Use when the farmer asks you to "log a note", "save this thought to my journal", "remember that...", or when you want to surface a proactive insight (weekly summary, mortality spike call-out, cycle close-out, vaccine-clear reminder).
+- journal_entry_type: pick the closest match. "auto_summary" is for your proactive insights; "observation" for things the farmer noticed; "financial" for P&L notes; "milestone" for cycle close-outs and big wins; "health" for vet/disease notes; "personal" for reminders.
+- journal_body: 1-3 sentences max. Conversational, specific, and actionable. Use farmer's voice, not corporate.
+- journal_title: optional one-line headline (e.g. "Cycle 4 closed: +12,400 XAF profit").
+- Examples:
+  - Farmer: "log that I noticed Pen 2 eggs are cracking more than usual" →
+    [LOG] { type: "LOG_JOURNAL", journal_entry_type: "observation", journal_body: "Owner noticed unusual egg cracking in Pen 2 this morning. Worth checking calcium levels in the layer ration." } [/LOG]
+  - Eden proactive: { type: "LOG_JOURNAL", journal_entry_type: "auto_summary", journal_title: "Week 12 summary", journal_body: "This week: 1,240 eggs collected (+8% vs last week), 4 mortalities (0.8% rate, below target), 28,000 XAF in feed expenses. Net P&L: +18,200 XAF. Strong week." }
+
 task_complete: { type: "COMPLETE_TASK", task_title_hint: string }
 - Use when farmer explicitly asks to mark a task done (e.g. "mark vaccination done", "complete the feed task")
 - task_title_hint: a keyword from the task title to match (e.g. "vaccination", "egg", "feed")
