@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, BookOpen, Sparkles, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, BookOpen, Sparkles, Star, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 /**
  * Previous Batch widget — shown at the top of the journal when the
@@ -42,7 +44,11 @@ interface Props {
 const COLLAPSED_KEY = (farmId: string) => `eden_prev_batch_collapsed_${farmId}`;
 
 export function PreviousBatchWidget({ farmId, currentFlockId }: Props) {
+  const { profile, currentRole } = useAuth();
+  const toast = useToast();
   const [entries, setEntries] = useState<CarryForwardEntry[]>([]);
+  const [applying, setApplying] = useState<Set<string>>(new Set());
+  const [applied, setApplied] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(COLLAPSED_KEY(farmId)) === 'true';
@@ -80,6 +86,57 @@ export function PreviousBatchWidget({ farmId, currentFlockId }: Props) {
 
   // Hide entirely if there's nothing to show.
   if (loading || entries.length === 0) return null;
+
+  /**
+   * Copy a previous-batch entry into the CURRENT flock's journal so
+   * the lesson lives inline on the new batch's timeline (not just
+   * surfaced in this widget). Sets `carried_from_flock_id` so the
+   * UI can badge "From [previous flock]" on the copy.
+   *
+   * Only available when the user has a current flock context.
+   * Owners + managers can apply; workers see no button.
+   */
+  const applyToCurrentFlock = async (e: CarryForwardEntry) => {
+    if (!currentFlockId) {
+      toast.error('Select a flock first');
+      return;
+    }
+    if (!profile?.id) return;
+    setApplying(prev => new Set(prev).add(e.id));
+    try {
+      const role = (currentRole === 'owner' || currentRole === 'manager') ? currentRole : null;
+      if (!role) {
+        toast.error('Only the owner or manager can apply lessons');
+        return;
+      }
+      const { error } = await supabase.from('journal_entries').insert({
+        farm_id: farmId,
+        flock_id: currentFlockId,
+        author_id: profile.id,
+        author_role: role,
+        author_kind: e.author_kind,
+        channel: 'notes',
+        entry_type: e.entry_type,
+        title: e.title,
+        body: e.body,
+        metadata: { ...(e.metadata ?? {}), applied_from_entry: e.id },
+        carried_from_flock_id: e.flock_id,
+      });
+      if (error) {
+        console.warn('[PreviousBatch] apply failed:', error);
+        toast.error('Could not copy the entry');
+        return;
+      }
+      setApplied(prev => new Set(prev).add(e.id));
+      toast.success('Copied to this flock\'s journal');
+    } finally {
+      setApplying(prev => {
+        const next = new Set(prev);
+        next.delete(e.id);
+        return next;
+      });
+    }
+  };
 
   const toggle = () => {
     const next = !collapsed;
@@ -134,6 +191,29 @@ export function PreviousBatchWidget({ farmId, currentFlockId }: Props) {
                 </div>
                 {e.title && <p className="font-semibold text-gray-900 text-sm">{e.title}</p>}
                 <p className="text-sm text-gray-800 mt-0.5 whitespace-pre-wrap break-words">{e.body}</p>
+
+                {/* Apply-to-current-flock button. Only shown when the
+                    user is viewing a specific flock context AND has
+                    owner/manager role. Drops a copy into the current
+                    flock's journal so the lesson lives inline going
+                    forward, not just in this widget. */}
+                {currentFlockId && (currentRole === 'owner' || currentRole === 'manager') && (
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={() => applyToCurrentFlock(e)}
+                      disabled={applying.has(e.id) || applied.has(e.id)}
+                      className="text-[11px] font-medium text-amber-800 hover:text-amber-900 inline-flex items-center gap-1 disabled:opacity-60"
+                    >
+                      {applied.has(e.id) ? (
+                        <><Check className="w-3 h-3" /> Applied</>
+                      ) : applying.has(e.id) ? (
+                        <>Copying…</>
+                      ) : (
+                        <><Copy className="w-3 h-3" /> Apply to this flock</>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

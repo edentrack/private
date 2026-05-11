@@ -16,6 +16,7 @@ import { ProductionCycleWidget } from './ProductionCycleWidget';
 import { TodayTasksWidget } from './TodayTasksWidget';
 import { UnifiedTaskSettings } from '../tasks/UnifiedTaskSettings';
 import { InventoryUsageWidget } from './InventoryUsageWidget';
+import { EdenWeeklyDigestWidget } from './EdenWeeklyDigestWidget';
 import { QuickEggCollectionWidget } from './QuickEggCollectionWidget';
 import { AquaculturePondWidget } from './AquaculturePondWidget';
 import { AquaCycleWidget } from './AquaCycleWidget';
@@ -843,6 +844,14 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
       <div className="animate-fade-in-up">
         <div className="px-1 py-0.5 text-sm font-semibold text-gray-900">{isFr ? 'Utilisation des stocks' : 'Inventory Usage'}</div>
         <InventoryUsageWidget />
+      </div>
+
+      {/* Eden's weekly digest — mirrors the latest journal weekly_summary
+          entry so the owner sees the headline + sparkline / P&L bar
+          without opening the Journal page. Returns null when no recent
+          summary exists, so dashboards on fresh farms stay quiet. */}
+      <div className="animate-fade-in-up">
+        <EdenWeeklyDigestWidget />
       </div>
 
       {currentRole?.toLowerCase() !== 'worker' && currentRole?.toLowerCase() !== 'viewer' && (

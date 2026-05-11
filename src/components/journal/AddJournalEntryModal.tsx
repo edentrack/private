@@ -1,9 +1,72 @@
-import { useState } from 'react';
-import { X, Check, EyeOff, Star, ImagePlus, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Check, EyeOff, Star, ImagePlus, Loader2, AtSign } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { logNote, type NoteType, type AuthorRole } from '../../lib/journalLogger';
+
+interface MentionablePerson {
+  id: string;
+  name: string;
+  role: string;
+}
+
+/**
+ * Note templates — quick-start scaffolds for the most common journal
+ * notes. Each template fills in the type, title, and a body skeleton
+ * the farmer just completes. We keep this list short on purpose:
+ * five templates that cover ~80% of what farmers actually write.
+ * Adding more would defeat the "one-stop quick capture" goal.
+ */
+const NOTE_TEMPLATES: ReadonlyArray<{
+  id: string;
+  emoji: string;
+  label: string;
+  type: NoteType;
+  title: string;
+  bodyScaffold: string;
+}> = [
+  {
+    id: 'daily-check',
+    emoji: '✅',
+    label: 'Daily check',
+    type: 'observation',
+    title: 'Daily morning check',
+    bodyScaffold: 'Birds:\nFeed:\nWater:\nMortality:\nNotes:',
+  },
+  {
+    id: 'vaccine-round',
+    emoji: '💉',
+    label: 'Vaccine round',
+    type: 'health',
+    title: 'Vaccination',
+    bodyScaffold: 'Vaccine:\nDosage:\nBatch / lot:\nWithdrawal:\nNotes:',
+  },
+  {
+    id: 'weekly-recap',
+    emoji: '📊',
+    label: 'Weekly recap',
+    type: 'milestone',
+    title: 'Week recap',
+    bodyScaffold: 'Wins:\nIssues:\nNext week focus:',
+  },
+  {
+    id: 'feed-issue',
+    emoji: '🌾',
+    label: 'Feed issue',
+    type: 'observation',
+    title: 'Feed quality issue',
+    bodyScaffold: 'Supplier:\nWhat I noticed:\nAction taken:',
+  },
+  {
+    id: 'reminder',
+    emoji: '📝',
+    label: 'Reminder',
+    type: 'personal',
+    title: '',
+    bodyScaffold: 'Remember to ',
+  },
+];
 
 interface Props {
   farmId: string;
@@ -40,6 +103,70 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+
+  // @mentions state. Load teammates on mount; surface a typeahead
+  // when the user types '@' followed by some letters. On insert we
+  // replace "@<query>" with "@Name" and stash the mentioned user's
+  // id into mentioned set so the journal_mentions rows can be
+  // written alongside the entry. Server-side push fires from a DB
+  // trigger we'll wire next pass — for now the mention persists in
+  // the entry's body + a journal_mentions row.
+  const [teammates, setTeammates] = useState<MentionablePerson[]>([]);
+  const [mentioned, setMentioned] = useState<Set<string>>(new Set());
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [caretPos, setCaretPos] = useState<number>(0);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('farm_members')
+        .select('user_id, role, profiles!inner (full_name, email)')
+        .eq('farm_id', farmId);
+      const list: MentionablePerson[] = ((data ?? []) as unknown as Array<{
+        user_id: string;
+        role: string;
+        profiles: { full_name: string | null; email: string | null };
+      }>).map(r => ({
+        id: r.user_id,
+        name: r.profiles.full_name || r.profiles.email?.split('@')[0] || 'Someone',
+        role: r.role || 'worker',
+      }));
+      setTeammates(list);
+    })();
+  }, [farmId]);
+
+  const filteredMentions = mentionQuery === null
+    ? []
+    : teammates.filter(t => t.name.toLowerCase().includes((mentionQuery || '').toLowerCase())).slice(0, 5);
+
+  const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const pos = e.target.selectionStart ?? value.length;
+    setBody(value);
+    setCaretPos(pos);
+    // Look back from the caret for an unmatched '@'.
+    const slice = value.slice(0, pos);
+    const m = slice.match(/(^|\s)@(\w*)$/);
+    setMentionQuery(m ? m[2] : null);
+  };
+
+  const insertMention = (person: MentionablePerson) => {
+    const before = body.slice(0, caretPos).replace(/@\w*$/, `@${person.name} `);
+    const after = body.slice(caretPos);
+    setBody(before + after);
+    setMentioned(prev => new Set(prev).add(person.id));
+    setMentionQuery(null);
+    // Restore focus and put caret after the inserted mention.
+    setTimeout(() => {
+      const ref = bodyRef.current;
+      if (!ref) return;
+      const newCaret = before.length;
+      ref.focus();
+      ref.setSelectionRange(newCaret, newCaret);
+      setCaretPos(newCaret);
+    }, 0);
+  };
 
   const actorRole: AuthorRole =
     (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker')
@@ -121,6 +248,25 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
         toast.error('Could not save the note. Try again.');
         return;
       }
+
+      // Persist @mentions. Each mention becomes a journal_mentions
+      // row that a future push trigger reads to notify the tagged
+      // teammate. Failure here is non-fatal — the note saves
+      // regardless. We only insert mentions for users whose names
+      // still appear in the saved body (avoids stale rows when the
+      // owner inserted then deleted a mention).
+      const stillInBody = Array.from(mentioned).filter(uid => {
+        const t = teammates.find(p => p.id === uid);
+        return t && body.includes(`@${t.name}`);
+      });
+      if (stillInBody.length > 0) {
+        const mentionRows = stillInBody.map(uid => ({
+          entry_id: id,
+          mentioned_user_id: uid,
+        }));
+        const { error: mErr } = await supabase.from('journal_mentions').insert(mentionRows);
+        if (mErr) console.warn('[journal] Mentions not written:', mErr);
+      }
       toast.success('Note saved');
       onSaved();
     } finally {
@@ -137,6 +283,34 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
         </div>
 
         <div className="p-4 space-y-4">
+          {/* Templates — one-tap fills the form with a starter
+              scaffold for common note types. The farmer can still
+              edit before saving. Sets type + title + body skeleton.
+              Designed so a 5-second "daily check" can be jotted
+              without thinking about structure. */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Start from a template <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {NOTE_TEMPLATES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setEntryType(t.type);
+                    setTitle(t.title);
+                    setBody(t.bodyScaffold);
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gray-200 hover:border-[#3D5F42] hover:bg-[#3D5F42]/5 transition-colors flex items-center gap-1 text-gray-700"
+                >
+                  <span>{t.emoji}</span>
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Type selector — defaults to Observation. The full list lets
               owners separate financial notes from personal reminders so
               the journal stays useful when it grows past 100 entries. */}
@@ -168,15 +342,45 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Note *</label>
+          <div className="relative">
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Note *
+              <span className="text-gray-400 font-normal ml-1">
+                <AtSign className="w-3 h-3 inline align-text-bottom" />
+                mention a teammate to tag them
+              </span>
+            </label>
             <textarea
+              ref={bodyRef}
               value={body}
-              onChange={e => setBody(e.target.value)}
+              onChange={handleBodyChange}
+              onKeyUp={e => setCaretPos((e.target as HTMLTextAreaElement).selectionStart ?? body.length)}
+              onClick={e => setCaretPos((e.target as HTMLTextAreaElement).selectionStart ?? body.length)}
               rows={6}
-              placeholder="What did you see? What needs to happen?"
+              placeholder="What did you see? What needs to happen? Type @ to mention a teammate."
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42] resize-none"
             />
+            {/* Mention typeahead — anchored just below the textarea
+                when an active @query is being typed. Tap or click a
+                row to insert the mention. */}
+            {filteredMentions.length > 0 && (
+              <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                {filteredMentions.map(p => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => insertMention(p)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-[#3D5F42] text-white flex items-center justify-center text-xs font-bold">
+                      {p.name[0]?.toUpperCase() ?? '?'}
+                    </span>
+                    <span className="font-medium text-gray-900">{p.name}</span>
+                    <span className="text-[10px] uppercase tracking-wide text-gray-500">{p.role}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Photos — up to 6, JPEG/PNG/WebP under 8MB each. Stored
