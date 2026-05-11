@@ -24,44 +24,74 @@ interface Plan {
   limits: string;
 }
 
-// Plan feature lists vary slightly by species so users see the unit
-// they actually manage ("active ponds" / "active rabbitries" vs.
-// "active flocks"). Industry plan is multi-farm so the species-specific
-// noun isn't relevant there.
-function buildPlans(args: { groupTermPluralLower: string; lossNounPluralLower: string }): Plan[] {
-  const { groupTermPluralLower, lossNounPluralLower } = args;
+// Plan feature lists. The locked matrix uses "flocks per farm" everywhere
+// because the species-aware noun (ponds for fish, rabbitries for rabbits)
+// is already swapped at a deeper level (groupTermPluralLower). For
+// signed-in users, this is the canonical in-app upgrade view. Must
+// stay in sync with src/components/landing/LandingPage.tsx PLANS array.
+function buildPlans(args: { groupTermPluralLower: string }): Plan[] {
+  const { groupTermPluralLower } = args;
   return [
     {
       id: 'free', name: 'Starter',
       icon: <Leaf className="w-6 h-6" />,
       borderColor: 'border-agri-brown-200',
       ringColor: '',
-      features: [`2 active ${groupTermPluralLower}`, 'Daily task management', `${lossNounPluralLower.replace(/^./, (c) => c.toUpperCase())} & weight tracking`, 'Expense recording', 'Basic inventory', 'WhatsApp report sharing'],
-      limits: 'For farmers just getting started',
+      features: [
+        `1 farm · 2 active ${groupTermPluralLower} · 1 user`,
+        'Mortality, weight & expense tracking',
+        'Daily task reminders',
+        'WhatsApp daily summary',
+        'Eden AI · 15 messages/week',
+      ],
+      limits: 'Just getting started',
     },
     {
       id: 'pro', name: 'Grower', badge: 'Most Popular',
       icon: <Sprout className="w-6 h-6" />,
       borderColor: 'border-[#3D5F42]',
       ringColor: 'ring-2 ring-[#3D5F42] ring-offset-2',
-      features: [`Up to 5 active ${groupTermPluralLower}`, 'Full analytics & KPIs', 'Automated weekly email reports', 'Eden AI advisor (30 msg/mo)', 'Smart receipt import', 'Vaccination scheduling', 'Sales & invoices', '2 team members'],
-      limits: 'For growing farms that want full control',
+      features: [
+        `2 farms · 4 ${groupTermPluralLower} per farm · 4 team members`,
+        'Eden AI · 100 messages/week',
+        'Photo disease diagnosis · 3/month',
+        'Voice messages to Eden',
+        'Smart receipt & CSV import',
+        'PDF & CSV reports',
+        'Payroll & shift management',
+        'WhatsApp receipts to buyers',
+        'Custom onboarding session',
+      ],
+      limits: 'Running a real farm — 50 to 500 animals',
     },
     {
       id: 'enterprise', name: 'Farm Boss',
       icon: <Crown className="w-6 h-6" />,
       borderColor: 'border-amber-300',
       ringColor: '',
-      features: [`Unlimited ${groupTermPluralLower} & team members`, 'Eden AI - 200 msg/mo + 30 photo diagnoses', 'Smart import with receipt photos', 'Payroll & shift management', 'Benchmarking vs similar farms', 'Loan-readiness PDF report', 'Priority WhatsApp support'],
-      limits: 'For serious commercial operations',
+      features: [
+        'Everything in Grower, plus:',
+        `4 farms · 10 ${groupTermPluralLower} per farm · unlimited team`,
+        'Eden AI · 500 messages/week',
+        'Photo disease diagnosis · 10/month',
+        'Priority WhatsApp support',
+      ],
+      limits: 'Commercial farm with workers',
     },
     {
       id: 'industry', name: 'Industry',
       icon: <Building2 className="w-6 h-6" />,
       borderColor: 'border-blue-400',
       ringColor: '',
-      features: ['Up to 10 farms', 'Multi-farm dashboard', 'Eden AI - unlimited', 'Custom-branded PDF reports', 'Excel/CSV export', 'Webhook API', 'Dedicated support line', 'Onboarding call', 'White-label option'],
-      limits: 'For agribusiness & integrators',
+      features: [
+        'Everything in Farm Boss, plus:',
+        `10 farms · 20 ${groupTermPluralLower} per farm`,
+        'Eden AI · unlimited messages',
+        'Photo disease diagnosis · unlimited',
+        'Direct founder support line',
+        'Cooperative dashboard (coming soon)',
+      ],
+      limits: 'Multiple farms or a cooperative',
     },
   ];
 }
@@ -75,7 +105,6 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   const farmSpecies = useFarmSpecies();
   const plans = useMemo(() => buildPlans({
     groupTermPluralLower: farmSpecies.groupTermPlural.toLowerCase(),
-    lossNounPluralLower: farmSpecies.lossNounPlural.toLowerCase(),
   }), [farmSpecies.id]);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
   const [region, setRegion] = useState<RegionConfig | null>(null);

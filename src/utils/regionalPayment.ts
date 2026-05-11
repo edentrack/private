@@ -183,13 +183,18 @@ const _CACHE_TTL_MS = 5 * 60_000; // 5 min
  * Called on app boot from src/main.tsx and again on cache miss.
  * Safe to call multiple times — short-circuits when cache is fresh.
  *
+ * Pass `{ force: true }` to bypass the 5-minute TTL. The super-admin
+ * Pricing screen calls this after Save so the "Effective prices
+ * preview" table reflects the new discount immediately instead of
+ * stale-reading the local cache until next page load.
+ *
  * Uses a dynamic import for the supabase client so this util stays
  * usable in edge-function-adjacent code paths that don't ship the
  * full client.
  */
-export async function loadPricingSettings(): Promise<void> {
+export async function loadPricingSettings(opts: { force?: boolean } = {}): Promise<void> {
   const now = Date.now();
-  if (now - _settingsLoadedAt < _CACHE_TTL_MS) return;
+  if (!opts.force && now - _settingsLoadedAt < _CACHE_TTL_MS) return;
   try {
     const { supabase } = await import('../lib/supabaseClient');
     // Run the two reads in parallel — both are tiny.
