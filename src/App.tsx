@@ -84,6 +84,7 @@ const SamplingEventsPage     = lazy1(() => import('./components/aquaculture/Samp
 const StockingEventsPage     = lazy1(() => import('./components/aquaculture/StockingEventsPage'), 'StockingEventsPage');
 const FishHealthPage         = lazy1(() => import('./components/aquaculture/FishHealthPage'), 'FishHealthPage');
 const PondInspectionsPage    = lazy1(() => import('./components/aquaculture/PondInspectionsPage'), 'PondInspectionsPage');
+const PondCheckPage          = lazy1(() => import('./components/aquaculture/PondCheckPage'), 'PondCheckPage');
 const RabbitHarvestPage      = lazy1(() => import('./components/rabbits/RabbitHarvestPage'), 'RabbitHarvestPage');
 const BreedingEventsPage     = lazy1(() => import('./components/rabbits/BreedingEventsPage'), 'BreedingEventsPage');
 const LittersPage            = lazy1(() => import('./components/rabbits/LittersPage'), 'LittersPage');
@@ -622,6 +623,7 @@ function AppContent() {
       'cooperatives': '#/cooperatives',
       'credit-score': '#/credit-score',
       'pond-planner': '#/pond-planner',
+      'pond-check': '#/pond-check',
       'journal': '#/journal',
     };
 
@@ -838,6 +840,10 @@ function AppContent() {
       }
       if (hash.includes('#/pond-inspections')) {
         setCurrentView('pond-inspections');
+        return;
+      }
+      if (hash.includes('#/pond-check')) {
+        setCurrentView('pond-check');
         return;
       }
       if (hash.includes('#/rabbit-harvest')) {
@@ -1449,6 +1455,8 @@ function AppContent() {
         return <FishHealthPage />;
       case 'pond-inspections':
         return <PondInspectionsPage />;
+      case 'pond-check':
+        return <PondCheckPage />;
       case 'rabbit-harvest':
         return <RabbitHarvestPage />;
       case 'breeding-events':

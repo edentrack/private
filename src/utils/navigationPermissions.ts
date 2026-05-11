@@ -44,7 +44,8 @@ export type ModuleName =
   | 'cooperatives'
   | 'credit-score'
   | 'pond-planner'
-  | 'journal';
+  | 'journal'
+  | 'pond-check';
 
 export interface ModuleVisibility {
   visible: boolean;

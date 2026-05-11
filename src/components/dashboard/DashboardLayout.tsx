@@ -127,6 +127,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'stocking', label: isFr ? 'Empoissonnement' : 'Stocking', icon: Truck },
       { id: 'fish-health', label: isFr ? 'Santé des poissons' : 'Fish Health', icon: AlertTriangle },
       { id: 'pond-inspections', label: isFr ? "Inspections d'étang" : 'Pond Inspections', icon: Eye },
+      // Unified Pond Check — daily walk page (water readings + visual
+      // observations under sub-tabs). Replaces the separate water-
+      // quality + pond-inspections tabs in nav while keeping both
+      // routes alive for backwards compatibility.
+      { id: 'pond-check', label: isFr ? "Vérification d'étang" : 'Pond Check', icon: Droplets },
       { id: 'pond-planner', label: isFr ? "Planificateur d'étang" : 'Pond Planner', icon: CalendarDays },
       { id: 'rabbit-harvest', label: isFr ? 'Récolte de lapins' : 'Rabbit Harvest', icon: Scale },
       { id: 'breeding-events', label: isFr ? 'Reproduction' : 'Breeding', icon: Heart },
@@ -166,7 +171,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // bottom so nobody noticed, but the post-grouping mobile More menu
     // surfaced it in the Operations section on poultry farms. Greg
     // caught it on his iPhone.
-    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking', 'fish-health', 'pond-inspections', 'pond-planner']);
+    const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking', 'fish-health', 'pond-inspections', 'pond-planner', 'pond-check']);
 
     // May-2026 fish-farm nav cleanup: too many tabs in production were
     // overwhelming farmers. We hide these from the nav menu but keep

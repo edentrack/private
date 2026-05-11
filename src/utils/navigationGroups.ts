@@ -58,6 +58,10 @@ const GROUP_MEMBERSHIP: Record<NavigationGroupId, ReadonlyArray<ModuleName>> = {
     'stocking',
     'fish-health',
     'pond-inspections',
+    // Unified daily pond check (water readings + visual observations
+    // behind sub-tabs). Replaces water-quality + pond-inspections in
+    // the nav menu while leaving those two routes registered.
+    'pond-check',
     // Rabbits-specific
     'rabbit-harvest',
     'breeding-events',

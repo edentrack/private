@@ -266,6 +266,35 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
         }));
         const { error: mErr } = await supabase.from('journal_mentions').insert(mentionRows);
         if (mErr) console.warn('[journal] Mentions not written:', mErr);
+
+        // Fire push notifications to the mentioned teammates. The
+        // send-push-notification edge function filters by each
+        // subscription's `journal_mention` category preference
+        // (default true; users can opt out in Settings →
+        // Notifications). Best-effort: a push failure never affects
+        // the saved entry.
+        try {
+          const me = (await supabase.auth.getUser()).data.user;
+          const authorName =
+            teammates.find(t => t.id === me?.id)?.name
+            || me?.email?.split('@')[0]
+            || 'Someone';
+          const previewBody = body.trim().length > 80
+            ? body.trim().slice(0, 77) + '…'
+            : body.trim();
+          await supabase.functions.invoke('send-push-notification', {
+            body: {
+              user_ids: stillInBody,
+              title: `${authorName} mentioned you`,
+              body: previewBody,
+              url: '/#/journal',
+              tag: `journal-mention-${id}`,
+              category: 'journal_mention',
+            },
+          });
+        } catch (pushErr) {
+          console.warn('[journal] Mention push failed (non-fatal):', pushErr);
+        }
       }
       toast.success('Note saved');
       onSaved();

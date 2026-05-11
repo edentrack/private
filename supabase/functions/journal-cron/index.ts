@@ -31,6 +31,53 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || SUPABASE_SERVICE_KEY;
 
+/**
+ * Notify every farm member who has opted in to `eden_journal` push
+ * about an Eden-authored entry. Server-to-server call to the
+ * existing send-push-notification edge function. Best-effort —
+ * a push failure never blocks the cron from continuing.
+ *
+ * We notify all members (owner + managers + workers) by default;
+ * each user's prefs.eden_journal toggle gates whether their device
+ * actually receives it. Workers who don't want Eden's weekly
+ * digests on their phone just flip the toggle off in Settings.
+ */
+async function notifyFarmAboutEden(
+  supabase: SupabaseClient,
+  farmId: string,
+  title: string,
+  body: string,
+  tag: string,
+): Promise<void> {
+  try {
+    const { data: members } = await supabase
+      .from('farm_members')
+      .select('user_id')
+      .eq('farm_id', farmId);
+    const ids = ((members ?? []) as { user_id: string }[])
+      .map(m => m.user_id)
+      .filter(Boolean);
+    if (ids.length === 0) return;
+    await fetch(`${SUPABASE_URL}/functions/v1/send-push-notification`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_ids: ids,
+        title,
+        body: body.length > 120 ? body.slice(0, 117) + '…' : body,
+        url: '/#/journal',
+        tag,
+        category: 'eden_journal',
+      }),
+    });
+  } catch (err) {
+    console.warn('[journal-cron] push notify failed (non-fatal):', err);
+  }
+}
+
 interface VetClear {
   id: string;
   farm_id: string;
@@ -106,6 +153,15 @@ async function runVetClearCheck(supabase: SupabaseClient): Promise<number> {
       .from('vet_logs')
       .update({ journal_clear_announced: true })
       .eq('id', log.id);
+
+    // Push to farm members who have eden_journal opted in
+    await notifyFarmAboutEden(
+      supabase,
+      log.farm_id,
+      'Withdrawal period clear',
+      `${med} withdrawal on ${target} ends today. Safe to sell.`,
+      `journal-withdrawal-${log.id}`,
+    );
 
     inserted += 1;
   }
@@ -319,6 +375,15 @@ async function runWeeklySummaries(supabase: SupabaseClient): Promise<number> {
       console.warn('[journal-cron] weekly_summary insert failed for farm', farm.id, insErr);
       continue;
     }
+
+    await notifyFarmAboutEden(
+      supabase,
+      farm.id,
+      `Eden's weekly digest is ready`,
+      headline + (pnlLine || ''),
+      `journal-weekly-${farm.id}-${weekStart}`,
+    );
+
     inserted += 1;
   }
 

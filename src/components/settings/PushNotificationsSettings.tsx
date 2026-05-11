@@ -1,13 +1,55 @@
-import { useEffect, useState } from 'react';
-import { Bell, BellOff, AlertCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Bell, BellOff, AlertCircle, Sparkles, AtSign, Droplets, HeartPulse, Syringe, Package, Clock } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { supabase } from '../../lib/supabaseClient';
 import {
   subscribeToPushNotifications,
   unsubscribeFromPushNotifications,
   getPushSubscriptionStatus,
 } from '../../lib/pushNotifications';
+
+/**
+ * Per-category notification preferences.
+ *
+ * Each push_subscriptions row carries a `prefs` JSONB map of
+ * category → bool. The send-push-notification edge function reads
+ * this map and skips subscriptions where the requested category is
+ * false. We expose toggles for every category so the user controls
+ * what pings them on this device.
+ *
+ * Categories are documented in 20260507000003_push_subscriptions.sql
+ * (defaults true, opt-out model) and extended by
+ * 20260512000001_push_prefs_journal_categories.sql.
+ */
+type CategoryKey =
+  | 'pond_alert'
+  | 'mortality_spike'
+  | 'water_quality'
+  | 'vaccination_due'
+  | 'task_overdue'
+  | 'low_feed'
+  | 'journal_mention'
+  | 'eden_journal';
+
+const CATEGORY_META: Array<{
+  key: CategoryKey;
+  icon: typeof Bell;
+  labelEn: string;
+  labelFr: string;
+  descEn: string;
+  descFr: string;
+}> = [
+  { key: 'pond_alert',       icon: Droplets,    labelEn: 'Pond emergencies',     labelFr: "Urgences d'étang",   descEn: 'DO drop, ammonia spike, temperature alerts.', descFr: "Baisse d'OD, pic d'ammoniac, alertes de température." },
+  { key: 'mortality_spike',  icon: HeartPulse,  labelEn: 'Mortality spikes',     labelFr: 'Pics de mortalité',  descEn: 'Triggered when 24h losses exceed 2% of the flock.', descFr: 'Déclenché si les pertes sur 24h dépassent 2% du troupeau.' },
+  { key: 'water_quality',    icon: Droplets,    labelEn: 'Water quality',        labelFr: "Qualité de l'eau",   descEn: 'Daily pond water-quality threshold breaches.', descFr: 'Dépassement de seuils journaliers de qualité.' },
+  { key: 'vaccination_due',  icon: Syringe,     labelEn: 'Vaccinations due',     labelFr: 'Vaccinations dues',  descEn: 'A scheduled vaccination is due within 24 hours.', descFr: 'Une vaccination programmée est due sous 24 heures.' },
+  { key: 'task_overdue',     icon: Clock,       labelEn: 'Overdue tasks',        labelFr: 'Tâches en retard',   descEn: 'Tasks past their due time on this farm.', descFr: 'Tâches dépassant leur échéance sur cette ferme.' },
+  { key: 'low_feed',         icon: Package,     labelEn: 'Low feed stock',       labelFr: 'Stock faible',       descEn: 'Feed inventory drops below your set threshold.', descFr: 'Stock en dessous du seuil défini.' },
+  { key: 'journal_mention',  icon: AtSign,      labelEn: 'Journal mentions',     labelFr: 'Mentions journal',   descEn: 'A teammate tagged you in a journal note.', descFr: "Un collègue vous a mentionné dans une note de journal." },
+  { key: 'eden_journal',     icon: Sparkles,    labelEn: "Eden's auto-summaries",labelFr: "Résumés d'Eden",     descEn: "Eden's weekly digests, cycle close-outs, withdrawal-period reminders.", descFr: "Résumés hebdomadaires, fins de cycle, rappels de délais de retrait." },
+];
 
 /**
  * Push notifications opt-in — Phase G.
@@ -36,14 +78,84 @@ export function PushNotificationsSettings() {
       : 'Mortality spikes');
   const [status, setStatus] = useState<Status>('unknown');
   const [working, setWorking] = useState(false);
+  // Per-category prefs (loaded from push_subscriptions.prefs for the
+  // current user). The toggles persist on change — there's no Save
+  // button because each row update is a single PATCH. We keep prefs
+  // local for instant UI response and sync to DB in the background.
+  const [prefs, setPrefs] = useState<Record<CategoryKey, boolean>>({
+    pond_alert: true, mortality_spike: true, water_quality: true,
+    vaccination_due: true, task_overdue: true, low_feed: true,
+    journal_mention: true, eden_journal: true,
+  });
+  const [savingCategory, setSavingCategory] = useState<CategoryKey | null>(null);
 
   useEffect(() => {
     refresh();
+    loadPrefs();
   }, []);
 
   const refresh = async () => {
     const next = await getPushSubscriptionStatus();
     setStatus(next);
+  };
+
+  const loadPrefs = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Read any active subscription on any device — prefs are shared
+    // per-user, not per-device, even though the underlying row is
+    // per-device. We take the first row's prefs as the source of
+    // truth; saving updates all the user's rows so the user doesn't
+    // have to keep prefs in sync per browser.
+    const { data } = await supabase
+      .from('push_subscriptions')
+      .select('prefs')
+      .eq('user_id', user.id)
+      .eq('enabled', true)
+      .limit(1)
+      .maybeSingle();
+    const stored = (data as { prefs: Record<string, boolean> } | null)?.prefs;
+    if (stored) {
+      setPrefs(prev => ({
+        ...prev,
+        ...Object.fromEntries(
+          (Object.keys(prev) as CategoryKey[]).map(k => [k, stored[k] ?? prev[k]]),
+        ) as Record<CategoryKey, boolean>,
+      }));
+    }
+  }, []);
+
+  const togglePref = async (key: CategoryKey) => {
+    const next = !prefs[key];
+    setPrefs(p => ({ ...p, [key]: next }));
+    setSavingCategory(key);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: rows } = await supabase
+        .from('push_subscriptions')
+        .select('id, prefs')
+        .eq('user_id', user.id);
+      const updates = ((rows ?? []) as { id: string; prefs: Record<string, boolean> }[]).map(r => ({
+        id: r.id,
+        prefs: { ...(r.prefs ?? {}), [key]: next },
+      }));
+      // Update each row's prefs. We could do a single UPDATE with a
+      // jsonb_set RPC but the volume per user is tiny (1-3 devices).
+      for (const u of updates) {
+        await supabase
+          .from('push_subscriptions')
+          .update({ prefs: u.prefs })
+          .eq('id', u.id);
+      }
+    } catch (err) {
+      toast.error('Could not save preference');
+      // Revert local state on failure
+      setPrefs(p => ({ ...p, [key]: !next }));
+      console.warn('[notifications] toggle failed:', err);
+    } finally {
+      setSavingCategory(null);
+    }
   };
 
   const handleEnable = async () => {
@@ -129,20 +241,65 @@ export function PushNotificationsSettings() {
       )}
 
       {status === 'active' && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 text-xs rounded-full">
-            <Bell className="w-3 h-3" /> {isFr ? 'Actif sur cet appareil' : 'Active on this device'}
+        <>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 text-xs rounded-full">
+              <Bell className="w-3 h-3" /> {isFr ? 'Actif sur cet appareil' : 'Active on this device'}
+            </div>
+            <button
+              type="button"
+              onClick={handleDisable}
+              disabled={working}
+              className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-60 inline-flex items-center gap-1.5"
+            >
+              <BellOff className="w-3.5 h-3.5" />
+              {working ? (isFr ? 'Désactivation…' : 'Disabling…') : (isFr ? 'Désactiver' : 'Disable')}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={handleDisable}
-            disabled={working}
-            className="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-60 inline-flex items-center gap-1.5"
-          >
-            <BellOff className="w-3.5 h-3.5" />
-            {working ? (isFr ? 'Désactivation…' : 'Disabling…') : (isFr ? 'Désactiver' : 'Disable')}
-          </button>
-        </div>
+
+          {/* Per-category toggles. Persist on change — no Save button.
+              Each row updates instantly with optimistic state +
+              revert on error. Workers who don't want Eden's weekly
+              digest on their phone but DO want pond alerts can mix
+              and match here. */}
+          <div className="mt-5">
+            <p className="text-xs font-semibold text-gray-700 mb-2">
+              {isFr ? 'Que voulez-vous recevoir ?' : 'What do you want to be notified about?'}
+            </p>
+            <div className="space-y-1">
+              {CATEGORY_META.map(c => {
+                const Icon = c.icon;
+                const on = prefs[c.key];
+                const saving = savingCategory === c.key;
+                return (
+                  <label
+                    key={c.key}
+                    className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      on ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() => togglePref(c.key)}
+                      disabled={saving}
+                      className="mt-0.5 w-4 h-4 accent-[#3D5F42]"
+                    />
+                    <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${on ? 'text-[#3D5F42]' : 'text-gray-400'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-sm font-medium ${on ? 'text-gray-900' : 'text-gray-500'}`}>
+                        {isFr ? c.labelFr : c.labelEn}
+                      </div>
+                      <div className="text-[11px] text-gray-500 leading-snug">
+                        {isFr ? c.descFr : c.descEn}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </>
       )}
 
       <details className="mt-4 text-[11px] text-gray-500">
