@@ -12,6 +12,38 @@ import { supabase } from '../../lib/supabaseClient';
 const Y = '#ffdd00';
 // YD (darker accent) is unused after the most recent landing redesign.
 
+/*
+ * LOCKED PRICING MATRIX (see PricingSection.tsx for the same shape):
+ *
+ *   Limits                Free    Grower   Farm Boss   Industry
+ *   Farm accounts         1       2        4           10
+ *   Flocks per farm       2       4        10          20
+ *   Team members          1       4        Unlimited   Unlimited
+ *   Eden AI msgs / week   15      100      500         Unlimited
+ *
+ *   Included features     Free    Grower   Farm Boss   Industry
+ *   WhatsApp summary      ✓       ✓        ✓           ✓
+ *   WhatsApp receipts             ✓        ✓           ✓
+ *   Voice to Eden                 ✓        ✓           ✓
+ *   PDF/CSV reports               ✓        ✓           ✓
+ *   Smart import                  ✓        ✓           ✓
+ *   Payroll for workers           ✓        ✓           ✓
+ *   Custom onboarding             ✓        ✓           ✓
+ *
+ *   Advanced              Free    Grower   Farm Boss   Industry
+ *   Photo disease dx              3/mo     10/mo       Unlimited
+ *   Priority support                       ✓           ✓
+ *
+ *   Industry only         Free    Grower   Farm Boss   Industry
+ *   Direct founder support                             ✓
+ *   Cooperative dashboard                              Coming soon
+ *
+ * New signups land on Free with 30 days of Grower-equivalent access
+ * (trial_grower_until = now()+30d). After expiry, OverflowModal kicks
+ * in if they have data exceeding Free's limits. Cards below describe
+ * the STEADY-STATE tier, not the trial — the hero band explains the
+ * trial separately so we don't confuse "Free" with "trial of Grower".
+ */
 const PLANS = [
   {
     id: 'starter',
@@ -23,36 +55,35 @@ const PLANS = [
     badge: null,
     highlighted: false,
     ctaLabel: 'Get started free',
+    audience: 'Just getting started',
     features: [
-      '2 active flocks',
-      'Daily task management',
-      'Mortality and weight tracking',
-      'Expense recording',
-      'Basic inventory management',
-      'WhatsApp report sharing',
+      '1 farm · 2 active flocks · 1 user',
+      'Mortality, weight & expense tracking',
+      'Daily task reminders',
+      'WhatsApp daily summary',
+      'Eden AI · 15 messages/week',
     ],
-    notIncluded: ['Analytics and KPIs', 'Weekly email reports', 'Eden AI advisor', 'Smart Import', 'Team members'],
+    notIncluded: [],
   },
   {
     id: 'grower',
     name: 'Grower',
     icon: <Sprout className="w-5 h-5" />,
     iconBg: 'bg-yellow-100 text-yellow-800',
-    // Price is rendered live by landingPrice() from FIXED_PRICES;
-    // these PLANS rows only carry display copy + feature lists.
     badge: 'Most Popular',
     highlighted: true,
-    ctaLabel: 'Start free trial',
+    ctaLabel: 'Choose Grower',
+    audience: 'Running a real farm — 50 to 500 animals',
     features: [
-      'Up to 5 active flocks',
-      'Full analytics and KPIs',
-      'Automated weekly email reports',
-      'Eden AI advisor (50 messages/month)',
-      'Eden voice and photo logging',
-      'Smart receipt and document import',
-      'Vaccination scheduling and vet log',
-      'Sales tracking and invoices',
-      '2 team members with role permissions',
+      '2 farms · 4 flocks per farm · 4 team members',
+      'Eden AI · 100 messages/week',
+      'Photo disease diagnosis · 3/month',
+      'Voice messages to Eden',
+      'Smart receipt & CSV import',
+      'PDF & CSV reports',
+      'Payroll & shift management',
+      'WhatsApp receipts to buyers',
+      'Custom onboarding session',
     ],
     notIncluded: [],
   },
@@ -61,19 +92,16 @@ const PLANS = [
     name: 'Farm Boss',
     icon: <Crown className="w-5 h-5" />,
     iconBg: 'bg-amber-100 text-amber-700',
-    // Price is rendered live by landingPrice() from FIXED_PRICES.
     badge: null,
     highlighted: false,
-    ctaLabel: 'Subscribe',
+    ctaLabel: 'Choose Farm Boss',
+    audience: 'Commercial farm with workers',
     features: [
-      'Unlimited flocks and team members',
-      'Eden AI with unlimited messages',
-      'Photo disease diagnosis',
-      'Payroll and shift management',
-      'Benchmarking vs similar farms',
-      'Loan-readiness PDF report',
+      'Everything in Grower, plus:',
+      '4 farms · 10 flocks per farm · unlimited team',
+      'Eden AI · 500 messages/week',
+      'Photo disease diagnosis · 10/month',
       'Priority WhatsApp support',
-      'Early access to new features',
     ],
     notIncluded: [],
   },
@@ -82,20 +110,17 @@ const PLANS = [
     name: 'Industry',
     icon: <Building2 className="w-5 h-5" />,
     iconBg: 'bg-blue-100 text-blue-700',
-    // Price is rendered live by landingPrice() from FIXED_PRICES.
-    badge: 'Large Operations',
+    badge: 'Co-ops & enterprise',
     highlighted: false,
-    ctaLabel: 'Contact us',
+    ctaLabel: 'Choose Industry',
+    audience: 'Multiple farms or a cooperative',
     features: [
-      'Up to 10 farms under one account',
-      'Multi-farm analytics dashboard',
-      'Eden AI unlimited with best model',
-      'Unlimited team with custom roles',
-      'Custom-branded PDF reports',
-      'Excel and CSV data export',
-      'Webhook API integrations',
-      'Dedicated WhatsApp support',
-      'Onboarding and quarterly review call',
+      'Everything in Farm Boss, plus:',
+      '10 farms · 20 flocks per farm',
+      'Eden AI · unlimited messages',
+      'Photo disease diagnosis · unlimited',
+      'Direct founder support line',
+      'Cooperative dashboard (coming soon)',
     ],
     notIncluded: [],
   },
@@ -993,11 +1018,18 @@ export default function LandingPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3 mb-5">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${plan.highlighted ? 'bg-black/15' : 'bg-white/10'}`}
                       style={{ color: plan.highlighted ? '#1a1a1a' : '#e5e7eb' }}>{plan.icon}</div>
                     <span className={`font-bold text-lg ${plan.highlighted ? 'text-gray-900' : 'text-white'}`}>{plan.name}</span>
                   </div>
+                  {/* "Who is this for" subtitle — helps buyers self-identify
+                      before they read the feature list. Locked matrix copy. */}
+                  {plan.audience && (
+                    <p className={`text-xs mb-4 ${plan.highlighted ? 'text-gray-700' : 'text-gray-400'}`}>
+                      {plan.audience}
+                    </p>
+                  )}
 
                   <div className="mb-5">
                     <div className="flex items-baseline gap-2 flex-wrap">

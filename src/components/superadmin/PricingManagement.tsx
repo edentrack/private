@@ -97,7 +97,9 @@ export function PricingManagement() {
       if (error) throw error;
       // Invalidate the regionalPayment cache and re-fetch so the
       // preview grid below immediately reflects the new discount.
-      await loadPricingSettings();
+      // Force-bypass the 5-min cache so the preview table below reflects
+      // the new discount immediately, not after the next page load.
+      await loadPricingSettings({ force: true });
       setRefreshTick(t => t + 1);
       toast.success(
         discountPct > 0
