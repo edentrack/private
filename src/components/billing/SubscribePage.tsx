@@ -5,7 +5,7 @@ import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 import {
   detectRegion, ALL_COUNTRIES, RegionConfig, COUNTRY_CONFIGS, FIXED_PRICES,
-  getPrice, getPriceCurrency, formatPrice,
+  getEffectivePrice as getPrice, getPriceCurrency, formatPrice,
 } from '../../utils/regionalPayment';
 import { openInAppBrowser } from '../../lib/capacitorNative';
 import { Capacitor } from '@capacitor/core';

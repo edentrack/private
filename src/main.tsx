@@ -7,6 +7,14 @@ import './lib/i18n';
 import { Capacitor } from '@capacitor/core';
 import { initCapacitorPush } from './lib/capacitorPush';
 import { wireKeyboard } from './lib/capacitorNative';
+import { loadPricingSettings } from './utils/regionalPayment';
+
+// Pull the live pricing knobs (global discount + per-cell overrides)
+// once on cold start so the landing page can show accurate prices
+// before any user interaction. Cached in memory for 5 min; revisits
+// reuse the cache. Safe to fire-and-forget — fails silently to
+// baseline FIXED_PRICES if Supabase is unreachable.
+loadPricingSettings();
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 if (POSTHOG_KEY) {

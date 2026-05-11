@@ -6,7 +6,7 @@ import {
   ArrowRight, Leaf, Building2, Shield, Stethoscope, Wifi, MessageCircle,
   ClipboardList, Egg,
 } from 'lucide-react';
-import { FIXED_PRICES, detectRegion, getPriceCurrency, formatPrice, type RegionConfig } from '../../utils/regionalPayment';
+import { detectRegion, getPriceCurrency, getEffectivePrice, formatPrice, type RegionConfig } from '../../utils/regionalPayment';
 import { supabase } from '../../lib/supabaseClient';
 
 const Y = '#ffdd00';
@@ -397,8 +397,10 @@ const PLAN_KEY: Record<string, string | null> = {
 function landingPrice(planId: string, cycle: BillingCycle, currency: string): string {
   const key = PLAN_KEY[planId];
   if (!key) return 'Free';
-  const prices = FIXED_PRICES[currency] ?? FIXED_PRICES.USD;
-  const p = prices[cycle]?.[key];
+  // getEffectivePrice applies admin-set discount + per-cell overrides
+  // on top of the FIXED_PRICES baseline. Falls back to baseline if
+  // pricing_settings hasn't loaded yet (first paint).
+  const p = getEffectivePrice(key, cycle, currency);
   return p !== undefined ? formatPrice(p, currency) : 'Free';
 }
 
@@ -411,8 +413,7 @@ function landingSub(cycle: BillingCycle): string {
 function perMonthLine(planId: string, cycle: BillingCycle, currency: string): string | null {
   const key = PLAN_KEY[planId];
   if (!key || cycle === 'monthly') return null;
-  const prices = FIXED_PRICES[currency] ?? FIXED_PRICES.USD;
-  const p = prices[cycle]?.[key];
+  const p = getEffectivePrice(key, cycle, currency);
   if (!p) return null;
   const months = cycle === 'quarterly' ? 3 : 12;
   return `≈ ${formatPrice(p / months, currency)}/mo`;
@@ -422,8 +423,11 @@ function savingsPct(planId: string, cycle: BillingCycle): number | null {
   if (cycle === 'monthly') return null;
   const key = PLAN_KEY[planId];
   if (!key) return null;
-  const monthly = FIXED_PRICES.USD.monthly?.[key];
-  const actual = FIXED_PRICES.USD[cycle]?.[key];
+  // Compare against MONTHLY effective price so admin-set discounts
+  // don't show false-positive "savings" rows (e.g. if monthly is 10%
+  // off, quarterly should still show its incremental discount only).
+  const monthly = getEffectivePrice(key, 'monthly', 'USD');
+  const actual = getEffectivePrice(key, cycle, 'USD');
   if (!monthly || !actual) return null;
   const months = cycle === 'quarterly' ? 3 : 12;
   return Math.round((1 - actual / (monthly * months)) * 100);

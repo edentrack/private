@@ -589,10 +589,12 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
             </div>
           )}
 
-          {/* Trial Info */}
+          {/* Free-tier callout. We replaced the 14-day trial with a
+              forever-free Starter plan — same conversion intent
+              ("try without a card") but no auto-charge pitfall. */}
           {!showDemoForm && (
             <p className="text-sm text-gray-500">
-              No credit card required • 14-day free trial
+              No credit card required • Free plan included forever
             </p>
           )}
         </div>

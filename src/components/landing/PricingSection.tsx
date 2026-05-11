@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Check, ArrowRight, Leaf, Sprout, Crown, Building2 } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
-import { FIXED_PRICES, formatPrice } from '../../utils/regionalPayment';
+import { getEffectivePrice, formatPrice } from '../../utils/regionalPayment';
 
 interface PricingSectionProps {
   onGetStarted: () => void;
@@ -28,8 +28,9 @@ const PLAN_KEY: Record<PaidPlan, 'pro' | 'enterprise' | 'industry'> = {
 };
 
 function priceFor(plan: PaidPlan, cycle: Cycle, currency = 'USD'): number {
-  const table = FIXED_PRICES[currency] ?? FIXED_PRICES.USD;
-  return table[cycle]?.[PLAN_KEY[plan]] ?? FIXED_PRICES.USD[cycle][PLAN_KEY[plan]];
+  // getEffectivePrice already applies admin-set discount + per-cell
+  // overrides on top of FIXED_PRICES.
+  return getEffectivePrice(PLAN_KEY[plan], cycle, currency);
 }
 
 function savings(plan: PaidPlan, cycle: Cycle): number | null {

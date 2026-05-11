@@ -148,6 +148,101 @@ export function getPriceCurrency(region: RegionConfig): string {
   return FIXED_PRICES[region.currency] ? region.currency : 'USD';
 }
 
+/* ──────────────────────────────────────────────────────────────────────
+ * Dynamic pricing (admin-editable discount + per-cell overrides)
+ *
+ * Architecture:
+ *   - FIXED_PRICES is the BASELINE (committed in source)
+ *   - pricing_settings.global_discount_pct is a knob the super-admin
+ *     can adjust live to apply X% off across the whole catalog
+ *   - pricing_overrides lets the admin replace individual cells
+ *     (e.g. "Farm Boss NGN monthly = ₦25,000")
+ *
+ *   Effective price = override ?? baseline × (1 - discount/100)
+ *
+ * Both tables are public-read so the landing page can show
+ * accurate prices before the user logs in. The discount + overrides
+ * are cached in module-level memory after the first fetch (until
+ * the page reloads), so we don't hit the DB on every render.
+ * ─────────────────────────────────────────────────────────────────── */
+
+interface PricingOverride {
+  tier: string;
+  cycle: string;
+  currency: string;
+  amount: number;
+}
+
+let _cachedDiscountPct = 0;
+let _cachedOverrides: PricingOverride[] = [];
+let _settingsLoadedAt = 0;
+const _CACHE_TTL_MS = 5 * 60_000; // 5 min
+
+/**
+ * Pull the current pricing settings + active overrides from Supabase.
+ * Called on app boot from src/main.tsx and again on cache miss.
+ * Safe to call multiple times — short-circuits when cache is fresh.
+ *
+ * Uses a dynamic import for the supabase client so this util stays
+ * usable in edge-function-adjacent code paths that don't ship the
+ * full client.
+ */
+export async function loadPricingSettings(): Promise<void> {
+  const now = Date.now();
+  if (now - _settingsLoadedAt < _CACHE_TTL_MS) return;
+  try {
+    const { supabase } = await import('../lib/supabaseClient');
+    // Run the two reads in parallel — both are tiny.
+    const [{ data: settingsRow }, { data: overrideRows }] = await Promise.all([
+      supabase.from('pricing_settings').select('global_discount_pct').eq('id', 1).maybeSingle(),
+      supabase.from('pricing_overrides').select('tier, cycle, currency, amount').eq('active', true),
+    ]);
+    _cachedDiscountPct = Number(settingsRow?.global_discount_pct ?? 0);
+    _cachedOverrides = (overrideRows as PricingOverride[] | null) ?? [];
+    _settingsLoadedAt = now;
+  } catch (err) {
+    // If the DB is unreachable, leave the cache as-is (defaults to no
+    // discount, no overrides). Surface to console for diagnostics but
+    // never throw — broken pricing UI is worse than non-discounted.
+    console.warn('[regionalPayment] Could not load pricing settings:', err);
+  }
+}
+
+/**
+ * Synchronous read of the cached effective price. Call after
+ * loadPricingSettings() has resolved at least once. If not yet
+ * loaded, this returns the baseline price (no discount, no override)
+ * — acceptable because we always trigger loadPricingSettings() on
+ * app boot and the first render is rarely a pricing screen.
+ */
+export function getEffectivePrice(
+  plan: string,
+  billing: 'monthly' | 'quarterly' | 'yearly',
+  currency: string,
+): number {
+  // 1. Override wins outright.
+  const override = _cachedOverrides.find(
+    o => o.tier === plan && o.cycle === billing && o.currency === currency,
+  );
+  if (override) return override.amount;
+
+  // 2. Baseline × (1 - discount/100). Round to the currency's
+  //    natural decimals to avoid showing $6.299999 etc.
+  const baseline = getPrice(plan, billing, currency);
+  if (_cachedDiscountPct <= 0) return baseline;
+  const decimals = CURRENCY_FORMAT[currency]?.decimals ?? 0;
+  const factor = 1 - _cachedDiscountPct / 100;
+  const discounted = baseline * factor;
+  return decimals === 0
+    ? Math.round(discounted)
+    : Math.round(discounted * 100) / 100;
+}
+
+/** Read the currently-cached discount % (0 if never loaded). */
+export function getCurrentDiscountPct(): number {
+  return _cachedDiscountPct;
+}
+
 // ── Region configs ──────────────────────────────────────────────────────
 
 const TZ_TO_COUNTRY: Record<string, string> = {

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getCurrentDiscountPct, applyDiscount, decimalsFor } from '../_shared/pricingDiscount.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -145,12 +146,17 @@ async function handleCreate(req: Request, user: any, supabase: any, ch: Record<s
     return err('Payment system not configured. Contact support.', 503, ch);
   }
 
-  // Validate amount is at least the minimum for this plan/billing_period/currency
+  // Validate amount is at least the minimum for this plan/billing_period/currency.
+  // Pulls the live discount % from pricing_settings and relaxes the
+  // minimum by that amount, so users actually CAN pay the discounted
+  // price the client showed them. 1% rounding tolerance below.
   const periodMins = MIN_AMOUNTS[billing_period] ?? MIN_AMOUNTS.quarterly;
   const minKey = `${plan}:${currency}`;
   const minUsdKey = `${plan}:USD`;
-  const minimum = (periodMins as Record<string, number>)[minKey] ?? (periodMins as Record<string, number>)[minUsdKey] ?? 30;
-  const amount = typeof clientAmount === 'number' && clientAmount >= minimum
+  const baselineMin = (periodMins as Record<string, number>)[minKey] ?? (periodMins as Record<string, number>)[minUsdKey] ?? 30;
+  const discountPct = await getCurrentDiscountPct(supabase);
+  const minimum = applyDiscount(baselineMin, discountPct, decimalsFor(currency));
+  const amount = typeof clientAmount === 'number' && clientAmount >= minimum * 0.99
     ? clientAmount
     : minimum;
 
