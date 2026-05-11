@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getCurrentDiscountPct, applyDiscount } from "../_shared/pricingDiscount.ts";
 
 const CAMPAY_USERNAME = Deno.env.get("CAMPAY_USERNAME")!;
 const CAMPAY_PASSWORD = Deno.env.get("CAMPAY_PASSWORD")!;
@@ -22,9 +23,13 @@ function json(data: unknown, status = 200, h: Record<string, string>) {
   return new Response(JSON.stringify(data), { status, headers: { ...h, "Content-Type": "application/json" } });
 }
 
+// MUST match FIXED_PRICES in src/utils/regionalPayment.ts.
+// USD ladder: $7 / $19 / $49 monthly. Campay (Cameroon) only offers
+// quarterly + yearly at the moment (its mobile-money flow is friction-y
+// for monthly). Numbers are USD; CFA conversion happens at checkout.
 const PLAN_PRICES_USD: Record<string, Record<string, number>> = {
-  quarterly: { pro: 14.99, enterprise: 34.99, industry: 99.99 },
-  yearly:    { pro: 49.99, enterprise: 114.99, industry: 329.99 },
+  quarterly: { pro: 18,  enterprise: 50,  industry: 130 },
+  yearly:    { pro: 60,  enterprise: 180, industry: 480 },
 };
 
 async function getCampayToken(): Promise<string> {
@@ -57,11 +62,19 @@ Deno.serve(async (req: Request) => {
     if (!CAMPAY_USERNAME || !CAMPAY_PASSWORD) return json({ error: "Campay not configured" }, 503, h);
 
     const { plan, billing_period = "quarterly", phone, amount_xaf } = body;
-    const usdPrice = PLAN_PRICES_USD[billing_period]?.[plan];
-    if (!usdPrice) return json({ error: "Invalid plan" }, 400, h);
+    const baselineUsd = PLAN_PRICES_USD[billing_period]?.[plan];
+    if (!baselineUsd) return json({ error: "Invalid plan" }, 400, h);
 
-    // Use fixed amount passed from client (pre-defined in regionalPayment.ts)
-    const amountXAF: number = amount_xaf || PLAN_PRICES_USD[billing_period][plan] * 605;
+    // Apply active admin discount before currency conversion. Both
+    // amount_usd (for finance reports) and amount_xaf (what the user
+    // actually pays via mobile money) reflect the discount.
+    const discountPct = await getCurrentDiscountPct(supabase);
+    const usdPrice = applyDiscount(baselineUsd, discountPct, 2);
+
+    // Use amount_xaf from client if it already reflects the discounted
+    // price (client uses getEffectivePrice). Otherwise compute from
+    // discounted USD × FX rate.
+    const amountXAF: number = amount_xaf || Math.round(usdPrice * 605);
 
     const reference = `edentrack-cp-${user.id.substring(0, 8)}-${Date.now()}`;
 

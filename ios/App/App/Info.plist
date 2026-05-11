@@ -68,6 +68,15 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Edentrack uses the microphone for Eden AI voice logging so you can record mortality, feed and observations hands-free.</string>
 	<!--
+		Face ID is the only biometry on iOS that requires its own
+		permission string (Touch ID is implicit). Without this, the
+		app crashes the moment NativeBiometric.verifyIdentity() runs
+		on a Face ID device. Wording matches the in-app prompt so the
+		user sees a consistent story.
+	-->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Edentrack uses Face ID to unlock the app quickly so you don't have to type your password every time.</string>
+	<!--
 		Background modes the app needs.
 		- remote-notification: receive silent push that updates data
 		  without showing a banner (e.g. real-time mortality spike sync)

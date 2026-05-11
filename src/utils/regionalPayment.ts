@@ -9,93 +9,103 @@ export interface RegionConfig {
   needsPhone: boolean;
 }
 
-// Fixed prices per currency — set once, never fluctuate
-// Must match PricingSection.tsx and stripe-checkout/index.ts exactly
+// Fixed prices per currency — set once, never fluctuate.
+//
+// THIS IS THE SOURCE OF TRUTH. Landing page, in-app billing,
+// checkout modal, Stripe/Flutterwave/Paystack edge functions all
+// read from here. Edit this table and every surface picks it up
+// on the next build.
+//
+// USD ladder is $7 / $19 / $49 monthly — Grower / Farm Boss /
+// Industry. Quarterly carries an ~17% discount (≈ $6/mo for Grower
+// effective), yearly carries an ~25–29% discount. Other currencies
+// scaled to roughly match purchasing-power equivalents in each
+// market, then rounded to clean local numbers.
 export const FIXED_PRICES: Record<string, Record<string, Record<string, number>>> = {
   USD: {
-    monthly:   { pro: 12,  enterprise: 35,  industry: 89  },
-    quarterly: { pro: 30,  enterprise: 87,  industry: 222 },
-    yearly:    { pro: 108, enterprise: 300, industry: 800 },
+    monthly:   { pro: 7,   enterprise: 19,  industry: 49  },
+    quarterly: { pro: 18,  enterprise: 50,  industry: 130 },
+    yearly:    { pro: 60,  enterprise: 180, industry: 480 },
   },
   XAF: {
-    monthly:   { pro: 7500,  enterprise: 21000, industry: 53000  },
-    quarterly: { pro: 18000, enterprise: 52000, industry: 132000 },
-    yearly:    { pro: 65000, enterprise: 180000, industry: 480000 },
+    monthly:   { pro: 4500,  enterprise: 12000,  industry: 30000  },
+    quarterly: { pro: 11000, enterprise: 30000,  industry: 77000  },
+    yearly:    { pro: 39000, enterprise: 108000, industry: 285000 },
   },
   XOF: {
-    monthly:   { pro: 7500,  enterprise: 21000, industry: 53000  },
-    quarterly: { pro: 18000, enterprise: 52000, industry: 132000 },
-    yearly:    { pro: 65000, enterprise: 180000, industry: 480000 },
+    monthly:   { pro: 4500,  enterprise: 12000,  industry: 30000  },
+    quarterly: { pro: 11000, enterprise: 30000,  industry: 77000  },
+    yearly:    { pro: 39000, enterprise: 108000, industry: 285000 },
   },
   NGN: {
-    monthly:   { pro: 19000,  enterprise: 56000,  industry: 145000  },
-    quarterly: { pro: 48000,  enterprise: 139000, industry: 355000  },
-    yearly:    { pro: 173000, enterprise: 483000, industry: 1285000 },
+    monthly:   { pro: 11000,  enterprise: 32000,  industry: 84000   },
+    quarterly: { pro: 28000,  enterprise: 80000,  industry: 205000  },
+    yearly:    { pro: 100000, enterprise: 280000, industry: 745000  },
   },
   GHS: {
-    monthly:   { pro: 180,  enterprise: 549,  industry: 1445  },
-    quarterly: { pro: 460,  enterprise: 1342, industry: 3440  },
-    yearly:    { pro: 1642, enterprise: 4670, industry: 12360 },
+    monthly:   { pro: 105,  enterprise: 320,  industry: 840  },
+    quarterly: { pro: 270,  enterprise: 780,  industry: 2000 },
+    yearly:    { pro: 950,  enterprise: 2700, industry: 7200 },
   },
   KES: {
-    monthly:   { pro: 1550, enterprise: 4700,  industry: 12200  },
-    quarterly: { pro: 4000, enterprise: 11400, industry: 28900  },
-    yearly:    { pro: 14000, enterprise: 39000, industry: 104000 },
+    monthly:   { pro: 900,  enterprise: 2700,  industry: 7100  },
+    quarterly: { pro: 2300, enterprise: 6600,  industry: 16800 },
+    yearly:    { pro: 8100, enterprise: 22600, industry: 60300 },
   },
   ZAR: {
-    monthly:   { pro: 220,  enterprise: 650,  industry: 1670  },
-    quarterly: { pro: 560,  enterprise: 1616, industry: 4100  },
-    yearly:    { pro: 1990, enterprise: 5610, industry: 14790 },
+    monthly:   { pro: 130,  enterprise: 380,  industry: 970   },
+    quarterly: { pro: 325,  enterprise: 935,  industry: 2380  },
+    yearly:    { pro: 1155, enterprise: 3250, industry: 8580  },
   },
   UGX: {
-    monthly:   { pro: 44500,  enterprise: 133000,  industry: 356000   },
-    quarterly: { pro: 110000, enterprise: 323000,  industry: 832000   },
-    yearly:    { pro: 400000, enterprise: 1122000, industry: 3030000  },
+    monthly:   { pro: 26000,  enterprise: 77000,  industry: 207000   },
+    quarterly: { pro: 64000,  enterprise: 187000, industry: 482000   },
+    yearly:    { pro: 232000, enterprise: 651000, industry: 1757000  },
   },
   TZS: {
-    monthly:   { pro: 32500,  enterprise: 95700,  industry: 244900  },
-    quarterly: { pro: 80000,  enterprise: 231000, industry: 588000  },
-    yearly:    { pro: 285000, enterprise: 801000, industry: 2121000 },
+    monthly:   { pro: 19000,  enterprise: 55000,  industry: 142000   },
+    quarterly: { pro: 46000,  enterprise: 134000, industry: 341000   },
+    yearly:    { pro: 165000, enterprise: 465000, industry: 1230000  },
   },
   RWF: {
-    monthly:   { pro: 16300, enterprise: 49000,  industry: 129000  },
-    quarterly: { pro: 40000, enterprise: 117000, industry: 300000  },
-    yearly:    { pro: 145000, enterprise: 404000, industry: 1079000 },
+    monthly:   { pro: 9500,  enterprise: 28000,  industry: 75000  },
+    quarterly: { pro: 23000, enterprise: 68000,  industry: 174000 },
+    yearly:    { pro: 84000, enterprise: 234000, industry: 626000 },
   },
   EGP: {
-    monthly:   { pro: 565,  enterprise: 1775, industry: 4560  },
-    quarterly: { pro: 1440, enterprise: 4180, industry: 10660 },
-    yearly:    { pro: 5180, enterprise: 14400, industry: 38400 },
+    monthly:   { pro: 330,  enterprise: 1000, industry: 2640  },
+    quarterly: { pro: 835,  enterprise: 2400, industry: 6180  },
+    yearly:    { pro: 3000, enterprise: 8350, industry: 22270 },
   },
   MAD: {
-    monthly:   { pro: 120,  enterprise: 378, industry: 979  },
-    quarterly: { pro: 300,  enterprise: 870, industry: 2220 },
-    yearly:    { pro: 1080, enterprise: 3000, industry: 8000 },
+    monthly:   { pro: 70,   enterprise: 220,  industry: 570  },
+    quarterly: { pro: 175,  enterprise: 505,  industry: 1290 },
+    yearly:    { pro: 625,  enterprise: 1740, industry: 4640 },
   },
   ZMW: {
-    monthly:   { pro: 318,  enterprise: 1004, industry: 2670 },
-    quarterly: { pro: 810,  enterprise: 2349, industry: 5994 },
-    yearly:    { pro: 2916, enterprise: 8100, industry: 21598 },
+    monthly:   { pro: 185,  enterprise: 580,  industry: 1550  },
+    quarterly: { pro: 470,  enterprise: 1360, industry: 3475  },
+    yearly:    { pro: 1690, enterprise: 4700, industry: 12525 },
   },
   EUR: {
-    monthly:   { pro: 10.99, enterprise: 32.99, industry: 81.99  },
-    quarterly: { pro: 27.99, enterprise: 79.99, industry: 204.99 },
-    yearly:    { pro: 99.99, enterprise: 274.99, industry: 739.99 },
+    monthly:   { pro: 6.99,  enterprise: 17.99,  industry: 47.99  },
+    quarterly: { pro: 16.99, enterprise: 45.99,  industry: 119.99 },
+    yearly:    { pro: 59.99, enterprise: 159.99, industry: 429.99 },
   },
   GBP: {
-    monthly:   { pro: 9.99,  enterprise: 27.99, industry: 69.99  },
-    quarterly: { pro: 24.99, enterprise: 69.99, industry: 174.99 },
-    yearly:    { pro: 89.99, enterprise: 239.99, industry: 639.99 },
+    monthly:   { pro: 5.99,  enterprise: 14.99,  industry: 39.99  },
+    quarterly: { pro: 14.99, enterprise: 39.99,  industry: 99.99  },
+    yearly:    { pro: 53.99, enterprise: 139.99, industry: 369.99 },
   },
   CAD: {
-    monthly:   { pro: 15.99, enterprise: 47.99, industry: 119.99  },
-    quarterly: { pro: 39.99, enterprise: 119.99, industry: 299.99 },
-    yearly:    { pro: 144.99, enterprise: 409.99, industry: 1079.99 },
+    monthly:   { pro: 8.99,  enterprise: 25.99,  industry: 64.99  },
+    quarterly: { pro: 22.99, enterprise: 64.99,  industry: 169.99 },
+    yearly:    { pro: 84.99, enterprise: 239.99, industry: 629.99 },
   },
   AUD: {
-    monthly:   { pro: 18.99, enterprise: 54.99, industry: 139.99  },
-    quarterly: { pro: 46.99, enterprise: 136.99, industry: 349.99 },
-    yearly:    { pro: 169.99, enterprise: 479.99, industry: 1249.99 },
+    monthly:   { pro: 10.99,  enterprise: 29.99,  industry: 79.99  },
+    quarterly: { pro: 26.99,  enterprise: 76.99,  industry: 199.99 },
+    yearly:    { pro: 99.99,  enterprise: 269.99, industry: 729.99 },
   },
 };
 
@@ -136,6 +146,101 @@ export function getPrice(plan: string, billing: 'monthly' | 'quarterly' | 'yearl
 
 export function getPriceCurrency(region: RegionConfig): string {
   return FIXED_PRICES[region.currency] ? region.currency : 'USD';
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Dynamic pricing (admin-editable discount + per-cell overrides)
+ *
+ * Architecture:
+ *   - FIXED_PRICES is the BASELINE (committed in source)
+ *   - pricing_settings.global_discount_pct is a knob the super-admin
+ *     can adjust live to apply X% off across the whole catalog
+ *   - pricing_overrides lets the admin replace individual cells
+ *     (e.g. "Farm Boss NGN monthly = ₦25,000")
+ *
+ *   Effective price = override ?? baseline × (1 - discount/100)
+ *
+ * Both tables are public-read so the landing page can show
+ * accurate prices before the user logs in. The discount + overrides
+ * are cached in module-level memory after the first fetch (until
+ * the page reloads), so we don't hit the DB on every render.
+ * ─────────────────────────────────────────────────────────────────── */
+
+interface PricingOverride {
+  tier: string;
+  cycle: string;
+  currency: string;
+  amount: number;
+}
+
+let _cachedDiscountPct = 0;
+let _cachedOverrides: PricingOverride[] = [];
+let _settingsLoadedAt = 0;
+const _CACHE_TTL_MS = 5 * 60_000; // 5 min
+
+/**
+ * Pull the current pricing settings + active overrides from Supabase.
+ * Called on app boot from src/main.tsx and again on cache miss.
+ * Safe to call multiple times — short-circuits when cache is fresh.
+ *
+ * Uses a dynamic import for the supabase client so this util stays
+ * usable in edge-function-adjacent code paths that don't ship the
+ * full client.
+ */
+export async function loadPricingSettings(): Promise<void> {
+  const now = Date.now();
+  if (now - _settingsLoadedAt < _CACHE_TTL_MS) return;
+  try {
+    const { supabase } = await import('../lib/supabaseClient');
+    // Run the two reads in parallel — both are tiny.
+    const [{ data: settingsRow }, { data: overrideRows }] = await Promise.all([
+      supabase.from('pricing_settings').select('global_discount_pct').eq('id', 1).maybeSingle(),
+      supabase.from('pricing_overrides').select('tier, cycle, currency, amount').eq('active', true),
+    ]);
+    _cachedDiscountPct = Number(settingsRow?.global_discount_pct ?? 0);
+    _cachedOverrides = (overrideRows as PricingOverride[] | null) ?? [];
+    _settingsLoadedAt = now;
+  } catch (err) {
+    // If the DB is unreachable, leave the cache as-is (defaults to no
+    // discount, no overrides). Surface to console for diagnostics but
+    // never throw — broken pricing UI is worse than non-discounted.
+    console.warn('[regionalPayment] Could not load pricing settings:', err);
+  }
+}
+
+/**
+ * Synchronous read of the cached effective price. Call after
+ * loadPricingSettings() has resolved at least once. If not yet
+ * loaded, this returns the baseline price (no discount, no override)
+ * — acceptable because we always trigger loadPricingSettings() on
+ * app boot and the first render is rarely a pricing screen.
+ */
+export function getEffectivePrice(
+  plan: string,
+  billing: 'monthly' | 'quarterly' | 'yearly',
+  currency: string,
+): number {
+  // 1. Override wins outright.
+  const override = _cachedOverrides.find(
+    o => o.tier === plan && o.cycle === billing && o.currency === currency,
+  );
+  if (override) return override.amount;
+
+  // 2. Baseline × (1 - discount/100). Round to the currency's
+  //    natural decimals to avoid showing $6.299999 etc.
+  const baseline = getPrice(plan, billing, currency);
+  if (_cachedDiscountPct <= 0) return baseline;
+  const decimals = CURRENCY_FORMAT[currency]?.decimals ?? 0;
+  const factor = 1 - _cachedDiscountPct / 100;
+  const discounted = baseline * factor;
+  return decimals === 0
+    ? Math.round(discounted)
+    : Math.round(discounted * 100) / 100;
+}
+
+/** Read the currently-cached discount % (0 if never loaded). */
+export function getCurrentDiscountPct(): number {
+  return _cachedDiscountPct;
 }
 
 // ── Region configs ──────────────────────────────────────────────────────

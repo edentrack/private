@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, ArrowRight, Leaf, Sprout, Crown, Building2 } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
+import { getEffectivePrice, formatPrice } from '../../utils/regionalPayment';
 
 interface PricingSectionProps {
   onGetStarted: () => void;
@@ -15,23 +16,30 @@ const CYCLE_LABELS: Record<Cycle, string> = {
   yearly: 'Yearly',
 };
 
-interface PlanPricing {
-  monthly: number;
-  quarterly: number;
-  yearly: number;
-}
-
-const PRICING: Record<PaidPlan, PlanPricing> = {
-  grower:   { monthly: 7,   quarterly: 18,  yearly: 60 },
-  farmboss: { monthly: 19,  quarterly: 50,  yearly: 180 },
-  industry: { monthly: 49,  quarterly: 130, yearly: 480 },
+// Map landing-page plan IDs to the canonical plan keys used in
+// FIXED_PRICES (regionalPayment.ts is the single source of truth).
+// Don't hardcode prices here — that's how landing/checkout/billing
+// drift apart and the user sees three different numbers for the
+// same plan.
+const PLAN_KEY: Record<PaidPlan, 'pro' | 'enterprise' | 'industry'> = {
+  grower: 'pro',
+  farmboss: 'enterprise',
+  industry: 'industry',
 };
+
+function priceFor(plan: PaidPlan, cycle: Cycle, currency = 'USD'): number {
+  // getEffectivePrice already applies admin-set discount + per-cell
+  // overrides on top of FIXED_PRICES.
+  return getEffectivePrice(PLAN_KEY[plan], cycle, currency);
+}
 
 function savings(plan: PaidPlan, cycle: Cycle): number | null {
   if (cycle === 'monthly') return null;
-  const { monthly, quarterly, yearly } = PRICING[plan];
-  if (cycle === 'quarterly') return Math.round((1 - quarterly / (monthly * 3)) * 100);
-  return Math.round((1 - yearly / (monthly * 12)) * 100);
+  const monthly = priceFor(plan, 'monthly');
+  const actual = priceFor(plan, cycle);
+  if (!monthly || !actual) return null;
+  const months = cycle === 'quarterly' ? 3 : 12;
+  return Math.round((1 - actual / (monthly * months)) * 100);
 }
 
 function cycleLabel(cycle: Cycle): string {
@@ -41,17 +49,14 @@ function cycleLabel(cycle: Cycle): string {
 }
 
 function displayPrice(plan: PaidPlan, cycle: Cycle): string {
-  const p = PRICING[plan];
-  if (cycle === 'monthly') return `$${p.monthly}`;
-  if (cycle === 'quarterly') return `$${p.quarterly}`;
-  return `$${p.yearly}`;
+  return formatPrice(priceFor(plan, cycle), 'USD');
 }
 
 function perMonthEquiv(plan: PaidPlan, cycle: Cycle): string {
-  const p = PRICING[plan];
-  if (cycle === 'monthly') return `$${p.monthly}/mo`;
-  if (cycle === 'quarterly') return `≈ $${Math.round(p.quarterly / 3)}/mo`;
-  return `≈ $${Math.round(p.yearly / 12)}/mo`;
+  const p = priceFor(plan, cycle);
+  if (cycle === 'monthly') return `${formatPrice(p, 'USD')}/mo`;
+  const months = cycle === 'quarterly' ? 3 : 12;
+  return `≈ ${formatPrice(Math.round(p / months), 'USD')}/mo`;
 }
 
 export default function PricingSection({ onGetStarted }: PricingSectionProps) {

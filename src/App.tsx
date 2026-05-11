@@ -27,6 +27,8 @@ const lazy1 = <T extends { [k: string]: React.ComponentType<any> }>(path: () => 
   lazy(() => (path() as Promise<T>).then(m => ({ default: m[name] as React.ComponentType<any> })));
 
 const LandingPage            = lazy(() => import('./components/landing/LandingPage'));
+const PrivacyPolicy          = lazy(() => import('./components/legal/PrivacyPolicy'));
+const TermsOfService         = lazy(() => import('./components/legal/TermsOfService'));
 const DashboardLayout        = lazy1(() => import('./components/dashboard/DashboardLayout'), 'DashboardLayout');
 const DashboardHome          = lazy1(() => import('./components/dashboard/DashboardHome'), 'DashboardHome');
 const SmartDashboard         = lazy1(() => import('./components/dashboard/SmartDashboard'), 'SmartDashboard');
@@ -120,6 +122,14 @@ function CrispChat() {
   }, []);
 
   useEffect(() => {
+    // Skip Crisp entirely on Capacitor native builds. Two reasons:
+    //   1. Crisp's iframe injects an input that auto-focuses on load,
+    //      popping the iOS keyboard up before the user does anything.
+    //   2. Mobile users have other support paths (in-app help, email)
+    //      and a floating chat bubble feels off in a native shell.
+    // The web build at edentrack.app keeps Crisp untouched.
+    if ((window as any).Capacitor?.isNativePlatform?.()) return;
+
     const id = import.meta.env.VITE_CRISP_WEBSITE_ID;
     if (!id) return;
     (window as any).$crisp = [];
@@ -832,6 +842,14 @@ function AppContent() {
         setCurrentView('ai-assistant');
         return;
       }
+      if (hash.includes('#/privacy')) {
+        setCurrentView('privacy');
+        return;
+      }
+      if (hash.includes('#/terms')) {
+        setCurrentView('terms');
+        return;
+      }
       const coopMatch = hash.match(/#\/cooperatives\/([0-9a-f-]{36})/i);
       if (coopMatch) {
         setSelectedCooperativeId(coopMatch[1]);
@@ -965,6 +983,27 @@ function AppContent() {
     // Check hash directly for auth routes (use state to ensure re-render on change)
     const hash = currentHash || window.location.hash;
     if (hash.includes('#/signup') || hash.includes('#/auth/signup')) {
+      // Native: account creation goes to web. Sign-up forms inside the
+      // app are a fast path to App Store rejection (paywall, pricing,
+      // collection of payment data outside IAP). On native, kick the
+      // user to edentrack.app/#/signup in an in-app browser sheet,
+      // then drop them on the Login screen so when they return after
+      // signing up + paying on the web, they can immediately sign in.
+      if ((window as any).Capacitor?.isNativePlatform?.()) {
+        import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
+          openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+        });
+        return (
+          <LoginScreen
+            onToggle={() => {
+              import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
+                openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+              });
+            }}
+            onForgotPassword={() => navigateToAuth('forgot-password')}
+          />
+        );
+      }
       return <SignUpScreen onToggle={() => navigateToAuth('login')} />;
     }
     if (hash.includes('#/forgot-password') || hash.includes('#/auth/forgot-password')) {
@@ -1003,7 +1042,39 @@ function AppContent() {
       );
     }
     
-    // Show landing page by default when not authenticated
+    // Native shell: skip the marketing landing page entirely and drop
+    // straight into Sign In. The landing page is a paywall + pricing
+    // pitch for new visitors on the web; inside the iOS/Android app,
+    // every user is either an existing customer signing back in or a
+    // brand-new user who'll do the signup flow. Pricing UI inside the
+    // app risks Apple Guideline 3.1 review issues anyway.
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      return (
+        <LoginScreen
+          onToggle={() => {
+            // "Don't have an account? Sign Up" → open the web signup
+            // in an in-app Safari sheet. Account creation + initial
+            // payment happen on edentrack.app; once they're back,
+            // they sign in here. This keeps the App Store reviewer
+            // from seeing a paywall inside the native shell.
+            import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
+              openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+            });
+          }}
+          onForgotPassword={() => navigateToAuth('forgot-password')}
+        />
+      );
+    }
+
+    // Public legal pages — no auth required
+    if (window.location.hash.includes('#/privacy')) {
+      return <Suspense fallback={pageFallback}><PrivacyPolicy /></Suspense>;
+    }
+    if (window.location.hash.includes('#/terms')) {
+      return <Suspense fallback={pageFallback}><TermsOfService /></Suspense>;
+    }
+
+    // Web: show landing page by default when not authenticated
     return <LandingPage />;
   }
 
@@ -1374,6 +1445,10 @@ function AppContent() {
             setCurrentView('dashboard');
           }} />
         );
+      case 'privacy':
+        return <PrivacyPolicy />;
+      case 'terms':
+        return <TermsOfService />;
       case 'notifications':
         return <NotificationsPage />;
       case 'cooperatives':

@@ -7,6 +7,14 @@ import './lib/i18n';
 import { Capacitor } from '@capacitor/core';
 import { initCapacitorPush } from './lib/capacitorPush';
 import { wireKeyboard } from './lib/capacitorNative';
+import { loadPricingSettings } from './utils/regionalPayment';
+
+// Pull the live pricing knobs (global discount + per-cell overrides)
+// once on cold start so the landing page can show accurate prices
+// before any user interaction. Cached in memory for 5 min; revisits
+// reuse the cache. Safe to fire-and-forget — fails silently to
+// baseline FIXED_PRICES if Supabase is unreachable.
+loadPricingSettings();
 
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 if (POSTHOG_KEY) {
@@ -46,6 +54,16 @@ if (Capacitor.isNativePlatform()) {
   import('@capacitor/splash-screen').then(({ SplashScreen }) => {
     setTimeout(() => SplashScreen.hide().catch(() => {}), 200);
   });
+  // Live updates (Capgo): tells the updater plugin that this bundle
+  // booted successfully. If we don't call this within ~10s of launch,
+  // the plugin assumes the bundle crashed and auto-rolls back to the
+  // previous good bundle on the next launch. So we MUST call it once
+  // the React tree is up. The plugin handles background download +
+  // install-on-next-cold-start automatically based on capacitor.config.ts.
+  // No-ops gracefully if the package isn't configured with a Capgo account.
+  import('@capgo/capacitor-updater')
+    .then(({ CapacitorUpdater }) => CapacitorUpdater.notifyAppReady().catch(() => {}))
+    .catch(() => {});
 }
 
 // Service worker is for the WEB build only. Inside the Capacitor shell

@@ -1,14 +1,30 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, ScanLine } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { Capacitor } from '@capacitor/core';
+import { scanBarcode, tapLight } from '../../lib/capacitorNative';
 
 interface AddFeedTypeModalProps {
   onClose: () => void;
   onSuccess: () => void;
 }
 
+/**
+ * AddFeedTypeModal — quick "add a new feed type to my catalogue + set
+ * an opening balance" form.
+ *
+ * Cost-tracking lives in the Expenses page, not here. The flow is:
+ *   1. You buy 50 bags of Layer Mash → log it as an expense (category=feed)
+ *   2. The expense form's "link to inventory" toggle creates the
+ *      feed_type + feed_inventory rows automatically.
+ *
+ * This modal exists for the "I want to register a feed type without
+ * tying it to a purchase yet" case (e.g. seeding a new farm with what's
+ * already in the store room). The barcode scan helps you avoid typing
+ * the brand name from a bag in a dim feed shed.
+ */
 export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) {
   const { currentFarm } = useAuth();
   const { language } = useLanguage();
@@ -17,8 +33,27 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
   const [unit, setUnit] = useState('bags');
   const [initialStock, setInitialStock] = useState('');
   const [notes, setNotes] = useState('');
+  const [scannedRef, setScannedRef] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const isNative = Capacitor.isNativePlatform();
+
+  const handleScan = async () => {
+    setError('');
+    const raw = await scanBarcode();
+    if (!raw) return; // user cancelled
+    await tapLight();
+    setScannedRef(raw);
+    if (!name) {
+      // 8–14 digits = UPC/EAN (a name like that is useless on its own).
+      const isNumeric = /^\d{8,14}$/.test(raw);
+      setName(isNumeric ? `Feed ${raw.slice(-6)}` : raw);
+    }
+    // Stamp the raw scan into notes so it's never lost even if the
+    // farmer renames the feed type later.
+    setNotes(prev => prev ? `${prev}\n[Scanned] ${raw}` : `[Scanned] ${raw}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +109,7 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-3xl max-w-md w-full p-8">
+      <div className="bg-white rounded-3xl max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">{isFr ? "Ajouter un type d'aliment" : 'Add Feed Type'}</h2>
           <button
@@ -85,10 +120,34 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Soft hint pointing the farmer at the canonical purchase flow.
+            Keeps this modal honest about what it does (no money tracking). */}
+        <div className="mb-5 text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          {isFr
+            ? "Astuce : pour aussi enregistrer le coût d'achat, ajoutez la dépense via la page Dépenses (l'inventaire sera mis à jour automatiquement)."
+            : 'Tip: to also track the purchase cost, log it via the Expenses page — inventory updates automatically from there.'}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
               {error}
+            </div>
+          )}
+
+          {isNative && (
+            <button
+              type="button"
+              onClick={handleScan}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 border-2 border-dashed border-[#3D5F42]/30 text-[#3D5F42] rounded-lg text-sm font-semibold hover:bg-[#3D5F42]/5 transition-colors"
+            >
+              <ScanLine className="w-4 h-4" />
+              {isFr ? "Scanner le code-barres du sac" : 'Scan feed bag barcode'}
+            </button>
+          )}
+          {scannedRef && (
+            <div className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+              {isFr ? 'Code scanné' : 'Scanned code'}: <span className="font-mono">{scannedRef}</span>
             </div>
           )}
 

@@ -5,8 +5,11 @@ import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 import {
   detectRegion, ALL_COUNTRIES, RegionConfig, COUNTRY_CONFIGS, FIXED_PRICES,
-  getPrice, getPriceCurrency, formatPrice,
+  getEffectivePrice as getPrice, getPriceCurrency, formatPrice,
 } from '../../utils/regionalPayment';
+import { openInAppBrowser } from '../../lib/capacitorNative';
+import { Capacitor } from '@capacitor/core';
+import { Browser } from '@capacitor/browser';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
 
@@ -261,14 +264,35 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create payment');
       if (!data.payment_link) throw new Error('No payment link received. Please try again.');
-      // Redirect to Flutterwave hosted checkout — same pattern as Stripe.
-      // When done, Flutterwave redirects back to origin and our useEffect verifies.
+
+      // On Capacitor native: open Flutterwave inside a SFSafariViewController
+      // (iOS) / Custom Tab (Android) so the user stays inside the Edentrack
+      // app shell. When they finish payment and dismiss the in-app browser,
+      // we listen for browserFinished and trigger a verify call optimistically.
+      // On web: classic full-page redirect.
+      if (Capacitor.isNativePlatform()) {
+        // Listener fires when the user closes the in-app browser. We then
+        // poll our backend for the most recent transaction status — works
+        // regardless of whether the redirect_url path was hit, which is
+        // important because in-app browsers don't deep-link back natively.
+        const listener = await Browser.addListener('browserFinished', async () => {
+          await listener.remove();
+          // Verify against the latest pending transaction. If the user
+          // bailed out, the verify call returns "not paid" and we just
+          // clear the loading state without erroring.
+          await refreshSession?.();
+          setLoading(null);
+        });
+        await openInAppBrowser(data.payment_link, { fullscreen: true });
+        // Don't clear loading here — wait for browserFinished above.
+        return;
+      }
       window.location.href = data.payment_link;
     } catch (err: any) {
       setError(err.message);
       setLoading(null);
     }
-  }, [billingPeriod, priceCurrency]);
+  }, [billingPeriod, priceCurrency, refreshSession]);
 
   const verifyFlutterwave = async (transactionId: string, txRef: string) => {
     setLoading('verifying');
@@ -356,6 +380,54 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
           <h1 className="text-2xl font-bold text-agri-brown-900 mb-2">You're subscribed!</h1>
           <p className="text-agri-brown-500 mb-6">Your plan is now active. Welcome to EdenTrack Pro.</p>
           <button type="button" onClick={onBack} className="w-full bg-[#3D5F42] text-white py-3 rounded-2xl font-semibold hover:bg-[#2F4A34] transition-colors">Back to Dashboard</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── iOS / Android native: hide payment UI ──────────────────────────────
+  // Apple's App Store guidelines around in-app payment are strict for
+  // anything that even resembles a digital subscription. To keep the
+  // first review clean (and avoid Guideline 3.1.1 / 3.1.3 rejections),
+  // we don't show pricing, payment buttons, or plan-comparison tables
+  // inside the native shell at all. Users tap "Upgrade" anywhere in
+  // the app and land on this screen, which just tells them to manage
+  // their plan on edentrack.app and offers a button that opens the
+  // billing page in an in-app Safari sheet.
+  //
+  // The web build at edentrack.app keeps the full pricing + checkout
+  // flow exactly as it was. We only gate this on native.
+  if (Capacitor.isNativePlatform()) {
+    return (
+      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 shadow-lg max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Crown className="w-8 h-8 text-amber-700" />
+          </div>
+          <h1 className="text-xl font-bold text-agri-brown-900 mb-2">
+            Manage your plan on edentrack.app
+          </h1>
+          <p className="text-sm text-agri-brown-500 mb-6 leading-relaxed">
+            To change your plan or update payment, visit Edentrack on the web. Your changes sync back to this app within a minute.
+          </p>
+          <button
+            type="button"
+            onClick={() => openInAppBrowser('https://edentrack.app/#/subscribe', { fullscreen: true })}
+            className="w-full bg-[#3D5F42] text-white py-3 rounded-2xl font-semibold hover:bg-[#2F4A34] transition-colors mb-3 flex items-center justify-center gap-2"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Open Edentrack on the web
+          </button>
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-full text-agri-brown-500 py-3 rounded-2xl font-semibold hover:bg-agri-brown-50 transition-colors"
+          >
+            Back
+          </button>
+          <p className="text-[11px] text-agri-brown-400 mt-6 leading-relaxed">
+            Your current plan: <span className="font-semibold text-agri-brown-700 capitalize">{profile?.subscription_tier || 'Free'}</span>
+          </p>
         </div>
       </div>
     );

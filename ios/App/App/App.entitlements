@@ -8,6 +8,12 @@
 		this to "production" automatically for App Store builds.
 		Without this entry, registerForRemoteNotifications() returns
 		an error on iOS and no APNs token is generated.
+
+		Requires the App ID on developer.apple.com to have "Push
+		Notifications" capability enabled (Identifiers → app.edentrack
+		→ Capabilities). Xcode's automatic signing tries to enable it
+		for you, but if you see "could not be determined" errors,
+		toggle it manually in the developer portal first.
 	-->
 	<key>aps-environment</key>
 	<string>development</string>
@@ -16,6 +22,12 @@
 		https://edentrack.app/#/join/{farmId}/{secret} open the app
 		instead of Safari. Requires a matching apple-app-site-
 		association file at https://edentrack.app/.well-known/.
+
+		Requires the App ID on developer.apple.com to have "Associated
+		Domains" capability enabled (Identifiers → app.edentrack →
+		Capabilities). Same caveat as above — Xcode usually does this
+		for you, manual toggle is the fallback when auto-signing
+		throws "could not be determined" errors.
 	-->
 	<key>com.apple.developer.associated-domains</key>
 	<array>

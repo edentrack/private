@@ -76,6 +76,6 @@ export function classifyRabbitFCR(
 }
 
 export function formatRabbitFCR(fcr: number | null): string {
-  if (fcr === null) return ' - ';
+  if (fcr === null) return '—';
   return fcr.toFixed(2);
 }

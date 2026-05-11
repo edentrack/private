@@ -93,6 +93,6 @@ export function classifyFishFCR(fcr: number, species: FishSpeciesType): FishFcrR
 }
 
 export function formatFCR(fcr: number | null): string {
-  if (fcr === null) return ' - ';
+  if (fcr === null) return '—';
   return fcr.toFixed(2);
 }
