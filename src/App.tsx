@@ -27,6 +27,8 @@ const lazy1 = <T extends { [k: string]: React.ComponentType<any> }>(path: () => 
   lazy(() => (path() as Promise<T>).then(m => ({ default: m[name] as React.ComponentType<any> })));
 
 const LandingPage            = lazy(() => import('./components/landing/LandingPage'));
+const PrivacyPolicy          = lazy(() => import('./components/legal/PrivacyPolicy'));
+const TermsOfService         = lazy(() => import('./components/legal/TermsOfService'));
 const DashboardLayout        = lazy1(() => import('./components/dashboard/DashboardLayout'), 'DashboardLayout');
 const DashboardHome          = lazy1(() => import('./components/dashboard/DashboardHome'), 'DashboardHome');
 const SmartDashboard         = lazy1(() => import('./components/dashboard/SmartDashboard'), 'SmartDashboard');
@@ -840,6 +842,14 @@ function AppContent() {
         setCurrentView('ai-assistant');
         return;
       }
+      if (hash.includes('#/privacy')) {
+        setCurrentView('privacy');
+        return;
+      }
+      if (hash.includes('#/terms')) {
+        setCurrentView('terms');
+        return;
+      }
       const coopMatch = hash.match(/#\/cooperatives\/([0-9a-f-]{36})/i);
       if (coopMatch) {
         setSelectedCooperativeId(coopMatch[1]);
@@ -1054,6 +1064,14 @@ function AppContent() {
           onForgotPassword={() => navigateToAuth('forgot-password')}
         />
       );
+    }
+
+    // Public legal pages — no auth required
+    if (window.location.hash.includes('#/privacy')) {
+      return <Suspense fallback={pageFallback}><PrivacyPolicy /></Suspense>;
+    }
+    if (window.location.hash.includes('#/terms')) {
+      return <Suspense fallback={pageFallback}><TermsOfService /></Suspense>;
     }
 
     // Web: show landing page by default when not authenticated
@@ -1427,6 +1445,10 @@ function AppContent() {
             setCurrentView('dashboard');
           }} />
         );
+      case 'privacy':
+        return <PrivacyPolicy />;
+      case 'terms':
+        return <TermsOfService />;
       case 'notifications':
         return <NotificationsPage />;
       case 'cooperatives':
