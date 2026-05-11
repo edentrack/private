@@ -192,7 +192,22 @@ BEGIN
         'mortality_count', v_total_mortality,
         'mortality_pct', v_mortality_pct,
         'initial_count', v_initial_count,
-        'currency', v_currency
+        'currency', v_currency,
+        -- Chart payload for ChartBlock.tsx. Three-bar P&L: Revenue
+        -- (positive), Expenses (rendered as a negative bar that dips
+        -- below the zero line so it reads as money out), Net (green
+        -- if positive, red if negative). currency travels alongside
+        -- so the y-axis labels render correctly.
+        'chart', jsonb_build_object(
+          'type', 'bar',
+          'label', 'Cycle P&L',
+          'currency', v_currency,
+          'points', jsonb_build_array(
+            jsonb_build_object('x', 'Revenue',  'y', v_total_revenue,   'color', '#3D5F42'),
+            jsonb_build_object('x', 'Expenses', 'y', -v_total_expenses, 'color', '#dc2626'),
+            jsonb_build_object('x', 'Net',      'y', v_pnl,             'color', CASE WHEN v_pnl >= 0 THEN '#3D5F42' ELSE '#dc2626' END)
+          )
+        )
       )
     );
   EXCEPTION WHEN OTHERS THEN

@@ -121,6 +121,50 @@ interface WeeklyTotals {
   feed_bags_used: number;
 }
 
+interface SparklinePoint {
+  x: string;   // "MM-DD" tick label
+  y: number;
+}
+
+/**
+ * Build the 7-day eggs sparkline that gets embedded in the weekly
+ * summary entry's metadata.chart. Missing days render as 0 (honest
+ * line, no implicit gap fill).
+ */
+async function computeEggsSparkline(
+  supabase: SupabaseClient,
+  farmId: string,
+  weekStart: string,
+): Promise<SparklinePoint[]> {
+  const weekEndDate = new Date(weekStart);
+  weekEndDate.setDate(weekEndDate.getDate() + 6);
+  const weekEnd = weekEndDate.toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from('egg_collections')
+    .select('collection_date, total_eggs')
+    .eq('farm_id', farmId)
+    .gte('collection_date', weekStart)
+    .lte('collection_date', weekEnd);
+
+  const byDay: Record<string, number> = {};
+  for (const row of (data ?? []) as { collection_date: string; total_eggs: number | null }[]) {
+    const day = (row.collection_date ?? '').slice(0, 10);
+    if (!day) continue;
+    byDay[day] = (byDay[day] ?? 0) + Number(row.total_eggs ?? 0);
+  }
+
+  const points: SparklinePoint[] = [];
+  const start = new Date(weekStart);
+  for (let i = 0; i < 7; i += 1) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    points.push({ x: key.slice(5), y: byDay[key] ?? 0 });
+  }
+  return points;
+}
+
 async function computeWeeklyTotals(
   supabase: SupabaseClient,
   farmId: string,
@@ -227,6 +271,29 @@ async function runWeeklySummaries(supabase: SupabaseClient): Promise<number> {
       ? ` Net P&L: ${pnl >= 0 ? '+' : ''}${pnl.toLocaleString()} ${currency}.`
       : '';
 
+    // Chart payload — ChartBlock.tsx reads metadata.chart and renders.
+    // Sparkline for eggs (visual trend), bar chart for the financial
+    // story (revenue / expenses / net), one or the other based on
+    // which side of the week had more activity.
+    const eggSpark = totals.eggs_collected > 0
+      ? await computeEggsSparkline(supabase, farm.id, weekStart)
+      : null;
+    const showFinancialBar = totals.revenue > 0 || totals.expenses > 0;
+    const chart = showFinancialBar
+      ? {
+          type: 'bar',
+          label: 'Revenue vs Expenses vs Net',
+          currency,
+          points: [
+            { x: 'Revenue',  y: totals.revenue,  color: '#3D5F42' },
+            { x: 'Expenses', y: -totals.expenses, color: '#dc2626' },
+            { x: 'Net',      y: pnl,             color: pnl >= 0 ? '#3D5F42' : '#dc2626' },
+          ],
+        }
+      : eggSpark
+      ? { type: 'sparkline', label: 'Eggs / day', points: eggSpark }
+      : null;
+
     const { error: insErr } = await supabase.from('journal_entries').insert({
       farm_id: farm.id,
       flock_id: null,
@@ -244,6 +311,7 @@ async function runWeeklySummaries(supabase: SupabaseClient): Promise<number> {
         totals,
         currency,
         pnl,
+        chart,
       },
     });
 

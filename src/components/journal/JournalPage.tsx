@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { AddJournalEntryModal } from './AddJournalEntryModal';
 import { EntryReactions } from './EntryReactions';
+import { ChartBlock, type ChartConfig } from './ChartBlock';
 import type { AuthorRole } from '../../lib/journalLogger';
 
 /**
@@ -388,6 +389,13 @@ function EntryCard({
                 <img key={i} src={url} alt="" className="w-full h-20 object-cover rounded-md border border-gray-100" />
               ))}
             </div>
+          )}
+
+          {/* Inline chart — Eden emits one in metadata.chart for the
+              weekly summary (sparkline of daily eggs) and cycle close-
+              out (3-bar P&L). Component is null-safe if shape mismatches. */}
+          {entry.metadata?.chart != null && (
+            <ChartBlock config={entry.metadata.chart as ChartConfig} />
           )}
 
           {/* Deep-link to the underlying record for activity rows.
