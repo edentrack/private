@@ -8,6 +8,7 @@ import { shareViaWhatsApp } from '../../utils/whatsappShare';
 import { CustomerLookup } from '../customers/CustomerLookup';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { todayLocal } from '../../utils/dateUtils';
+import { logActivity, formatActorName, formatMoney, type AuthorRole } from '../../lib/journalLogger';
 import { getCurrencySymbol } from '../../utils/currency';
 
 interface RecordBirdSaleModalProps {
@@ -19,7 +20,7 @@ interface RecordBirdSaleModalProps {
 
 export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = false }: RecordBirdSaleModalProps) {
   const { t } = useTranslation();
-  const { user, currentFarm, profile } = useAuth();
+  const { user, currentFarm, profile, currentRole } = useAuth();
   // Species-aware terminology — "Birds" on a tilapia pond looks broken.
   const species = useFarmSpecies();
   const animalTerm = species.animalTerm;
@@ -204,6 +205,38 @@ export function RecordBirdSaleModal({ flock, onClose, onSuccess, isEmbedded = fa
           // Non-fatal — sale was recorded; flag for diagnostics.
           console.error('Sale recorded but failed to update flock count:', countError);
         }
+      }
+
+      // Farm Journal: log the sale as an Activity entry. Best-effort —
+      // a failed journal write must never break a successful sale.
+      // Body reads like:
+      //   "Three Samples (manager) sold 10 broilers for 50,000 XAF
+      //    to Buyer Name (paid)"
+      if (currentFarm?.id) {
+        const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+        const actor = formatActorName({
+          fullName: profile?.full_name,
+          email: profile?.email ?? user?.email,
+          role,
+        });
+        const buyerPart = customerName.trim() ? ` to ${customerName.trim()}` : '';
+        const statusPart = paymentStatus === 'paid' ? ' (paid)' : paymentStatus === 'partial' ? ' (partial)' : ' (on credit)';
+        void logActivity({
+          farmId: currentFarm.id,
+          flockId: selectedFlockId || null,
+          entryType: 'sale_logged',
+          actorRole: role,
+          body: `${actor} sold ${numBirdsSold} ${animalTermPlural} for ${formatMoney(totalAmount, currency)}${buyerPart}${statusPart}`,
+          metadata: {
+            linked_table: 'bird_sales',
+            sale_method: saleMethod,
+            num_birds: numBirdsSold,
+            total_amount: totalAmount,
+            currency,
+            customer_name: customerName.trim() || null,
+            payment_status: paymentStatus,
+          },
+        });
       }
 
       setLastSaleDetails({

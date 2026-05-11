@@ -51,6 +51,7 @@ const TeamManagement         = lazy1(() => import('./components/team/TeamManagem
 const ShiftsPage             = lazy1(() => import('./components/shifts/ShiftsPage'), 'ShiftsPage');
 const PayrollPage            = lazy1(() => import('./components/payroll/PayrollPage'), 'PayrollPage');
 const TasksPage2             = lazy1(() => import('./components/tasks2/TasksPage2'), 'TasksPage2');
+const JournalPage            = lazy1(() => import('./components/journal/JournalPage'), 'JournalPage');
 const TaskHistoryPage        = lazy1(() => import('./components/tasks/TaskHistoryPage'), 'TaskHistoryPage');
 const InsightsPage           = lazy1(() => import('./components/insights/InsightsPage'), 'InsightsPage');
 const EggCollectionsPage     = lazy1(() => import('./components/eggs/EggCollectionsPage'), 'EggCollectionsPage');
@@ -621,6 +622,7 @@ function AppContent() {
       'cooperatives': '#/cooperatives',
       'credit-score': '#/credit-score',
       'pond-planner': '#/pond-planner',
+      'journal': '#/journal',
     };
 
     const hash = hashMap[view] ?? `#/${view}`;
@@ -892,6 +894,10 @@ function AppContent() {
       }
       if (hash.includes('#/task-history')) {
         setCurrentView('task-history');
+        return;
+      }
+      if (hash.includes('#/journal')) {
+        setCurrentView('journal');
         return;
       }
       if (hash.includes('#/smart-dashboard')) {
@@ -1423,6 +1429,8 @@ function AppContent() {
             <InventoryPage onNavigate={setCurrentView} />
           </RequireRole>
         );
+      case 'journal':
+        return <JournalPage />;
       case 'vaccinations':
         return (
           <RequireRole moduleId="vaccinations" onUnauthorized={handleUnauthorized}>
