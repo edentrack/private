@@ -156,6 +156,36 @@ export function HarvestPage() {
 
   return (
     <div className="space-y-6">
+      {/* Most fish farms record harvest = sale in one step from the
+          Sales page (recording a fish sale automatically decrements
+          the pond count, which is the same effect as logging a
+          harvest). This Harvest page stays available for the edge
+          cases — non-sale harvest (personal consumption, gift, loss
+          event), or a multi-day staged harvest where the farmer wants
+          a separate biomass record before selling. Hidden from the
+          nav in May 2026; reachable via #/harvest or Eden deep-link. */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2">
+        <Fish className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold">
+            {isFr
+              ? 'Vous vendez vos poissons ?'
+              : 'Selling your fish?'}
+          </p>
+          <p className="mt-0.5">
+            {isFr
+              ? "Enregistrez la vente depuis la page Ventes — le nombre dans l'étang sera mis à jour automatiquement. Cette page reste utile pour les récoltes sans vente (consommation, perte, etc.)."
+              : 'Record the sale from the Sales page — the pond count updates automatically. This page stays useful for non-sale harvests (personal consumption, losses, etc.).'}
+          </p>
+          <button
+            onClick={() => { window.location.hash = '#/sales'; window.dispatchEvent(new HashChangeEvent('hashchange')); }}
+            className="mt-1 underline font-semibold hover:text-amber-700"
+          >
+            {isFr ? 'Aller aux ventes' : 'Go to Sales'} →
+          </button>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

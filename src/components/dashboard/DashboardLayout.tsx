@@ -118,7 +118,12 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'mortality', label: lossLabel, icon: HeartOff },
       { id: 'harvest', label: isFr ? 'Récolte' : 'Harvest', icon: Waves },
       { id: 'water-quality', label: isFr ? "Qualité de l'eau" : 'Water Quality', icon: Droplets },
-      { id: 'sampling', label: isFr ? 'Échantillonnage' : 'Weight Sampling', icon: Beaker },
+      // For fish farms, "Sampling" IS the weight check (ABW, biomass,
+      // SGR — the species-correct fields). Renaming to plain "Weight"
+      // so farmers see the same label they see on poultry; the page
+      // itself shows the fish-specific form. Poultry has its own
+      // 'weight' module which is hidden on aqua farms.
+      { id: 'sampling', label: isFr ? 'Poids' : 'Weight', icon: Beaker },
       { id: 'stocking', label: isFr ? 'Empoissonnement' : 'Stocking', icon: Truck },
       { id: 'fish-health', label: isFr ? 'Santé des poissons' : 'Fish Health', icon: AlertTriangle },
       { id: 'pond-inspections', label: isFr ? "Inspections d'étang" : 'Pond Inspections', icon: Eye },
@@ -162,6 +167,25 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     // surfaced it in the Operations section on poultry farms. Greg
     // caught it on his iPhone.
     const aquacultureOnlyItems = new Set(['harvest', 'water-quality', 'sampling', 'stocking', 'fish-health', 'pond-inspections', 'pond-planner']);
+
+    // May-2026 fish-farm nav cleanup: too many tabs in production were
+    // overwhelming farmers. We hide these from the nav menu but keep
+    // their routes registered so existing bookmarks + Eden's deep-links
+    // still work. The underlying pages remain functional; they just
+    // don't add clutter for new users:
+    //   - 'harvest'         → fish sales record removal of fish from
+    //                         pond automatically (via bird_sales count
+    //                         decrement). Standalone Harvest tab is
+    //                         redundant for the 95% case where farmers
+    //                         harvest = sell.
+    //   - 'stocking'        → one-shot event captured at flock/pond
+    //                         creation. After day-zero it sits unused.
+    //   - 'water-quality'   → folded conceptually into 'pond-planner'.
+    //   - 'pond-inspections'→ same. Both record daily pond checks;
+    //                         keeping them as separate top-level tabs
+    //                         meant the farmer had to know which form
+    //                         was for what data point.
+    const aquacultureNavHidden = new Set(['harvest', 'stocking', 'water-quality', 'pond-inspections']);
     // Items only for rabbit farms
     const rabbitsOnlyItems = new Set(['rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry']);
     // Items hidden for aquaculture farms — 'weight' is replaced by 'sampling' (Weight Sampling)
@@ -184,6 +208,9 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
         if (isRabbits && poultryOnlyItems.has(item.id)) return false;
         // Aqua farms don't have vaccinations (no vaccination feature for fish).
         if (isAquaculture && poultryRabbitItems.has(item.id)) return false;
+        // Hide the over-fragmented aqua tabs from nav (see set definition
+        // for rationale). Routes remain registered.
+        if (isAquaculture && aquacultureNavHidden.has(item.id)) return false;
       }
       return true;
     });
