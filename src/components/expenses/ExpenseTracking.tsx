@@ -19,6 +19,7 @@ import { useFarmSpecies } from '../../hooks/useSpecies';
 import { parseLocalDate, formatLocalDate, todayLocalISO } from '../../utils/dateUtils';
 import { Capacitor } from '@capacitor/core';
 import { scanBarcode, tapLight } from '../../lib/capacitorNative';
+import { logActivity, formatActorName, formatMoney, type AuthorRole } from '../../lib/journalLogger';
 // jsPDF + jspdf-autotable are pulled in dynamically inside handleExport so
 // that 'pdf' chunk doesn't load on every Expenses page visit. See Phase 3
 // of CLAUDE_CODE_AUTONOMOUS_ROADMAP.md.
@@ -601,6 +602,36 @@ export function ExpenseTracking() {
       const activityMessage = activityParts.length > 1
         ? `${activityParts[0]} and ${activityParts.slice(1).join(' + ')}`
         : activityParts[0];
+
+      // Farm Journal: log the expense + any linked inventory bump.
+      // Body reads like "Three Samples (manager) logged feed expense
+      // of 18,000 XAF (10 bags Layer Mash)". Best-effort.
+      if (currentFarm?.id) {
+        const role: AuthorRole = (currentRole === 'owner' || currentRole === 'manager' || currentRole === 'worker') ? currentRole : 'worker';
+        const actor = formatActorName({
+          fullName: profile?.full_name,
+          email: profile?.email ?? user?.email,
+          role,
+        });
+        const qtyPart = inventoryEnabled && quantityNum > 0
+          ? ` (${quantityNum} ${inventoryUnit}${newItemName ? ` ${newItemName}` : ''})`
+          : '';
+        void logActivity({
+          farmId: currentFarm.id,
+          flockId: selectedExpenseFlock || null,
+          entryType: 'expense_logged',
+          actorRole: role,
+          body: `${actor} logged ${category} expense of ${formatMoney(amountNum, currency)}${qtyPart}`,
+          metadata: {
+            linked_table: 'expenses',
+            category,
+            amount: amountNum,
+            currency,
+            inventory_linked: inventoryEnabled,
+            vet_log_created: vetLogCreated,
+          },
+        });
+      }
 
       const { error: activityError } = await supabase.from('activity_logs').insert({
         user_id: user!.id,

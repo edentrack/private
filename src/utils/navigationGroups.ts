@@ -65,7 +65,7 @@ const GROUP_MEMBERSHIP: Record<NavigationGroupId, ReadonlyArray<ModuleName>> = {
     'rabbit-registry',
   ],
   money: ['expenses', 'sales', 'credit-score'],
-  operations: ['inventory', 'pond-planner', 'shifts'],
+  operations: ['inventory', 'pond-planner', 'shifts', 'journal'],
   insights: ['insights', 'reports'],
   account: ['team', 'settings'],
 };

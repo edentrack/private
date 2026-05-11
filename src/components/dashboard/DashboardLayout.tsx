@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText, Award, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText, Award, CalendarDays, BookOpen } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -134,6 +134,11 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       { id: 'credit-score', label: isFr ? 'Score de crédit' : 'Credit Score', icon: Award },
       { id: 'weight', label: isAquaculture ? (isFr ? 'Poids & ICA' : 'Weight & FCR') : t('nav.weight'), icon: Scale },
       { id: 'shifts', label: t('nav.shifts'), icon: Calendar },
+      // Farm Journal: unified timeline of every action across the app
+      // (auto-logged) + manual notes from the team + Eden's summaries.
+      // Sits in Operations because it's how the farm's day-to-day is
+      // documented; insights derive from it but it's the source.
+      { id: 'journal', label: isFr ? 'Journal' : 'Journal', icon: BookOpen },
       { id: 'team', label: t('nav.team'), icon: Users },
       // Cooperatives nav entry removed May 2026 per Greg's request. Routes
       // still respond at /cooperatives if accessed directly. Delete the
