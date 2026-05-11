@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Check, ArrowRight, Leaf, Sprout, Crown, Building2 } from 'lucide-react';
+import { Fragment, useState } from 'react';
+import { Check, ArrowRight, Leaf, Sprout, Crown, Building2, ChevronDown, ChevronUp } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
 import { getEffectivePrice, formatPrice } from '../../utils/regionalPayment';
 
@@ -60,8 +60,9 @@ function perMonthEquiv(plan: PaidPlan, cycle: Cycle): string {
 }
 
 export default function PricingSection({ onGetStarted }: PricingSectionProps) {
-  const [cycle, setCycle] = useState<Cycle>('quarterly');
+  const [cycle, setCycle] = useState<Cycle>('yearly');
   const [checkoutPlan, setCheckoutPlan] = useState<PaidPlan | null>(null);
+  const [showCompare, setShowCompare] = useState(false);
 
   const goSignup = () => {
     onGetStarted();
@@ -123,7 +124,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Starter</h3>
-                <p className="text-xs text-gray-500">Try Eden. Run a real farm for free.</p>
+                <p className="text-xs text-gray-500">Just getting started.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -132,20 +133,14 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
             </div>
             <ul className="space-y-2 flex-1 mb-5">
               {[
-                '2 active flocks',
+                '1 farm · 2 active flocks · 1 user',
                 'Mortality, weight & expense tracking',
                 'Daily task reminders',
                 'WhatsApp daily summary',
-                'Eden AI · 10 messages/day',
+                'Eden AI · 15 messages/week',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
                   <Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  {f}
-                </li>
-              ))}
-              {['Full analytics & KPIs', 'Email reports', 'Financial AI logging', 'Team members'].map(f => (
-                <li key={f} className="flex items-start gap-2 text-xs text-gray-600 line-through">
-                  <span className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-center">–</span>
                   {f}
                 </li>
               ))}
@@ -167,7 +162,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Grower</h3>
-                <p className="text-xs text-gray-700">For farmers who want Eden running their books.</p>
+                <p className="text-xs text-gray-700">Running a real farm. 50 to 500 animals.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -181,16 +176,18 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
                 )}
               </div>
               <p className="text-gray-700 text-xs mt-1">{perMonthEquiv('grower', cycle)}</p>
+              <p className="text-gray-800 text-xs mt-2 font-medium italic">Less than one bag of layer feed.</p>
             </div>
             <ul className="space-y-2 flex-1 mb-5">
               {[
-                'Up to 5 active flocks',
-                'Full Eden AI · 200 messages/month',
-                'Eden logs sales & expenses for you',
+                '2 farms · 4 flocks each · 4 users',
+                'Eden AI · 100 messages/week',
+                'Voice messages to Eden',
+                'Photo disease diagnosis · 3/month',
                 'WhatsApp receipts to customers',
-                'CSV import & export (PDF/CSV)',
-                'Daily email report',
-                '2 team members',
+                'Smart CSV import + PDF/CSV export',
+                'Payroll for farm workers',
+                'Custom onboarding',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-800">
                   <Check className="w-3.5 h-3.5 text-gray-700 flex-shrink-0 mt-0.5" />
@@ -212,7 +209,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Farm Boss</h3>
-                <p className="text-xs text-gray-500">Commercial farms with a team.</p>
+                <p className="text-xs text-gray-500">Commercial farm with workers.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -227,13 +224,12 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <p className="text-gray-500 text-xs mt-1">{perMonthEquiv('farmboss', cycle)}</p>
             </div>
+            <p className="text-xs font-semibold text-gray-400 mb-2">Everything in Grower, plus:</p>
             <ul className="space-y-2 flex-1 mb-5">
               {[
-                'Everything in Grower',
-                'Unlimited flocks & team members',
-                'Eden AI · 1,000 messages/month',
+                '4 farms · 10 flocks each · unlimited users',
+                'Eden AI · 500 messages/week',
                 'Photo disease diagnosis · 10/month',
-                'Payroll for farm workers',
                 'Priority support',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
@@ -256,7 +252,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Industry</h3>
-                <p className="text-xs text-gray-500">Cooperatives & multi-farm operators.</p>
+                <p className="text-xs text-gray-500">Multiple farms or a cooperative.</p>
               </div>
             </div>
             <div className="mb-5">
@@ -271,14 +267,15 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               </div>
               <p className="text-gray-500 text-xs mt-1">{perMonthEquiv('industry', cycle)}</p>
             </div>
+            <p className="text-xs font-semibold text-gray-400 mb-2">Everything in Farm Boss, plus:</p>
             <ul className="space-y-2 flex-1 mb-5">
               {[
-                'Everything in Farm Boss',
-                'Multiple farms · cooperative dashboard',
-                'Unlimited Eden AI & photo diagnosis',
-                'Dedicated account manager',
-                'Custom onboarding & training',
-                'API access (coming soon)',
+                '10 farms · 20 flocks each',
+                'Eden AI · unlimited',
+                'Photo disease diagnosis · unlimited',
+                'Cooperative dashboard (coming soon)',
+                'Direct founder support',
+                'Custom training',
               ].map(f => (
                 <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
                   <Check className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
@@ -293,11 +290,102 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-600 mt-8">
-          Payments via Flutterwave and Stripe. Card, mobile money and bank transfer accepted. Cancel anytime.
+        {/* Compare all features — expandable matrix */}
+        <div className="mt-12 max-w-5xl mx-auto">
+          <button
+            onClick={() => setShowCompare(!showCompare)}
+            className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition-colors py-3 border-t border-b border-white/10"
+          >
+            {showCompare ? 'Hide full feature comparison' : 'Compare all features'}
+            {showCompare ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showCompare && <CompareMatrix />}
+        </div>
+
+        {/* Platform + global footer */}
+        <p className="text-center text-sm text-gray-400 mt-10">
+          Works on web, iPhone, and Android · Poultry, fish, rabbits in one app · English + French
+        </p>
+        <p className="text-center text-xs text-gray-600 mt-3">
+          Payments via Stripe, Paystack, Campay, and Flutterwave. Card, mobile money, and bank transfer accepted. Cancel anytime.
         </p>
       </div>
     </section>
     </>
+  );
+}
+
+const COMPARE_ROWS: { section: string; rows: { label: string; values: [string, string, string, string] }[] }[] = [
+  {
+    section: 'Limits',
+    rows: [
+      { label: 'Farm accounts', values: ['1', '2', '4', '10'] },
+      { label: 'Active flocks per farm', values: ['2', '4', '10', '20'] },
+      { label: 'Team members', values: ['1', '4', 'Unlimited', 'Unlimited'] },
+      { label: 'Eden AI messages', values: ['15/wk', '100/wk', '500/wk', 'Unlimited'] },
+    ],
+  },
+  {
+    section: 'Included features',
+    rows: [
+      { label: 'WhatsApp daily summary', values: ['✓', '✓', '✓', '✓'] },
+      { label: 'WhatsApp receipts to customers', values: ['', '✓', '✓', '✓'] },
+      { label: 'Voice messages to Eden', values: ['', '✓', '✓', '✓'] },
+      { label: 'Reports (PDF/CSV export)', values: ['', '✓', '✓', '✓'] },
+      { label: 'Smart CSV import', values: ['', '✓', '✓', '✓'] },
+      { label: 'Payroll for workers', values: ['', '✓', '✓', '✓'] },
+      { label: 'Custom onboarding', values: ['', '✓', '✓', '✓'] },
+    ],
+  },
+  {
+    section: 'Advanced',
+    rows: [
+      { label: 'Photo disease diagnosis', values: ['', '3/mo', '10/mo', 'Unlimited'] },
+      { label: 'Priority support', values: ['', '', '✓', '✓'] },
+    ],
+  },
+  {
+    section: 'Industry only',
+    rows: [
+      { label: 'Cooperative dashboard', values: ['', '', '', 'Coming soon'] },
+      { label: 'Direct founder support', values: ['', '', '', '✓'] },
+    ],
+  },
+];
+
+function CompareMatrix() {
+  return (
+    <div className="mt-6 overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-white/10">
+            <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider py-3 px-4">Feature</th>
+            <th className="text-center text-xs font-semibold text-gray-300 py-3 px-4">Free</th>
+            <th className="text-center text-xs font-semibold text-yellow-400 py-3 px-4">Grower</th>
+            <th className="text-center text-xs font-semibold text-amber-400 py-3 px-4">Farm Boss</th>
+            <th className="text-center text-xs font-semibold text-blue-400 py-3 px-4">Industry</th>
+          </tr>
+        </thead>
+        <tbody>
+          {COMPARE_ROWS.map(group => (
+            <Fragment key={group.section}>
+              <tr className="bg-white/5">
+                <td colSpan={5} className="py-2 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  {group.section}
+                </td>
+              </tr>
+              {group.rows.map(row => (
+                <tr key={row.label} className="border-b border-white/5">
+                  <td className="py-2.5 px-4 text-xs text-gray-300">{row.label}</td>
+                  {row.values.map((v, i) => (
+                    <td key={i} className="py-2.5 px-4 text-center text-xs text-gray-200">{v}</td>
+                  ))}
+                </tr>
+              ))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

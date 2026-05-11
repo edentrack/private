@@ -67,7 +67,7 @@ export function BroadcastManager() {
         created_by: user?.id,
       });
       if (error) throw error;
-      showToast('Broadcast created — users will see it immediately', 'success');
+      showToast('Broadcast created. Users will see it immediately.', 'success');
       setShowForm(false);
       setMessage(''); setType('info'); setTarget('all'); setDismissable(true); setExpiresAt('');
       load();

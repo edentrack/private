@@ -65,14 +65,14 @@ export default function PrivacyPolicy() {
             data subject to their own privacy practices:
           </p>
           <ul className="list-disc pl-6 mb-4 space-y-2">
-            <li><strong>Supabase</strong> — database, authentication, and file storage</li>
-            <li><strong>Vercel</strong> — web app hosting</li>
-            <li><strong>Anthropic</strong> — powers Eden's responses (Claude AI). Your messages and photos sent to Eden are forwarded to Anthropic for processing</li>
-            <li><strong>OpenAI</strong> — transcribes voice messages you record (Whisper)</li>
-            <li><strong>PostHog</strong> — product analytics and error tracking</li>
-            <li><strong>Crisp</strong> — in-app support chat (web only; disabled in mobile apps)</li>
-            <li><strong>Stripe, Paystack, Campay, Flutterwave</strong> — payment processing depending on your country</li>
-            <li><strong>Apple Push Notification service & Firebase Cloud Messaging</strong> — to deliver push notifications to your phone</li>
+            <li><strong>Supabase</strong>: database, authentication, and file storage</li>
+            <li><strong>Vercel</strong>: web app hosting</li>
+            <li><strong>Anthropic</strong>: powers Eden's responses (Claude AI). Your messages and photos sent to Eden are forwarded to Anthropic for processing</li>
+            <li><strong>OpenAI</strong>: transcribes voice messages you record (Whisper)</li>
+            <li><strong>PostHog</strong>: product analytics and error tracking</li>
+            <li><strong>Crisp</strong>: in-app support chat (web only; disabled in mobile apps)</li>
+            <li><strong>Stripe, Paystack, Campay, Flutterwave</strong>: payment processing depending on your country</li>
+            <li><strong>Apple Push Notification service & Firebase Cloud Messaging</strong>: to deliver push notifications to your phone</li>
           </ul>
           <p className="mb-4">
             We share with these providers only what they need to provide their service. We do not
@@ -143,7 +143,7 @@ export default function PrivacyPolicy() {
         </Section>
 
         <p className="text-sm text-gray-500 mt-12">
-          EdenTrack — Made for farmers everywhere.
+          EdenTrack. Made for farmers everywhere.
         </p>
       </div>
     </div>

@@ -322,8 +322,8 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
 
           {/* Subheading */}
           <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Eden is the AI that records sales, tracks expenses, and keeps your books up to date —
-            on the dashboard or right inside WhatsApp. Poultry, fish, rabbits. Your language. Your currency.
+            Eden is the AI that records sales, tracks expenses, and keeps your books up to date.
+            On the dashboard or right inside WhatsApp. Poultry, fish, rabbits. Your language. Your currency.
           </p>
 
           {/* Tagline */}
@@ -589,12 +589,12 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
             </div>
           )}
 
-          {/* Free-tier callout. We replaced the 14-day trial with a
-              forever-free Starter plan — same conversion intent
-              ("try without a card") but no auto-charge pitfall. */}
+          {/* Free-tier callout. New signups get 30 days of Grower
+              features free, then drop to the forever-Free plan if they
+              don't subscribe. No card required. */}
           {!showDemoForm && (
             <p className="text-sm text-gray-500">
-              No credit card required • Free plan included forever
+              No credit card required • 30 days of Grower free, then Free forever
             </p>
           )}
         </div>

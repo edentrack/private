@@ -19,8 +19,8 @@ export default function TermsOfService() {
 
         <Section title="1. The Service">
           <p className="mb-4">
-            EdenTrack lets farmers track their operations — flocks, ponds, rabbitries, sales,
-            expenses, payroll, mortality, and more — and converse with Eden, our AI assistant, to
+            EdenTrack lets farmers track their operations (flocks, ponds, rabbitries, sales,
+            expenses, payroll, mortality, and more) and converse with Eden, our AI assistant, to
             log records, generate reports, and get production guidance. The Service is available on
             the web at edentrack.app and through our mobile apps for iOS and Android.
           </p>
@@ -55,7 +55,7 @@ export default function TermsOfService() {
           </p>
         </Section>
 
-        <Section title="4. Eden AI — important disclaimer">
+        <Section title="4. Eden AI: important disclaimer">
           <p className="mb-4">
             Eden is an AI assistant. It is designed to help you record farm data and provide
             general guidance based on common farming practices. <strong>Eden is not a veterinarian,
@@ -89,7 +89,7 @@ export default function TermsOfService() {
 
         <Section title="6. Your content">
           <p className="mb-4">
-            You retain ownership of all data you put into EdenTrack — your farm records, photos,
+            You retain ownership of all data you put into EdenTrack: your farm records, photos,
             messages to Eden, sales information, and so on. By using the Service, you grant us a
             limited license to host, process, and display this content as needed to provide the
             Service to you. We do not use your data to train AI models.
@@ -170,7 +170,7 @@ export default function TermsOfService() {
         </Section>
 
         <p className="text-sm text-gray-500 mt-12">
-          EdenTrack — Made for farmers everywhere.
+          EdenTrack. Made for farmers everywhere.
         </p>
       </div>
     </div>

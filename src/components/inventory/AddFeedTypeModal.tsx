@@ -125,7 +125,7 @@ export function AddFeedTypeModal({ onClose, onSuccess }: AddFeedTypeModalProps) 
         <div className="mb-5 text-xs text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           {isFr
             ? "Astuce : pour aussi enregistrer le coût d'achat, ajoutez la dépense via la page Dépenses (l'inventaire sera mis à jour automatiquement)."
-            : 'Tip: to also track the purchase cost, log it via the Expenses page — inventory updates automatically from there.'}
+            : 'Tip: to also track the purchase cost, log it via the Expenses page. Inventory updates automatically from there.'}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
