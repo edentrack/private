@@ -85,7 +85,8 @@ const StockingEventsPage     = lazy1(() => import('./components/aquaculture/Stoc
 const FishHealthPage         = lazy1(() => import('./components/aquaculture/FishHealthPage'), 'FishHealthPage');
 const PondInspectionsPage    = lazy1(() => import('./components/aquaculture/PondInspectionsPage'), 'PondInspectionsPage');
 const PondCheckPage          = lazy1(() => import('./components/aquaculture/PondCheckPage'), 'PondCheckPage');
-const RabbitHarvestPage      = lazy1(() => import('./components/rabbits/RabbitHarvestPage'), 'RabbitHarvestPage');
+const RabbitSalesPage        = lazy1(() => import('./components/rabbits/RabbitSalesPage'), 'RabbitSalesPage');
+const RabbitGrowoutPage      = lazy1(() => import('./components/rabbits/RabbitGrowoutPage'), 'RabbitGrowoutPage');
 const BreedingEventsPage     = lazy1(() => import('./components/rabbits/BreedingEventsPage'), 'BreedingEventsPage');
 const LittersPage            = lazy1(() => import('./components/rabbits/LittersPage'), 'LittersPage');
 const RabbitsRegistryPage    = lazy1(() => import('./components/rabbits/RabbitsRegistryPage'), 'RabbitsRegistryPage');
@@ -599,7 +600,8 @@ function AppContent() {
       'stocking': '#/stocking',
       'fish-health': '#/fish-health',
       'pond-inspections': '#/pond-inspections',
-      'rabbit-harvest': '#/rabbit-harvest',
+      'rabbit-sales': '#/rabbit-sales',
+      'rabbit-growout': '#/rabbit-growout',
       'breeding-events': '#/breeding-events',
       'litters': '#/litters',
       'rabbit-registry': '#/rabbit-registry',
@@ -846,8 +848,15 @@ function AppContent() {
         setCurrentView('pond-check');
         return;
       }
-      if (hash.includes('#/rabbit-harvest')) {
-        setCurrentView('rabbit-harvest');
+      // Accept both the legacy '#/rabbit-harvest' hash and the new
+      // '#/rabbit-sales' hash so bookmarks / WhatsApp links from
+      // before the rename still land on the right page.
+      if (hash.includes('#/rabbit-sales') || hash.includes('#/rabbit-harvest')) {
+        setCurrentView('rabbit-sales');
+        return;
+      }
+      if (hash.includes('#/rabbit-growout')) {
+        setCurrentView('rabbit-growout');
         return;
       }
       if (hash.includes('#/breeding-events')) {
@@ -1457,8 +1466,10 @@ function AppContent() {
         return <PondInspectionsPage />;
       case 'pond-check':
         return <PondCheckPage />;
-      case 'rabbit-harvest':
-        return <RabbitHarvestPage />;
+      case 'rabbit-sales':
+        return <RabbitSalesPage />;
+      case 'rabbit-growout':
+        return <RabbitGrowoutPage />;
       case 'breeding-events':
         return <BreedingEventsPage />;
       case 'litters':

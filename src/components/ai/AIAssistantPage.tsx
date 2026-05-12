@@ -1095,16 +1095,21 @@ export function AIAssistantPage() {
       if (rLossErr) throw new Error(`Rabbit loss save failed: ${rLossErr.message}`);
       if (!rLossData?.length) throw new Error('Rabbit loss record not saved - possible permission issue.');
 
-    } else if (logAction.type === 'LOG_RABBIT_HARVEST') {
+    } else if (logAction.type === 'LOG_RABBIT_HARVEST' || logAction.type === 'LOG_RABBIT_SALE') {
+      // Accept either action name during the harvest→sales rename
+      // transition. The edge function may still emit LOG_RABBIT_HARVEST
+      // until it ships its own copy of the action map.
       const rabbitryName = logAction.rabbitry_name || logAction.flock_name;
       const flock = await findFlock(rabbitryName);
       if (!flock) throw new Error(`Rabbitry "${rabbitryName}" not found`);
-      const harvestCount = logAction.count || 0;
-      // rabbit_harvest_records has price_per_kg + total_amount; schema has no sale_price/currency cols
-      const { data: rhrData, error: rhrErr } = await supabase.from('rabbit_harvest_records').insert({
+      const saleCount = logAction.count || 0;
+      // rabbit_sales (renamed from rabbit_harvest_records May 2026).
+      // sold_at replaces harvested_at; weights / price / buyer fields
+      // are unchanged.
+      const { data: rsData, error: rsErr } = await supabase.from('rabbit_sales').insert({
         farm_id: farmId, flock_id: flock.id,
-        harvested_at: logAction.harvest_date || recordDate,
-        count: harvestCount,
+        sold_at: logAction.sale_date || logAction.harvest_date || recordDate,
+        count: saleCount,
         total_live_weight_kg: logAction.total_live_weight_kg ?? null,
         total_carcass_weight_kg: logAction.total_carcass_weight_kg ?? null,
         price_per_kg: logAction.price_per_kg ?? null,
@@ -1113,10 +1118,10 @@ export function AIAssistantPage() {
         payment_status: logAction.payment_status || 'pending',
         notes: logAction.notes || null,
       }).select('id');
-      if (rhrErr) throw new Error(`Rabbit harvest save failed: ${rhrErr.message}`);
-      if (!rhrData?.length) throw new Error('Rabbit harvest not saved - possible permission issue.');
-      if (harvestCount > 0) {
-        await supabase.from('flocks').update({ current_count: Math.max(0, (flock.current_count || 0) - harvestCount) }).eq('id', flock.id).eq('farm_id', farmId);
+      if (rsErr) throw new Error(`Rabbit sale save failed: ${rsErr.message}`);
+      if (!rsData?.length) throw new Error('Rabbit sale not saved - possible permission issue.');
+      if (saleCount > 0) {
+        await supabase.from('flocks').update({ current_count: Math.max(0, (flock.current_count || 0) - saleCount) }).eq('id', flock.id).eq('farm_id', farmId);
       }
 
     // ─── Phase 6 onboarding actions ────────────────────────────────────

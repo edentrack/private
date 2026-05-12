@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText, Award, CalendarDays, BookOpen } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Syringe, DollarSign, Settings, LogOut, Package, Briefcase, ShoppingCart, Users, Calendar, User, ChevronDown, Menu, Shield, Scale, ChevronRight, HelpCircle, ListChecks, Crown, Zap, Sprout, Egg, HeartOff, Fish, Rabbit, Waves, Droplets, Beaker, Truck, Heart, Baby, ClipboardList, AlertTriangle, Eye, FileText, Award, CalendarDays, BookOpen, Layers } from 'lucide-react';
 import { FarmSwitcherDropdown } from '../farms/FarmSwitcherDropdown';
 import { CreateFarmModal } from '../farms/CreateFarmModal';
 import { FarmHealthRing } from './FarmHealthRing';
@@ -133,7 +133,8 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
       // routes alive for backwards compatibility.
       { id: 'pond-check', label: isFr ? "Vérification d'étang" : 'Pond Check', icon: Droplets },
       { id: 'pond-planner', label: isFr ? "Planificateur d'étang" : 'Pond Planner', icon: CalendarDays },
-      { id: 'rabbit-harvest', label: isFr ? 'Récolte de lapins' : 'Rabbit Harvest', icon: Scale },
+      { id: 'rabbit-sales', label: isFr ? 'Ventes de lapins' : 'Rabbit Sales', icon: Scale },
+      { id: 'rabbit-growout', label: isFr ? 'Cohortes' : 'Grow-out Groups', icon: Layers },
       { id: 'breeding-events', label: isFr ? 'Reproduction' : 'Breeding', icon: Heart },
       { id: 'litters', label: isFr ? 'Portées' : 'Litters', icon: Baby },
       { id: 'rabbit-registry', label: isFr ? 'Registre' : 'Registry', icon: ClipboardList },
@@ -192,7 +193,7 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
     //                         was for what data point.
     const aquacultureNavHidden = new Set(['harvest', 'stocking', 'water-quality', 'pond-inspections']);
     // Items only for rabbit farms
-    const rabbitsOnlyItems = new Set(['rabbit-harvest', 'breeding-events', 'litters', 'rabbit-registry']);
+    const rabbitsOnlyItems = new Set(['rabbit-sales', 'rabbit-growout', 'breeding-events', 'litters', 'rabbit-registry']);
     // Items hidden for aquaculture farms — 'weight' is replaced by 'sampling' (Weight Sampling)
     // which is the species-correct surface for fish (ABW, biomass, SGR), so the legacy
     // Weight & FCR page (broiler/layer charts) is not exposed. Vaccinations apply
