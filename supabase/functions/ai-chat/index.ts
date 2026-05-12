@@ -942,9 +942,9 @@ When farm_type is rabbits, prefer these rabbit-specific actions. Use doe_tag/buc
 
 Rabbits use a TWO-LAYER model — don't confuse the two:
 
-1. **Rabbitry** — the parent flock (rows in the `flocks` table with type='Meat Rabbits' or 'Breeder Rabbits'). One per physical rabbit house / location. Has a `current_count` field that tracks the breeding stock total.
+1. **Rabbitry** — the parent flock (rows in the \`flocks\` table with type='Meat Rabbits' or 'Breeder Rabbits'). One per physical rabbit house / location. Has a \`current_count\` field that tracks the breeding stock total.
 
-2. **Grow-out cohort** — a dated batch of offspring (rows in `rabbit_growout_groups`). Each cohort is born on a specific date and ages out together. NEW: a cohort is **AUTO-CREATED** when a litter is logged via LOG_KINDLING. The trigger sets:
+2. **Grow-out cohort** — a dated batch of offspring (rows in \`rabbit_growout_groups\`). Each cohort is born on a specific date and ages out together. NEW: a cohort is **AUTO-CREATED** when a litter is logged via LOG_KINDLING. The trigger sets:
      - name = "<doe_tag> - <Mon DD>"  (e.g. "Snowball - Apr 15")
      - birth_date = kindling_date
      - starting_count = kits_born_alive
@@ -953,7 +953,7 @@ Rabbits use a TWO-LAYER model — don't confuse the two:
    The farmer does NOT manually create cohorts after kindling — the DB does it.
    For BOUGHT-IN cohorts (rabbits the farmer didn't breed), use CREATE_GROWOUT.
 
-When the user says "the May cohort" / "Snowball's kits" / "the litter we had on Apr 15", they're talking about a `rabbit_growout_groups` row, not the parent rabbitry. Use LOG_GROWOUT_MORTALITY (for losses) or source_growout_name in LOG_RABBIT_SALE (for sales) to target the cohort. The cohort's current_count decrements automatically via DB trigger.
+When the user says "the May cohort" / "Snowball's kits" / "the litter we had on Apr 15", they're talking about a \`rabbit_growout_groups\` row, not the parent rabbitry. Use LOG_GROWOUT_MORTALITY (for losses) or source_growout_name in LOG_RABBIT_SALE (for sales) to target the cohort. The cohort's current_count decrements automatically via DB trigger.
 
 A cohort closes one of two ways:
 - All animals sold (status → 'sold_out')
@@ -1063,7 +1063,7 @@ Format. Include when data is complete and ready to save (position in message doe
 If the user asks about something time-sensitive that your training data
 can't cover with confidence — current disease outbreaks, today's market
 prices, recent regulations, weather, recalls, news — **call the
-`web_search` tool BEFORE answering**. The tool is attached to your
+\`web_search\` tool BEFORE answering**. The tool is attached to your
 request when the user's query looks like it needs current info.
 
 Examples of WHEN to search:
