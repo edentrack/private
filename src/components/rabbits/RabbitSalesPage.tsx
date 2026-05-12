@@ -67,6 +67,8 @@ export function RabbitSalesPage() {
 
   const [records, setRecords] = useState<RabbitSaleRecord[]>([]);
   const [flocks, setFlocks] = useState<RabbitFlock[]>([]);
+  const [growouts, setGrowouts] = useState<Array<{ id: string; name: string; current_count: number }>>([]);
+  const [breeders, setBreeders] = useState<Array<{ id: string; tag: string; sex: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -81,6 +83,18 @@ export function RabbitSalesPage() {
   const [formBuyer, setFormBuyer] = useState('');
   const [formPayStatus, setFormPayStatus] = useState<'paid' | 'pending'>('pending');
   const [formNotes, setFormNotes] = useState('');
+  // Source picker (Phase 2). The user chooses WHAT was sold:
+  //   - 'cohort'  → pick a growout group (count caps at the group's
+  //                 current_count, db trigger decrements after insert)
+  //   - 'breeder' → pick a named individual from the registry
+  //                 (sets sale count to 1 and marks the rabbit as
+  //                 'sold' in the registry on success)
+  //   - 'free'    → no source link, raw count entry. Same as before
+  //                 Phase 2; preserved for farmers who haven't moved
+  //                 to the cohort workflow yet.
+  const [sourceKind, setSourceKind] = useState<'cohort' | 'breeder' | 'free'>('free');
+  const [formGrowoutId, setFormGrowoutId] = useState<string>('');
+  const [formBreederId, setFormBreederId] = useState<string>('');
 
   const previewDressingPct =
     formLiveWeight && formCarcassWeight
@@ -98,6 +112,8 @@ export function RabbitSalesPage() {
     if (!currentFarm?.id) return;
     loadFlocks();
     loadRecords();
+    loadGrowouts();
+    loadBreeders();
   }, [currentFarm?.id]);
 
   const loadFlocks = async () => {
@@ -111,6 +127,27 @@ export function RabbitSalesPage() {
     const result = data || [];
     setFlocks(result);
     if (result.length > 0) setFormFlockId(result[0].id);
+  };
+
+  const loadGrowouts = async () => {
+    const { data } = await supabase
+      .from('rabbit_growout_groups')
+      .select('id, name, current_count')
+      .eq('farm_id', currentFarm!.id)
+      .eq('status', 'active')
+      .gt('current_count', 0)
+      .order('birth_date', { ascending: false, nullsFirst: false });
+    setGrowouts(data || []);
+  };
+
+  const loadBreeders = async () => {
+    const { data } = await supabase
+      .from('rabbits')
+      .select('id, tag, sex')
+      .eq('farm_id', currentFarm!.id)
+      .eq('status', 'active')
+      .order('tag');
+    setBreeders(data || []);
   };
 
   const loadRecords = async () => {
@@ -138,16 +175,50 @@ export function RabbitSalesPage() {
     setFormBuyer('');
     setFormPayStatus('pending');
     setFormNotes('');
+    setSourceKind('free');
+    setFormGrowoutId('');
+    setFormBreederId('');
     if (flocks.length > 0) setFormFlockId(flocks[0].id);
   };
 
   const handleSubmit = async () => {
     if (!formFlockId) { toast.error(isFr ? 'Veuillez sélectionner un élevage' : 'Please select a rabbitry'); return; }
     if (!formDate) { toast.error(isFr ? 'Sélectionnez la date de vente' : 'Select sale date'); return; }
-    const count = parseInt(formCount, 10);
-    if (!formCount || isNaN(count) || count <= 0) {
-      toast.error(isFr ? 'Saisissez le nombre de lapins vendus' : 'Enter number of rabbits sold');
+
+    // Validate source-specific requirements before parsing count, so a
+    // breeder sale's auto-count-of-1 doesn't get rejected by the
+    // generic count check.
+    if (sourceKind === 'cohort' && !formGrowoutId) {
+      toast.error(isFr ? 'Choisissez une cohorte' : 'Pick a cohort to sell from');
       return;
+    }
+    if (sourceKind === 'breeder' && !formBreederId) {
+      toast.error(isFr ? 'Choisissez un reproducteur' : 'Pick a named breeder to sell');
+      return;
+    }
+
+    // Breeder sales always count 1; cohort sales validate against
+    // the cohort's current_count; free-form trusts the user.
+    let count: number;
+    if (sourceKind === 'breeder') {
+      count = 1;
+    } else {
+      count = parseInt(formCount, 10);
+      if (!formCount || isNaN(count) || count <= 0) {
+        toast.error(isFr ? 'Saisissez le nombre de lapins vendus' : 'Enter number of rabbits sold');
+        return;
+      }
+      if (sourceKind === 'cohort') {
+        const cohort = growouts.find(g => g.id === formGrowoutId);
+        if (cohort && count > cohort.current_count) {
+          toast.error(
+            isFr
+              ? `Cette cohorte n'a que ${cohort.current_count} animaux`
+              : `That cohort only has ${cohort.current_count} alive`
+          );
+          return;
+        }
+      }
     }
 
     const liveKg = formLiveWeight ? parseFloat(formLiveWeight) : null;
@@ -158,6 +229,10 @@ export function RabbitSalesPage() {
     const totalAmount = computedTotal ?? manualTotal;
 
     setSubmitting(true);
+    // The DB trigger `trg_rabbit_sales_decrement_growout` decrements
+    // current_count automatically when source_growout_group_id is set.
+    // For breeder sales we also flip the rabbits.status → 'sold' so
+    // they fall out of the active registry.
     const { error } = await supabase.from('rabbit_sales').insert({
       farm_id: currentFarm!.id,
       flock_id: formFlockId,
@@ -170,7 +245,21 @@ export function RabbitSalesPage() {
       buyer_name: formBuyer || null,
       payment_status: formPayStatus,
       notes: formNotes || null,
+      source_growout_group_id: sourceKind === 'cohort' ? formGrowoutId : null,
+      source_rabbit_id:        sourceKind === 'breeder' ? formBreederId : null,
     });
+
+    if (!error && sourceKind === 'breeder') {
+      // Best-effort: mark the named breeder as 'sold'. We don't block
+      // the success toast on this — the sale itself is the system of
+      // record. If this fails (e.g. RLS quirk), the user can edit the
+      // rabbit's status manually.
+      await supabase
+        .from('rabbits')
+        .update({ status: 'sold' })
+        .eq('id', formBreederId)
+        .eq('farm_id', currentFarm!.id);
+    }
     setSubmitting(false);
 
     if (error) {
@@ -180,6 +269,10 @@ export function RabbitSalesPage() {
       resetForm();
       setShowForm(false);
       loadRecords();
+      // Refresh source pickers so a fully-sold cohort drops off, a
+      // sold breeder no longer appears, etc.
+      void loadGrowouts();
+      void loadBreeders();
     }
   };
 
@@ -228,7 +321,88 @@ export function RabbitSalesPage() {
 
       {showForm && (
         <div className="section-card animate-fade-in-up">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">{isFr ? 'Nouvelle vente' : 'New Sale'}</h2>
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">{isFr ? 'Nouvelle vente' : 'New Sale'}</h2>
+
+          {/* Source picker — pick WHAT was sold. Drives whether the
+              sale links to a grow-out cohort, a named breeder, or
+              neither (free-form count). The DB trigger handles count
+              decrements for cohorts automatically. */}
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+              {isFr ? 'Quoi vendre ?' : 'What was sold?'}
+            </label>
+            <div className="grid grid-cols-3 gap-1.5 mb-2">
+              {([
+                { key: 'cohort',  label: isFr ? 'Une cohorte' : 'From a cohort',  disabled: growouts.length === 0 },
+                { key: 'breeder', label: isFr ? 'Reproducteur' : 'Named breeder', disabled: breeders.length === 0 },
+                { key: 'free',    label: isFr ? 'Comptage libre' : 'Free count',  disabled: false },
+              ] as const).map(opt => {
+                const active = sourceKind === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    disabled={opt.disabled}
+                    onClick={() => setSourceKind(opt.key)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                      active
+                        ? 'bg-[#3D5F42] text-white'
+                        : opt.disabled
+                        ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#3D5F42]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {sourceKind === 'cohort' && (
+              <select
+                value={formGrowoutId}
+                onChange={e => {
+                  setFormGrowoutId(e.target.value);
+                  // Pre-fill count with the cohort's current count as a
+                  // sensible default. User can edit.
+                  const g = growouts.find(x => x.id === e.target.value);
+                  if (g) setFormCount(String(g.current_count));
+                }}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
+              >
+                <option value="">{isFr ? '— Choisir une cohorte —' : '— Pick a cohort —'}</option>
+                {growouts.map(g => (
+                  <option key={g.id} value={g.id}>
+                    {g.name} ({g.current_count} {isFr ? 'restants' : 'alive'})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {sourceKind === 'breeder' && (
+              <select
+                value={formBreederId}
+                onChange={e => { setFormBreederId(e.target.value); setFormCount('1'); }}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D5F42]/30"
+              >
+                <option value="">{isFr ? '— Choisir un reproducteur —' : '— Pick a breeder —'}</option>
+                {breeders.map(b => (
+                  <option key={b.id} value={b.id}>
+                    #{b.tag} ({b.sex === 'doe' ? (isFr ? 'femelle' : 'doe') : (isFr ? 'mâle' : 'buck')})
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {sourceKind === 'free' && (
+              <p className="text-[11px] text-gray-400 italic">
+                {isFr
+                  ? 'Vente sans lien avec une cohorte ni un reproducteur. Compteur saisi à la main.'
+                  : 'Sale not linked to a cohort or named breeder. Count entered manually below.'}
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">{isFr ? 'Élevage *' : 'Rabbitry *'}</label>
