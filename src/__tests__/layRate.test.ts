@@ -19,7 +19,6 @@ function daysAgo(n: number): string {
 }
 
 const TODAY = daysAgo(0);
-const YESTERDAY = daysAgo(1);
 
 describe('isLayingHen', () => {
   it('returns false for non-layer types regardless of age', () => {

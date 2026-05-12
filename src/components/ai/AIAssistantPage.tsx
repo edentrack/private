@@ -39,7 +39,7 @@ interface LogAction {
     | 'LOG_HARVEST' | 'LOG_SAMPLING' | 'LOG_FISH_LOSS'
     // Rabbit — Eden as operator
     | 'LOG_BREEDING' | 'LOG_KINDLING' | 'LOG_WEANING'
-    | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST'
+    | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST' | 'LOG_RABBIT_SALE'
     // Phase 6 onboarding — Eden creates the farm itself
     | 'CREATE_FARM' | 'CREATE_FLOCK' | 'CREATE_POND' | 'CREATE_RABBITRY'
     | 'ONBOARDING_COMPLETE' | 'SWITCH_TO_FORM'
@@ -1849,7 +1849,7 @@ export function AIAssistantPage() {
     }
   };
 
-  const toggleBulkRow = (messageId: string, rowIdx: number) => {
+  const _toggleBulkRow = (messageId: string, rowIdx: number) => {
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId || !m.bulkLogSelected) return m;
       const next = [...m.bulkLogSelected];
@@ -1858,7 +1858,7 @@ export function AIAssistantPage() {
     }));
   };
 
-  const toggleAllBulkRows = (messageId: string, value: boolean) => {
+  const _toggleAllBulkRows = (messageId: string, value: boolean) => {
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId || !m.bulkLogSelected) return m;
       return { ...m, bulkLogSelected: m.bulkLogSelected.map(() => value) };

@@ -14,7 +14,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { SimpleModeProvider } from './contexts/SimpleModeContext';
 import { Flock } from './types/database';
 import { OverflowModal } from './components/billing/OverflowModal';
-import { getEffectiveTier, getMaxFarms, getMaxFlocks, getMaxTeamMembers } from './utils/planGating';
+import { getMaxFarms, getMaxFlocks, getMaxTeamMembers } from './utils/planGating';
 
 // Auth screens — kept eager (shown before JS finishes loading)
 import { LoginScreen } from './components/auth/LoginScreen';

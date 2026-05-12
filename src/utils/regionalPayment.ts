@@ -70,12 +70,29 @@ export interface RegionConfig {
 // ── Method factories — saves a lot of repetition in COUNTRY_CONFIGS ──
 
 const m = {
+  // Card via STRIPE. Used in countries where Stripe has clean local
+  // settlement (US, UK, EU, CA, AU, ZA) or where Stripe is the only
+  // option (no Flutterwave presence). Falls back to USD when the
+  // region's currency isn't supported by Stripe — but with the
+  // current country list we never need that fallback any more.
   card: (chargeCurrency?: string): PaymentOption => ({
     id: 'card',
     label: 'Card (Visa / Mastercard)',
     processor: 'stripe',
     kind: 'card',
     chargeCurrency,
+  }),
+  // Card via FLUTTERWAVE. The default for cards in African countries.
+  // Flutterwave charges Visa/Mastercard in the country's native
+  // currency (NGN, GHS, KES, EGP, MAD, XAF, XOF, etc.), so there are
+  // no FX margins, no international-transaction limits at the
+  // cardholder's bank, and no CBN-style USD restrictions. Same UI
+  // affordance as Stripe card — user sees "Card (Visa / Mastercard)".
+  cardFw: (): PaymentOption => ({
+    id: 'card',
+    label: 'Card (Visa / Mastercard)',
+    processor: 'flutterwave',
+    kind: 'card',
   }),
   applePay: (): PaymentOption => ({ id: 'apple_pay', label: 'Apple Pay', processor: 'stripe', kind: 'card' }),
   googlePay: (): PaymentOption => ({ id: 'google_pay', label: 'Google Pay', processor: 'stripe', kind: 'card' }),
@@ -413,32 +430,32 @@ export const COUNTRY_CONFIGS: Record<string, RegionConfig> = {
   // ── Africa — local currency countries ──────────────────────────────────
   // For these, card pays via Stripe in USD; local methods via Flutterwave
   // in the native currency (NGN, KES, etc.).
-  // Stripe accepts local settlement for NGN, GHS, KES, ZAR, EGP, MAD —
-  // so cards there charge in the native currency (no FX, no
-  // international-transaction limits at the cardholder's bank).
+  // Africa policy: ALL payments go through Flutterwave in the
+  // country's native currency. Cards (Visa/Mastercard) + local
+  // methods all live under one provider — same checkout, no FX
+  // surprises, no Stripe-international-transaction limits at the
+  // cardholder's bank. The single exception is South Africa where
+  // Stripe ZAR settlement is clean and reliable (kept on Stripe).
   NG: makeRegion({ code: 'NG', name: 'Nigeria',       currency: 'NGN', phonePrefix: '+234',
-    options: [m.card(), m.bankTransfer(), m.ussd(), m.mtnMomo()] }),
+    options: [m.cardFw(), m.bankTransfer(), m.ussd(), m.mtnMomo()] }),
   GH: makeRegion({ code: 'GH', name: 'Ghana',         currency: 'GHS', phonePrefix: '+233',
-    options: [m.card(), m.mtnMomo(), m.vodafoneCash()] }),
+    options: [m.cardFw(), m.mtnMomo(), m.vodafoneCash()] }),
   KE: makeRegion({ code: 'KE', name: 'Kenya',         currency: 'KES', phonePrefix: '+254',
-    options: [m.card(), m.mpesa()] }),
+    options: [m.cardFw(), m.mpesa()] }),
+  // South Africa is the Africa exception — Stripe ZAR settlement
+  // is reliable, ZAR cards work natively without quirks.
   ZA: makeRegion({ code: 'ZA', name: 'South Africa',  currency: 'ZAR', phonePrefix: '+27',
     options: [m.card(), m.eft()] }),
   EG: makeRegion({ code: 'EG', name: 'Egypt',         currency: 'EGP', phonePrefix: '+20',
-    options: [m.card(), m.vodafoneCash(), m.fawry()] }),
+    options: [m.cardFw(), m.vodafoneCash(), m.fawry()] }),
   MA: makeRegion({ code: 'MA', name: 'Morocco',       currency: 'MAD', phonePrefix: '+212',
-    options: [m.card()] }),
-
-  // Stripe does NOT settle UGX, TZS, RWF, ZMW — cards there must
-  // charge in USD via Stripe, and the cardholder's bank does the FX.
-  // Local methods (mobile money) handle this gracefully via
-  // Flutterwave in the native currency.
+    options: [m.cardFw()] }),
   UG: makeRegion({ code: 'UG', name: 'Uganda',        currency: 'UGX', phonePrefix: '+256',
-    options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
+    options: [m.cardFw(), m.mtnMomo(), m.airtelMoney()] }),
   TZ: makeRegion({ code: 'TZ', name: 'Tanzania',      currency: 'TZS', phonePrefix: '+255',
-    options: [m.card('USD'), m.mpesa(), m.tigoPesa(), m.airtelMoney()] }),
+    options: [m.cardFw(), m.mpesa(), m.tigoPesa(), m.airtelMoney()] }),
   RW: makeRegion({ code: 'RW', name: 'Rwanda',        currency: 'RWF', phonePrefix: '+250',
-    options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
+    options: [m.cardFw(), m.mtnMomo(), m.airtelMoney()] }),
   ZM: makeRegion({ code: 'ZM', name: 'Zambia',        currency: 'ZMW', phonePrefix: '+260',
     options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
   // CFA Franc countries (Central + West Africa). Flutterwave settles
