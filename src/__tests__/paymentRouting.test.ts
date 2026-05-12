@@ -107,8 +107,7 @@ describe('regionalPayment — invariants', () => {
   it('no country routes to Paystack anymore (dead code purge)', () => {
     for (const code of Object.keys(COUNTRY_CONFIGS)) {
       for (const opt of COUNTRY_CONFIGS[code].paymentOptions) {
-        // @ts-expect-error — the union doesn't include paystack any more,
-        // but if it crept back in via a bad refactor we want a runtime catch.
+        // paystack removed from union — runtime guard in case it creeps back
         expect(opt.processor).not.toBe('paystack');
       }
     }
