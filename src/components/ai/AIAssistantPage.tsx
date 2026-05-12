@@ -40,6 +40,7 @@ interface LogAction {
     // Rabbit — Eden as operator
     | 'LOG_BREEDING' | 'LOG_KINDLING' | 'LOG_WEANING'
     | 'REGISTER_RABBIT' | 'LOG_RABBIT_LOSS' | 'LOG_RABBIT_HARVEST' | 'LOG_RABBIT_SALE'
+    | 'LOG_GROWOUT_MORTALITY' | 'CREATE_GROWOUT'
     // Phase 6 onboarding — Eden creates the farm itself
     | 'CREATE_FARM' | 'CREATE_FLOCK' | 'CREATE_POND' | 'CREATE_RABBITRY'
     | 'ONBOARDING_COMPLETE' | 'SWITCH_TO_FORM'
@@ -169,11 +170,16 @@ interface LogAction {
   birth_date?: string;
   sire_tag?: string;
   dam_tag?: string;
-  // LOG_RABBIT_HARVEST
+  // LOG_RABBIT_HARVEST / LOG_RABBIT_SALE
   total_live_weight_kg?: number;
   total_carcass_weight_kg?: number;
   sale_price?: number;
   harvest_date?: string;
+  // LOG_GROWOUT_MORTALITY / CREATE_GROWOUT
+  growout_name?: string;
+  source_growout_name?: string;
+  source_breeder_tag?: string;
+  starting_count?: number;
   // Cross-farm mode: Eden includes this in [LOG] blocks to specify the target farm.
   target_farm_id?: string;
 
