@@ -61,7 +61,7 @@ CREATE TRIGGER trg_rabbit_sales_decrement_growout
 
 -- ── 2. Mortality on growout — schema + trigger ─────────────────────────
 --
--- The `mortality_records` table already exists from the poultry era,
+-- The `mortality_logs` table already exists from the poultry era,
 -- shared across species. We add a growout_group_id link so a
 -- rabbit mortality entry can attribute the loss to a specific cohort
 -- (rather than the parent flock). When set, the same decrement-on-
@@ -71,12 +71,12 @@ CREATE TRIGGER trg_rabbit_sales_decrement_growout
 -- decrement the parent flock as before, since growout_group_id stays
 -- null.
 
-ALTER TABLE public.mortality_records
+ALTER TABLE public.mortality_logs
   ADD COLUMN IF NOT EXISTS growout_group_id uuid
     REFERENCES public.rabbit_growout_groups(id) ON DELETE SET NULL;
 
-CREATE INDEX IF NOT EXISTS mortality_records_growout_idx
-  ON public.mortality_records (growout_group_id)
+CREATE INDEX IF NOT EXISTS mortality_logs_growout_idx
+  ON public.mortality_logs (growout_group_id)
   WHERE growout_group_id IS NOT NULL;
 
 CREATE OR REPLACE FUNCTION public.rabbit_decrement_growout_on_mortality()
@@ -96,12 +96,12 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS trg_mortality_decrement_growout ON public.mortality_records;
+DROP TRIGGER IF EXISTS trg_mortality_decrement_growout ON public.mortality_logs;
 CREATE TRIGGER trg_mortality_decrement_growout
-  AFTER INSERT ON public.mortality_records
+  AFTER INSERT ON public.mortality_logs
   FOR EACH ROW EXECUTE FUNCTION public.rabbit_decrement_growout_on_mortality();
 
-COMMENT ON COLUMN public.mortality_records.growout_group_id IS
+COMMENT ON COLUMN public.mortality_logs.growout_group_id IS
   'When the mortality came from a rabbit grow-out cohort. Trigger decrements the cohort''s current_count. Mutually exclusive with flock_id at the app level.';
 
 -- ── 3. Help find growouts that need closing ────────────────────────────
