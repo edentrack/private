@@ -13,30 +13,60 @@ import { Browser } from '@capacitor/browser';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
 
+/*
+ * IN-APP SUBSCRIBE PAGE (May 2026 redesign)
+ *
+ * Visual parity with the landing page pricing section
+ * (src/components/landing/LandingPage.tsx). Same black background
+ * (#0a0a0a) and yellow accent (#ffdd00 = Y) so a Free user upgrading
+ * from inside the app sees the same plan cards they originally signed
+ * up against.
+ *
+ * What's different from landing:
+ *   - This page is rendered to a SIGNED-IN user, so checkouts post
+ *     auth-required edge functions (paystack-checkout, stripe-checkout,
+ *     flutterwave-payment) instead of the guest endpoints.
+ *   - The "current plan" card shows "Current plan" instead of a Subscribe
+ *     button, and Stripe subscribers see a cancel / reactivate block.
+ *   - The country picker is a modal (the landing page autoselects via
+ *     timezone only).
+ *   - On native (Capacitor iOS / Android), the entire pricing UI is
+ *     replaced with a "Manage on web" screen for Apple Guideline 3.1.x
+ *     compliance.
+ *
+ * Plan ID mapping (internal vs. landing):
+ *   internal | landing
+ *   free     -> starter
+ *   pro      -> grower      (highlighted)
+ *   enterprise -> farmboss
+ *   industry -> industry
+ */
+
+const Y = '#ffdd00';
+
+type BillingPeriod = 'monthly' | 'quarterly' | 'yearly';
+
 interface Plan {
   id: 'free' | 'pro' | 'enterprise' | 'industry';
   name: string;
   icon: React.ReactNode;
-  borderColor: string;
-  ringColor: string;
-  badge?: string;
+  badge: string | null;
+  highlighted: boolean;
+  audience: string;
   features: string[];
-  limits: string;
+  ctaLabel: string;
 }
 
-// Plan feature lists. The locked matrix uses "flocks per farm" everywhere
-// because the species-aware noun (ponds for fish, rabbitries for rabbits)
-// is already swapped at a deeper level (groupTermPluralLower). For
-// signed-in users, this is the canonical in-app upgrade view. Must
-// stay in sync with src/components/landing/LandingPage.tsx PLANS array.
 function buildPlans(args: { groupTermPluralLower: string }): Plan[] {
   const { groupTermPluralLower } = args;
   return [
     {
       id: 'free', name: 'Starter',
-      icon: <Leaf className="w-6 h-6" />,
-      borderColor: 'border-agri-brown-200',
-      ringColor: '',
+      icon: <Leaf className="w-5 h-5" />,
+      badge: null,
+      highlighted: false,
+      audience: 'Just getting started',
+      ctaLabel: 'Stay on Starter',
       features: [
         `1 farm · 2 active ${groupTermPluralLower} · 1 user`,
         'Mortality, weight & expense tracking',
@@ -44,13 +74,14 @@ function buildPlans(args: { groupTermPluralLower: string }): Plan[] {
         'WhatsApp daily summary',
         'Eden AI · 15 messages/week',
       ],
-      limits: 'Just getting started',
     },
     {
-      id: 'pro', name: 'Grower', badge: 'Most Popular',
-      icon: <Sprout className="w-6 h-6" />,
-      borderColor: 'border-[#3D5F42]',
-      ringColor: 'ring-2 ring-[#3D5F42] ring-offset-2',
+      id: 'pro', name: 'Grower',
+      icon: <Sprout className="w-5 h-5" />,
+      badge: 'Most Popular',
+      highlighted: true,
+      audience: 'Running a real farm — 50 to 500 animals',
+      ctaLabel: 'Choose Grower',
       features: [
         `2 farms · 4 ${groupTermPluralLower} per farm · 4 team members`,
         'Eden AI · 100 messages/week',
@@ -62,13 +93,14 @@ function buildPlans(args: { groupTermPluralLower: string }): Plan[] {
         'WhatsApp receipts to buyers',
         'Custom onboarding session',
       ],
-      limits: 'Running a real farm — 50 to 500 animals',
     },
     {
       id: 'enterprise', name: 'Farm Boss',
-      icon: <Crown className="w-6 h-6" />,
-      borderColor: 'border-amber-300',
-      ringColor: '',
+      icon: <Crown className="w-5 h-5" />,
+      badge: null,
+      highlighted: false,
+      audience: 'Commercial farm with workers',
+      ctaLabel: 'Choose Farm Boss',
       features: [
         'Everything in Grower, plus:',
         `4 farms · 10 ${groupTermPluralLower} per farm · unlimited team`,
@@ -76,13 +108,14 @@ function buildPlans(args: { groupTermPluralLower: string }): Plan[] {
         'Photo disease diagnosis · 10/month',
         'Priority WhatsApp support',
       ],
-      limits: 'Commercial farm with workers',
     },
     {
       id: 'industry', name: 'Industry',
-      icon: <Building2 className="w-6 h-6" />,
-      borderColor: 'border-blue-400',
-      ringColor: '',
+      icon: <Building2 className="w-5 h-5" />,
+      badge: 'Co-ops & enterprise',
+      highlighted: false,
+      audience: 'Multiple farms or a cooperative',
+      ctaLabel: 'Contact us',
       features: [
         'Everything in Farm Boss, plus:',
         `10 farms · 20 ${groupTermPluralLower} per farm`,
@@ -91,7 +124,6 @@ function buildPlans(args: { groupTermPluralLower: string }): Plan[] {
         'Direct founder support line',
         'Cooperative dashboard (coming soon)',
       ],
-      limits: 'Multiple farms or a cooperative',
     },
   ];
 }
@@ -106,7 +138,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   const plans = useMemo(() => buildPlans({
     groupTermPluralLower: farmSpecies.groupTermPlural.toLowerCase(),
   }), [farmSpecies.id]);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('quarterly');
   const [region, setRegion] = useState<RegionConfig | null>(null);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
@@ -166,13 +198,38 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
 
   const priceCurrency = region ? getPriceCurrency(region) : 'USD';
 
-  const displayPrice = (planId: string) => {
+  // ── Price display helpers (mirror landing page's landingPrice/perMonthLine/savingsPct) ──
+
+  const displayPrice = (planId: Plan['id']): string => {
     if (planId === 'free') return 'Free';
-    const amount = getPrice(planId, billingPeriod, priceCurrency);
-    return formatPrice(amount, priceCurrency);
+    const p = getPrice(planId, billingPeriod, priceCurrency);
+    return p !== undefined ? formatPrice(p, priceCurrency) : 'Free';
   };
 
-  const usdAmount = (planId: string): number => getPrice(planId, billingPeriod, 'USD');
+  const subLabel = (cycle: BillingPeriod): string => {
+    if (cycle === 'monthly') return 'per month';
+    if (cycle === 'quarterly') return 'per 3 months';
+    return 'per year';
+  };
+
+  const perMonthLine = (planId: Plan['id']): string | null => {
+    if (planId === 'free' || billingPeriod === 'monthly') return null;
+    const p = getPrice(planId, billingPeriod, priceCurrency);
+    if (!p) return null;
+    const months = billingPeriod === 'quarterly' ? 3 : 12;
+    return `≈ ${formatPrice(p / months, priceCurrency)}/mo`;
+  };
+
+  const savingsPct = (planId: Plan['id'], cycle: BillingPeriod): number | null => {
+    if (cycle === 'monthly' || planId === 'free') return null;
+    const monthly = getPrice(planId, 'monthly', 'USD');
+    const actual = getPrice(planId, cycle, 'USD');
+    if (!monthly || !actual) return null;
+    const months = cycle === 'quarterly' ? 3 : 12;
+    return Math.round((1 - actual / (monthly * months)) * 100);
+  };
+
+  const usdAmount = (planId: Plan['id']): number => getPrice(planId, billingPeriod, 'USD');
 
   // ── Paystack ──────────────────────────────────────────────────────────
   const startPaystack = useCallback(async (plan: string) => {
@@ -300,20 +357,12 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
       // we listen for browserFinished and trigger a verify call optimistically.
       // On web: classic full-page redirect.
       if (Capacitor.isNativePlatform()) {
-        // Listener fires when the user closes the in-app browser. We then
-        // poll our backend for the most recent transaction status — works
-        // regardless of whether the redirect_url path was hit, which is
-        // important because in-app browsers don't deep-link back natively.
         const listener = await Browser.addListener('browserFinished', async () => {
           await listener.remove();
-          // Verify against the latest pending transaction. If the user
-          // bailed out, the verify call returns "not paid" and we just
-          // clear the loading state without erroring.
           await refreshSession?.();
           setLoading(null);
         });
         await openInAppBrowser(data.payment_link, { fullscreen: true });
-        // Don't clear loading here — wait for browserFinished above.
         return;
       }
       window.location.href = data.payment_link;
@@ -401,14 +450,23 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-10 shadow-lg max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Check className="w-8 h-8 text-green-600" />
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0a0a0a' }}>
+        <div className="rounded-3xl p-10 max-w-md w-full text-center"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ background: Y, boxShadow: '0 0 30px rgba(255,221,0,0.3)' }}>
+            <Check className="w-8 h-8 text-gray-900" />
           </div>
-          <h1 className="text-2xl font-bold text-agri-brown-900 mb-2">You're subscribed!</h1>
-          <p className="text-agri-brown-500 mb-6">Your plan is now active. Welcome to EdenTrack Pro.</p>
-          <button type="button" onClick={onBack} className="w-full bg-[#3D5F42] text-white py-3 rounded-2xl font-semibold hover:bg-[#2F4A34] transition-colors">Back to Dashboard</button>
+          <h1 className="text-2xl font-extrabold text-white mb-2 tracking-tight">You're subscribed!</h1>
+          <p className="text-gray-400 mb-6">Your plan is now active. Welcome to EdenTrack Pro.</p>
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-full py-3 rounded-2xl font-bold text-gray-900 transition-all hover:scale-[1.02] hover:brightness-110"
+            style={{ background: Y, boxShadow: '0 0 30px rgba(255,221,0,0.3)' }}
+          >
+            Back to Dashboard
+          </button>
         </div>
       </div>
     );
@@ -423,26 +481,26 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   // the app and land on this screen, which just tells them to manage
   // their plan on edentrack.app and offers a button that opens the
   // billing page in an in-app Safari sheet.
-  //
-  // The web build at edentrack.app keeps the full pricing + checkout
-  // flow exactly as it was. We only gate this on native.
   if (Capacitor.isNativePlatform()) {
     return (
-      <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 shadow-lg max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Crown className="w-8 h-8 text-amber-700" />
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0a0a0a' }}>
+        <div className="rounded-3xl p-8 max-w-md w-full text-center"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ background: Y, boxShadow: '0 0 30px rgba(255,221,0,0.3)' }}>
+            <Crown className="w-8 h-8 text-gray-900" />
           </div>
-          <h1 className="text-xl font-bold text-agri-brown-900 mb-2">
+          <h1 className="text-xl font-extrabold text-white mb-2 tracking-tight">
             Manage your plan on edentrack.app
           </h1>
-          <p className="text-sm text-agri-brown-500 mb-6 leading-relaxed">
+          <p className="text-sm text-gray-400 mb-6 leading-relaxed">
             To change your plan or update payment, visit Edentrack on the web. Your changes sync back to this app within a minute.
           </p>
           <button
             type="button"
             onClick={() => openInAppBrowser('https://edentrack.app/#/subscribe', { fullscreen: true })}
-            className="w-full bg-[#3D5F42] text-white py-3 rounded-2xl font-semibold hover:bg-[#2F4A34] transition-colors mb-3 flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-2xl font-bold text-gray-900 transition-all hover:scale-[1.02] hover:brightness-110 mb-3 flex items-center justify-center gap-2"
+            style={{ background: Y, boxShadow: '0 0 30px rgba(255,221,0,0.3)' }}
           >
             <ExternalLink className="w-4 h-4" />
             Open Edentrack on the web
@@ -450,12 +508,12 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
           <button
             type="button"
             onClick={onBack}
-            className="w-full text-agri-brown-500 py-3 rounded-2xl font-semibold hover:bg-agri-brown-50 transition-colors"
+            className="w-full text-gray-400 py-3 rounded-2xl font-semibold hover:text-white hover:bg-white/5 transition-colors"
           >
             Back
           </button>
-          <p className="text-[11px] text-agri-brown-400 mt-6 leading-relaxed">
-            Your current plan: <span className="font-semibold text-agri-brown-700 capitalize">{profile?.subscription_tier || 'Free'}</span>
+          <p className="text-[11px] text-gray-500 mt-6 leading-relaxed">
+            Your current plan: <span className="font-semibold text-white capitalize">{profile?.subscription_tier || 'Free'}</span>
           </p>
         </div>
       </div>
@@ -463,176 +521,232 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8] p-4 pb-12">
+    <div className="min-h-screen pb-12" style={{ background: '#0a0a0a' }}>
 
       {/* Country picker modal */}
       {showCountryPicker && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowCountryPicker(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-agri-brown-100">
-              <h3 className="font-semibold text-agri-brown-900">Select your country</h3>
-              <p className="text-xs text-agri-brown-400 mt-0.5">Prices shown in local currency</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowCountryPicker(false)}>
+          <div className="rounded-2xl w-full max-w-sm max-h-[70vh] flex flex-col"
+            style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.1)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-white/10">
+              <h3 className="font-bold text-white">Select your country</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Prices shown in local currency</p>
             </div>
             <div className="overflow-y-auto flex-1">
-              {ALL_COUNTRIES.map(c => (
-                <button key={c.countryCode} type="button"
-                  onClick={() => { setRegion(c); setShowCountryPicker(false); }}
-                  className={`w-full text-left px-4 py-3 hover:bg-agri-brown-50 flex justify-between items-center ${region?.countryCode === c.countryCode ? 'bg-green-50 text-[#3D5F42] font-medium' : 'text-agri-brown-700'}`}>
-                  <span>{c.countryName}</span>
-                  <span className="text-xs text-agri-brown-400">{c.currency}</span>
-                </button>
-              ))}
+              {ALL_COUNTRIES.map(c => {
+                const isSelected = region?.countryCode === c.countryCode;
+                return (
+                  <button key={c.countryCode} type="button"
+                    onClick={() => { setRegion(c); setShowCountryPicker(false); }}
+                    className={`w-full text-left px-4 py-3 hover:bg-white/5 flex justify-between items-center transition-colors ${
+                      isSelected ? 'text-yellow-300 font-medium' : 'text-gray-200'
+                    }`}
+                    style={isSelected ? { background: 'rgba(255,221,0,0.08)' } : undefined}>
+                    <span>{c.countryName}</span>
+                    <span className="text-xs text-gray-500">{c.currency}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
 
         {/* Header */}
-        <div className="flex items-center gap-4 mb-6 pt-4">
-          <button type="button" onClick={onBack} className="p-2 rounded-xl bg-white shadow-sm hover:bg-agri-brown-50 text-agri-brown-700">←</button>
-          <div>
-            <h1 className="text-2xl font-bold text-agri-brown-900">Choose your plan</h1>
-            <p className="text-agri-brown-500 text-sm">Cancel anytime · No hidden fees</p>
+        <div className="flex items-center gap-4 mb-8">
+          <button type="button" onClick={onBack}
+            className="p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+            style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+            aria-label="Back">←</button>
+          <div className="flex-1">
+            <div className="inline-flex items-center gap-2 border border-white/10 text-gray-400 text-[10px] font-bold px-3 py-1 rounded-full mb-2 uppercase tracking-wider">
+              Pricing
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Choose your plan</h1>
+            <p className="text-gray-400 text-sm mt-1">Cancel anytime · No hidden fees</p>
           </div>
         </div>
 
         {/* Region selector */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <button type="button" onClick={() => setShowCountryPicker(true)}
-            className="flex items-center gap-2 bg-white border border-agri-brown-200 rounded-xl px-3 py-2 text-sm text-agri-brown-700 hover:bg-agri-brown-50 shadow-sm">
-            <Globe className="w-4 h-4 text-agri-brown-400" />
+            className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-200 hover:bg-white/5 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <Globe className="w-4 h-4 text-gray-400" />
             {region ? `${region.countryName} · ${priceCurrency}` : 'Detecting location…'}
-            <ChevronDown className="w-3 h-3 text-agri-brown-400" />
+            <ChevronDown className="w-3 h-3 text-gray-400" />
           </button>
           {region && (
-            <span className="text-xs text-agri-brown-400">
-              Pay via <span className="font-medium text-agri-brown-600">{region.processorLabel}</span>
+            <span className="text-xs text-gray-500">
+              Pay via <span className="font-medium text-gray-300">{region.processorLabel}</span>
             </span>
           )}
         </div>
 
         {/* Billing period toggle */}
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-agri-brown-50 border border-agri-brown-200 rounded-2xl p-1.5 gap-1">
-            {(['monthly', 'quarterly', 'yearly'] as const).map(p => (
-              <button key={p} type="button" onClick={() => setBillingPeriod(p)}
-                className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all ${billingPeriod === p
-                  ? 'bg-white shadow text-agri-brown-900 border border-agri-brown-200'
-                  : 'text-agri-brown-500 hover:text-agri-brown-700'
-                }`}>
-                {p === 'monthly' ? 'Monthly' : p === 'quarterly' ? '3 Months' : (
-                  <span className="flex items-center gap-1.5">
-                    Yearly
-                    <span className="text-xs px-1.5 py-0.5 rounded-full font-semibold bg-green-100 text-green-700">Save 2 months</span>
-                  </span>
-                )}
-              </button>
-            ))}
+        <div className="flex justify-center mb-10">
+          <div className="inline-flex bg-white/5 border border-white/10 rounded-2xl p-1 gap-1">
+            {(['monthly', 'quarterly', 'yearly'] as BillingPeriod[]).map(p => {
+              const isActive = billingPeriod === p;
+              const save = p !== 'monthly' ? savingsPct('pro', p) : null;
+              return (
+                <button key={p} type="button" onClick={() => setBillingPeriod(p)}
+                  className={`relative px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    isActive ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-gray-200'
+                  }`}>
+                  {p === 'monthly' ? 'Monthly' : p === 'quarterly' ? '3 Months' : 'Yearly'}
+                  {save && !isActive && (
+                    <span className="ml-1.5 text-[10px] font-bold text-yellow-400">Save {save}%</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {error && (
-          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-2xl flex gap-2 items-start">
-            <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-red-700 text-sm">{error}</p>
+          <div className="mb-5 p-3 rounded-2xl flex gap-2 items-start"
+            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+            <p className="text-red-300 text-sm">{error}</p>
           </div>
         )}
 
         {loading === 'verifying' && (
-          <div className="mb-5 p-3 bg-green-50 border border-green-200 rounded-2xl flex gap-2 items-center">
-            <Loader2 className="w-4 h-4 text-green-600 animate-spin flex-shrink-0" />
-            <p className="text-green-700 text-sm">Verifying your payment…</p>
+          <div className="mb-5 p-3 rounded-2xl flex gap-2 items-center"
+            style={{ background: 'rgba(255,221,0,0.08)', border: '1px solid rgba(255,221,0,0.25)' }}>
+            <Loader2 className="w-4 h-4 text-yellow-400 animate-spin flex-shrink-0" />
+            <p className="text-yellow-200 text-sm">Verifying your payment…</p>
           </div>
         )}
 
         {/* Plan cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {plans.map(plan => {
             const isCurrent = plan.id === currentTier;
-            const isPaid = plan.id !== 'free';
             const isIndustry = plan.id === 'industry';
             const isLoading = loading === plan.id;
-
-            const iconBg =
-              plan.id === 'pro' ? 'bg-green-100 text-[#3D5F42]' :
-              plan.id === 'enterprise' ? 'bg-amber-100 text-amber-600' :
-              plan.id === 'industry' ? 'bg-blue-100 text-blue-600' :
-              'bg-agri-brown-100 text-agri-brown-500';
-
-            const subscribeBtn =
-              plan.id === 'pro'
-                ? 'bg-[#3D5F42] text-white hover:bg-[#2F4A34]'
-                : plan.id === 'enterprise'
-                ? 'bg-amber-500 text-white hover:bg-amber-600'
-                : plan.id === 'industry'
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : '';
+            const isFree = plan.id === 'free';
+            const save = savingsPct(plan.id, billingPeriod);
+            const perMo = perMonthLine(plan.id);
 
             return (
-              <div key={plan.id}
-                className={`bg-white rounded-3xl border-2 ${plan.borderColor} ${plan.ringColor} p-7 flex flex-col relative`}>
+              <div
+                key={plan.id}
+                className="rounded-2xl p-6 flex flex-col transition-all hover:-translate-y-1"
+                style={{
+                  background: plan.highlighted ? Y : 'rgba(255,255,255,0.05)',
+                  border: plan.highlighted ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: plan.highlighted ? '0 0 40px rgba(255,221,0,0.15)' : undefined,
+                }}
+              >
                 {plan.badge && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#3D5F42] text-white text-xs font-semibold px-4 py-1.5 rounded-full shadow whitespace-nowrap">
+                  <div className="text-center mb-3">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                      plan.highlighted ? 'bg-black/20 text-gray-900' : 'bg-yellow-500/20 text-yellow-400'
+                    }`}>
                       {plan.badge}
                     </span>
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 mb-4 mt-1">
-                  <div className={`p-2.5 rounded-xl ${iconBg}`}>{plan.icon}</div>
-                  <div>
-                    <h3 className="font-bold text-agri-brown-900 text-lg leading-tight">{plan.name}</h3>
-                    <p className="text-xs text-agri-brown-400 leading-snug">{plan.limits}</p>
+                <div className="flex items-center gap-3 mb-2">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center ${plan.highlighted ? 'bg-black/15' : 'bg-white/10'}`}
+                    style={{ color: plan.highlighted ? '#1a1a1a' : '#e5e7eb' }}
+                  >
+                    {plan.icon}
                   </div>
+                  <span className={`font-bold text-lg ${plan.highlighted ? 'text-gray-900' : 'text-white'}`}>
+                    {plan.name}
+                  </span>
                 </div>
 
-                {isPaid ? (
-                  <div className="mb-5">
-                    <div className="flex items-baseline gap-1 flex-wrap">
-                      <span className="text-4xl font-bold text-agri-brown-900">{displayPrice(plan.id)}</span>
-                    </div>
-                    <div className="text-xs text-agri-brown-400 mt-0.5">
-                      {priceCurrency !== 'USD' && `≈ $${usdAmount(plan.id)} USD · `}
-                      per {billingPeriod === 'yearly' ? '12 months' : billingPeriod === 'monthly' ? 'month' : '3 months'}
-                    </div>
+                <p className={`text-xs mb-4 ${plan.highlighted ? 'text-gray-700' : 'text-gray-400'}`}>
+                  {plan.audience}
+                </p>
+
+                <div className="mb-5">
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className={`text-3xl font-extrabold ${plan.highlighted ? 'text-gray-900' : 'text-white'}`}>
+                      {displayPrice(plan.id)}
+                    </span>
+                    {!isFree && (
+                      <span className={`text-sm ${plan.highlighted ? 'text-gray-700' : 'text-gray-500'}`}>
+                        / {subLabel(billingPeriod)}
+                      </span>
+                    )}
+                    {save !== null && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        plan.highlighted ? 'bg-black/20 text-gray-900' : 'bg-yellow-400/20 text-yellow-300'
+                      }`}>
+                        Save {save}%
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="mb-5">
-                    <span className="text-4xl font-bold text-agri-brown-900">Free</span>
-                    <div className="text-xs text-agri-brown-400 mt-0.5">forever</div>
-                  </div>
-                )}
+                  {isFree && (
+                    <p className={`text-xs mt-0.5 ${plan.highlighted ? 'text-gray-700' : 'text-gray-500'}`}>forever</p>
+                  )}
+                  {perMo && (
+                    <p className={`text-xs mt-0.5 ${plan.highlighted ? 'text-gray-700' : 'text-gray-500'}`}>{perMo}</p>
+                  )}
+                  {!isFree && priceCurrency !== 'USD' && (
+                    <p className={`text-[11px] mt-0.5 ${plan.highlighted ? 'text-gray-700' : 'text-gray-600'}`}>
+                      ≈ ${usdAmount(plan.id)} USD
+                    </p>
+                  )}
+                </div>
 
                 <ul className="space-y-2 flex-1 mb-5">
                   {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-agri-brown-700">
-                      <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />{f}
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${plan.highlighted ? 'text-gray-800' : 'text-yellow-400'}`} />
+                      <span className={plan.highlighted ? 'text-gray-800' : 'text-gray-300'}>{f}</span>
                     </li>
                   ))}
                 </ul>
 
                 {isCurrent ? (
-                  <div className="w-full py-2.5 text-center text-sm text-agri-brown-500 border-2 border-agri-brown-200 rounded-2xl">
+                  <div
+                    className={`w-full py-3 text-center text-sm font-bold rounded-xl ${
+                      plan.highlighted
+                        ? 'bg-black/15 text-gray-900'
+                        : 'border border-white/15 text-gray-300'
+                    }`}
+                  >
                     Current plan
                   </div>
-                ) : plan.id === 'free' ? (
-                  <div className="w-full py-2.5 text-center text-sm text-agri-brown-400 border border-agri-brown-100 rounded-2xl">
+                ) : isFree ? (
+                  <div className="w-full py-3 text-center text-sm font-semibold rounded-xl border border-white/10 text-gray-500">
                     Free forever
                   </div>
                 ) : isIndustry ? (
-                  <a href="mailto:support@edentrack.app?subject=Industry Plan"
-                    className={`w-full py-2.5 text-center text-sm font-semibold rounded-2xl transition-colors flex items-center justify-center gap-1.5 ${subscribeBtn}`}>
+                  <a
+                    href="mailto:support@edentrack.app?subject=Industry Plan"
+                    className="w-full py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 flex items-center justify-center gap-2 bg-blue-600 text-white"
+                  >
                     Contact us <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
-                  <button type="button"
+                  <button
+                    type="button"
                     onClick={() => handleSubscribe(plan.id)}
                     disabled={!!loading}
-                    className={`w-full py-2.5 text-sm font-semibold rounded-2xl transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2 ${subscribeBtn}`}>
-                    {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</> : 'Subscribe'}
+                    className={`w-full py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 ${
+                      plan.highlighted
+                        ? 'bg-gray-900 text-white'
+                        : plan.id === 'enterprise'
+                        ? 'bg-amber-500 text-white'
+                        : 'border border-white/20 text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {isLoading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
+                    ) : plan.ctaLabel}
                   </button>
                 )}
               </div>
@@ -642,18 +756,20 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
 
         {/* Cancellation controls for Stripe subscribers */}
         {isStripeSubscriber && currentTier !== 'free' && (
-          <div className="mt-6 border border-agri-brown-200 bg-white rounded-2xl p-4 text-sm">
+          <div className="mt-8 rounded-2xl p-4 text-sm"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
             {isCancelPending ? (
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1">
-                  <p className="font-medium text-amber-700">Subscription cancelled</p>
-                  <p className="text-agri-brown-500 mt-0.5">
+                  <p className="font-semibold text-yellow-300">Subscription cancelled</p>
+                  <p className="text-gray-400 mt-0.5">
                     Your {currentTier === 'pro' ? 'Grower' : currentTier === 'enterprise' ? 'Farm Boss' : 'Industry'} plan stays active
-                    {expiryDate ? <> until <strong>{expiryDate}</strong></> : ' until your billing period ends'}.
+                    {expiryDate ? <> until <strong className="text-white">{expiryDate}</strong></> : ' until your billing period ends'}.
                   </p>
                 </div>
                 <button type="button" onClick={reactivateStripe} disabled={cancelLoading}
-                  className="shrink-0 px-4 py-2 bg-[#3D5F42] text-white text-sm font-medium rounded-xl hover:bg-[#2F4A34] disabled:opacity-50 flex items-center gap-2">
+                  className="shrink-0 px-4 py-2 text-sm font-bold rounded-xl text-gray-900 transition-all hover:brightness-110 disabled:opacity-50 flex items-center gap-2"
+                  style={{ background: Y }}>
                   {cancelLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Keep my plan
                 </button>
@@ -661,13 +777,14 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1">
-                  <p className="text-agri-brown-500">
-                    Auto-renews{expiryDate ? <> on <strong>{expiryDate}</strong></> : ''}.
+                  <p className="text-gray-400">
+                    Auto-renews{expiryDate ? <> on <strong className="text-white">{expiryDate}</strong></> : ''}.
                     Cancel anytime - you keep access until the end of your billing period. No refunds issued.
                   </p>
                 </div>
                 <button type="button" onClick={cancelStripe} disabled={cancelLoading}
-                  className="shrink-0 px-4 py-2 border border-red-200 text-red-600 text-sm font-medium rounded-xl hover:bg-red-50 disabled:opacity-50 flex items-center gap-2">
+                  className="shrink-0 px-4 py-2 text-sm font-semibold rounded-xl text-red-300 hover:bg-red-500/10 disabled:opacity-50 flex items-center gap-2"
+                  style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
                   {cancelLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Cancel subscription
                 </button>
@@ -677,11 +794,14 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
         )}
 
         {region && (
-          <p className="text-center text-xs text-agri-brown-400 mt-5">
+          <p className="text-center text-xs text-gray-500 mt-6">
             Accepted: {region.paymentMethods.join(' · ')} · Prices in {priceCurrency}
             {priceCurrency !== 'USD' && ' · USD shown for reference'}
           </p>
         )}
+        <p className="text-center text-xs text-gray-600 mt-2">
+          Cancel anytime. Card, mobile money and bank transfer accepted.
+        </p>
       </div>
     </div>
   );

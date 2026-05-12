@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, Eye, EyeOff, ArrowRight, CheckCircle, Fingerprint, ScanFace } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -28,6 +28,24 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Auto-dismiss error after 8s so a transient race condition never
+  // leaves a stale red card hanging on the form. Cleared instantly
+  // when the user starts typing again.
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!error) return;
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setError(''), 8000);
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    };
+  }, [error]);
+
+  // Clear any displayed error the moment the user starts typing again
+  // in either field. Eliminates the "stale red card" flash some users
+  // were catching when an old error briefly re-renders during the
+  // login → dashboard route transition.
+  const clearErrorIfAny = () => { if (error) setError(''); };
   // Biometric state — driven entirely by what the device tells us. None of
   // this kicks in on web (the helpers no-op outside Capacitor).
   const [bioType, setBioType] = useState<'faceId' | 'touchId' | 'fingerprint' | 'multiple' | 'none'>('none');
@@ -258,7 +276,7 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); clearErrorIfAny(); }}
                 required
                 disabled={loading}
                 className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all disabled:opacity-50"
@@ -287,7 +305,7 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); clearErrorIfAny(); }}
                   required
                   disabled={loading}
                   className="w-full h-12 px-4 pr-12 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all disabled:opacity-50"
