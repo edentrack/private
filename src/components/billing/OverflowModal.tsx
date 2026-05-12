@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, X } from 'lucide-react';
-import { getMaxFarms, getMaxFlocks, getMaxTeamMembers } from '../../utils/planGating';
+import { AlertTriangle, ArrowRight, X, Users } from 'lucide-react';
+import { getMaxFarms, getMaxFlocks, getMaxTeamMembers, type HeadcountStatus } from '../../utils/planGating';
 
 /**
  * Overflow modal — shown when a user's data exceeds the limits of
@@ -33,6 +33,15 @@ interface OverflowModalProps {
   items: OverflowItem[];
   onUpgrade: () => void;
   onArchive: (selectedToKeepActive: string[]) => Promise<void>;
+  /**
+   * Optional: live headcount status (active animals vs. plan cap).
+   * When the farm is 'over' or 'hard_stop', we surface a compact
+   * banner inside the modal so the user understands that even after
+   * archiving farms/flocks/team members they may still have the
+   * headcount blocker — the only fix is upgrade or archive enough
+   * flocks/cohorts to drop under the cap.
+   */
+  headcount?: HeadcountStatus;
 }
 
 export function OverflowModal({
@@ -42,6 +51,7 @@ export function OverflowModal({
   items,
   onUpgrade,
   onArchive,
+  headcount,
 }: OverflowModalProps) {
   const [mode, setMode] = useState<'choose' | 'pick'>('choose');
   const [selected, setSelected] = useState<Set<string>>(() => new Set(items.filter(i => i.isCurrentlyActive).map(i => i.id)));
@@ -121,6 +131,28 @@ export function OverflowModal({
             )}
           </div>
         </div>
+
+        {/* Animal-headcount banner — visible whenever the farm is over
+            the animal cap, regardless of mode. Lets the user see they
+            have TWO levers to consider: archive flocks/team here, AND
+            the headcount is the underlying gate. We keep it compact
+            so the existing "choose vs pick" framing isn't drowned. */}
+        {headcount && (headcount.state === 'over' || headcount.state === 'hard_stop') && (
+          <div className="mx-6 mt-4 -mb-2 p-3 rounded-xl border border-red-200 bg-red-50 flex items-start gap-2.5">
+            <Users className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-red-900">
+                Animal headcount over the {tierLabel} cap
+                {' '}({headcount.count.toLocaleString()} / {headcount.cap.toLocaleString()})
+              </p>
+              <p className="text-[11px] text-red-800 mt-0.5 leading-relaxed">
+                {headcount.state === 'hard_stop'
+                  ? 'You\'re well over the cap. Archive flocks or grow-out cohorts below to reduce headcount, or upgrade to keep everything live.'
+                  : 'You\'re above the cap (still operable). New additions will block at 120%. Archive some flocks/cohorts below or upgrade to make room.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Body */}
         {mode === 'choose' ? (

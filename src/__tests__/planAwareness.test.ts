@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   FARM_CAP_BY_TIER,
   TIER_DISPLAY_NAME,
+  ANIMAL_CAP_BY_TIER,
   buildPlanAwarenessNote,
   getFarmCap,
   getTierDisplayName,
+  getAnimalCap,
 } from '../../supabase/functions/_shared/planAwareness';
 
 /**
@@ -171,5 +173,87 @@ describe('buildPlanAwarenessNote — never produce regression', () => {
       });
       expect(note).toContain('Never produce:');
     }
+  });
+});
+
+/**
+ * Animal-cap awareness (added May 2026).
+ *
+ * Eden previously only knew the farm-count caps. Without an animal-cap
+ * line, it would happily say "let's add 500 birds" to a Starter user
+ * already at 100 animals — contradicting the new gating in
+ * `MAX_ACTIVE_ANIMALS_PER_TIER`. These tests pin the new line so the
+ * prompt and the UI agree on the cap math.
+ */
+describe('ANIMAL_CAP_BY_TIER', () => {
+  it('mirrors the four-tier headcount ladder from planGating.ts', () => {
+    expect(ANIMAL_CAP_BY_TIER.free).toBe(100);
+    expect(ANIMAL_CAP_BY_TIER.pro).toBe(1_000);
+    expect(ANIMAL_CAP_BY_TIER.enterprise).toBe(10_000);
+    expect(ANIMAL_CAP_BY_TIER.industry).toBe(-1);
+  });
+});
+
+describe('getAnimalCap fallback', () => {
+  it('returns the Starter cap for missing/unknown tiers', () => {
+    expect(getAnimalCap(undefined)).toBe(100);
+    expect(getAnimalCap(null)).toBe(100);
+    expect(getAnimalCap('something-else')).toBe(100);
+  });
+});
+
+describe('buildPlanAwarenessNote — animal headcount block', () => {
+  it('omits the block when animalsUsed/animalCap are not provided', () => {
+    const note = buildPlanAwarenessNote({
+      tier: 'pro', farmsUsed: 1, farmCap: 2,
+    });
+    expect(note).not.toContain('Active animals');
+  });
+
+  it('shows "plenty of headroom" when under 80% of the cap', () => {
+    const note = buildPlanAwarenessNote({
+      tier: 'pro', farmsUsed: 1, farmCap: 2,
+      animalsUsed: 300, animalCap: 1000,
+    });
+    expect(note).toContain('Active animals');
+    expect(note).toContain('300');
+    expect(note).toContain('1,000');
+    expect(note).toMatch(/Plenty of headroom/i);
+  });
+
+  it('flags "approaching the cap" between 80% and 99%', () => {
+    const note = buildPlanAwarenessNote({
+      tier: 'pro', farmsUsed: 1, farmCap: 2,
+      animalsUsed: 850, animalCap: 1000,
+    });
+    expect(note).toMatch(/Approaching the cap/i);
+  });
+
+  it('flags "over the cap (still operable)" between 100% and 119%', () => {
+    const note = buildPlanAwarenessNote({
+      tier: 'pro', farmsUsed: 1, farmCap: 2,
+      animalsUsed: 1100, animalCap: 1000,
+    });
+    expect(note).toMatch(/Over the cap/i);
+    expect(note).toContain('still operable');
+  });
+
+  it('flags HARD STOP at 120% and above', () => {
+    const note = buildPlanAwarenessNote({
+      tier: 'pro', farmsUsed: 1, farmCap: 2,
+      animalsUsed: 1500, animalCap: 1000,
+    });
+    expect(note).toMatch(/HARD STOP/i);
+    expect(note).toMatch(/upgrading or archiving/i);
+  });
+
+  it('renders Industry tier as unlimited (no cap math)', () => {
+    const note = buildPlanAwarenessNote({
+      tier: 'industry', farmsUsed: 1, farmCap: 999,
+      animalsUsed: 42_000, animalCap: -1,
+    });
+    expect(note).toContain('Active animals');
+    expect(note).toContain('42,000');
+    expect(note).toMatch(/no cap on Industry/i);
   });
 });

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Check, EyeOff, Star, ImagePlus, Loader2, AtSign, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { logNote, type NoteType, type AuthorRole } from '../../lib/journalLogger';
 
 interface MentionablePerson {
@@ -18,55 +19,72 @@ interface MentionablePerson {
  * five templates that cover ~80% of what farmers actually write.
  * Adding more would defeat the "one-stop quick capture" goal.
  */
-const NOTE_TEMPLATES: ReadonlyArray<{
+interface NoteTemplate {
   id: string;
   emoji: string;
   label: string;
   type: NoteType;
   title: string;
   bodyScaffold: string;
-}> = [
-  {
-    id: 'daily-check',
-    emoji: '✅',
-    label: 'Daily check',
-    type: 'observation',
-    title: 'Daily morning check',
-    bodyScaffold: 'Birds:\nFeed:\nWater:\nMortality:\nNotes:',
-  },
-  {
-    id: 'vaccine-round',
-    emoji: '💉',
-    label: 'Vaccine round',
-    type: 'health',
-    title: 'Vaccination',
-    bodyScaffold: 'Vaccine:\nDosage:\nBatch / lot:\nWithdrawal:\nNotes:',
-  },
-  {
-    id: 'weekly-recap',
-    emoji: '📊',
-    label: 'Weekly recap',
-    type: 'milestone',
-    title: 'Week recap',
-    bodyScaffold: 'Wins:\nIssues:\nNext week focus:',
-  },
-  {
-    id: 'feed-issue',
-    emoji: '🌾',
-    label: 'Feed issue',
-    type: 'observation',
-    title: 'Feed quality issue',
-    bodyScaffold: 'Supplier:\nWhat I noticed:\nAction taken:',
-  },
-  {
-    id: 'reminder',
-    emoji: '📝',
-    label: 'Reminder',
-    type: 'personal',
-    title: '',
-    bodyScaffold: 'Remember to ',
-  },
-];
+}
+
+/**
+ * Build the 5 note-template starters. Bilingual EN/FR — same emoji,
+ * same `type`, same `id` (so analytics consistency holds), but label
+ * / title / scaffold copy switch with the active language.
+ */
+function buildNoteTemplates(isFr: boolean): ReadonlyArray<NoteTemplate> {
+  return [
+    {
+      id: 'daily-check',
+      emoji: '✅',
+      label: isFr ? 'Vérification quotidienne' : 'Daily check',
+      type: 'observation',
+      title: isFr ? 'Vérification du matin' : 'Daily morning check',
+      bodyScaffold: isFr
+        ? 'Animaux :\nAliment :\nEau :\nMortalité :\nNotes :'
+        : 'Birds:\nFeed:\nWater:\nMortality:\nNotes:',
+    },
+    {
+      id: 'vaccine-round',
+      emoji: '💉',
+      label: isFr ? 'Tournée vaccinale' : 'Vaccine round',
+      type: 'health',
+      title: isFr ? 'Vaccination' : 'Vaccination',
+      bodyScaffold: isFr
+        ? 'Vaccin :\nDose :\nLot :\nDélai d\'attente :\nNotes :'
+        : 'Vaccine:\nDosage:\nBatch / lot:\nWithdrawal:\nNotes:',
+    },
+    {
+      id: 'weekly-recap',
+      emoji: '📊',
+      label: isFr ? 'Bilan hebdomadaire' : 'Weekly recap',
+      type: 'milestone',
+      title: isFr ? 'Bilan de la semaine' : 'Week recap',
+      bodyScaffold: isFr
+        ? 'Réussites :\nProblèmes :\nFocus la semaine prochaine :'
+        : 'Wins:\nIssues:\nNext week focus:',
+    },
+    {
+      id: 'feed-issue',
+      emoji: '🌾',
+      label: isFr ? 'Problème d\'aliment' : 'Feed issue',
+      type: 'observation',
+      title: isFr ? 'Problème de qualité d\'aliment' : 'Feed quality issue',
+      bodyScaffold: isFr
+        ? 'Fournisseur :\nCe que j\'ai remarqué :\nAction prise :'
+        : 'Supplier:\nWhat I noticed:\nAction taken:',
+    },
+    {
+      id: 'reminder',
+      emoji: '📝',
+      label: isFr ? 'Rappel' : 'Reminder',
+      type: 'personal',
+      title: '',
+      bodyScaffold: isFr ? 'Penser à ' : 'Remember to ',
+    },
+  ];
+}
 
 interface Props {
   farmId: string;
@@ -90,6 +108,9 @@ interface Props {
 export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Props) {
   const { currentRole } = useAuth();
   const toast = useToast();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
+  const NOTE_TEMPLATES = useMemo(() => buildNoteTemplates(isFr), [isFr]);
   const [entryType, setEntryType] = useState<NoteType>('observation');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -187,7 +208,9 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
     const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     const safe = files.filter(f => acceptedTypes.includes(f.type) && f.size < 8 * 1024 * 1024);
     if (safe.length !== files.length) {
-      toast.error('Some files were skipped (JPEG/PNG/WebP under 8MB only).');
+      toast.error(isFr
+        ? 'Certains fichiers ont été ignorés (JPEG/PNG/WebP de moins de 8 Mo uniquement).'
+        : 'Some files were skipped (JPEG/PNG/WebP under 8MB only).');
     }
     setPhotoFiles(prev => [...prev, ...safe].slice(0, 6));
     setPhotoPreviews(prev => [...prev, ...safe.map(f => URL.createObjectURL(f))].slice(0, 6));
@@ -232,7 +255,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
 
   const handleSave = async () => {
     if (!body.trim()) {
-      toast.error('Write a note before saving');
+      toast.error(isFr ? 'Écrivez une note avant d\'enregistrer' : 'Write a note before saving');
       return;
     }
     setSaving(true);
@@ -265,7 +288,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
         occurredAt: occurredAtIso,
       });
       if (!id) {
-        toast.error('Could not save the note. Try again.');
+        toast.error(isFr ? "Impossible d'enregistrer la note. Réessayez." : 'Could not save the note. Try again.');
         return;
       }
 
@@ -316,7 +339,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
           console.warn('[journal] Mention push failed (non-fatal):', pushErr);
         }
       }
-      toast.success('Note saved');
+      toast.success(isFr ? 'Note enregistrée' : 'Note saved');
       onSaved();
     } finally {
       setSaving(false);
@@ -327,7 +350,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-          <h2 className="font-bold text-gray-900">Write a note</h2>
+          <h2 className="font-bold text-gray-900">{isFr ? 'Écrire une note' : 'Write a note'}</h2>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-500" /></button>
         </div>
 
@@ -339,7 +362,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
               without thinking about structure. */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
-              Start from a template <span className="text-gray-400 font-normal">(optional)</span>
+              {isFr ? 'Partir d\'un modèle' : 'Start from a template'} <span className="text-gray-400 font-normal">{isFr ? '(facultatif)' : '(optional)'}</span>
             </label>
             <div className="flex flex-wrap gap-1.5">
               {NOTE_TEMPLATES.map(t => (
@@ -367,7 +390,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-gray-500" />
-              When did this happen?
+              {isFr ? 'Quand cela s\'est-il passé ?' : 'When did this happen?'}
             </label>
             <input
               type="date"
@@ -379,46 +402,48 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
               onChange={e => setOccurredOn(e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]"
             />
-            <p className="text-[10px] text-gray-400 mt-0.5">Auto-filled to today. Change it to backdate.</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              {isFr ? "Pré-rempli avec aujourd'hui. Modifiez pour antidater." : 'Auto-filled to today. Change it to backdate.'}
+            </p>
           </div>
 
           {/* Type selector — defaults to Observation. The full list lets
               owners separate financial notes from personal reminders so
               the journal stays useful when it grows past 100 entries. */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Type</label>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">{isFr ? 'Type' : 'Type'}</label>
             <select
               value={entryType}
               onChange={e => setEntryType(e.target.value as NoteType)}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]"
             >
-              <option value="observation">👀 Observation (what you noticed)</option>
-              <option value="health">🩺 Health (vet / disease / vaccine)</option>
-              <option value="financial">💰 Financial (P&L / cash flow)</option>
-              <option value="milestone">🏆 Milestone (cycle close-out, target hit)</option>
-              <option value="personal">📝 Personal (reminder / TODO)</option>
+              <option value="observation">{isFr ? '👀 Observation (ce que vous avez remarqué)' : '👀 Observation (what you noticed)'}</option>
+              <option value="health">{isFr ? '🩺 Santé (vétérinaire / maladie / vaccin)' : '🩺 Health (vet / disease / vaccine)'}</option>
+              <option value="financial">{isFr ? '💰 Financier (P&L / trésorerie)' : '💰 Financial (P&L / cash flow)'}</option>
+              <option value="milestone">{isFr ? '🏆 Jalon (fin de cycle, objectif atteint)' : '🏆 Milestone (cycle close-out, target hit)'}</option>
+              <option value="personal">{isFr ? '📝 Personnel (rappel / à faire)' : '📝 Personal (reminder / TODO)'}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
-              Title <span className="text-gray-400 font-normal">(optional)</span>
+              {isFr ? 'Titre' : 'Title'} <span className="text-gray-400 font-normal">{isFr ? '(facultatif)' : '(optional)'}</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="One-line summary..."
+              placeholder={isFr ? 'Résumé en une ligne...' : 'One-line summary...'}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]"
             />
           </div>
 
           <div className="relative">
             <label className="block text-xs font-semibold text-gray-600 mb-1">
-              Note *
+              {isFr ? 'Note *' : 'Note *'}
               <span className="text-gray-400 font-normal ml-1">
                 <AtSign className="w-3 h-3 inline align-text-bottom" />
-                mention a teammate to tag them
+                {isFr ? "mentionnez un coéquipier pour l'identifier" : 'mention a teammate to tag them'}
               </span>
             </label>
             <textarea
@@ -428,7 +453,9 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
               onKeyUp={e => setCaretPos((e.target as HTMLTextAreaElement).selectionStart ?? body.length)}
               onClick={e => setCaretPos((e.target as HTMLTextAreaElement).selectionStart ?? body.length)}
               rows={6}
-              placeholder="What did you see? What needs to happen? Type @ to mention a teammate."
+              placeholder={isFr
+                ? "Qu'avez-vous vu ? Que faut-il faire ? Tapez @ pour mentionner un coéquipier."
+                : 'What did you see? What needs to happen? Type @ to mention a teammate.'}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42] resize-none"
             />
             {/* Mention typeahead — anchored just below the textarea
@@ -458,7 +485,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
               under inventory-photos/{farmId}/journal/. */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">
-              Photos <span className="text-gray-400 font-normal">(optional, up to 6)</span>
+              {isFr ? 'Photos' : 'Photos'} <span className="text-gray-400 font-normal">{isFr ? '(facultatif, jusqu\'à 6)' : '(optional, up to 6)'}</span>
             </label>
             <div className="flex flex-wrap gap-2">
               {photoPreviews.map((url, i) => (
@@ -476,7 +503,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
               {photoFiles.length < 6 && (
                 <label className="w-20 h-20 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 cursor-pointer transition-colors">
                   <ImagePlus className="w-5 h-5" />
-                  <span className="text-[10px] mt-0.5">Add</span>
+                  <span className="text-[10px] mt-0.5">{isFr ? 'Ajouter' : 'Add'}</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -500,8 +527,10 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
               />
               <EyeOff className="w-4 h-4 text-gray-500" />
               <div>
-                <div className="text-xs font-semibold text-gray-900">Private</div>
-                <div className="text-[10px] text-gray-500">Only you and the farm owner can see this note.</div>
+                <div className="text-xs font-semibold text-gray-900">{isFr ? 'Privé' : 'Private'}</div>
+                <div className="text-[10px] text-gray-500">
+                  {isFr ? 'Seuls vous et le propriétaire de la ferme verront cette note.' : 'Only you and the farm owner can see this note.'}
+                </div>
               </div>
             </label>
 
@@ -515,8 +544,10 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
                 />
                 <Star className="w-4 h-4 text-amber-600" />
                 <div>
-                  <div className="text-xs font-semibold text-gray-900">Important</div>
-                  <div className="text-[10px] text-gray-500">Highlights the note with an amber border for review.</div>
+                  <div className="text-xs font-semibold text-gray-900">{isFr ? 'Important' : 'Important'}</div>
+                  <div className="text-[10px] text-gray-500">
+                    {isFr ? "Met en évidence la note avec un liseré ambre à relire." : 'Highlights the note with an amber border for review.'}
+                  </div>
                 </div>
               </label>
             )}
@@ -528,9 +559,13 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
             className="w-full bg-[#3D5F42] text-white py-3 rounded-xl font-semibold text-sm hover:bg-[#2F4A34] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving || uploadingPhotos ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> {uploadingPhotos ? 'Uploading photos…' : 'Saving…'}</>
+              <><Loader2 className="w-4 h-4 animate-spin" />
+                {uploadingPhotos
+                  ? (isFr ? 'Téléversement des photos…' : 'Uploading photos…')
+                  : (isFr ? 'Enregistrement…' : 'Saving…')}
+              </>
             ) : (
-              <><Check className="w-4 h-4" /> Save note</>
+              <><Check className="w-4 h-4" /> {isFr ? 'Enregistrer la note' : 'Save note'}</>
             )}
           </button>
         </div>

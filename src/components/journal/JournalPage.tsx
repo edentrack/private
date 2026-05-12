@@ -6,6 +6,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { AddJournalEntryModal } from './AddJournalEntryModal';
 import { EntryReactions } from './EntryReactions';
 import { ChartBlock, type ChartConfig } from './ChartBlock';
@@ -118,6 +119,8 @@ const ENTRY_TYPE_LABELS: Record<string, string> = {
 export function JournalPage() {
   const { currentFarm, profile, currentRole } = useAuth();
   const toast = useToast();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [tab, setTab] = useState<TabKey>('all');
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -168,7 +171,7 @@ export function JournalPage() {
       if (error) throw error;
       setEntries((data as unknown as JournalEntry[]) ?? []);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not load journal');
+      toast.error(err instanceof Error ? err.message : (isFr ? 'Impossible de charger le journal' : 'Could not load journal'));
     } finally {
       setLoading(false);
     }
@@ -178,47 +181,49 @@ export function JournalPage() {
 
   const togglePin = async (entry: JournalEntry) => {
     if (!isOwner && entry.author_id !== profile?.id) {
-      toast.error('Only the author or farm owner can pin');
+      toast.error(isFr ? 'Seul l\'auteur ou le propriétaire de la ferme peut épingler' : 'Only the author or farm owner can pin');
       return;
     }
     const { error } = await supabase
       .from('journal_entries')
       .update({ is_pinned: !entry.is_pinned })
       .eq('id', entry.id);
-    if (error) toast.error('Pin failed');
+    if (error) toast.error(isFr ? 'Échec de l\'épinglage' : 'Pin failed');
     else loadEntries();
   };
 
   const toggleImportant = async (entry: JournalEntry) => {
     if (!isOwner) {
-      toast.error('Only the farm owner can flag as important');
+      toast.error(isFr ? 'Seul le propriétaire peut marquer comme important' : 'Only the farm owner can flag as important');
       return;
     }
     const { error } = await supabase
       .from('journal_entries')
       .update({ is_important: !entry.is_important })
       .eq('id', entry.id);
-    if (error) toast.error('Update failed');
+    if (error) toast.error(isFr ? 'Échec de la mise à jour' : 'Update failed');
     else loadEntries();
   };
 
   const softDelete = async (entry: JournalEntry) => {
     if (!isOwner && entry.author_id !== profile?.id) {
-      toast.error('Only the author or farm owner can delete');
+      toast.error(isFr ? 'Seul l\'auteur ou le propriétaire peut supprimer' : 'Only the author or farm owner can delete');
       return;
     }
-    if (!confirm('Hide this entry from the journal? The underlying record stays in place.')) return;
+    if (!confirm(isFr
+      ? 'Masquer cette entrée du journal ? La donnée d\'origine reste en place.'
+      : 'Hide this entry from the journal? The underlying record stays in place.')) return;
     const { error } = await supabase
       .from('journal_entries')
       .update({ is_deleted: true })
       .eq('id', entry.id);
-    if (error) toast.error('Delete failed');
+    if (error) toast.error(isFr ? 'Échec de la suppression' : 'Delete failed');
     else loadEntries();
   };
 
   const handleExport = async (range: 'week' | 'month') => {
     if (!entries.length) {
-      toast.error('Nothing to export yet');
+      toast.error(isFr ? 'Rien à exporter pour le moment' : 'Nothing to export yet');
       return;
     }
     setExporting(true);
@@ -229,13 +234,15 @@ export function JournalPage() {
           ...e,
           authorName: e.author_kind === 'eden'
             ? 'Eden'
-            : e.author?.full_name || e.author?.email?.split('@')[0] || 'Someone',
+            : e.author?.full_name || e.author?.email?.split('@')[0] || (isFr ? 'Quelqu\'un' : 'Someone'),
         })),
         range,
       });
-      toast.success(`Exported ${range === 'week' ? 'this week' : 'this month'}'s journal`);
+      toast.success(isFr
+        ? `Journal ${range === 'week' ? 'de la semaine' : 'du mois'} exporté`
+        : `Exported ${range === 'week' ? 'this week' : 'this month'}'s journal`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Export failed');
+      toast.error(err instanceof Error ? err.message : (isFr ? 'Échec de l\'export' : 'Export failed'));
     } finally {
       setExporting(false);
     }
@@ -256,7 +263,7 @@ export function JournalPage() {
   if (!farmId) {
     return (
       <div className="text-center py-16 text-gray-500">
-        Select a farm to view its journal.
+        {isFr ? 'Sélectionnez une ferme pour voir son journal.' : 'Select a farm to view its journal.'}
       </div>
     );
   }
@@ -268,10 +275,10 @@ export function JournalPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"
               style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-            Farm Journal
+            {isFr ? 'Journal de la ferme' : 'Farm Journal'}
           </h1>
           <p className="text-gray-500 text-sm mt-0.5 italic">
-            Notes, milestones, and the day-to-day of your farm.
+            {isFr ? 'Notes, jalons et quotidien de votre ferme.' : 'Notes, milestones, and the day-to-day of your farm.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -279,26 +286,26 @@ export function JournalPage() {
             onClick={() => handleExport('week')}
             disabled={exporting}
             className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#3D5F42] px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Export this week's journal to PDF"
+            title={isFr ? 'Exporter le journal de la semaine en PDF' : "Export this week's journal to PDF"}
           >
             <Download className="w-4 h-4" />
-            Week
+            {isFr ? 'Semaine' : 'Week'}
           </button>
           <button
             onClick={() => handleExport('month')}
             disabled={exporting}
             className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-[#3D5F42] px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Export this month's journal to PDF"
+            title={isFr ? 'Exporter le journal du mois en PDF' : "Export this month's journal to PDF"}
           >
             <FileText className="w-4 h-4" />
-            Month
+            {isFr ? 'Mois' : 'Month'}
           </button>
           <button
             onClick={() => setShowCompose(true)}
             className="flex items-center gap-2 bg-[#3D5F42] text-white px-4 py-2 rounded-lg hover:bg-[#2F4A34] transition-colors text-sm font-semibold shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            New entry
+            {isFr ? 'Nouvelle entrée' : 'New entry'}
           </button>
         </div>
       </div>
@@ -309,9 +316,9 @@ export function JournalPage() {
         {/* Tabs as paper section dividers — Activity/Notes/All */}
         <div className="flex items-center gap-1">
           {([
-            { key: 'all',      label: 'All' },
-            { key: 'notes',    label: 'Notes' },
-            { key: 'activity', label: 'Activity' },
+            { key: 'all',      label: isFr ? 'Tout'      : 'All' },
+            { key: 'notes',    label: isFr ? 'Notes'     : 'Notes' },
+            { key: 'activity', label: isFr ? 'Activité'  : 'Activity' },
           ] as const).map(t => {
             const active = tab === t.key;
             return (
@@ -335,7 +342,7 @@ export function JournalPage() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search..."
+              placeholder={isFr ? 'Rechercher...' : 'Search...'}
               className="w-full pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]"
             />
           </div>
@@ -346,14 +353,14 @@ export function JournalPage() {
             history. Custom opens two date inputs underneath. */}
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-gray-500 font-semibold pr-1">
-            <Calendar className="w-3.5 h-3.5" /> Date
+            <Calendar className="w-3.5 h-3.5" /> {isFr ? 'Date' : 'Date'}
           </span>
           {([
-            { key: 'all',    label: 'All' },
-            { key: 'today',  label: 'Today' },
-            { key: 'week',   label: 'This week' },
-            { key: 'month',  label: 'This month' },
-            { key: 'custom', label: 'Custom' },
+            { key: 'all',    label: isFr ? 'Tout'          : 'All' },
+            { key: 'today',  label: isFr ? "Aujourd'hui"   : 'Today' },
+            { key: 'week',   label: isFr ? 'Cette semaine' : 'This week' },
+            { key: 'month',  label: isFr ? 'Ce mois'       : 'This month' },
+            { key: 'custom', label: isFr ? 'Personnalisé'  : 'Custom' },
           ] as const).map(r => {
             const active = dateRange === r.key;
             return (
@@ -378,14 +385,14 @@ export function JournalPage() {
 
         {dateRange === 'custom' && showCustomPicker && (
           <div className="flex flex-wrap items-center gap-2 bg-white border border-gray-200 rounded-lg p-2.5">
-            <label className="text-[11px] text-gray-500 font-semibold">From</label>
+            <label className="text-[11px] text-gray-500 font-semibold">{isFr ? 'Du' : 'From'}</label>
             <input
               type="date"
               value={customFrom}
               onChange={e => setCustomFrom(e.target.value)}
               className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-[#3D5F42]"
             />
-            <label className="text-[11px] text-gray-500 font-semibold">To</label>
+            <label className="text-[11px] text-gray-500 font-semibold">{isFr ? 'Au' : 'To'}</label>
             <input
               type="date"
               value={customTo}
@@ -397,7 +404,7 @@ export function JournalPage() {
                 onClick={() => { setCustomFrom(''); setCustomTo(''); }}
                 className="text-[11px] text-gray-500 hover:text-gray-700 flex items-center gap-0.5"
               >
-                <XIcon className="w-3 h-3" /> clear
+                <XIcon className="w-3 h-3" /> {isFr ? 'effacer' : 'clear'}
               </button>
             )}
           </div>
@@ -408,7 +415,7 @@ export function JournalPage() {
             onClick={() => setFilterType(null)}
             className="text-xs bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full font-medium"
           >
-            Filter: {ENTRY_TYPE_LABELS[filterType]} ×
+            {isFr ? 'Filtre' : 'Filter'}: {ENTRY_TYPE_LABELS[filterType]} ×
           </button>
         )}
 
@@ -439,10 +446,10 @@ export function JournalPage() {
             <div className="pl-16 pr-6 sm:pr-10 py-6 sm:py-8 min-h-[400px]">
               {loading ? (
                 <div className="py-12 text-center text-stone-500 italic">
-                  Loading journal…
+                  {isFr ? 'Chargement du journal…' : 'Loading journal…'}
                 </div>
               ) : grouped.length === 0 ? (
-                <NotebookEmptyState tab={tab} onCompose={() => setShowCompose(true)} />
+                <NotebookEmptyState tab={tab} onCompose={() => setShowCompose(true)} isFr={isFr} />
               ) : (
                 <div className="space-y-8">
                   {grouped.map(([day, dayEntries]) => (
@@ -456,6 +463,7 @@ export function JournalPage() {
                       onImportant={toggleImportant}
                       onDelete={softDelete}
                       onFilterType={setFilterType}
+                      isFr={isFr}
                     />
                   ))}
                 </div>
@@ -476,20 +484,26 @@ export function JournalPage() {
   );
 }
 
-function NotebookEmptyState({ tab, onCompose }: { tab: TabKey; onCompose: () => void }) {
+function NotebookEmptyState({ tab, onCompose, isFr }: { tab: TabKey; onCompose: () => void; isFr: boolean }) {
   return (
     <div className="py-16 text-center" style={{ fontFamily: 'Georgia, serif' }}>
       <p className="text-stone-700 text-lg italic">
-        {tab === 'activity' && 'Your activity ledger is blank — start logging and entries will appear here.'}
-        {tab === 'notes' && 'No notes yet. Write the first one.'}
-        {tab === 'all' && 'A fresh page. Add an entry, log a sale, or wait for Eden\'s weekly note.'}
+        {tab === 'activity' && (isFr
+          ? "Votre registre d'activité est vide — commencez à enregistrer et les entrées apparaîtront ici."
+          : 'Your activity ledger is blank — start logging and entries will appear here.')}
+        {tab === 'notes' && (isFr
+          ? 'Aucune note pour le moment. Écrivez la première.'
+          : 'No notes yet. Write the first one.')}
+        {tab === 'all' && (isFr
+          ? "Une page vierge. Ajoutez une entrée, enregistrez une vente, ou attendez la note hebdomadaire d'Eden."
+          : 'A fresh page. Add an entry, log a sale, or wait for Eden\'s weekly note.')}
       </p>
       {tab !== 'activity' && (
         <button
           onClick={onCompose}
           className="mt-6 inline-flex items-center gap-2 bg-[#3D5F42] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-[#2F4A34]"
         >
-          <Plus className="w-4 h-4" /> Write a note
+          <Plus className="w-4 h-4" /> {isFr ? 'Écrire une note' : 'Write a note'}
         </button>
       )}
     </div>
@@ -497,7 +511,7 @@ function NotebookEmptyState({ tab, onCompose }: { tab: TabKey; onCompose: () => 
 }
 
 function DayPage({
-  day, entries, isOwner, selfId, onPin, onImportant, onDelete, onFilterType,
+  day, entries, isOwner, selfId, onPin, onImportant, onDelete, onFilterType, isFr,
 }: {
   day: string;
   entries: JournalEntry[];
@@ -507,6 +521,7 @@ function DayPage({
   onImportant: (e: JournalEntry) => void;
   onDelete: (e: JournalEntry) => void;
   onFilterType: (t: string) => void;
+  isFr: boolean;
 }) {
   return (
     <section>
@@ -517,7 +532,7 @@ function DayPage({
           className="inline-block text-stone-700 font-semibold text-base sm:text-lg pb-0.5 border-b border-stone-400/30"
           style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
         >
-          {formatDayLabel(day)}
+          {formatDayLabel(day, isFr)}
         </h2>
       </header>
       <div className="space-y-5">
@@ -718,12 +733,16 @@ function deepLinkToRecord(entry: JournalEntry) {
   }
 }
 
-function formatDayLabel(isoDay: string): string {
+function formatDayLabel(isoDay: string, isFr: boolean = false): string {
   const today = new Date().toLocaleDateString('en-CA');
   const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
-  if (isoDay === today) return 'Today';
-  if (isoDay === yesterday) return 'Yesterday';
-  return new Date(isoDay).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  if (isoDay === today) return isFr ? "Aujourd'hui" : 'Today';
+  if (isoDay === yesterday) return isFr ? 'Hier' : 'Yesterday';
+  // Use the matching locale tag for weekday/month names so the FR UI
+  // doesn't mix "Hier" with "Monday, May 12, 2026".
+  return new Date(isoDay).toLocaleDateString(isFr ? 'fr-FR' : undefined, {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
 }
 
 export default JournalPage;
