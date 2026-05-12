@@ -413,14 +413,26 @@ export const COUNTRY_CONFIGS: Record<string, RegionConfig> = {
   // ── Africa — local currency countries ──────────────────────────────────
   // For these, card pays via Stripe in USD; local methods via Flutterwave
   // in the native currency (NGN, KES, etc.).
+  // Stripe accepts local settlement for NGN, GHS, KES, ZAR, EGP, MAD —
+  // so cards there charge in the native currency (no FX, no
+  // international-transaction limits at the cardholder's bank).
   NG: makeRegion({ code: 'NG', name: 'Nigeria',       currency: 'NGN', phonePrefix: '+234',
-    options: [m.card('USD'), m.bankTransfer(), m.ussd(), m.mtnMomo()] }),
+    options: [m.card(), m.bankTransfer(), m.ussd(), m.mtnMomo()] }),
   GH: makeRegion({ code: 'GH', name: 'Ghana',         currency: 'GHS', phonePrefix: '+233',
-    options: [m.card('USD'), m.mtnMomo(), m.vodafoneCash()] }),
+    options: [m.card(), m.mtnMomo(), m.vodafoneCash()] }),
   KE: makeRegion({ code: 'KE', name: 'Kenya',         currency: 'KES', phonePrefix: '+254',
-    options: [m.card('USD'), m.mpesa()] }),
+    options: [m.card(), m.mpesa()] }),
   ZA: makeRegion({ code: 'ZA', name: 'South Africa',  currency: 'ZAR', phonePrefix: '+27',
-    options: [m.card('USD'), m.eft()] }),
+    options: [m.card(), m.eft()] }),
+  EG: makeRegion({ code: 'EG', name: 'Egypt',         currency: 'EGP', phonePrefix: '+20',
+    options: [m.card(), m.vodafoneCash(), m.fawry()] }),
+  MA: makeRegion({ code: 'MA', name: 'Morocco',       currency: 'MAD', phonePrefix: '+212',
+    options: [m.card()] }),
+
+  // Stripe does NOT settle UGX, TZS, RWF, ZMW — cards there must
+  // charge in USD via Stripe, and the cardholder's bank does the FX.
+  // Local methods (mobile money) handle this gracefully via
+  // Flutterwave in the native currency.
   UG: makeRegion({ code: 'UG', name: 'Uganda',        currency: 'UGX', phonePrefix: '+256',
     options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
   TZ: makeRegion({ code: 'TZ', name: 'Tanzania',      currency: 'TZS', phonePrefix: '+255',
@@ -429,10 +441,6 @@ export const COUNTRY_CONFIGS: Record<string, RegionConfig> = {
     options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
   ZM: makeRegion({ code: 'ZM', name: 'Zambia',        currency: 'ZMW', phonePrefix: '+260',
     options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
-  EG: makeRegion({ code: 'EG', name: 'Egypt',         currency: 'EGP', phonePrefix: '+20',
-    options: [m.card('USD'), m.vodafoneCash(), m.fawry()] }),
-  MA: makeRegion({ code: 'MA', name: 'Morocco',       currency: 'MAD', phonePrefix: '+212',
-    options: [m.card('USD')] }),
   CM: makeRegion({ code: 'CM', name: 'Cameroon',      currency: 'XAF', phonePrefix: '+237',
     options: [m.card('USD'), m.mtnMomo(), m.orangeMoney()] }),
   CI: makeRegion({ code: 'CI', name: "Côte d'Ivoire", currency: 'XOF', phonePrefix: '+225',
