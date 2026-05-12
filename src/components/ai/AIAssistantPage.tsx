@@ -1313,12 +1313,23 @@ export function AIAssistantPage() {
         (logAction as any).arrival_date ||
         (logAction as any).arrived_at ||
         recordDate;
+      // The `flocks` table does NOT have a `breed` column (breed lives on
+      // the `rabbits` registry table for individual breeders). Eden's
+      // CREATE_FLOCK / CREATE_POND / CREATE_RABBITRY action used to
+      // attempt `breed: logAction.breed || null` here and the insert
+      // failed at PostgREST schema-cache check with:
+      //   "Could not find the 'breed' column of 'flocks' in the schema cache."
+      // Breaking every Eden-driven bulk that started with a CREATE_RABBITRY.
+      // Caught during the May 2026 stress test when an 18-record bulk-log
+      // had 13 expenses save but the 5 sales' upstream CREATE_RABBITRY
+      // wedged the whole second batch. Breed string (if Eden emits one) is
+      // dropped silently here; the user can set per-flock notes/description
+      // for the same information.
       const { error: fErr } = await supabase.from('flocks').insert({
         farm_id: targetFarmIdLocal,
         user_id: user?.id ?? null,
         name: entityName,
         type: flockType,
-        breed: logAction.breed || null,
         initial_count: initialCount,
         current_count: initialCount,
         start_date: stockedDate,
