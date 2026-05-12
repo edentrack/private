@@ -226,9 +226,23 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     supabase.from("tasks").select("id, status, scheduled_for, title_override, priority").eq("farm_id", farmId).eq("is_archived", false).gte("scheduled_for", `${thirtyDaysAgo}T00:00:00`),
     supabase.from("feed_stock").select("id, feed_type, current_stock_bags, bags_in_stock, unit, kg_per_unit").eq("farm_id", farmId),
     supabase.from("other_inventory").select("id, item_name, quantity, unit, category").eq("farm_id", farmId),
-    supabase.from("expenses").select("amount, category, description, incurred_on, currency").eq("farm_id", farmId).gte("incurred_on", farmStart).order("incurred_on", { ascending: false }),
-    supabase.from("egg_sales").select("total_amount, sale_date, customer_name, payment_status, total_eggs").eq("farm_id", farmId).gte("sale_date", farmStart).order("sale_date", { ascending: false }),
-    supabase.from("bird_sales").select("total_amount, sale_date, customer_name, payment_status, birds_sold").eq("farm_id", farmId).gte("sale_date", farmStart).order("sale_date", { ascending: false }),
+    // ── Financial tables — return ALL records (no date filter) ────────────
+    //
+    // PRIOR BUG (May 2026): the queries below all had `gte(<date_col>,
+    // farmStart)` where farmStart = farms.created_at. That excluded
+    // backdated entries — if a farmer signed up today and logged 2M XAF
+    // of arrears spent last month, Eden would never see those entries
+    // while the dashboard's `ExpenseTracking` view (which has no such
+    // filter) showed the full 5M. Users hit a 2M discrepancy between
+    // Eden and the dashboard. Now: no date filter on financial tables.
+    //
+    // Defensive: bump the row cap to 5000 (default Supabase is 1000).
+    // No real farm has 5000 expense rows, but if one does we'd rather
+    // pull all of them than silently truncate. The financial summary
+    // figures must match the dashboard's totals byte-for-byte.
+    supabase.from("expenses").select("amount, category, description, incurred_on, currency").eq("farm_id", farmId).order("incurred_on", { ascending: false }).limit(5000),
+    supabase.from("egg_sales").select("total_amount, sale_date, customer_name, payment_status, total_eggs").eq("farm_id", farmId).order("sale_date", { ascending: false }).limit(5000),
+    supabase.from("bird_sales").select("total_amount, sale_date, customer_name, payment_status, birds_sold").eq("farm_id", farmId).order("sale_date", { ascending: false }).limit(5000),
     supabase.from("mortality_logs").select("count, cause, event_date, flock_id, notes").eq("farm_id", farmId).gte("event_date", farmStart).order("event_date", { ascending: false }),
     supabase.from("weight_logs").select("average_weight, date, flock_id, sample_size").eq("farm_id", farmId).gte("date", farmStart).order("date", { ascending: false }),
     supabase.from("vaccinations").select("vaccine_name, administered_date, flock_id, notes").eq("farm_id", farmId).gte("administered_date", farmStart).order("administered_date", { ascending: false }),
@@ -292,10 +306,22 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   const sales7d = sales.filter((s: any) => s.sale_date >= sevenDaysAgo);
   const mortality7d = mortality.filter((m: any) => m.event_date >= sevenDaysAgo);
 
-  const totalExpenses30d = expenses.reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0);
+  // NOTE on variable names: `expenses` / `sales` are the FULL series
+  // (no date filter), so the un-suffixed total is ALL-TIME. The `7d`
+  // and `30d` reducers filter explicitly. The 30d figure was previously
+  // named identically and the math was on the full array — confusing
+  // and buggy. Now: `totalExpensesAllTime` and `totalExpensesLast30d`
+  // are distinct, and the "Total expenses" line in context uses the
+  // all-time total (matching what the dashboard's ExpenseTracking page
+  // computes when no filter is applied).
+  const totalExpensesAllTime = expenses.reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0);
   const totalExpenses7d = expenses7d.reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0);
-  const totalSales30d = sales.reduce((s: number, e: any) => s + (parseFloat(e.total_amount) || 0), 0);
+  const expenses30d = expenses.filter((e: any) => e.incurred_on >= thirtyDaysAgo);
+  const totalExpensesLast30d = expenses30d.reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0);
+  const totalSalesAllTime = sales.reduce((s: number, e: any) => s + (parseFloat(e.total_amount) || 0), 0);
   const totalSales7d = sales7d.reduce((s: number, e: any) => s + (parseFloat(e.total_amount) || 0), 0);
+  const sales30d = sales.filter((s: any) => s.sale_date >= thirtyDaysAgo);
+  const totalSalesLast30d = sales30d.reduce((s: number, e: any) => s + (parseFloat(e.total_amount) || 0), 0);
   const totalMortality7d = mortality7d.reduce((s: number, m: any) => s + (m.count || 0), 0);
   const totalMortality30d = mortality.reduce((s: number, m: any) => s + (m.count || 0), 0);
 
@@ -389,9 +415,20 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   });
 
   context += `\n### Financials (all time since ${farmStart})\n`;
-  context += `- Total expenses: ${currency} ${totalExpenses30d.toFixed(0)} | Last 30d: ${currency} ${expenses.filter((e: any) => e.incurred_on >= thirtyDaysAgo).reduce((s: number, e: any) => s + (parseFloat(e.amount) || 0), 0).toFixed(0)}\n`;
-  context += `- Total sales: ${currency} ${totalSales30d.toFixed(0)} | Last 30d: ${currency} ${sales.filter((s: any) => s.sale_date >= thirtyDaysAgo).reduce((s: number, e: any) => s + (parseFloat(e.total_amount) || 0), 0).toFixed(0)}\n`;
-  context += `- Net profit all time: ${currency} ${(totalSales30d - totalExpenses30d).toFixed(0)}\n`;
+  context += `- Total expenses (all time): ${currency} ${totalExpensesAllTime.toFixed(0)} | Last 30d: ${currency} ${totalExpensesLast30d.toFixed(0)}\n`;
+  context += `- Total sales (all time): ${currency} ${totalSalesAllTime.toFixed(0)} | Last 30d: ${currency} ${totalSalesLast30d.toFixed(0)}\n`;
+  context += `- Net profit all time: ${currency} ${(totalSalesAllTime - totalExpensesAllTime).toFixed(0)}\n`;
+
+  // Currency-mix warning. The dashboard sums raw `amount` values too, so
+  // if the user logged some expenses in NGN and others in USD/XAF, both
+  // surfaces under-report or over-report identically — they don't drift
+  // from each other. But it's worth flagging in the prompt so Eden can
+  // tell the user "your totals mix currencies" instead of producing a
+  // single number that's actually meaningless.
+  const expenseCurrencies = new Set(expenses.map((e: any) => e.currency).filter(Boolean));
+  if (expenseCurrencies.size > 1) {
+    context += `- ⚠ Expenses are logged in MULTIPLE currencies (${Array.from(expenseCurrencies).join(', ')}). The total above is a raw sum of amounts — flag this to the user and ask which currency they want the breakdown in.\n`;
+  }
   if (Object.keys(expenseByCategory).length > 0) {
     context += `- Expense breakdown: ${Object.entries(expenseByCategory).map(([k, v]) => `${k}: ${currency} ${(v as number).toFixed(0)}`).join(", ")}\n`;
   }
