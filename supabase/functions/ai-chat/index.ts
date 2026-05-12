@@ -44,6 +44,52 @@ import { FISH_KNOWLEDGE, POULTRY_KNOWLEDGE, RABBIT_KNOWLEDGE } from './knowledge
 import { buildPlanAwarenessNote, getFarmCap, getAnimalCap } from '../_shared/planAwareness.ts';
 import { sanitizeDashes } from '../_shared/sanitize.ts';
 
+/**
+ * Decide whether the latest user message likely needs current
+ * web information. Anthropic's hosted web_search tool gets attached
+ * to the request only when this returns true, so a routine
+ * "log my mortality" message doesn't burn search quota.
+ *
+ * False-positive cost: zero (Eden has the tool but isn't forced to
+ * call it). False-negative cost: Eden gives a stale answer for
+ * something time-sensitive. So we skew the keyword list toward
+ * inclusion — outbreak / latest / current / news / price / today /
+ * weather / regulation / outbreak / recall.
+ */
+function needsWebSearch(messages: ChatMessage[]): boolean {
+  const last = messages[messages.length - 1];
+  if (!last || !last.content) return false;
+  const text = (typeof last.content === 'string'
+    ? last.content
+    : (last.content as any[]).map((c: any) => c.text || '').join(' ')
+  ).toLowerCase();
+
+  // Hot keywords — match any → enable web_search.
+  const keywords = [
+    // Time / recency
+    'today', "today's", 'this week', 'this month', 'right now', 'currently',
+    'latest', 'recent', 'new', 'recently', '2026', 'this year',
+    // Disease / outbreak / recall
+    'outbreak', 'outbreaks', 'epidemic', 'spreading', 'pandemic',
+    'recall', 'banned', 'restriction', 'restricted',
+    'newcastle', 'ai outbreak', 'avian influenza', 'african swine',
+    'asf ', 'h5n1', 'foot and mouth', 'fmd ', 'lumpy skin',
+    'pasteurella', 'coccidiosis trend',
+    // Market / price
+    'market price', 'current price', 'price of', 'prices today',
+    'cost of feed today', 'feed price', 'maize price', 'soy price',
+    'going rate', 'fcfa per', 'naira per', 'kg today',
+    // Weather / climate
+    'weather', 'forecast', 'rain', 'rainfall', 'drought', 'temperature today',
+    // Regulation / news
+    'regulation', 'new rule', 'announcement', 'ministry', 'government',
+    'export ban', 'import ban', 'permit', 'subsidy',
+    // Explicit ask
+    'search the web', 'look it up', 'check online', 'google',
+  ];
+  return keywords.some(k => text.includes(k));
+}
+
 function selectModel(messages: ChatMessage[]): string {
   const last = messages[messages.length - 1];
   if (!last) return MODEL_SONNET;
@@ -975,6 +1021,36 @@ Format. Include when data is complete and ready to save (position in message doe
 
 **Never guess or invent data.** If the item name, quantity or amount is unclear, ask. Precision is critical. A wrong log is worse than no log.
 
+## LIVE WEB SEARCH — when to use the web_search tool
+
+If the user asks about something time-sensitive that your training data
+can't cover with confidence — current disease outbreaks, today's market
+prices, recent regulations, weather, recalls, news — **call the
+`web_search` tool BEFORE answering**. The tool is attached to your
+request when the user's query looks like it needs current info.
+
+Examples of WHEN to search:
+- "Is there a Newcastle outbreak in Cameroon right now?"
+- "What's the current price of maize / soy / feed in Nigeria?"
+- "Has the avian flu situation changed this month?"
+- "Any new regulations on poultry exports in West Africa?"
+- "What's the weather forecast for my farm tomorrow?"
+- "Latest news on African swine fever"
+
+Examples of when NOT to search (use your built-in knowledge + farm data):
+- "How do I treat coccidiosis" — disease basics in your training are fine
+- "What's my mortality rate this month" — pull from farm data, not the web
+- "Help me log a sale" — internal action, no web needed
+
+When you DO search:
+1. Make at most ONE search per topic in a single turn (don't spam).
+2. Prefer authoritative sources: WOAH/OIE, FAO, ministries of
+   agriculture, peer-reviewed outlets. Skip social media unless it's
+   the only source.
+3. CITE the source inline ("According to WOAH's latest bulletin
+   from <date>...") and let the user know how recent the data is.
+4. Be honest if the search returned nothing useful — don't fabricate.
+
 ## DISEASE KNOWLEDGE BASE
 - **Newcastle Disease**: Twisting necks, greenish diarrhea, sudden mass death. Viral. No cure. Emergency cull severely affected, vaccinate survivors. Report to authorities.
 - **Gumboro/IBD**: Whitish diarrhea, fluffed feathers, trembling, 3-6 weeks old. Give electrolytes + vitamins, improve ventilation. Vaccinate at day 14.
@@ -1563,6 +1639,30 @@ Deno.serve(async (req: Request) => {
           })(),
           system: systemMessage,
           messages: claudeMessages,
+          // ── Web search tool (added May 2026) ──────────────────────
+          // Eden was previously stuck at its training cutoff for
+          // anything time-sensitive (disease outbreaks, market prices,
+          // weather, regulations). The hosted `web_search_20250305`
+          // tool lets Claude pull live results when the query needs
+          // them — and only then, the model decides per turn.
+          //
+          // We attach the tool ONLY when the latest user message looks
+          // like it might need current info (saves search quota on
+          // routine "log my mortality" type messages, which don't
+          // benefit from web access). Heuristic is intentionally loose
+          // — a false positive just means Eden has the tool available
+          // but doesn't have to call it. False negative is the only
+          // bad path, so we skew the keyword list toward inclusion.
+          ...(needsWebSearch(messages) ? {
+            tools: [
+              {
+                type: "web_search_20250305",
+                name: "web_search",
+                // Cap per request so a runaway query can't burn budget.
+                max_uses: 3,
+              },
+            ],
+          } : {}),
         }),
       });
     } catch (fetchErr: any) {

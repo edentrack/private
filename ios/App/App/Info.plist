@@ -101,5 +101,27 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 	</dict>
+	<!--
+		Encryption export compliance.
+
+		Apple asks every uploaded build whether it uses non-exempt
+		encryption (i.e. anything beyond standard HTTPS / iOS-built-in
+		crypto). Edentrack only uses:
+		  - Standard HTTPS (Supabase, payment processors)
+		  - iOS Keychain (biometric unlock)
+		  - Apple-provided TLS
+
+		All of these are EXEMPT under Apple's export compliance rules.
+		Setting this flag to false here means Apple won't prompt at every
+		upload, and we don't need to file with the US Bureau of Industry
+		and Security.
+
+		If we ever add custom encryption (e.g. end-to-end encrypted
+		messaging or a custom crypto library), flip this to true and
+		file the appropriate self-classification report with BIS at
+		https://www.bis.doc.gov/encryption.
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

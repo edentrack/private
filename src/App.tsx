@@ -1094,14 +1094,18 @@ function AppContent() {
       // then drop them on the Login screen so when they return after
       // signing up + paying on the web, they can immediately sign in.
       if ((window as any).Capacitor?.isNativePlatform?.()) {
+        // Native shell tried to land on /#/signup. Route to the
+        // marketing landing page instead — pricing UI inside the
+        // native shell is an Apple Guideline 3.1 risk, and the
+        // landing page is the canonical entry point for new users.
         import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
-          openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+          openInAppBrowser('https://edentrack.app/', { fullscreen: true });
         });
         return (
           <LoginScreen
             onToggle={() => {
               import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
-                openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+                openInAppBrowser('https://edentrack.app/', { fullscreen: true });
               });
             }}
             onForgotPassword={() => navigateToAuth('forgot-password')}
@@ -1119,7 +1123,16 @@ function AppContent() {
     if (hash.includes('#/login') || hash.includes('#/auth/login')) {
       return (
         <LoginScreen
-          onToggle={() => navigateToAuth('signup')}
+          // "Don't have an account? Sign up" — now sends the user to
+          // the landing page rather than dumping them straight into a
+          // 7-field wizard. From the landing they can read the pitch,
+          // pick a plan from the pricing section, and the CTA there
+          // routes them to the trimmed signup form. One smooth path
+          // for new users; no parallel sign-up surfaces.
+          onToggle={() => {
+            window.location.hash = '';
+            window.location.href = window.location.pathname || '/';
+          }}
           onForgotPassword={() => navigateToAuth('forgot-password')}
         />
       );
@@ -1156,13 +1169,15 @@ function AppContent() {
       return (
         <LoginScreen
           onToggle={() => {
-            // "Don't have an account? Sign Up" → open the web signup
-            // in an in-app Safari sheet. Account creation + initial
-            // payment happen on edentrack.app; once they're back,
-            // they sign in here. This keeps the App Store reviewer
-            // from seeing a paywall inside the native shell.
+            // "Don't have an account? Sign Up" → open the marketing
+            // LANDING PAGE in an in-app Safari sheet. The user sees
+            // the full pitch, picks a plan from the pricing section,
+            // and account creation happens on the web (so we don't
+            // run the Apple Guideline 3.1 risk of pricing UI inside
+            // the native shell). Once they finish, they come back
+            // here to sign in.
             import('./lib/capacitorNative').then(({ openInAppBrowser }) => {
-              openInAppBrowser('https://edentrack.app/#/signup', { fullscreen: true });
+              openInAppBrowser('https://edentrack.app/', { fullscreen: true });
             });
           }}
           onForgotPassword={() => navigateToAuth('forgot-password')}
@@ -1284,6 +1299,28 @@ function AppContent() {
           if (refreshSession) await refreshSession();
         }}
       />
+    );
+  }
+
+  // ── Standalone Subscribe page ──────────────────────────────────────
+  // When a logged-in user manually navigates to /#/subscribe (e.g. via
+  // an Upgrade button), render the page WITHOUT the DashboardLayout
+  // chrome around it. This makes the in-app upgrade page look
+  // identical to the landing's pricing section — full-screen black
+  // with the gold Grower card, no cream nav above. Previously
+  // SubscribePage was wrapped by DashboardLayout via renderView(),
+  // which broke the visual continuity from the marketing site.
+  //
+  // We deliberately skip this when ?cross_dashboard params or invite
+  // tokens are mid-flight, so we don't strand a user in-progress.
+  if (currentView === 'subscribe' && !inviteToken) {
+    return (
+      <Suspense fallback={pageFallback}>
+        <SubscribePage onBack={() => {
+          window.location.hash = '#/dashboard';
+          setCurrentView('dashboard');
+        }} />
+      </Suspense>
     );
   }
 

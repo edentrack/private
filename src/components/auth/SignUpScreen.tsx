@@ -75,7 +75,11 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
     setError('');
     setSuccess('');
 
-    if (!isJoiningFarm && !farmName.trim()) {
+    // Farm-name validation no longer applies for new owners — the
+    // farm gets created later via OnboardingChoice (AI chat or form).
+    // Invite joiners don't need a farm name either (they're joining
+    // an existing farm), so we skip this check entirely now.
+    if (false && !isJoiningFarm && !farmName.trim()) {
       setError(isFr ? 'Veuillez saisir le nom de votre ferme.' : 'Please enter your farm name.');
       return;
     }
@@ -133,13 +137,13 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
 
       } else {
         // ── New owner path ────────────────────────────────────────────────
-        // Save farm details to localStorage so they survive the email-verification
-        // redirect (which may open in the same browser tab).
-        if (farmName.trim()) {
-          localStorage.setItem('pending_farm_name', farmName.trim());
-          localStorage.setItem('pending_farm_country', country);
-          localStorage.setItem('pending_farm_type', farmType);
-        }
+        // The form no longer collects farm name / country / species, so
+        // there's nothing to persist as `pending_farm_*`. App.tsx's
+        // post-login auto-create-farm block is gated on those keys, so
+        // when they're absent the user lands on OnboardingChoice and
+        // picks AI chat or manual wizard. Eden then collects the
+        // missing details conversationally.
+
         // If user arrived via a plan CTA (e.g. #/signup?plan=grower), persist it so
         // App.tsx can redirect them straight to the subscribe page after first login.
         const hashQuery = window.location.hash.split('?')[1] || '';
@@ -324,8 +328,24 @@ export function SignUpScreen({ onToggle }: SignUpScreenProps) {
               />
             </div>
 
-            {/* Farm name + country — only for new owners, not for workers joining */}
-            {!isJoiningFarm && (
+            {/* ──────────────────────────────────────────────────────────
+                Farm name + country + species pickers are now ONLY shown
+                when a user is joining a specific farm via invite (where
+                the farm context matters for the join flow).
+
+                For NEW OWNERS (the common path from landing → pricing →
+                signup), we deliberately hide these fields. Account
+                creation collects ONLY email + password + name. Once the
+                user has a session, App.tsx routes to OnboardingChoice,
+                where they pick between AI-guided chat (default) and the
+                manual form wizard. Eden then asks for farm name, species,
+                country, and everything else conversationally.
+
+                Why: the user explicitly asked for ONE smooth signup path
+                without the multi-step wizard upfront. The AI flow exists
+                already — we just stopped front-loading it.
+                ────────────────────────────────────────────────────────── */}
+            {false && !isJoiningFarm && (
               <>
                 <div>
                   <label htmlFor="farmName" className="block text-sm font-semibold text-gray-700 mb-2">
