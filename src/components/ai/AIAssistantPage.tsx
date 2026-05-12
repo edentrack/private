@@ -1103,9 +1103,39 @@ export function AIAssistantPage() {
       const flock = await findFlock(rabbitryName);
       if (!flock) throw new Error(`Rabbitry "${rabbitryName}" not found`);
       const saleCount = logAction.count || 0;
+
+      // Phase 2: optionally link the sale to a grow-out cohort OR a
+      // named breeder. Eden's tool args carry human-friendly hints
+      // (source_growout_name, source_breeder_tag) — we resolve to UUIDs
+      // here. If nothing matches, fall back to a "free count" sale.
+      let sourceGrowoutId: string | null = null;
+      let sourceRabbitId: string | null = null;
+      if (logAction.source_growout_name) {
+        const { data: g } = await supabase
+          .from('rabbit_growout_groups')
+          .select('id')
+          .eq('farm_id', farmId)
+          .ilike('name', `%${logAction.source_growout_name}%`)
+          .eq('status', 'active')
+          .order('birth_date', { ascending: false, nullsFirst: false })
+          .limit(1);
+        sourceGrowoutId = g?.[0]?.id ?? null;
+      }
+      if (!sourceGrowoutId && logAction.source_breeder_tag) {
+        const { data: r } = await supabase
+          .from('rabbits')
+          .select('id')
+          .eq('farm_id', farmId)
+          .eq('tag', logAction.source_breeder_tag)
+          .eq('status', 'active')
+          .limit(1);
+        sourceRabbitId = r?.[0]?.id ?? null;
+      }
+
       // rabbit_sales (renamed from rabbit_harvest_records May 2026).
       // sold_at replaces harvested_at; weights / price / buyer fields
-      // are unchanged.
+      // are unchanged. source_growout_group_id triggers an automatic
+      // current_count decrement on the cohort.
       const { data: rsData, error: rsErr } = await supabase.from('rabbit_sales').insert({
         farm_id: farmId, flock_id: flock.id,
         sold_at: logAction.sale_date || logAction.harvest_date || recordDate,
@@ -1117,12 +1147,76 @@ export function AIAssistantPage() {
         buyer_name: logAction.buyer_name || null,
         payment_status: logAction.payment_status || 'pending',
         notes: logAction.notes || null,
+        source_growout_group_id: sourceGrowoutId,
+        source_rabbit_id: sourceRabbitId,
       }).select('id');
       if (rsErr) throw new Error(`Rabbit sale save failed: ${rsErr.message}`);
       if (!rsData?.length) throw new Error('Rabbit sale not saved - possible permission issue.');
-      if (saleCount > 0) {
+
+      // Named-breeder sale: mark the rabbit as sold in the registry
+      // (best effort; the sale row is the system of record).
+      if (sourceRabbitId) {
+        await supabase.from('rabbits').update({ status: 'sold' })
+          .eq('id', sourceRabbitId).eq('farm_id', farmId);
+      }
+
+      // Flock-level current_count decrement only applies when the
+      // sale wasn't sourced from a cohort (cohort decrement is handled
+      // by the trg_rabbit_sales_decrement_growout DB trigger). A sale
+      // from a cohort that's bookkept SEPARATELY shouldn't double-
+      // count by also dropping the parent rabbitry.
+      if (!sourceGrowoutId && saleCount > 0) {
         await supabase.from('flocks').update({ current_count: Math.max(0, (flock.current_count || 0) - saleCount) }).eq('id', flock.id).eq('farm_id', farmId);
       }
+
+    } else if (logAction.type === 'LOG_GROWOUT_MORTALITY') {
+      // Mortality scoped to a specific grow-out cohort.
+      // The DB trigger trg_mortality_decrement_growout handles the
+      // count decrement automatically when growout_group_id is set.
+      const groupName = logAction.growout_name;
+      if (!groupName) throw new Error('LOG_GROWOUT_MORTALITY needs growout_name');
+      const { data: g } = await supabase
+        .from('rabbit_growout_groups')
+        .select('id, current_count')
+        .eq('farm_id', farmId)
+        .ilike('name', `%${groupName}%`)
+        .eq('status', 'active')
+        .order('birth_date', { ascending: false, nullsFirst: false })
+        .limit(1);
+      const group = g?.[0];
+      if (!group) throw new Error(`Active grow-out cohort matching "${groupName}" not found`);
+      const lossCount = logAction.count || 0;
+      if (lossCount <= 0) throw new Error('LOG_GROWOUT_MORTALITY needs count > 0');
+      if (lossCount > group.current_count) {
+        throw new Error(`Cohort only has ${group.current_count} alive — can't lose ${lossCount}`);
+      }
+      const { error: mErr } = await supabase.from('mortality_records').insert({
+        farm_id: farmId,
+        growout_group_id: group.id,
+        count: lossCount,
+        death_date: logAction.log_date || recordDate,
+        cause: logAction.cause || null,
+      });
+      if (mErr) throw new Error(`Grow-out mortality save failed: ${mErr.message}`);
+
+    } else if (logAction.type === 'CREATE_GROWOUT') {
+      // Manual buy-in cohort creation. Litter-born cohorts are spawned
+      // by the litter trigger, not this action.
+      const name = logAction.name;
+      const starting = logAction.starting_count || 0;
+      if (!name || starting <= 0) {
+        throw new Error('CREATE_GROWOUT needs name and starting_count > 0');
+      }
+      const { error: gErr } = await supabase.from('rabbit_growout_groups').insert({
+        farm_id: farmId,
+        name,
+        birth_date: logAction.birth_date || null,
+        starting_count: starting,
+        current_count: starting,
+        status: 'active',
+        notes: logAction.notes || null,
+      });
+      if (gErr) throw new Error(`Grow-out create failed: ${gErr.message}`);
 
     // ─── Phase 6 onboarding actions ────────────────────────────────────
     // CREATE_FARM creates a new farm AND adds the current user as owner

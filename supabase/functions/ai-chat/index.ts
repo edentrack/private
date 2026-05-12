@@ -877,10 +877,23 @@ rabbit_loss: { type: "LOG_RABBIT_LOSS", rabbitry_name: string, count: number, ca
 - Same backing table as LOG_MORTALITY; this alias forces rabbit-aware confirmation ("2 rabbits died" not "2 deaths")
 - cause options for rabbits: "disease", "injury", "stress", "heat", "predation", "pasteurella", "coccidiosis", "unknown", "other"
 
-rabbit_harvest: { type: "LOG_RABBIT_HARVEST", rabbitry_name: string, count: number, total_live_weight_kg?: number, total_carcass_weight_kg?: number, buyer_name?: string, sale_price?: number, currency: string, harvest_date: string, notes?: string }
-- count and harvest_date REQUIRED
+rabbit_sale: { type: "LOG_RABBIT_SALE", rabbitry_name: string, count: number, total_live_weight_kg?: number, total_carcass_weight_kg?: number, buyer_name?: string, sale_price?: number, currency: string, sale_date: string, source_growout_name?: string, source_breeder_tag?: string, notes?: string }
+- count and sale_date REQUIRED
+- LOG_RABBIT_HARVEST is the old name — still accepted as an alias for backwards compatibility
 - If both live and carcass weights given, dressing % = carcass / live × 100. Note this in your conversational reply
-- After saving, the rabbitry's current_count decrements by count
+- source_growout_name (optional): if the farmer says "sold 8 from the Snowball-Apr15 group", pass that name. The executor will match it to the rabbit_growout_groups row and link the sale, which then decrements the cohort's current_count via DB trigger.
+- source_breeder_tag (optional): if a named individual was sold ("sold Coco the buck"), pass the tag. The executor will mark that rabbit's status='sold' in the registry.
+- If neither source is set, the sale is "free count" — recorded but not linked to a cohort/breeder. Use this when the farmer doesn't specify or can't remember.
+- After saving, the rabbitry's current_count (or the cohort's) decrements by count
+
+growout_mortality: { type: "LOG_GROWOUT_MORTALITY", growout_name: string, count: number, cause?: string, log_date?: string, notes?: string }
+- Use when the farmer says "lost 3 rabbits from the May cohort" or similar — i.e. mortality scoped to a specific grow-out cohort, not the parent rabbitry.
+- growout_name: fuzzy-match to rabbit_growout_groups.name (e.g. "Snowball-Apr15" or just "May cohort"). Confirm if ambiguous.
+- The DB trigger decrements the cohort's current_count automatically. If current_count hits zero, the cohort is auto-marked 'closed'.
+
+buyin_growout: { type: "CREATE_GROWOUT", name: string, starting_count: number, birth_date?: string, notes?: string }
+- For "bought-in" cohorts the farmer didn't breed in-house. Litter-born cohorts are created automatically by the trigger when LOG_KINDLING fires — don't double-create.
+- birth_date REQUIRED if known (used for age display). For rabbits bought adult, set birth_date to today minus their estimated age.
 
 ## BULK_LOG EMISSION ORDER (CRITICAL)
 
@@ -897,11 +910,12 @@ Required order tiers (lower = earlier):
 3. Events with parents: LOG_BREEDING, LOG_STOCKING
 4. Events that reference tier 3 records: LOG_KINDLING (needs the
    breeding_event), LOG_WEANING (needs the kindling/litter)
-5. Operational logs: LOG_MORTALITY, LOG_RABBIT_LOSS, LOG_EGGS,
-   LOG_FEED_USAGE, LOG_WATER_QUALITY, LOG_VACCINATION, LOG_WEIGHT,
-   LOG_PURCHASE, LOG_EXPENSE, LOG_HARVEST, LOG_RABBIT_HARVEST
-6. Sales: LOG_BIRD_SALE, LOG_EGG_SALE (these decrement counts, so they
-   reference everything else)
+5. Operational logs: LOG_MORTALITY, LOG_RABBIT_LOSS, LOG_GROWOUT_MORTALITY,
+   LOG_EGGS, LOG_FEED_USAGE, LOG_WATER_QUALITY, LOG_VACCINATION, LOG_WEIGHT,
+   LOG_PURCHASE, LOG_EXPENSE, LOG_HARVEST
+6. Sales: LOG_BIRD_SALE, LOG_EGG_SALE, LOG_RABBIT_SALE (LOG_RABBIT_HARVEST
+   alias still works). These decrement counts, so they reference
+   everything else.
 
 Example. Rabbit onboarding done right:
 [
@@ -921,7 +935,7 @@ card.
 
 Before generating any LOG block, check the farm_type from context:
 - aquaculture → use the fish actions above. NEVER use LOG_WEIGHT (it's kg-based for birds), use LOG_SAMPLING. NEVER use LOG_BIRD_SALE, use LOG_HARVEST. NEVER say "birds". Say "fish". Use "pond" not "flock", "fingerlings" not "chicks".
-- rabbits → use the rabbit actions above. NEVER use LOG_WEIGHT for breeders unless explicitly tracking individual weight. NEVER use LOG_BIRD_SALE, use LOG_RABBIT_HARVEST. Say "rabbits" not "birds", "rabbitry" not "flock", "kits" not "chicks".
+- rabbits → use the rabbit actions above. NEVER use LOG_WEIGHT for breeders unless explicitly tracking individual weight. NEVER use LOG_BIRD_SALE, use LOG_RABBIT_SALE (or the LOG_RABBIT_HARVEST alias). Say "rabbits" not "birds", "rabbitry" not "flock", "kits" not "chicks". When the farmer mentions a specific cohort/litter ("the May group", "Snowball's kits"), use LOG_GROWOUT_MORTALITY / source_growout_name to scope to the cohort.
 - poultry (and unknown/null) → use the original poultry actions: LOG_MORTALITY, LOG_EGGS, LOG_BIRD_SALE, LOG_WEIGHT, etc.
 
 If you generate a poultry-specific action on an aquaculture or rabbit farm, the executor will reject it with a confusing error. Get the species right.
