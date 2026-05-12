@@ -15,6 +15,7 @@ import { SimpleModeProvider } from './contexts/SimpleModeContext';
 import { Flock } from './types/database';
 import { OverflowModal } from './components/billing/OverflowModal';
 import { getMaxFarms, getMaxFlocks, getMaxTeamMembers } from './utils/planGating';
+import { useFarmHeadcount } from './hooks/useFarmHeadcount';
 
 // Auth screens — kept eager (shown before JS finishes loading)
 import { LoginScreen } from './components/auth/LoginScreen';
@@ -1683,17 +1684,16 @@ function AppContent() {
       `}</style>
       <BroadcastBanner />
       <ImpersonationBanner />
-      <OverflowModal
-        open={showOverflow}
+      <OverflowModalWithHeadcount
+        showOverflow={showOverflow}
         onClose={() => setShowOverflow(false)}
         effectiveTier={effectiveTier}
-        items={overflowItems}
+        overflowItems={overflowItems}
         onUpgrade={() => {
           window.location.hash = '#/subscribe';
           setCurrentView('subscribe');
           setShowOverflow(false);
         }}
-        onArchive={async () => setShowOverflow(false)}
       />
       <Suspense fallback={null}>
         <DashboardLayout currentView={currentView} onNavigate={navigateToView}>
@@ -1709,6 +1709,37 @@ function AppContent() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Wrapper that reads the current farm's animal headcount and threads
+ * it into OverflowModal so the user sees the headcount overflow
+ * banner alongside the farm/flock/team archiving choices.
+ *
+ * Kept here (not in OverflowModal itself) because OverflowModal is
+ * deliberately a pure presentational component — the consumer owns
+ * data fetching. Same reason we read flocks/teams/farms upstream.
+ */
+function OverflowModalWithHeadcount(props: {
+  showOverflow: boolean;
+  onClose: () => void;
+  effectiveTier: 'free' | 'pro' | 'enterprise' | 'industry';
+  overflowItems: Parameters<typeof OverflowModal>[0]['items'];
+  onUpgrade: () => void;
+}) {
+  const { currentFarm } = useAuth();
+  const { status } = useFarmHeadcount(currentFarm?.id, props.effectiveTier);
+  return (
+    <OverflowModal
+      open={props.showOverflow}
+      onClose={props.onClose}
+      effectiveTier={props.effectiveTier}
+      items={props.overflowItems}
+      onUpgrade={props.onUpgrade}
+      onArchive={async () => props.onClose()}
+      headcount={status}
+    />
   );
 }
 

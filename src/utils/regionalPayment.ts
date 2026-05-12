@@ -457,7 +457,7 @@ export const COUNTRY_CONFIGS: Record<string, RegionConfig> = {
   RW: makeRegion({ code: 'RW', name: 'Rwanda',        currency: 'RWF', phonePrefix: '+250',
     options: [m.cardFw(), m.mtnMomo(), m.airtelMoney()] }),
   ZM: makeRegion({ code: 'ZM', name: 'Zambia',        currency: 'ZMW', phonePrefix: '+260',
-    options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
+    options: [m.cardFw(), m.mtnMomo(), m.airtelMoney()] }),
   // CFA Franc countries (Central + West Africa). Flutterwave settles
   // XAF and XOF natively, so cards + mobile money both charge in CFA.
   // No USD anywhere — one provider, one currency per region.

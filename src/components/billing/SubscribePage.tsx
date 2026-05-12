@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Check, Crown, Sprout, Leaf, Building2, Globe, ChevronDown, Loader2, AlertCircle, ExternalLink, CreditCard, Smartphone, Building, Wallet } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { supabase } from '../../lib/supabaseClient';
 import {
   detectRegion, ALL_COUNTRIES, RegionConfig, COUNTRY_CONFIGS, FIXED_PRICES,
@@ -69,72 +70,82 @@ interface Plan {
   ctaLabel: string;
 }
 
-function buildPlans(args: { groupTermPluralLower: string }): Plan[] {
-  const { groupTermPluralLower } = args;
+function buildPlans(args: { groupTermPluralLower: string; isFr: boolean }): Plan[] {
+  const { groupTermPluralLower, isFr } = args;
   return [
     {
-      id: 'free', name: 'Starter',
+      id: 'free', name: isFr ? 'Démarrage' : 'Starter',
       icon: <Leaf className="w-5 h-5" />,
       badge: null,
       highlighted: false,
-      audience: 'Just getting started',
-      ctaLabel: 'Stay on Starter',
+      audience: isFr ? 'Pour commencer' : 'Just getting started',
+      ctaLabel: isFr ? 'Rester en Démarrage' : 'Stay on Starter',
       features: [
-        `1 farm · 2 active ${groupTermPluralLower} · 1 user`,
-        'Mortality, weight & expense tracking',
-        'Daily task reminders',
-        'WhatsApp daily summary',
-        'Eden AI · 15 messages/week',
+        isFr
+          ? `1 ferme · 2 ${groupTermPluralLower} actifs · 1 utilisateur`
+          : `1 farm · 2 active ${groupTermPluralLower} · 1 user`,
+        isFr ? 'Suivi mortalité, poids et dépenses' : 'Mortality, weight & expense tracking',
+        isFr ? 'Rappels de tâches quotidiens' : 'Daily task reminders',
+        isFr ? 'Résumé quotidien WhatsApp' : 'WhatsApp daily summary',
+        isFr ? 'Eden AI · 15 messages/semaine' : 'Eden AI · 15 messages/week',
       ],
     },
     {
-      id: 'pro', name: 'Grower',
+      id: 'pro', name: isFr ? 'Producteur' : 'Grower',
       icon: <Sprout className="w-5 h-5" />,
-      badge: 'Most Popular',
+      badge: isFr ? 'Le plus populaire' : 'Most Popular',
       highlighted: true,
-      audience: 'Running a real farm — 50 to 500 animals',
-      ctaLabel: 'Choose Grower',
+      audience: isFr
+        ? 'Une vraie ferme — 50 à 500 animaux'
+        : 'Running a real farm — 50 to 500 animals',
+      ctaLabel: isFr ? 'Choisir Producteur' : 'Choose Grower',
       features: [
-        `2 farms · 4 ${groupTermPluralLower} per farm · 4 team members`,
-        'Eden AI · 100 messages/week',
-        'Photo disease diagnosis · 3/month',
-        'Voice messages to Eden',
-        'Smart receipt & CSV import',
-        'PDF & CSV reports',
-        'Payroll & shift management',
-        'WhatsApp receipts to buyers',
-        'Custom onboarding session',
+        isFr
+          ? `2 fermes · 4 ${groupTermPluralLower} par ferme · 4 membres d'équipe`
+          : `2 farms · 4 ${groupTermPluralLower} per farm · 4 team members`,
+        isFr ? 'Eden AI · 100 messages/semaine' : 'Eden AI · 100 messages/week',
+        isFr ? 'Diagnostic photo de maladie · 3/mois' : 'Photo disease diagnosis · 3/month',
+        isFr ? 'Messages vocaux à Eden' : 'Voice messages to Eden',
+        isFr ? 'Import intelligent reçus + CSV' : 'Smart receipt & CSV import',
+        isFr ? 'Rapports PDF et CSV' : 'PDF & CSV reports',
+        isFr ? 'Paie et gestion des équipes' : 'Payroll & shift management',
+        isFr ? 'Reçus WhatsApp aux acheteurs' : 'WhatsApp receipts to buyers',
+        isFr ? 'Session d\'intégration personnalisée' : 'Custom onboarding session',
       ],
     },
     {
-      id: 'enterprise', name: 'Farm Boss',
+      id: 'enterprise', name: isFr ? 'Chef d\'Exploitation' : 'Farm Boss',
       icon: <Crown className="w-5 h-5" />,
       badge: null,
       highlighted: false,
-      audience: 'Commercial farm with workers',
-      ctaLabel: 'Choose Farm Boss',
+      audience: isFr ? 'Ferme commerciale avec employés' : 'Commercial farm with workers',
+      ctaLabel: isFr ? 'Choisir Chef d\'Exploitation' : 'Choose Farm Boss',
       features: [
-        'Everything in Grower, plus:',
-        `4 farms · 10 ${groupTermPluralLower} per farm · unlimited team`,
-        'Eden AI · 500 messages/week',
-        'Photo disease diagnosis · 10/month',
-        'Priority WhatsApp support',
+        isFr ? 'Tout dans Producteur, plus :' : 'Everything in Grower, plus:',
+        isFr
+          ? `4 fermes · 10 ${groupTermPluralLower} par ferme · équipe illimitée`
+          : `4 farms · 10 ${groupTermPluralLower} per farm · unlimited team`,
+        isFr ? 'Eden AI · 500 messages/semaine' : 'Eden AI · 500 messages/week',
+        isFr ? 'Diagnostic photo de maladie · 10/mois' : 'Photo disease diagnosis · 10/month',
+        isFr ? 'Support WhatsApp prioritaire' : 'Priority WhatsApp support',
       ],
     },
     {
-      id: 'industry', name: 'Industry',
+      id: 'industry', name: isFr ? 'Industrie' : 'Industry',
       icon: <Building2 className="w-5 h-5" />,
-      badge: 'Co-ops & enterprise',
+      badge: isFr ? 'Coopératives + entreprise' : 'Co-ops & enterprise',
       highlighted: false,
-      audience: 'Multiple farms or a cooperative',
-      ctaLabel: 'Contact us',
+      audience: isFr ? 'Plusieurs fermes ou une coopérative' : 'Multiple farms or a cooperative',
+      ctaLabel: isFr ? 'Nous contacter' : 'Contact us',
       features: [
-        'Everything in Farm Boss, plus:',
-        `10 farms · 20 ${groupTermPluralLower} per farm`,
-        'Eden AI · unlimited messages',
-        'Photo disease diagnosis · unlimited',
-        'Direct founder support line',
-        'Cooperative dashboard (coming soon)',
+        isFr ? 'Tout dans Chef d\'Exploitation, plus :' : 'Everything in Farm Boss, plus:',
+        isFr
+          ? `10 fermes · 20 ${groupTermPluralLower} par ferme`
+          : `10 farms · 20 ${groupTermPluralLower} per farm`,
+        isFr ? 'Eden AI · messages illimités' : 'Eden AI · unlimited messages',
+        isFr ? 'Diagnostic photo · illimité' : 'Photo disease diagnosis · unlimited',
+        isFr ? 'Ligne directe avec le fondateur' : 'Direct founder support line',
+        isFr ? 'Tableau de bord coopérative (bientôt)' : 'Cooperative dashboard (coming soon)',
       ],
     },
   ];
@@ -147,9 +158,12 @@ interface SubscribePageProps {
 export function SubscribePage({ onBack }: SubscribePageProps) {
   const { profile, currentFarm, refreshSession } = useAuth();
   const farmSpecies = useFarmSpecies();
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const plans = useMemo(() => buildPlans({
     groupTermPluralLower: farmSpecies.groupTermPlural.toLowerCase(),
-  }), [farmSpecies.id]);
+    isFr,
+  }), [farmSpecies.id, isFr]);
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('quarterly');
   const [region, setRegion] = useState<RegionConfig | null>(null);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
@@ -247,9 +261,9 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   };
 
   const subLabel = (cycle: BillingPeriod): string => {
-    if (cycle === 'monthly') return 'per month';
-    if (cycle === 'quarterly') return 'per 3 months';
-    return 'per year';
+    if (cycle === 'monthly')   return isFr ? 'par mois'    : 'per month';
+    if (cycle === 'quarterly') return isFr ? 'par 3 mois'  : 'per 3 months';
+    return                            isFr ? 'par an'      : 'per year';
   };
 
   const perMonthLine = (planId: Plan['id']): string | null => {
@@ -426,8 +440,16 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   };
 
   const handleSubscribe = (planId: string) => {
-    if (!region) { setError('Detecting your location… please wait a moment and try again.'); return; }
-    if (!selectedMethod) { setError('Pick a payment method to continue.'); return; }
+    if (!region) {
+      setError(isFr
+        ? 'Détection de votre localisation… patientez un instant et réessayez.'
+        : 'Detecting your location… please wait a moment and try again.');
+      return;
+    }
+    if (!selectedMethod) {
+      setError(isFr ? 'Choisissez un mode de paiement pour continuer.' : 'Pick a payment method to continue.');
+      return;
+    }
     setError(null);
     // Route by the SELECTED METHOD'S processor — not the region's
     // legacy default. Card in Nigeria goes to Stripe; Bank Transfer
@@ -445,15 +467,19 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             style={{ background: Y, boxShadow: '0 0 30px rgba(255,221,0,0.3)' }}>
             <Check className="w-8 h-8 text-gray-900" />
           </div>
-          <h1 className="text-2xl font-extrabold text-white mb-2 tracking-tight">You're subscribed!</h1>
-          <p className="text-gray-400 mb-6">Your plan is now active. Welcome to EdenTrack Pro.</p>
+          <h1 className="text-2xl font-extrabold text-white mb-2 tracking-tight">
+            {isFr ? 'Vous êtes abonné !' : "You're subscribed!"}
+          </h1>
+          <p className="text-gray-400 mb-6">
+            {isFr ? 'Votre plan est désormais actif. Bienvenue dans EdenTrack Pro.' : 'Your plan is now active. Welcome to EdenTrack Pro.'}
+          </p>
           <button
             type="button"
             onClick={onBack}
             className="w-full py-3 rounded-2xl font-bold text-gray-900 transition-all hover:scale-[1.02] hover:brightness-110"
             style={{ background: Y, boxShadow: '0 0 30px rgba(255,221,0,0.3)' }}
           >
-            Back to Dashboard
+            {isFr ? 'Retour au tableau de bord' : 'Back to Dashboard'}
           </button>
         </div>
       </div>
@@ -479,10 +505,12 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             <Crown className="w-8 h-8 text-gray-900" />
           </div>
           <h1 className="text-xl font-extrabold text-white mb-2 tracking-tight">
-            Manage your plan on edentrack.app
+            {isFr ? 'Gérer votre plan sur edentrack.app' : 'Manage your plan on edentrack.app'}
           </h1>
           <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-            To change your plan or update payment, visit Edentrack on the web. Your changes sync back to this app within a minute.
+            {isFr
+              ? 'Pour changer de plan ou mettre à jour le paiement, visitez Edentrack sur le web. Vos modifications se synchroniseront dans cette application en une minute.'
+              : 'To change your plan or update payment, visit Edentrack on the web. Your changes sync back to this app within a minute.'}
           </p>
           <button
             type="button"
@@ -491,17 +519,17 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             style={{ background: Y, boxShadow: '0 0 30px rgba(255,221,0,0.3)' }}
           >
             <ExternalLink className="w-4 h-4" />
-            Open Edentrack on the web
+            {isFr ? 'Ouvrir Edentrack sur le web' : 'Open Edentrack on the web'}
           </button>
           <button
             type="button"
             onClick={onBack}
             className="w-full text-gray-400 py-3 rounded-2xl font-semibold hover:text-white hover:bg-white/5 transition-colors"
           >
-            Back
+            {isFr ? 'Retour' : 'Back'}
           </button>
           <p className="text-[11px] text-gray-500 mt-6 leading-relaxed">
-            Your current plan: <span className="font-semibold text-white capitalize">{profile?.subscription_tier || 'Free'}</span>
+            {isFr ? 'Votre plan actuel' : 'Your current plan'}: <span className="font-semibold text-white capitalize">{profile?.subscription_tier || 'Free'}</span>
           </p>
         </div>
       </div>
@@ -519,8 +547,8 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             style={{ background: '#141414', border: '1px solid rgba(255,255,255,0.1)' }}
             onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-white/10">
-              <h3 className="font-bold text-white">Select your country</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Prices shown in local currency</p>
+              <h3 className="font-bold text-white">{isFr ? 'Choisissez votre pays' : 'Select your country'}</h3>
+              <p className="text-xs text-gray-400 mt-0.5">{isFr ? 'Prix affichés en devise locale' : 'Prices shown in local currency'}</p>
             </div>
             <div className="overflow-y-auto flex-1">
               {ALL_COUNTRIES.map(c => {
@@ -552,10 +580,14 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             aria-label="Back">←</button>
           <div className="flex-1">
             <div className="inline-flex items-center gap-2 border border-white/10 text-gray-400 text-[10px] font-bold px-3 py-1 rounded-full mb-2 uppercase tracking-wider">
-              Pricing
+              {isFr ? 'Tarifs' : 'Pricing'}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Choose your plan</h1>
-            <p className="text-gray-400 text-sm mt-1">Cancel anytime · No hidden fees</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              {isFr ? 'Choisissez votre plan' : 'Choose your plan'}
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">
+              {isFr ? 'Annulez à tout moment · Pas de frais cachés' : 'Cancel anytime · No hidden fees'}
+            </p>
           </div>
         </div>
 
@@ -565,12 +597,12 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-200 hover:bg-white/5 transition-colors"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <Globe className="w-4 h-4 text-gray-400" />
-            {region ? `${region.countryName} · ${priceCurrency}` : 'Detecting location…'}
+            {region ? `${region.countryName} · ${priceCurrency}` : (isFr ? 'Détection de la localisation…' : 'Detecting location…')}
             <ChevronDown className="w-3 h-3 text-gray-400" />
           </button>
           {selectedMethod && (
             <span className="text-xs text-gray-500">
-              Pay via <span className="font-medium text-gray-300">
+              {isFr ? 'Payer via' : 'Pay via'} <span className="font-medium text-gray-300">
                 {selectedMethod.processor === 'stripe' ? 'Stripe' : 'Flutterwave'}
               </span>
             </span>
@@ -585,7 +617,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
         {region && region.paymentOptions.length > 0 && (
           <div className="mb-6">
             <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
-              Payment method
+              {isFr ? 'Mode de paiement' : 'Payment method'}
             </p>
             <div className="flex flex-wrap gap-2">
               {region.paymentOptions.map(opt => {
@@ -611,7 +643,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                         active ? 'bg-black/15 text-gray-800' : 'bg-yellow-400/20 text-yellow-300'
                       }`}>
-                        in {opt.chargeCurrency}
+                        {isFr ? 'en' : 'in'} {opt.chargeCurrency}
                       </span>
                     )}
                   </button>
@@ -621,8 +653,12 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             {selectedMethod && (
               <p className="text-[11px] text-gray-500 mt-1.5">
                 {selectedMethod.processor === 'stripe'
-                  ? 'Processed by Stripe. Cards work worldwide.'
-                  : `Processed by Flutterwave in ${priceCurrency}.`}
+                  ? (isFr
+                      ? 'Traité par Stripe. Les cartes fonctionnent partout.'
+                      : 'Processed by Stripe. Cards work worldwide.')
+                  : (isFr
+                      ? `Traité par Flutterwave en ${priceCurrency}.`
+                      : `Processed by Flutterwave in ${priceCurrency}.`)}
               </p>
             )}
           </div>
@@ -639,9 +675,15 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
                   className={`relative px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
                     isActive ? 'bg-white text-gray-900 shadow' : 'text-gray-400 hover:text-gray-200'
                   }`}>
-                  {p === 'monthly' ? 'Monthly' : p === 'quarterly' ? '3 Months' : 'Yearly'}
+                  {p === 'monthly'
+                    ? (isFr ? 'Mensuel' : 'Monthly')
+                    : p === 'quarterly'
+                    ? (isFr ? '3 mois' : '3 Months')
+                    : (isFr ? 'Annuel' : 'Yearly')}
                   {save && !isActive && (
-                    <span className="ml-1.5 text-[10px] font-bold text-yellow-400">Save {save}%</span>
+                    <span className="ml-1.5 text-[10px] font-bold text-yellow-400">
+                      {isFr ? `−${save}%` : `Save ${save}%`}
+                    </span>
                   )}
                 </button>
               );
@@ -661,7 +703,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
           <div className="mb-5 p-3 rounded-2xl flex gap-2 items-center"
             style={{ background: 'rgba(255,221,0,0.08)', border: '1px solid rgba(255,221,0,0.25)' }}>
             <Loader2 className="w-4 h-4 text-yellow-400 animate-spin flex-shrink-0" />
-            <p className="text-yellow-200 text-sm">Verifying your payment…</p>
+            <p className="text-yellow-200 text-sm">{isFr ? 'Vérification du paiement…' : 'Verifying your payment…'}</p>
           </div>
         )}
 
@@ -725,12 +767,14 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                         plan.highlighted ? 'bg-black/20 text-gray-900' : 'bg-yellow-400/20 text-yellow-300'
                       }`}>
-                        Save {save}%
+                        {isFr ? `−${save}%` : `Save ${save}%`}
                       </span>
                     )}
                   </div>
                   {isFree && (
-                    <p className={`text-xs mt-0.5 ${plan.highlighted ? 'text-gray-700' : 'text-gray-500'}`}>forever</p>
+                    <p className={`text-xs mt-0.5 ${plan.highlighted ? 'text-gray-700' : 'text-gray-500'}`}>
+                      {isFr ? 'pour toujours' : 'forever'}
+                    </p>
                   )}
                   {perMo && (
                     <p className={`text-xs mt-0.5 ${plan.highlighted ? 'text-gray-700' : 'text-gray-500'}`}>{perMo}</p>
@@ -759,18 +803,18 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
                         : 'border border-white/15 text-gray-300'
                     }`}
                   >
-                    Current plan
+                    {isFr ? 'Plan actuel' : 'Current plan'}
                   </div>
                 ) : isFree ? (
                   <div className="w-full py-3 text-center text-sm font-semibold rounded-xl border border-white/10 text-gray-500">
-                    Free forever
+                    {isFr ? 'Gratuit pour toujours' : 'Free forever'}
                   </div>
                 ) : isIndustry ? (
                   <a
                     href="mailto:support@edentrack.app?subject=Industry Plan"
                     className="w-full py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 flex items-center justify-center gap-2 bg-blue-600 text-white"
                   >
-                    Contact us <ExternalLink className="w-3 h-3" />
+                    {isFr ? 'Nous contacter' : 'Contact us'} <ExternalLink className="w-3 h-3" />
                   </a>
                 ) : (
                   <button
@@ -786,7 +830,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
                     }`}
                   >
                     {isLoading ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
+                      <><Loader2 className="w-4 h-4 animate-spin" /> {isFr ? 'Traitement…' : 'Processing…'}</>
                     ) : plan.ctaLabel}
                   </button>
                 )}
@@ -802,32 +846,45 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             {isCancelPending ? (
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1">
-                  <p className="font-semibold text-yellow-300">Subscription cancelled</p>
+                  <p className="font-semibold text-yellow-300">
+                    {isFr ? 'Abonnement annulé' : 'Subscription cancelled'}
+                  </p>
                   <p className="text-gray-400 mt-0.5">
-                    Your {currentTier === 'pro' ? 'Grower' : currentTier === 'enterprise' ? 'Farm Boss' : 'Industry'} plan stays active
-                    {expiryDate ? <> until <strong className="text-white">{expiryDate}</strong></> : ' until your billing period ends'}.
+                    {isFr ? 'Votre plan ' : 'Your '}
+                    {currentTier === 'pro'
+                      ? (isFr ? 'Producteur' : 'Grower')
+                      : currentTier === 'enterprise'
+                      ? (isFr ? "Chef d'Exploitation" : 'Farm Boss')
+                      : (isFr ? 'Industrie' : 'Industry')}
+                    {isFr ? ' reste actif' : ' plan stays active'}
+                    {expiryDate
+                      ? <> {isFr ? "jusqu'au" : 'until'} <strong className="text-white">{expiryDate}</strong></>
+                      : (isFr ? " jusqu'à la fin de votre période de facturation" : ' until your billing period ends')}.
                   </p>
                 </div>
                 <button type="button" onClick={reactivateStripe} disabled={cancelLoading}
                   className="shrink-0 px-4 py-2 text-sm font-bold rounded-xl text-gray-900 transition-all hover:brightness-110 disabled:opacity-50 flex items-center gap-2"
                   style={{ background: Y }}>
                   {cancelLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Keep my plan
+                  {isFr ? 'Conserver mon plan' : 'Keep my plan'}
                 </button>
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1">
                   <p className="text-gray-400">
-                    Auto-renews{expiryDate ? <> on <strong className="text-white">{expiryDate}</strong></> : ''}.
-                    Cancel anytime - you keep access until the end of your billing period. No refunds issued.
+                    {isFr ? 'Renouvellement automatique' : 'Auto-renews'}{expiryDate ? <> {isFr ? 'le' : 'on'} <strong className="text-white">{expiryDate}</strong></> : ''}.
+                    {' '}
+                    {isFr
+                      ? "Annulez à tout moment — vous gardez l'accès jusqu'à la fin de votre période de facturation. Aucun remboursement."
+                      : 'Cancel anytime - you keep access until the end of your billing period. No refunds issued.'}
                   </p>
                 </div>
                 <button type="button" onClick={cancelStripe} disabled={cancelLoading}
                   className="shrink-0 px-4 py-2 text-sm font-semibold rounded-xl text-red-300 hover:bg-red-500/10 disabled:opacity-50 flex items-center gap-2"
                   style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
                   {cancelLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  Cancel subscription
+                  {isFr ? "Annuler l'abonnement" : 'Cancel subscription'}
                 </button>
               </div>
             )}
@@ -836,12 +893,14 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
 
         {region && (
           <p className="text-center text-xs text-gray-500 mt-6">
-            Accepted: {region.paymentMethods.join(' · ')} · Prices in {priceCurrency}
-            {priceCurrency !== 'USD' && ' · USD shown for reference'}
+            {isFr ? 'Acceptés' : 'Accepted'}: {region.paymentMethods.join(' · ')} · {isFr ? 'Prix en' : 'Prices in'} {priceCurrency}
+            {priceCurrency !== 'USD' && (isFr ? ' · USD affiché pour référence' : ' · USD shown for reference')}
           </p>
         )}
         <p className="text-center text-xs text-gray-600 mt-2">
-          Cancel anytime. Card, mobile money and bank transfer accepted.
+          {isFr
+            ? 'Annulez à tout moment. Carte, mobile money et virement bancaire acceptés.'
+            : 'Cancel anytime. Card, mobile money and bank transfer accepted.'}
         </p>
       </div>
     </div>

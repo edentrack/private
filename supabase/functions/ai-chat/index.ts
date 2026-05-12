@@ -41,7 +41,7 @@ const ALLOWED_MODEL_OVERRIDES = new Set([MODEL_HAIKU, MODEL_SONNET, MODEL_OPUS])
 const MAX_REQUESTS_PER_MINUTE = 15;
 
 import { FISH_KNOWLEDGE, POULTRY_KNOWLEDGE, RABBIT_KNOWLEDGE } from './knowledge-inline.ts';
-import { buildPlanAwarenessNote, getFarmCap } from '../_shared/planAwareness.ts';
+import { buildPlanAwarenessNote, getFarmCap, getAnimalCap } from '../_shared/planAwareness.ts';
 import { sanitizeDashes } from '../_shared/sanitize.ts';
 
 function selectModel(messages: ChatMessage[]): string {
@@ -853,7 +853,28 @@ fish_loss: { type: "LOG_FISH_LOSS", pond_name: string, count: number, cause?: st
 
 ## SPECIES-AWARE ACTIONS. Rabbits (rabbits farms only)
 
-When farm_type is rabbits, prefer these rabbit-specific actions. Use doe_tag/buck_tag for individual rabbits in the registry; use rabbitry_name (the flock name) for group operations.
+When farm_type is rabbits, prefer these rabbit-specific actions. Use doe_tag/buck_tag for individual rabbits in the registry; use rabbitry_name (the flock name) for the parent rabbitry.
+
+### IMPORTANT: How the rabbit lifecycle actually works (May 2026 rewrite)
+
+Rabbits use a TWO-LAYER model — don't confuse the two:
+
+1. **Rabbitry** — the parent flock (rows in the `flocks` table with type='Meat Rabbits' or 'Breeder Rabbits'). One per physical rabbit house / location. Has a `current_count` field that tracks the breeding stock total.
+
+2. **Grow-out cohort** — a dated batch of offspring (rows in `rabbit_growout_groups`). Each cohort is born on a specific date and ages out together. NEW: a cohort is **AUTO-CREATED** when a litter is logged via LOG_KINDLING. The trigger sets:
+     - name = "<doe_tag> - <Mon DD>"  (e.g. "Snowball - Apr 15")
+     - birth_date = kindling_date
+     - starting_count = kits_born_alive
+     - status = 'active'
+
+   The farmer does NOT manually create cohorts after kindling — the DB does it.
+   For BOUGHT-IN cohorts (rabbits the farmer didn't breed), use CREATE_GROWOUT.
+
+When the user says "the May cohort" / "Snowball's kits" / "the litter we had on Apr 15", they're talking about a `rabbit_growout_groups` row, not the parent rabbitry. Use LOG_GROWOUT_MORTALITY (for losses) or source_growout_name in LOG_RABBIT_SALE (for sales) to target the cohort. The cohort's current_count decrements automatically via DB trigger.
+
+A cohort closes one of two ways:
+- All animals sold (status → 'sold_out')
+- All animals lost to mortality (status → 'closed')
 
 breeding: { type: "LOG_BREEDING", doe_tag: string, buck_tag: string, mating_date: string, notes?: string }
 - doe_tag, buck_tag, mating_date REQUIRED. Ask for any missing
@@ -863,7 +884,8 @@ breeding: { type: "LOG_BREEDING", doe_tag: string, buck_tag: string, mating_date
 kindling (litter): { type: "LOG_KINDLING", doe_tag: string, kits_born_alive: number, kits_born_dead?: number, kindling_date: string, breeding_event_hint?: string, notes?: string }
 - doe_tag, kits_born_alive, kindling_date REQUIRED
 - breeding_event_hint: short phrase (e.g. "April 1 mating") to help match an existing breeding_events row. The executor will fuzzy-match by doe_tag + closest mating_date within 35 days
-- After saving, suggest scheduling a weaning task at +28 days
+- **IMPORTANT**: when kits_born_alive > 0, a DB trigger AUTOMATICALLY creates a grow-out cohort named "<doe_tag> - <Mon DD>". Don't also emit CREATE_GROWOUT.
+- After saving, mention the new cohort by its auto-generated name and suggest scheduling a weaning task at +28 days
 
 weaning: { type: "LOG_WEANING", doe_tag: string, kits_weaned: number, weaning_date: string, notes?: string }
 - Updates the most recent litter for this doe with kits_weaned + weaning_date
@@ -1376,17 +1398,40 @@ Deno.serve(async (req: Request) => {
     // (covered by vitest tests). Edge function and tests share one
     // source of truth so the prompt output can't drift.
     const farmCap = getFarmCap(tier);
+    const animalCap = getAnimalCap(tier);
     const { count: ownedFarmCount } = await supabaseClient
       .from("farms")
       .select("id", { count: "exact", head: true })
       .eq("owner_id", ownerIdForTier);
     const farmsUsed = ownedFarmCount ?? 0;
+
+    // Active animal headcount on the SELECTED farm (when known).
+    // Reads the same `farm_active_headcount` view that drives the
+    // dashboard banner so Eden's plan refusal matches what the UI
+    // shows. Best-effort — falls back to null on view miss / error.
+    let animalsUsed: number | null = null;
+    if (farm_id) {
+      try {
+        const { data: hc } = await supabaseClient
+          .from("farm_active_headcount")
+          .select("current_count")
+          .eq("farm_id", farm_id)
+          .maybeSingle();
+        animalsUsed = (hc as { current_count: number | null } | null)?.current_count ?? 0;
+      } catch {
+        // View not present in older envs — silently fall back to null
+        // so the prompt block just skips animal awareness.
+      }
+    }
+
     const farmCapNote = buildPlanAwarenessNote({
       tier,
       farmsUsed,
       farmCap,
       edenMsgsUsed: usedCount ?? null,
       edenMsgsCap: countLimit ?? null,
+      animalsUsed,
+      animalCap,
     });
 
     // First-message greeting instruction injected when context is available

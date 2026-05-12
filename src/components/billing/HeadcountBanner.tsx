@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmHeadcount } from '../../hooks/useFarmHeadcount';
 import { getEffectiveTier } from '../../utils/planGating';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Props {
   /** Called when the user clicks the upgrade CTA. */
@@ -30,6 +31,8 @@ export function HeadcountBanner({ onUpgrade }: Props) {
   const { currentFarm, profile } = useAuth();
   const tier = getEffectiveTier(profile);
   const { status } = useFarmHeadcount(currentFarm?.id, tier);
+  const { language } = useLanguage();
+  const isFr = language === 'fr';
   const [dismissed, setDismissed] = useState(false);
 
   // Per-farm + per-day dismiss flag. Resets at midnight local time
@@ -74,16 +77,28 @@ export function HeadcountBanner({ onUpgrade }: Props) {
   const Icon = status.state === 'approaching' ? TrendingUp : AlertTriangle;
 
   const headline = status.state === 'approaching'
-    ? `You're at ${status.pct}% of your plan's animal limit`
+    ? (isFr
+        ? `Vous êtes à ${status.pct}% de la limite d'animaux de votre plan`
+        : `You're at ${status.pct}% of your plan's animal limit`)
     : status.state === 'over'
-    ? `Over your plan's animal limit (${status.count.toLocaleString()} / ${status.cap.toLocaleString()})`
-    : `Plan limit exceeded — new flocks blocked`;
+    ? (isFr
+        ? `Au-dessus de la limite d'animaux (${status.count.toLocaleString()} / ${status.cap.toLocaleString()})`
+        : `Over your plan's animal limit (${status.count.toLocaleString()} / ${status.cap.toLocaleString()})`)
+    : (isFr
+        ? `Limite du plan dépassée — nouveaux groupes bloqués`
+        : `Plan limit exceeded — new flocks blocked`);
 
   const subline = status.state === 'approaching'
-    ? `Your farm has ${status.count.toLocaleString()} active animals. Plan cap is ${status.cap.toLocaleString()}. Upgrade now and avoid an interruption when you hit the limit.`
+    ? (isFr
+        ? `Votre ferme a ${status.count.toLocaleString()} animaux actifs. La limite du plan est ${status.cap.toLocaleString()}. Passez à un plan supérieur pour éviter une interruption à la limite.`
+        : `Your farm has ${status.count.toLocaleString()} active animals. Plan cap is ${status.cap.toLocaleString()}. Upgrade now and avoid an interruption when you hit the limit.`)
     : status.state === 'over'
-    ? `Everything still works for now, but new additions will be blocked at 120% of your cap. Upgrade to keep growing.`
-    : `${status.count.toLocaleString()} active animals — well over the ${status.cap.toLocaleString()} cap. Upgrade or archive some flocks to add more.`;
+    ? (isFr
+        ? `Tout fonctionne encore, mais les nouveaux ajouts seront bloqués à 120% de la limite. Passez à un plan supérieur pour continuer à grandir.`
+        : `Everything still works for now, but new additions will be blocked at 120% of your cap. Upgrade to keep growing.`)
+    : (isFr
+        ? `${status.count.toLocaleString()} animaux actifs — bien au-dessus de la limite de ${status.cap.toLocaleString()}. Mettez à niveau ou archivez des groupes pour pouvoir en ajouter d'autres.`
+        : `${status.count.toLocaleString()} active animals — well over the ${status.cap.toLocaleString()} cap. Upgrade or archive some flocks to add more.`);
 
   return (
     <div className={`${palette.bg} border ${palette.border} rounded-2xl p-4 flex items-start gap-3 mb-4`}>
@@ -96,7 +111,7 @@ export function HeadcountBanner({ onUpgrade }: Props) {
           onClick={onUpgrade}
           className={`mt-2 inline-flex items-center gap-1.5 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${palette.btn}`}
         >
-          Upgrade plan <ArrowRight className="w-3 h-3" />
+          {isFr ? 'Améliorer le plan' : 'Upgrade plan'} <ArrowRight className="w-3 h-3" />
         </button>
       </div>
       {status.state !== 'hard_stop' && (
@@ -104,7 +119,7 @@ export function HeadcountBanner({ onUpgrade }: Props) {
           type="button"
           onClick={dismiss}
           className={`${palette.icon} hover:bg-white/30 rounded p-1 -mt-1 -mr-1`}
-          aria-label="Dismiss"
+          aria-label={isFr ? 'Ignorer' : 'Dismiss'}
         >
           <X className="w-3.5 h-3.5" />
         </button>

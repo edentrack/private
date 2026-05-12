@@ -23,6 +23,27 @@ export const FARM_CAP_BY_TIER: Record<PlanTier, number> = {
   industry: 999,
 };
 
+/**
+ * Active animal headcount caps per tier (May 2026 — primary plan
+ * metric). Mirrors `MAX_ACTIVE_ANIMALS_PER_TIER` in
+ * `src/utils/planGating.ts`. -1 = unlimited (Industry).
+ *
+ * Eden uses these to refuse "let's add 500 birds" when the farm is
+ * already at the cap — same refusal pattern as the farm-count cap.
+ */
+export const ANIMAL_CAP_BY_TIER: Record<PlanTier, number> = {
+  free: 100,
+  pro: 1_000,
+  enterprise: 10_000,
+  industry: -1,
+};
+
+export function getAnimalCap(tier: string | null | undefined): number {
+  if (!tier) return ANIMAL_CAP_BY_TIER.free;
+  const t = tier as PlanTier;
+  return ANIMAL_CAP_BY_TIER[t] ?? ANIMAL_CAP_BY_TIER.free;
+}
+
 /** Marketing label shown in Eden's prose so users see consistent copy. */
 export const TIER_DISPLAY_NAME: Record<PlanTier, string> = {
   free: 'Starter',
@@ -61,6 +82,14 @@ export function buildPlanAwarenessNote(opts: {
   /** Optional usage telemetry — surface message limits when known. */
   edenMsgsUsed?: number | null;
   edenMsgsCap?: number | null;
+  /**
+   * Active animal headcount on the user's currently-selected farm.
+   * Sum of `current_count` across active flocks + active
+   * rabbit_growout_groups. Eden uses this with `animalCap` below to
+   * refuse "let's add 500 birds" when the farm is already at the cap.
+   */
+  animalsUsed?: number | null;
+  animalCap?: number | null;
 }): string {
   const tierLabel = getTierDisplayName(opts.tier);
   const { farmsUsed, farmCap } = opts;
@@ -70,6 +99,31 @@ export function buildPlanAwarenessNote(opts: {
   const farmStateLine = atCap
     ? `🚫 The user is AT THEIR LIMIT (${farmsUsed} of ${farmCap}). Adding ANOTHER farm requires either an upgrade OR removing one of the existing farms first.`
     : `✅ The user has ${slotsLeft} farm slot${slotsLeft === 1 ? '' : 's'} available (${farmsUsed} of ${farmCap}). They CAN create a new farm immediately via Settings → My Farms → Add a new farm.`;
+
+  // Animal-headcount block — included only when caller passes
+  // animalsUsed (some prompts that don't yet have the selected farm
+  // skip this so we don't show "0 of 100" which reads weird).
+  const animalBlock = (() => {
+    if (opts.animalsUsed == null || opts.animalCap == null) return '';
+    const used = opts.animalsUsed;
+    const cap = opts.animalCap;
+    if (cap === -1) {
+      // Industry tier — no cap. Tell Eden so it never invents one.
+      return `\n- Active animals: **${used.toLocaleString()}** (no cap on Industry).`;
+    }
+    const pct = cap > 0 ? Math.round((used / cap) * 100) : 0;
+    const overHard = pct >= 120;
+    const overCap  = pct >= 100 && pct < 120;
+    const near     = pct >= 80 && pct < 100;
+    const status = overHard
+      ? `🚫 HARD STOP — well over cap. Don't suggest creating new flocks/cohorts; nudge toward upgrading or archiving.`
+      : overCap
+      ? `⚠️ Over the cap (still operable, but new additions will block at 120%). Mention the upgrade once if relevant.`
+      : near
+      ? `📈 Approaching the cap. Fine to keep adding small numbers; flag the limit only if the user is planning a big buy-in.`
+      : `✅ Plenty of headroom.`;
+    return `\n- Active animals: **${used.toLocaleString()} of ${cap.toLocaleString()}** (${pct}%). ${status}`;
+  })();
 
   const msgUsageLine =
     typeof opts.edenMsgsUsed === 'number' && typeof opts.edenMsgsCap === 'number'
@@ -87,7 +141,7 @@ export function buildPlanAwarenessNote(opts: {
 ## PLAN AWARENESS — read before suggesting any "create a new" action
 
 The user is on the **${tierLabel}** plan.
-- Farms in use: **${farmsUsed} of ${farmCap}**.${msgUsageLine}
+- Farms in use: **${farmsUsed} of ${farmCap}**.${msgUsageLine}${animalBlock}
 
 ${farmStateLine}
 
