@@ -27,6 +27,12 @@ interface ExportEntry {
   authorName: string;
   author_role: string | null;
   created_at: string;
+  /**
+   * The event date (occurred_at). Optional for backwards compat —
+   * if missing we fall back to created_at, which matches behavior
+   * before backdating was supported.
+   */
+  occurred_at?: string;
   photo_urls: string[];
 }
 
@@ -79,7 +85,7 @@ export async function exportJournalToPdf(args: ExportArgs): Promise<void> {
   const { start, end, label } = rangeBounds(args.range);
 
   const inRange = args.entries.filter(e => {
-    const t = new Date(e.created_at);
+    const t = new Date(e.occurred_at ?? e.created_at);
     return t >= start && t <= end;
   });
 
@@ -91,7 +97,7 @@ export async function exportJournalToPdf(args: ExportArgs): Promise<void> {
   // header followed by entries.
   const buckets: Record<string, ExportEntry[]> = {};
   for (const e of inRange) {
-    const day = new Date(e.created_at).toLocaleDateString('en-CA');
+    const day = new Date(e.occurred_at ?? e.created_at).toLocaleDateString('en-CA');
     (buckets[day] = buckets[day] ?? []).push(e);
   }
   const days = Object.entries(buckets).sort(([a], [b]) => (a < b ? 1 : -1));
@@ -159,7 +165,7 @@ export async function exportJournalToPdf(args: ExportArgs): Promise<void> {
     y += 16;
 
     for (const e of dayEntries) {
-      const time = new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const time = new Date(e.occurred_at ?? e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const flags: string[] = [];
       if (e.is_pinned) flags.push('📎');
       if (e.is_important) flags.push('★');
