@@ -22,6 +22,7 @@ import { AquaculturePondWidget } from './AquaculturePondWidget';
 import { AquaCycleWidget } from './AquaCycleWidget';
 import { WeatherWidget } from './WeatherWidget';
 import { hasFeatureAccess } from '../../utils/planGating';
+import { HeadcountBanner } from '../billing/HeadcountBanner';
 import { canViewAnalytics } from '../../utils/permissions';
 // shouldHideFinancialData is now applied per-child component, not at this layer.
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -570,6 +571,12 @@ export function DashboardHome({ onNavigate, onSelectFlock: _onSelectFlock }: Das
 
   return (
     <div className="space-y-3 md:space-y-5">
+      {/* Headcount cap banner — shows when the farm is approaching or
+          exceeding the plan's animal limit. Sits above mortality
+          alerts because plan-tier issues block more actions than a
+          single bad day. Self-dismissable for non-hard_stop states. */}
+      <HeadcountBanner onUpgrade={() => onNavigate('subscribe')} />
+
       {/* Mortality spike alert banners */}
       {spikeAlerts.map(alert => (
         <div key={alert.id} className="bg-red-50 border border-red-300 rounded-xl p-4 flex items-start gap-3 animate-fade-in">

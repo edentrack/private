@@ -16,7 +16,70 @@ export function atFarmLimit(tier: string | undefined | null, ownedFarmCount: num
   return ownedFarmCount >= getMaxFarms(tier);
 }
 
-// Active flocks PER FARM limit per subscription tier — locked matrix May 2026
+// ── Active animal headcount caps (May 2026 — primary plan metric) ────
+//
+// Why headcount: a rabbit doe can fill the flock-count cap by herself
+// in 3 months by kindling monthly. Counting flocks/cohorts doesn't
+// match how a farm grows — counting LIVE animals does. The plan card
+// copy already says "50 to 500 animals" / "Commercial farm" — this
+// matches enforcement to that copy.
+//
+// We count `current_count` across all active flocks +
+// rabbit_growout_groups per FARM (one farm at a time — multi-farm
+// owners hit the per-farm cap independently).
+//
+// Behavior thresholds (see headcountStatus below):
+//   - Under cap        → no banner, full freedom
+//   - 80–100% of cap   → amber "approaching limit" banner
+//   - 100–120% of cap  → red "above plan limit" banner, still works
+//   - >120% of cap     → hard stop on new additions
+//
+// -1 = unlimited (Industry).
+export const MAX_ACTIVE_ANIMALS_PER_TIER: Record<string, number> = {
+  free:       100,
+  pro:        1_000,    // Grower
+  enterprise: 10_000,   // Farm Boss
+  industry:   -1,       // unlimited
+};
+
+export function getMaxActiveAnimals(tier: string | undefined | null): number {
+  return MAX_ACTIVE_ANIMALS_PER_TIER[tier ?? 'free'] ?? 100;
+}
+
+export type HeadcountStatus =
+  | { state: 'ok';            cap: number; count: number; pct: number }
+  | { state: 'approaching';   cap: number; count: number; pct: number }
+  | { state: 'over';          cap: number; count: number; pct: number }
+  | { state: 'hard_stop';     cap: number; count: number; pct: number }
+  | { state: 'unlimited';     cap: -1;     count: number; pct: 0    };
+
+/**
+ * Map (tier, current animal count) → behavior state used by the banner
+ * + the OverflowModal guard. Industry returns 'unlimited' regardless.
+ *
+ * Anchors:
+ *   pct < 80   → ok           (no UI)
+ *   80–99      → approaching  (amber banner, upgrade CTA)
+ *   100–119    → over         (red banner, still allow ops)
+ *   ≥ 120      → hard_stop    (red banner, block new additions)
+ */
+export function headcountStatus(
+  tier: string | undefined | null,
+  count: number,
+): HeadcountStatus {
+  const cap = getMaxActiveAnimals(tier);
+  if (cap === -1) return { state: 'unlimited', cap: -1, count, pct: 0 };
+  const pct = cap > 0 ? Math.round((count / cap) * 100) : 0;
+  if (pct >= 120) return { state: 'hard_stop',   cap, count, pct };
+  if (pct >= 100) return { state: 'over',        cap, count, pct };
+  if (pct >= 80)  return { state: 'approaching', cap, count, pct };
+  return            { state: 'ok',           cap, count, pct };
+}
+
+// Active flocks PER FARM limit per subscription tier — kept as a
+// secondary safety net so a Starter farmer doesn't open 50 flocks
+// with 1 bird each to game the headcount cap. Generous values; the
+// real enforcement is via MAX_ACTIVE_ANIMALS_PER_TIER above.
 export const MAX_FLOCKS_PER_TIER: Record<string, number> = {
   free:       2,
   pro:        4,    // Grower
