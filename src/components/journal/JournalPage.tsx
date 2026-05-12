@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Plus, Paperclip, Star, Trash2, EyeOff, Sparkles,
-  Search, Download, FileText, ChevronRight,
+  Search, Download, FileText, ChevronRight, Calendar, X as XIcon,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -53,10 +53,55 @@ interface JournalEntry {
   is_private: boolean;
   is_important: boolean;
   created_at: string;
+  /**
+   * When the event actually happened (user-editable, defaults to
+   * created_at for legacy rows). All date grouping + filtering reads
+   * this column. created_at is preserved for audit only.
+   */
+  occurred_at: string;
   author?: { full_name: string | null; email: string | null } | null;
 }
 
 type TabKey = 'activity' | 'notes' | 'all';
+
+/**
+ * Date-range presets for the journal filter. "All" = no bound. The
+ * custom range opens two date pickers. The defaults below match the
+ * way farmers actually navigate their journals — most just want
+ * "today", "this week", or "everything".
+ */
+type DateRangePreset = 'all' | 'today' | 'week' | 'month' | 'custom';
+
+function rangeBounds(preset: DateRangePreset, customFrom: string, customTo: string): { gte?: string; lte?: string } {
+  const now = new Date();
+  if (preset === 'today') {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    return { gte: start.toISOString(), lte: end.toISOString() };
+  }
+  if (preset === 'week') {
+    // Last 7 days, inclusive of today.
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6, 0, 0, 0);
+    return { gte: start.toISOString() };
+  }
+  if (preset === 'month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+    return { gte: start.toISOString() };
+  }
+  if (preset === 'custom') {
+    const out: { gte?: string; lte?: string } = {};
+    if (customFrom) {
+      const [y, m, d] = customFrom.split('-').map(n => parseInt(n, 10));
+      if (y && m && d) out.gte = new Date(y, m - 1, d, 0, 0, 0).toISOString();
+    }
+    if (customTo) {
+      const [y, m, d] = customTo.split('-').map(n => parseInt(n, 10));
+      if (y && m && d) out.lte = new Date(y, m - 1, d, 23, 59, 59).toISOString();
+    }
+    return out;
+  }
+  return {};
+}
 
 const ENTRY_TYPE_LABELS: Record<string, string> = {
   observation: 'Observation', financial: 'Financial', milestone: 'Milestone',
@@ -80,6 +125,14 @@ export function JournalPage() {
   const [showCompose, setShowCompose] = useState(false);
   const [filterType, setFilterType] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  // Date-range filter state. Default is 'all' so the journal still
+  // opens with the full history visible — same as before this
+  // feature landed. The custom-from/to pair only matters when
+  // dateRange === 'custom'.
+  const [dateRange, setDateRange] = useState<DateRangePreset>('all');
+  const [customFrom, setCustomFrom] = useState<string>('');
+  const [customTo, setCustomTo] = useState<string>('');
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   const farmId = currentFarm?.id;
   const farmName = currentFarm?.name ?? 'My Farm';
@@ -94,17 +147,23 @@ export function JournalPage() {
         .select(`
           id, farm_id, flock_id, author_id, author_role, author_kind, channel,
           entry_type, title, body, metadata, photo_urls, is_pinned, is_private,
-          is_important, created_at,
+          is_important, created_at, occurred_at,
           author:profiles!journal_entries_author_id_fkey (full_name, email)
         `)
         .eq('farm_id', farmId)
         .eq('is_deleted', false)
         .order('is_pinned', { ascending: false })
+        .order('occurred_at', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(200);
       if (tab !== 'all') q = q.eq('channel', tab);
       if (filterType) q = q.eq('entry_type', filterType);
       if (searchTerm.trim()) q = q.ilike('body', `%${searchTerm.trim()}%`);
+      // Date-range filter. We bound on occurred_at because that's the
+      // event date, not the audit timestamp. "Today" = events today.
+      const bounds = rangeBounds(dateRange, customFrom, customTo);
+      if (bounds.gte) q = q.gte('occurred_at', bounds.gte);
+      if (bounds.lte) q = q.lte('occurred_at', bounds.lte);
       const { data, error } = await q;
       if (error) throw error;
       setEntries((data as unknown as JournalEntry[]) ?? []);
@@ -113,7 +172,7 @@ export function JournalPage() {
     } finally {
       setLoading(false);
     }
-  }, [farmId, tab, filterType, searchTerm, toast]);
+  }, [farmId, tab, filterType, searchTerm, dateRange, customFrom, customTo, toast]);
 
   useEffect(() => { loadEntries(); }, [loadEntries]);
 
@@ -182,11 +241,13 @@ export function JournalPage() {
     }
   };
 
-  // Group by day for the page-header style date stamps.
+  // Group by day for the page-header style date stamps. Bucket by
+  // occurred_at (the event date) so backdated entries sort under the
+  // correct page header, not under the day they were written.
   const grouped = useMemo(() => {
     const buckets: Record<string, JournalEntry[]> = {};
     entries.forEach(e => {
-      const day = new Date(e.created_at).toLocaleDateString('en-CA');
+      const day = new Date(e.occurred_at ?? e.created_at).toLocaleDateString('en-CA');
       (buckets[day] = buckets[day] ?? []).push(e);
     });
     return Object.entries(buckets).sort(([a], [b]) => (a < b ? 1 : -1));
@@ -279,6 +340,68 @@ export function JournalPage() {
             />
           </div>
         </div>
+
+        {/* Date-range filter row. Five preset buttons + a custom
+            range. Defaults to All so the journal opens with full
+            history. Custom opens two date inputs underneath. */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-gray-500 font-semibold pr-1">
+            <Calendar className="w-3.5 h-3.5" /> Date
+          </span>
+          {([
+            { key: 'all',    label: 'All' },
+            { key: 'today',  label: 'Today' },
+            { key: 'week',   label: 'This week' },
+            { key: 'month',  label: 'This month' },
+            { key: 'custom', label: 'Custom' },
+          ] as const).map(r => {
+            const active = dateRange === r.key;
+            return (
+              <button
+                key={r.key}
+                onClick={() => {
+                  setDateRange(r.key);
+                  setShowCustomPicker(r.key === 'custom');
+                  if (r.key !== 'custom') { setCustomFrom(''); setCustomTo(''); }
+                }}
+                className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                  active
+                    ? 'bg-[#3D5F42] text-white'
+                    : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                {r.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {dateRange === 'custom' && showCustomPicker && (
+          <div className="flex flex-wrap items-center gap-2 bg-white border border-gray-200 rounded-lg p-2.5">
+            <label className="text-[11px] text-gray-500 font-semibold">From</label>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={e => setCustomFrom(e.target.value)}
+              className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-[#3D5F42]"
+            />
+            <label className="text-[11px] text-gray-500 font-semibold">To</label>
+            <input
+              type="date"
+              value={customTo}
+              onChange={e => setCustomTo(e.target.value)}
+              className="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-[#3D5F42]"
+            />
+            {(customFrom || customTo) && (
+              <button
+                onClick={() => { setCustomFrom(''); setCustomTo(''); }}
+                className="text-[11px] text-gray-500 hover:text-gray-700 flex items-center gap-0.5"
+              >
+                <XIcon className="w-3 h-3" /> clear
+              </button>
+            )}
+          </div>
+        )}
 
         {filterType && (
           <button

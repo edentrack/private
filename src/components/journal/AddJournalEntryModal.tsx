@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Check, EyeOff, Star, ImagePlus, Loader2, AtSign } from 'lucide-react';
+import { X, Check, EyeOff, Star, ImagePlus, Loader2, AtSign, Calendar } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -96,6 +96,14 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
   const [isPrivate, setIsPrivate] = useState(false);
   const [isImportant, setIsImportant] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Backdating support — the date the entry "happened on". Defaults
+  // to today (auto-fill) so the happy path is one tap. Farmer can
+  // override to log something they forgot to record yesterday.
+  // Stored as YYYY-MM-DD; converted to ISO timestamp at save time.
+  const [occurredOn, setOccurredOn] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   // Photo upload state. We stage files locally, upload on Save, and
   // attach the resulting public URLs to the journal_entries.photo_urls
   // array. Reusing the existing `inventory-photos` bucket so we don't
@@ -233,6 +241,17 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
       // we skip it but keep going — the user can still save the note.
       const photoUrls = await uploadPhotos();
 
+      // Convert the user-picked YYYY-MM-DD to an ISO timestamp at noon
+      // local time so the entry sorts cleanly within its day regardless
+      // of timezone. If the user kept today's date, this is effectively
+      // the same as "now" for grouping purposes.
+      const occurredAtIso = (() => {
+        const [y, m, d] = occurredOn.split('-').map(n => parseInt(n, 10));
+        if (!y || !m || !d) return undefined;
+        const dt = new Date(y, m - 1, d, 12, 0, 0);
+        return dt.toISOString();
+      })();
+
       const id = await logNote({
         farmId,
         flockId,
@@ -243,6 +262,7 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
         isPrivate,
         isImportant,
         actorRole,
+        occurredAt: occurredAtIso,
       });
       if (!id) {
         toast.error('Could not save the note. Try again.');
@@ -338,6 +358,28 @@ export function AddJournalEntryModal({ farmId, flockId, onClose, onSaved }: Prop
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Date the event happened on. Auto-fills today so the
+              common case is one tap, but the farmer can backdate
+              when logging something they forgot earlier. Never
+              future-dates — picker max is today. */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-gray-500" />
+              When did this happen?
+            </label>
+            <input
+              type="date"
+              value={occurredOn}
+              max={(() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              })()}
+              onChange={e => setOccurredOn(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#3D5F42]"
+            />
+            <p className="text-[10px] text-gray-400 mt-0.5">Auto-filled to today. Change it to backdate.</p>
           </div>
 
           {/* Type selector — defaults to Observation. The full list lets

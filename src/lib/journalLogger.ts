@@ -125,29 +125,42 @@ interface LogNoteArgs {
   isPrivate?: boolean;
   isImportant?: boolean;
   actorRole: AuthorRole;
+  /**
+   * The date/time the event actually happened. Lets the composer
+   * backdate notes ("I'm logging Tuesday's mortality on Wednesday").
+   * Defaults server-side to now() when omitted, so existing callers
+   * keep working without change.
+   */
+  occurredAt?: string;
 }
 
 export async function logNote(args: LogNoteArgs): Promise<string | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
+    const insertRow: Record<string, unknown> = {
+      farm_id: args.farmId,
+      flock_id: args.flockId ?? null,
+      author_id: user.id,
+      author_role: args.actorRole,
+      author_kind: 'user',
+      channel: 'notes',
+      entry_type: args.entryType,
+      title: args.title ?? null,
+      body: args.body,
+      photo_urls: args.photoUrls ?? [],
+      is_private: args.isPrivate ?? false,
+      is_important: args.isImportant ?? false,
+      metadata: {},
+    };
+    // Only include occurred_at when the caller explicitly set it.
+    // Otherwise let the DB default (now()) apply — keeps backwards
+    // compat with old clients that don't know about the field yet.
+    if (args.occurredAt) insertRow.occurred_at = args.occurredAt;
+
     const { data, error } = await supabase
       .from('journal_entries')
-      .insert({
-        farm_id: args.farmId,
-        flock_id: args.flockId ?? null,
-        author_id: user.id,
-        author_role: args.actorRole,
-        author_kind: 'user',
-        channel: 'notes',
-        entry_type: args.entryType,
-        title: args.title ?? null,
-        body: args.body,
-        photo_urls: args.photoUrls ?? [],
-        is_private: args.isPrivate ?? false,
-        is_important: args.isImportant ?? false,
-        metadata: {},
-      })
+      .insert(insertRow)
       .select('id')
       .single();
     if (error) {

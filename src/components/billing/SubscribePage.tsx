@@ -1,17 +1,28 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Check, Crown, Sprout, Leaf, Building2, Globe, ChevronDown, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Check, Crown, Sprout, Leaf, Building2, Globe, ChevronDown, Loader2, AlertCircle, ExternalLink, CreditCard, Smartphone, Building, Wallet } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFarmSpecies } from '../../hooks/useSpecies';
 import { supabase } from '../../lib/supabaseClient';
 import {
   detectRegion, ALL_COUNTRIES, RegionConfig, COUNTRY_CONFIGS, FIXED_PRICES,
+  PaymentOption, PaymentMethodKind,
   getEffectivePrice as getPrice, getPriceCurrency, formatPrice,
 } from '../../utils/regionalPayment';
 import { openInAppBrowser } from '../../lib/capacitorNative';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 
-const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
+// Icon per payment method kind. The card kind covers Apple Pay / Google
+// Pay too — the label distinguishes them in the tile.
+function methodIcon(kind: PaymentMethodKind) {
+  switch (kind) {
+    case 'card':         return <CreditCard className="w-4 h-4" />;
+    case 'mobile_money': return <Smartphone className="w-4 h-4" />;
+    case 'bank':         return <Building className="w-4 h-4" />;
+    case 'ussd':         return <Smartphone className="w-4 h-4" />;
+    case 'wallet':       return <Wallet className="w-4 h-4" />;
+  }
+}
 
 /*
  * IN-APP SUBSCRIBE PAGE (May 2026 redesign)
@@ -24,8 +35,9 @@ const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '';
  *
  * What's different from landing:
  *   - This page is rendered to a SIGNED-IN user, so checkouts post
- *     auth-required edge functions (paystack-checkout, stripe-checkout,
- *     flutterwave-payment) instead of the guest endpoints.
+ *     auth-required edge functions (stripe-checkout, flutterwave-payment)
+ *     instead of the guest endpoints. Paystack is no longer used
+ *     anywhere — cards go to Stripe, local methods to Flutterwave.
  *   - The "current plan" card shows "Current plan" instead of a Subscribe
  *     button, and Stripe subscribers see a cancel / reactivate block.
  *   - The country picker is a modal (the landing page autoselects via
@@ -146,6 +158,19 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
   const [success, setSuccess] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelDone, setCancelDone] = useState(false);
+  // Selected payment method id (per region.paymentOptions). When the
+  // user picks a method, the prices below switch to the method's
+  // currency (e.g. "Card" in Nigeria shows USD because Stripe charges
+  // in USD; "Bank Transfer" shows NGN because Flutterwave handles it
+  // locally). Defaults to the first option for the detected country.
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+
+  const selectedMethod: PaymentOption | null = useMemo(() => {
+    if (!region) return null;
+    return region.paymentOptions.find(o => o.id === selectedMethodId)
+      ?? region.paymentOptions[0]
+      ?? null;
+  }, [region, selectedMethodId]);
 
   const currentTier = profile?.subscription_tier || 'free';
   const isStripeSubscriber = !!(profile?.stripe_subscription_id);
@@ -166,6 +191,11 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
     }
     setRegion(detected);
   }, [currentFarm?.currency_code]);
+
+  // Reset the method selection when the region changes (country picker).
+  useEffect(() => {
+    if (region) setSelectedMethodId(region.paymentOptions[0]?.id ?? null);
+  }, [region?.countryCode]);
 
   // Handle payment gateway returns (Stripe + Flutterwave)
   useEffect(() => {
@@ -196,7 +226,17 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
     }
   }, []);
 
-  const priceCurrency = region ? getPriceCurrency(region) : 'USD';
+  // The displayed price currency follows the SELECTED METHOD. Card in
+  // an African country shows USD (because Stripe will charge USD);
+  // local methods show the country's native currency.
+  const priceCurrency = (() => {
+    if (!region) return 'USD';
+    const regionCur = getPriceCurrency(region);
+    if (selectedMethod?.chargeCurrency && FIXED_PRICES[selectedMethod.chargeCurrency]) {
+      return selectedMethod.chargeCurrency;
+    }
+    return regionCur;
+  })();
 
   // ── Price display helpers (mirror landing page's landingPrice/perMonthLine/savingsPct) ──
 
@@ -231,64 +271,9 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
 
   const usdAmount = (planId: Plan['id']): number => getPrice(planId, billingPeriod, 'USD');
 
-  // ── Paystack ──────────────────────────────────────────────────────────
-  const startPaystack = useCallback(async (plan: string) => {
-    setError(null);
-    setLoading(plan);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not signed in');
-
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack-checkout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'initialize', plan, billing_period: billingPeriod, currency: priceCurrency, fx_rate: 1 }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create payment');
-
-      await openPaystackPopup(data.access_code, data.reference, session.access_token);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(null);
-    }
-  }, [billingPeriod, priceCurrency]);
-
-  const openPaystackPopup = (accessCode: string, reference: string, token: string) =>
-    new Promise<void>(resolve => {
-      const doOpen = () => {
-        const PS = (window as any).PaystackPop;
-        if (!PS) { resolve(); return; }
-        PS.setup({
-          key: PAYSTACK_PUBLIC_KEY,
-          accessCode,
-          onClose: () => { setLoading(null); resolve(); },
-          callback: async () => { await verifyPaystack(reference, token); resolve(); },
-        }).openIframe();
-      };
-      if ((window as any).PaystackPop) { doOpen(); return; }
-      const s = document.createElement('script');
-      s.src = 'https://js.paystack.co/v1/inline.js';
-      s.onload = doOpen;
-      s.onerror = () => resolve(); // resolve so loading is cleared in finally
-      document.head.appendChild(s);
-    });
-
-  const verifyPaystack = async (reference: string, token: string) => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/paystack-checkout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify', reference }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Verification failed');
-      setSuccess(true);
-      await refreshSession?.();
-    } catch (err: any) {
-      setError(`Payment received but could not verify. Contact support - ref: ${reference}`);
-    }
-  };
+  // Paystack code removed — no country routes to Paystack any more.
+  // The processor union is `'stripe' | 'flutterwave'` and routing is
+  // driven by the selected payment method's processor field.
 
   // ── Stripe ────────────────────────────────────────────────────────────
   const startStripe = useCallback(async (plan: string) => {
@@ -442,9 +427,12 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
 
   const handleSubscribe = (planId: string) => {
     if (!region) { setError('Detecting your location… please wait a moment and try again.'); return; }
+    if (!selectedMethod) { setError('Pick a payment method to continue.'); return; }
     setError(null);
-    if (region.processor === 'paystack') startPaystack(planId);
-    else if (region.processor === 'stripe') startStripe(planId);
+    // Route by the SELECTED METHOD'S processor — not the region's
+    // legacy default. Card in Nigeria goes to Stripe; Bank Transfer
+    // in Nigeria goes to Flutterwave. Both within the same region.
+    if (selectedMethod.processor === 'stripe') startStripe(planId);
     else startFlutterwave(planId);
   };
 
@@ -572,7 +560,7 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
         </div>
 
         {/* Region selector */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <button type="button" onClick={() => setShowCountryPicker(true)}
             className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-200 hover:bg-white/5 transition-colors"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -580,12 +568,65 @@ export function SubscribePage({ onBack }: SubscribePageProps) {
             {region ? `${region.countryName} · ${priceCurrency}` : 'Detecting location…'}
             <ChevronDown className="w-3 h-3 text-gray-400" />
           </button>
-          {region && (
+          {selectedMethod && (
             <span className="text-xs text-gray-500">
-              Pay via <span className="font-medium text-gray-300">{region.processorLabel}</span>
+              Pay via <span className="font-medium text-gray-300">
+                {selectedMethod.processor === 'stripe' ? 'Stripe' : 'Flutterwave'}
+              </span>
             </span>
           )}
         </div>
+
+        {/* Payment method selector. Always visible above the plan
+            cards so the user understands which currency they're
+            looking at (card = USD in Africa, local methods = local
+            currency). Picking a method updates `selectedMethodId`
+            and the plan card prices re-render. */}
+        {region && region.paymentOptions.length > 0 && (
+          <div className="mb-6">
+            <p className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-2">
+              Payment method
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {region.paymentOptions.map(opt => {
+                const active = selectedMethod?.id === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSelectedMethodId(opt.id)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                      active ? 'text-gray-900 shadow' : 'text-gray-200 hover:bg-white/10'
+                    }`}
+                    style={active
+                      ? { background: Y }
+                      : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }
+                    }
+                  >
+                    <span className={active ? 'text-gray-900' : 'text-gray-300'}>
+                      {methodIcon(opt.kind)}
+                    </span>
+                    <span>{opt.label}</span>
+                    {opt.chargeCurrency && opt.chargeCurrency !== region.currency && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        active ? 'bg-black/15 text-gray-800' : 'bg-yellow-400/20 text-yellow-300'
+                      }`}>
+                        in {opt.chargeCurrency}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedMethod && (
+              <p className="text-[11px] text-gray-500 mt-1.5">
+                {selectedMethod.processor === 'stripe'
+                  ? 'Processed by Stripe. Cards work worldwide.'
+                  : `Processed by Flutterwave in ${priceCurrency}.`}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Billing period toggle */}
         <div className="flex justify-center mb-10">

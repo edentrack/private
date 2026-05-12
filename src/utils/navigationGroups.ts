@@ -63,7 +63,8 @@ const GROUP_MEMBERSHIP: Record<NavigationGroupId, ReadonlyArray<ModuleName>> = {
     // the nav menu while leaving those two routes registered.
     'pond-check',
     // Rabbits-specific
-    'rabbit-harvest',
+    'rabbit-sales',
+    'rabbit-growout',
     'breeding-events',
     'litters',
     'rabbit-registry',

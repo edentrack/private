@@ -1,12 +1,145 @@
+/**
+ * Payment routing — May 2026 rewrite.
+ *
+ * Until now each country had a single `processor` (stripe OR
+ * flutterwave) and a single global default. The new model:
+ *
+ *   Per country we declare a list of `paymentOptions`. Each option
+ *   has its OWN processor:
+ *
+ *     - CARD payments  → Stripe   (works globally for Visa/MC).
+ *                        African cards charge in USD via Stripe.
+ *     - LOCAL methods  → Flutterwave (mobile money, bank transfer,
+ *                        USSD, wallets). Charges in the local
+ *                        currency the country natively uses.
+ *
+ *   The user picks a method in the Subscribe screen; we route to
+ *   the matching processor with the option's `chargeCurrency`.
+ *
+ * The legacy `processor` / `processorLabel` / `paymentMethods` fields
+ * are kept here as DERIVED values (computed from the first option in
+ * paymentOptions) so older readers — landing page price labels, etc.
+ * — keep working unchanged during the transition.
+ */
+export type PaymentProcessor = 'stripe' | 'flutterwave';
+
+export type PaymentMethodKind =
+  | 'card'           // Visa / Mastercard / Apple Pay / Google Pay
+  | 'mobile_money'   // MTN MoMo, M-Pesa, Orange Money, Airtel Money, etc.
+  | 'bank'           // Bank transfer, EFT, SEPA, iDEAL
+  | 'ussd'           // USSD code (Nigeria etc.)
+  | 'wallet';        // Vodafone Cash, Fawry, EcoCash, Wave, etc.
+
+export interface PaymentOption {
+  /** Stable id, unique within a country. Used by the UI for select state. */
+  id: string;
+  /** Human label shown on the method tile, e.g. "Card (Visa / Mastercard)". */
+  label: string;
+  /** Which processor handles checkout when this method is picked. */
+  processor: PaymentProcessor;
+  /** Coarse method type — drives icon and grouping in the UI. */
+  kind: PaymentMethodKind;
+  /**
+   * If set, the checkout charges in this currency, NOT the country's
+   * default. Used for African cards → Stripe charges in USD because
+   * Stripe doesn't settle in most African local currencies. Local
+   * methods always charge in the country's native currency.
+   */
+  chargeCurrency?: string;
+}
+
 export interface RegionConfig {
   countryCode: string;
   countryName: string;
+  /** Native pricing currency. Mobile-money / bank methods charge in this. */
   currency: string;
-  processor: 'paystack' | 'stripe' | 'flutterwave';
-  processorLabel: string;
-  paymentMethods: string[];
+  /** Ordered list — first option is the default selection. */
+  paymentOptions: PaymentOption[];
   phonePrefix: string;
   needsPhone: boolean;
+
+  // ── Derived (legacy) — DO NOT add new readers, prefer paymentOptions ──
+  /** First option's processor. Old callers (landing page) still read this. */
+  processor: PaymentProcessor;
+  /** "Card / Mobile Money" — human one-liner from option labels. */
+  processorLabel: string;
+  /** Flat string list (option labels). Old "Accepted: X · Y" footers. */
+  paymentMethods: string[];
+}
+
+// ── Method factories — saves a lot of repetition in COUNTRY_CONFIGS ──
+
+const m = {
+  // Card via STRIPE. Used in countries where Stripe has clean local
+  // settlement (US, UK, EU, CA, AU, ZA) or where Stripe is the only
+  // option (no Flutterwave presence). Falls back to USD when the
+  // region's currency isn't supported by Stripe — but with the
+  // current country list we never need that fallback any more.
+  card: (chargeCurrency?: string): PaymentOption => ({
+    id: 'card',
+    label: 'Card (Visa / Mastercard)',
+    processor: 'stripe',
+    kind: 'card',
+    chargeCurrency,
+  }),
+  // Card via FLUTTERWAVE. The default for cards in African countries.
+  // Flutterwave charges Visa/Mastercard in the country's native
+  // currency (NGN, GHS, KES, EGP, MAD, XAF, XOF, etc.), so there are
+  // no FX margins, no international-transaction limits at the
+  // cardholder's bank, and no CBN-style USD restrictions. Same UI
+  // affordance as Stripe card — user sees "Card (Visa / Mastercard)".
+  cardFw: (): PaymentOption => ({
+    id: 'card',
+    label: 'Card (Visa / Mastercard)',
+    processor: 'flutterwave',
+    kind: 'card',
+  }),
+  applePay: (): PaymentOption => ({ id: 'apple_pay', label: 'Apple Pay', processor: 'stripe', kind: 'card' }),
+  googlePay: (): PaymentOption => ({ id: 'google_pay', label: 'Google Pay', processor: 'stripe', kind: 'card' }),
+  sepa: (): PaymentOption => ({ id: 'sepa', label: 'SEPA Direct Debit', processor: 'stripe', kind: 'bank' }),
+  ideal: (): PaymentOption => ({ id: 'ideal', label: 'iDEAL', processor: 'stripe', kind: 'bank' }),
+
+  // Local — Flutterwave. We tag id with the method so the UI can icon it.
+  mtnMomo: (): PaymentOption =>   ({ id: 'mtn_momo',    label: 'MTN Mobile Money', processor: 'flutterwave', kind: 'mobile_money' }),
+  orangeMoney: (): PaymentOption => ({ id: 'orange_money', label: 'Orange Money',  processor: 'flutterwave', kind: 'mobile_money' }),
+  airtelMoney: (): PaymentOption => ({ id: 'airtel_money', label: 'Airtel Money',  processor: 'flutterwave', kind: 'mobile_money' }),
+  mpesa: (): PaymentOption =>     ({ id: 'mpesa',       label: 'M-Pesa',           processor: 'flutterwave', kind: 'mobile_money' }),
+  tigoPesa: (): PaymentOption =>  ({ id: 'tigo_pesa',   label: 'Tigo Pesa',        processor: 'flutterwave', kind: 'mobile_money' }),
+  moovMoney: (): PaymentOption => ({ id: 'moov_money',  label: 'Moov Money',       processor: 'flutterwave', kind: 'mobile_money' }),
+  vodafoneCash: (): PaymentOption => ({ id: 'vodafone_cash', label: 'Vodafone Cash', processor: 'flutterwave', kind: 'wallet' }),
+  ecocash: (): PaymentOption =>   ({ id: 'ecocash',     label: 'EcoCash',          processor: 'flutterwave', kind: 'wallet' }),
+  fawry: (): PaymentOption =>     ({ id: 'fawry',       label: 'Fawry',            processor: 'flutterwave', kind: 'wallet' }),
+  wave: (): PaymentOption =>      ({ id: 'wave',        label: 'Wave',             processor: 'flutterwave', kind: 'mobile_money' }),
+  tmoney: (): PaymentOption =>    ({ id: 't_money',     label: 'T-Money',          processor: 'flutterwave', kind: 'mobile_money' }),
+  flooz: (): PaymentOption =>     ({ id: 'flooz',       label: 'Flooz',            processor: 'flutterwave', kind: 'mobile_money' }),
+  freeMoney: (): PaymentOption => ({ id: 'free_money',  label: 'Free Money',       processor: 'flutterwave', kind: 'mobile_money' }),
+  bankTransfer: (): PaymentOption => ({ id: 'bank_transfer', label: 'Bank Transfer', processor: 'flutterwave', kind: 'bank' }),
+  ussd: (): PaymentOption =>      ({ id: 'ussd',        label: 'USSD',             processor: 'flutterwave', kind: 'ussd' }),
+  eft: (): PaymentOption =>       ({ id: 'eft',         label: 'EFT',              processor: 'flutterwave', kind: 'bank' }),
+};
+
+/**
+ * Compose a RegionConfig given a country code, name, currency, options,
+ * and phone prefix. Derives the legacy fields from the option list so
+ * old readers (landing page, footer) keep working.
+ */
+function makeRegion(args: {
+  code: string; name: string; currency: string;
+  options: PaymentOption[]; phonePrefix: string;
+}): RegionConfig {
+  const { code, name, currency, options, phonePrefix } = args;
+  const primary = options[0];
+  return {
+    countryCode: code,
+    countryName: name,
+    currency,
+    paymentOptions: options,
+    phonePrefix,
+    needsPhone: false,
+    processor: primary.processor,
+    processorLabel: options.map(o => o.label.split(' (')[0]).slice(0, 3).join(' / '),
+    paymentMethods: options.map(o => o.label),
+  };
 }
 
 // Fixed prices per currency — set once, never fluctuate.
@@ -285,54 +418,115 @@ const TZ_TO_COUNTRY: Record<string, string> = {
   'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU', 'Australia/Perth': 'AU',
 };
 
+/**
+ * Country configs. Pattern:
+ *   - African country with native currency: card → Stripe (USD), local
+ *     methods (mobile money / bank / USSD) → Flutterwave (native cur).
+ *   - African country billing in USD: card → Stripe (USD), local
+ *     methods → Flutterwave (USD).
+ *   - Non-African: all Stripe in native currency. No Flutterwave.
+ */
 export const COUNTRY_CONFIGS: Record<string, RegionConfig> = {
-  // ── Flutterwave — Africa (local currencies) ─────────────────────────────
-  NG: { countryCode: 'NG', countryName: 'Nigeria',         currency: 'NGN', processor: 'flutterwave', processorLabel: 'Card / Bank Transfer / USSD',  paymentMethods: ['Card', 'Bank Transfer', 'USSD', 'Mobile Money'], phonePrefix: '+234', needsPhone: false },
-  GH: { countryCode: 'GH', countryName: 'Ghana',           currency: 'GHS', processor: 'flutterwave', processorLabel: 'Card / Mobile Money',           paymentMethods: ['Card', 'MTN MoMo', 'Vodafone Cash'],             phonePrefix: '+233', needsPhone: false },
-  KE: { countryCode: 'KE', countryName: 'Kenya',           currency: 'KES', processor: 'flutterwave', processorLabel: 'Card / M-Pesa',                 paymentMethods: ['Card', 'M-Pesa'],                                phonePrefix: '+254', needsPhone: false },
-  ZA: { countryCode: 'ZA', countryName: 'South Africa',    currency: 'ZAR', processor: 'flutterwave', processorLabel: 'Card / EFT',                    paymentMethods: ['Card', 'EFT'],                                   phonePrefix: '+27',  needsPhone: false },
-  UG: { countryCode: 'UG', countryName: 'Uganda',          currency: 'UGX', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Airtel Money'],                      phonePrefix: '+256', needsPhone: false },
-  TZ: { countryCode: 'TZ', countryName: 'Tanzania',        currency: 'TZS', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['M-Pesa', 'Tigo Pesa', 'Airtel Money'],           phonePrefix: '+255', needsPhone: false },
-  RW: { countryCode: 'RW', countryName: 'Rwanda',          currency: 'RWF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Airtel Money'],                      phonePrefix: '+250', needsPhone: false },
-  ZM: { countryCode: 'ZM', countryName: 'Zambia',          currency: 'ZMW', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Airtel Money'],                      phonePrefix: '+260', needsPhone: false },
-  EG: { countryCode: 'EG', countryName: 'Egypt',           currency: 'EGP', processor: 'flutterwave', processorLabel: 'Card / Mobile Wallet',          paymentMethods: ['Card', 'Vodafone Cash', 'Fawry'],                phonePrefix: '+20',  needsPhone: false },
-  MA: { countryCode: 'MA', countryName: 'Morocco',         currency: 'MAD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+212', needsPhone: false },
-  CM: { countryCode: 'CM', countryName: 'Cameroon',        currency: 'XAF', processor: 'flutterwave', processorLabel: 'MTN MoMo / Orange Money',       paymentMethods: ['MTN Mobile Money', 'Orange Money'],              phonePrefix: '+237', needsPhone: false },
-  CI: { countryCode: 'CI', countryName: "Côte d'Ivoire",   currency: 'XOF', processor: 'flutterwave', processorLabel: 'MTN MoMo / Orange',             paymentMethods: ['MTN MoMo', 'Orange Money', 'Wave'],              phonePrefix: '+225', needsPhone: false },
-  SN: { countryCode: 'SN', countryName: 'Senegal',         currency: 'XOF', processor: 'flutterwave', processorLabel: 'Wave / Orange Money',           paymentMethods: ['Wave', 'Orange Money', 'Free Money'],            phonePrefix: '+221', needsPhone: false },
-  ML: { countryCode: 'ML', countryName: 'Mali',            currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Orange Money', 'Moov Money'],                    phonePrefix: '+223', needsPhone: false },
-  BF: { countryCode: 'BF', countryName: 'Burkina Faso',    currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Orange Money', 'Moov Money'],                    phonePrefix: '+226', needsPhone: false },
-  NE: { countryCode: 'NE', countryName: 'Niger',           currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Airtel Money', 'Orange Money'],                  phonePrefix: '+227', needsPhone: false },
-  TG: { countryCode: 'TG', countryName: 'Togo',            currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['T-Money', 'Flooz'],                              phonePrefix: '+228', needsPhone: false },
-  BJ: { countryCode: 'BJ', countryName: 'Benin',           currency: 'XOF', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['MTN MoMo', 'Moov Money'],                        phonePrefix: '+229', needsPhone: false },
-  // ── Flutterwave — Africa (USD billing) ──────────────────────────────────
-  ET: { countryCode: 'ET', countryName: 'Ethiopia',        currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+251', needsPhone: false },
-  ZW: { countryCode: 'ZW', countryName: 'Zimbabwe',        currency: 'USD', processor: 'flutterwave', processorLabel: 'Card / EcoCash',                paymentMethods: ['Card', 'EcoCash'],                               phonePrefix: '+263', needsPhone: false },
-  MZ: { countryCode: 'MZ', countryName: 'Mozambique',      currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card', 'M-Pesa'],                                phonePrefix: '+258', needsPhone: false },
-  MW: { countryCode: 'MW', countryName: 'Malawi',          currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card', 'Airtel Money'],                          phonePrefix: '+265', needsPhone: false },
-  GN: { countryCode: 'GN', countryName: 'Guinea',          currency: 'USD', processor: 'flutterwave', processorLabel: 'Mobile Money',                  paymentMethods: ['Orange Money', 'MTN MoMo'],                      phonePrefix: '+224', needsPhone: false },
-  SL: { countryCode: 'SL', countryName: 'Sierra Leone',    currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card', 'Orange Money'],                          phonePrefix: '+232', needsPhone: false },
-  LR: { countryCode: 'LR', countryName: 'Liberia',         currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+231', needsPhone: false },
-  GM: { countryCode: 'GM', countryName: 'Gambia',          currency: 'USD', processor: 'flutterwave', processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+220', needsPhone: false },
-  // ── Stripe — US, UK, Europe, Oceania ────────────────────────────────────
-  US: { countryCode: 'US', countryName: 'United States',   currency: 'USD', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card', 'Apple Pay', 'Google Pay'],               phonePrefix: '+1',   needsPhone: false },
-  GB: { countryCode: 'GB', countryName: 'United Kingdom',  currency: 'GBP', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card', 'Apple Pay', 'Google Pay'],               phonePrefix: '+44',  needsPhone: false },
-  FR: { countryCode: 'FR', countryName: 'France',          currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+33',  needsPhone: false },
-  DE: { countryCode: 'DE', countryName: 'Germany',         currency: 'EUR', processor: 'stripe',      processorLabel: 'Card / SEPA',                   paymentMethods: ['Card', 'SEPA'],                                  phonePrefix: '+49',  needsPhone: false },
-  NL: { countryCode: 'NL', countryName: 'Netherlands',     currency: 'EUR', processor: 'stripe',      processorLabel: 'Card / iDEAL',                  paymentMethods: ['Card', 'iDEAL'],                                 phonePrefix: '+31',  needsPhone: false },
-  BE: { countryCode: 'BE', countryName: 'Belgium',         currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+32',  needsPhone: false },
-  ES: { countryCode: 'ES', countryName: 'Spain',           currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+34',  needsPhone: false },
-  IT: { countryCode: 'IT', countryName: 'Italy',           currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+39',  needsPhone: false },
-  PT: { countryCode: 'PT', countryName: 'Portugal',        currency: 'EUR', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+351', needsPhone: false },
-  CA: { countryCode: 'CA', countryName: 'Canada',          currency: 'CAD', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+1',   needsPhone: false },
-  AU: { countryCode: 'AU', countryName: 'Australia',       currency: 'AUD', processor: 'stripe',      processorLabel: 'Card',                          paymentMethods: ['Card'],                                          phonePrefix: '+61',  needsPhone: false },
+  // ── Africa — local currency countries ──────────────────────────────────
+  // For these, card pays via Stripe in USD; local methods via Flutterwave
+  // in the native currency (NGN, KES, etc.).
+  // Africa policy: ALL payments go through Flutterwave in the
+  // country's native currency. Cards (Visa/Mastercard) + local
+  // methods all live under one provider — same checkout, no FX
+  // surprises, no Stripe-international-transaction limits at the
+  // cardholder's bank. The single exception is South Africa where
+  // Stripe ZAR settlement is clean and reliable (kept on Stripe).
+  NG: makeRegion({ code: 'NG', name: 'Nigeria',       currency: 'NGN', phonePrefix: '+234',
+    options: [m.cardFw(), m.bankTransfer(), m.ussd(), m.mtnMomo()] }),
+  GH: makeRegion({ code: 'GH', name: 'Ghana',         currency: 'GHS', phonePrefix: '+233',
+    options: [m.cardFw(), m.mtnMomo(), m.vodafoneCash()] }),
+  KE: makeRegion({ code: 'KE', name: 'Kenya',         currency: 'KES', phonePrefix: '+254',
+    options: [m.cardFw(), m.mpesa()] }),
+  // South Africa is the Africa exception — Stripe ZAR settlement
+  // is reliable, ZAR cards work natively without quirks.
+  ZA: makeRegion({ code: 'ZA', name: 'South Africa',  currency: 'ZAR', phonePrefix: '+27',
+    options: [m.card(), m.eft()] }),
+  EG: makeRegion({ code: 'EG', name: 'Egypt',         currency: 'EGP', phonePrefix: '+20',
+    options: [m.cardFw(), m.vodafoneCash(), m.fawry()] }),
+  MA: makeRegion({ code: 'MA', name: 'Morocco',       currency: 'MAD', phonePrefix: '+212',
+    options: [m.cardFw()] }),
+  UG: makeRegion({ code: 'UG', name: 'Uganda',        currency: 'UGX', phonePrefix: '+256',
+    options: [m.cardFw(), m.mtnMomo(), m.airtelMoney()] }),
+  TZ: makeRegion({ code: 'TZ', name: 'Tanzania',      currency: 'TZS', phonePrefix: '+255',
+    options: [m.cardFw(), m.mpesa(), m.tigoPesa(), m.airtelMoney()] }),
+  RW: makeRegion({ code: 'RW', name: 'Rwanda',        currency: 'RWF', phonePrefix: '+250',
+    options: [m.cardFw(), m.mtnMomo(), m.airtelMoney()] }),
+  ZM: makeRegion({ code: 'ZM', name: 'Zambia',        currency: 'ZMW', phonePrefix: '+260',
+    options: [m.card('USD'), m.mtnMomo(), m.airtelMoney()] }),
+  // CFA Franc countries (Central + West Africa). Flutterwave settles
+  // XAF and XOF natively, so cards + mobile money both charge in CFA.
+  // No USD anywhere — one provider, one currency per region.
+  CM: makeRegion({ code: 'CM', name: 'Cameroon',      currency: 'XAF', phonePrefix: '+237',
+    options: [m.cardFw(), m.mtnMomo(), m.orangeMoney()] }),
+  CI: makeRegion({ code: 'CI', name: "Côte d'Ivoire", currency: 'XOF', phonePrefix: '+225',
+    options: [m.cardFw(), m.mtnMomo(), m.orangeMoney(), m.wave()] }),
+  SN: makeRegion({ code: 'SN', name: 'Senegal',       currency: 'XOF', phonePrefix: '+221',
+    options: [m.cardFw(), m.wave(), m.orangeMoney(), m.freeMoney()] }),
+  ML: makeRegion({ code: 'ML', name: 'Mali',          currency: 'XOF', phonePrefix: '+223',
+    options: [m.cardFw(), m.orangeMoney(), m.moovMoney()] }),
+  BF: makeRegion({ code: 'BF', name: 'Burkina Faso',  currency: 'XOF', phonePrefix: '+226',
+    options: [m.cardFw(), m.orangeMoney(), m.moovMoney()] }),
+  NE: makeRegion({ code: 'NE', name: 'Niger',         currency: 'XOF', phonePrefix: '+227',
+    options: [m.cardFw(), m.airtelMoney(), m.orangeMoney()] }),
+  TG: makeRegion({ code: 'TG', name: 'Togo',          currency: 'XOF', phonePrefix: '+228',
+    options: [m.cardFw(), m.tmoney(), m.flooz()] }),
+  BJ: makeRegion({ code: 'BJ', name: 'Benin',         currency: 'XOF', phonePrefix: '+229',
+    options: [m.cardFw(), m.mtnMomo(), m.moovMoney()] }),
+
+  // ── Africa — countries billing in USD via Flutterwave ──────────────────
+  // For countries without a settled local-currency price table,
+  // Flutterwave still handles both card and local methods in USD.
+  ET: makeRegion({ code: 'ET', name: 'Ethiopia',     currency: 'USD', phonePrefix: '+251',
+    options: [m.cardFw()] }),
+  ZW: makeRegion({ code: 'ZW', name: 'Zimbabwe',     currency: 'USD', phonePrefix: '+263',
+    options: [m.cardFw(), m.ecocash()] }),
+  MZ: makeRegion({ code: 'MZ', name: 'Mozambique',   currency: 'USD', phonePrefix: '+258',
+    options: [m.cardFw(), m.mpesa()] }),
+  MW: makeRegion({ code: 'MW', name: 'Malawi',       currency: 'USD', phonePrefix: '+265',
+    options: [m.cardFw(), m.airtelMoney()] }),
+  GN: makeRegion({ code: 'GN', name: 'Guinea',       currency: 'USD', phonePrefix: '+224',
+    options: [m.cardFw(), m.orangeMoney(), m.mtnMomo()] }),
+  SL: makeRegion({ code: 'SL', name: 'Sierra Leone', currency: 'USD', phonePrefix: '+232',
+    options: [m.cardFw(), m.orangeMoney()] }),
+  LR: makeRegion({ code: 'LR', name: 'Liberia',      currency: 'USD', phonePrefix: '+231',
+    options: [m.cardFw()] }),
+  GM: makeRegion({ code: 'GM', name: 'Gambia',       currency: 'USD', phonePrefix: '+220',
+    options: [m.cardFw()] }),
+
+  // ── Stripe-only — US, UK, Europe, Oceania ──────────────────────────────
+  US: makeRegion({ code: 'US', name: 'United States',   currency: 'USD', phonePrefix: '+1',
+    options: [m.card(), m.applePay(), m.googlePay()] }),
+  GB: makeRegion({ code: 'GB', name: 'United Kingdom',  currency: 'GBP', phonePrefix: '+44',
+    options: [m.card(), m.applePay(), m.googlePay()] }),
+  FR: makeRegion({ code: 'FR', name: 'France',          currency: 'EUR', phonePrefix: '+33',
+    options: [m.card()] }),
+  DE: makeRegion({ code: 'DE', name: 'Germany',         currency: 'EUR', phonePrefix: '+49',
+    options: [m.card(), m.sepa()] }),
+  NL: makeRegion({ code: 'NL', name: 'Netherlands',     currency: 'EUR', phonePrefix: '+31',
+    options: [m.card(), m.ideal()] }),
+  BE: makeRegion({ code: 'BE', name: 'Belgium',         currency: 'EUR', phonePrefix: '+32',
+    options: [m.card()] }),
+  ES: makeRegion({ code: 'ES', name: 'Spain',           currency: 'EUR', phonePrefix: '+34',
+    options: [m.card()] }),
+  IT: makeRegion({ code: 'IT', name: 'Italy',           currency: 'EUR', phonePrefix: '+39',
+    options: [m.card()] }),
+  PT: makeRegion({ code: 'PT', name: 'Portugal',        currency: 'EUR', phonePrefix: '+351',
+    options: [m.card()] }),
+  CA: makeRegion({ code: 'CA', name: 'Canada',          currency: 'CAD', phonePrefix: '+1',
+    options: [m.card()] }),
+  AU: makeRegion({ code: 'AU', name: 'Australia',       currency: 'AUD', phonePrefix: '+61',
+    options: [m.card()] }),
 };
 
-export const DEFAULT_REGION: RegionConfig = {
-  countryCode: 'INT', countryName: 'International', currency: 'USD',
-  processor: 'stripe', processorLabel: 'Card (Visa / Mastercard)',
-  paymentMethods: ['Card'], phonePrefix: '+1', needsPhone: false,
-};
+export const DEFAULT_REGION: RegionConfig = makeRegion({
+  code: 'INT', name: 'International', currency: 'USD', phonePrefix: '+1',
+  options: [m.card()],
+});
 
 export function detectRegion(): RegionConfig {
   try {

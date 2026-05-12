@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDressingPct } from '../components/rabbits/RabbitHarvestPage';
+import { computeDressingPct } from '../components/rabbits/RabbitSalesPage';
 import { kitSurvivalRate } from '../components/rabbits/LittersPage';
 
 describe('computeDressingPct', () => {

@@ -36,7 +36,8 @@ export type ModuleName =
   | 'sampling'
   | 'fish-health'
   | 'pond-inspections'
-  | 'rabbit-harvest'
+  | 'rabbit-sales'
+  | 'rabbit-growout'
   | 'breeding-events'
   | 'litters'
   | 'rabbit-registry'
@@ -127,7 +128,8 @@ function getManagerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibili
     case 'water-quality':
     case 'stocking':
     case 'sampling':
-    case 'rabbit-harvest':
+    case 'rabbit-sales':
+    case 'rabbit-growout':
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
@@ -190,7 +192,8 @@ function getWorkerVisibility(m: ModuleName, p: FarmPermissions): ModuleVisibilit
     case 'water-quality':
     case 'stocking':
     case 'sampling':
-    case 'rabbit-harvest':
+    case 'rabbit-sales':
+    case 'rabbit-growout':
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
@@ -266,7 +269,8 @@ function getViewerVisibility(m: ModuleName): ModuleVisibility {
     case 'water-quality':
     case 'stocking':
     case 'sampling':
-    case 'rabbit-harvest':
+    case 'rabbit-sales':
+    case 'rabbit-growout':
     case 'breeding-events':
     case 'litters':
     case 'rabbit-registry':
