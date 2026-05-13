@@ -243,7 +243,17 @@ export function FarmHealthRing({ size = 42, children, onClick: _onClick, showLab
         </div>
       </div>
       {showLabel && (
-        <div style={{ textAlign: 'center', lineHeight: 1.1, cursor: 'help' }} title={helpText}>
+        // Mobile: hide the "56% FAIR" label below the avatar. The ring
+        // color already encodes the same information (green/amber/red/
+        // grey) — the text was just extra vertical clutter on a phone
+        // and looked heavy next to the small avatar. Desktop/tablet
+        // keeps the explicit numeric + word for clarity.
+        // User screenshot 2026-05-13 flagged this as visually loud.
+        <div
+          className="hidden sm:block"
+          style={{ textAlign: 'center', lineHeight: 1.1, cursor: 'help' }}
+          title={helpText}
+        >
           {!isSetup && (
             <div style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: '0.01em' }}>
               {score}%

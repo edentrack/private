@@ -70,15 +70,27 @@ export function EdenHeader({
 }: Props) {
   const { language } = useLanguage();
   const isFr = language === 'fr';
+  // Mobile compaction (May 2026 phone view fix):
+  // - Smaller avatar + tighter padding below sm:
+  // - Hide the tagline subtitle entirely below sm — it truncates to
+  //   "Farm performa…" on a phone, which looked broken. Tagline only
+  //   adds useful context on tablet/desktop where there's room.
+  // - Compact text on the Clear Chat / usage pill so they don't
+  //   word-wrap into a second row when both are visible.
   return (
-    <div data-tour="ai-header" className="flex-shrink-0 bg-white border-b border-gray-200 p-4">
-      <div className="flex items-center gap-3">
-        <EdenAvatarAnimated size="md" />
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-agri-brown-700">Eden</h1>
-          <p className="text-sm text-gray-500 truncate">{taglineFor(speciesId, isFr)}</p>
+    <div data-tour="ai-header" className="flex-shrink-0 bg-white border-b border-gray-200 px-3 py-2 sm:p-4">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden sm:block">
+          <EdenAvatarAnimated size="md" />
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="sm:hidden">
+          <EdenAvatarAnimated size="sm" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base sm:text-xl font-bold text-agri-brown-700 leading-tight">Eden</h1>
+          <p className="hidden sm:block text-sm text-gray-500 truncate">{taglineFor(speciesId, isFr)}</p>
+        </div>
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
           {allFarms && allFarms.length > 0 && (
             <EdenFarmSelector
               farms={allFarms}
@@ -89,20 +101,19 @@ export function EdenHeader({
             />
           )}
           {usageInfo && (
-            <div className={`text-xs px-2 py-1 rounded-full font-medium ${usageColorClass(usageInfo.used, usageInfo.cap)}`}>
+            <div className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-medium ${usageColorClass(usageInfo.used, usageInfo.cap)}`}>
               {usageInfo.tier === 'free'
-                ? (isFr ? `${usageInfo.used}/${usageInfo.cap} aujourd'hui` : `${usageInfo.used}/${usageInfo.cap} today`)
-                : (isFr
-                    ? `${usageInfo.used}/${usageInfo.cap === 99999 ? '∞' : usageInfo.cap} ce mois-ci`
-                    : `${usageInfo.used}/${usageInfo.cap === 99999 ? '∞' : usageInfo.cap} this month`)}
+                ? (isFr ? `${usageInfo.used}/${usageInfo.cap}` : `${usageInfo.used}/${usageInfo.cap}`)
+                : `${usageInfo.used}/${usageInfo.cap === 99999 ? '∞' : usageInfo.cap}`}
             </div>
           )}
           {showClear && (
             <button
               onClick={onClear}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+              className="px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              title={isFr ? 'Effacer la discussion' : 'Clear Chat'}
             >
-              {isFr ? 'Effacer la discussion' : 'Clear Chat'}
+              {isFr ? 'Effacer' : 'Clear'}
             </button>
           )}
         </div>

@@ -344,16 +344,30 @@ export function AIAssistantPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, [attachMenuOpen]);
 
-  // Scroll to bottom whenever the visual viewport shrinks (keyboard opens on iOS/Android)
+  // ── Visual-viewport tracking (mobile keyboard) ────────────────────
+  // Two things to do on every resize/scroll:
+  //   1. Update `vvHeight` state so the page root's height === the
+  //      actual visible viewport. iOS WebView with the keyboard open
+  //      does NOT always shrink with 100dvh — sometimes the page
+  //      keeps full height and the keyboard overlays the bottom,
+  //      leaving the input floating mid-screen with cream space
+  //      below it. Reading visualViewport.height directly and
+  //      applying it as inline height fixes that.
+  //   2. Scroll the messages list to the bottom so the last message
+  //      stays visible after the keyboard reshapes the layout.
+  const [vvHeight, setVvHeight] = useState<number | null>(null);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const onViewportChange = () => {
-      // Small delay lets the browser finish repositioning before we scroll
+      setVvHeight(vv.height);
       requestAnimationFrame(() =>
         messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
       );
     };
+    // Set initial value so the page sizes correctly even before the
+    // first keyboard interaction.
+    setVvHeight(vv.height);
     vv.addEventListener('resize', onViewportChange);
     vv.addEventListener('scroll', onViewportChange);
     return () => {
@@ -2074,26 +2088,29 @@ export function AIAssistantPage() {
   }
 
   return (
-    // ── Mobile keyboard fix (May 2026) ─────────────────────────────────
-    // Was: h-full. On mobile this collapses the input bar above the
-    // keyboard — the parent's pixel-height stays the same when the
-    // keyboard opens (h-full = 100% of dashboard, which is 100vh of
-    // the page = same height regardless of keyboard). So the textarea
-    // got pushed off-screen and the user had to drag it back down.
+    // ── Mobile keyboard pinning (May 2026, second pass) ───────────────
+    // First pass used `100dvh` which works on most modern browsers but
+    // iOS WebView doesn't always shrink the page in sync with the
+    // keyboard — sometimes the page keeps full viewport height and the
+    // keyboard overlays the bottom, leaving the input bar floating
+    // mid-screen above a big cream gap. User screenshot 2026-05-13
+    // showed this gap clearly.
     //
-    // Fix: switch the page-root to `100dvh` (dynamic viewport height)
-    // which AUTO-shrinks when the soft keyboard opens on iOS 15.4+ /
-    // Chrome Android. Also subtract the Capacitor `--keyboard-height`
-    // CSS variable (set by wireKeyboard in capacitorNative.ts) so
-    // native iOS/Android shells get the same behavior even when the
-    // WebView doesn't shrink automatically.
+    // Stronger fix: read window.visualViewport.height directly via the
+    // useEffect above, store in vvHeight state, and apply it as an
+    // inline pixel height. visualViewport.height is the post-keyboard
+    // visible-area height on every platform — the most reliable source.
     //
-    // The CSS calc() falls back to `100dvh` if --keyboard-height is
-    // unset (web-only / before keyboard fires).
+    // Falls back to `100dvh` if vvHeight is null (very brief flash on
+    // first paint, or on browsers without visualViewport — old Android
+    // <= 4.x basically). Also subtracts --keyboard-height for the
+    // Capacitor native path (wireKeyboard listener sets it).
     <div
       className="flex flex-col bg-gray-50"
       style={{
-        height: 'calc(100dvh - var(--keyboard-height, 0px))',
+        height: vvHeight
+          ? `${vvHeight}px`
+          : 'calc(100dvh - var(--keyboard-height, 0px))',
         maxHeight: '100dvh',
       }}
     >
@@ -2736,10 +2753,19 @@ export function AIAssistantPage() {
               }}
               onKeyDown={handleKeyPress}
               placeholder={
+                // Short mobile placeholder, longer on tablet/desktop.
+                // The long form wrapped to 3 visible lines on a phone
+                // because the [+] and [🎤] buttons stole horizontal
+                // space. window.innerWidth picked once at render is
+                // fine here — the placeholder doesn't need to be
+                // responsive across resize, and this avoids a media-
+                // query CSS rewrite for one string.
                 listening ? (isFr ? "Écoute en cours…" : 'Listening...')
                 : pendingFile ? (isFr ? `Demandez à Eden d'importer ${pendingFile.name}…` : `Ask Eden to import ${pendingFile.name}…`)
                 : pendingImages.length > 0 ? (isFr ? "Décrivez ce que vous voyez, ou cliquez sur Envoyer…" : 'Describe what you see, or just hit Send…')
-                : (isFr ? "Posez une question, saisissez des données ou joignez un fichier…" : 'Ask anything, log data, or attach a file…')
+                : (typeof window !== 'undefined' && window.innerWidth < 640)
+                  ? (isFr ? 'Demandez à Eden…' : 'Ask Eden…')
+                  : (isFr ? "Posez une question, saisissez des données ou joignez un fichier…" : 'Ask anything, log data, or attach a file…')
               }
               className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-agri-gold-500 focus:border-transparent outline-none resize-none leading-snug"
               style={{ minHeight: '48px', maxHeight: '160px' }}
