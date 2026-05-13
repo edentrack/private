@@ -425,25 +425,51 @@ export async function enableBiometricLogin(userEmail: string, secret: string): P
 }
 
 /**
- * Prompt for biometry. On success returns the cached email + refresh token
- * which the caller hands to supabase.auth.setSession(). Returns null if
- * the user cancelled or biometry failed.
+ * Result shape from biometricUnlock(). Returning a discriminated union
+ * instead of `creds | null` lets the caller distinguish "user cancelled"
+ * (silent) from "no creds saved" (needs sign-in-once prompt) from
+ * "biometry failed" (suggest passcode fallback). Previously every
+ * failure path collapsed to null, so the user tapped Face ID and
+ * nothing happened — no feedback, no idea why.
  */
-export async function biometricUnlock(): Promise<{ email: string; secret: string } | null> {
-  if (!native()) return null;
+export type BiometricUnlockResult =
+  | { ok: true; email: string; secret: string }
+  | { ok: false; reason: 'web' | 'no-creds' | 'cancelled' | 'failed'; message?: string };
+
+/**
+ * Prompt for biometry. On success returns the cached email + password
+ * which the caller hands to supabase.auth.signInWithPassword().
+ */
+export async function biometricUnlock(): Promise<BiometricUnlockResult> {
+  if (!native()) return { ok: false, reason: 'web' };
   try {
     const saved = await NativeBiometric.isCredentialsSaved({ server: BIOMETRIC_SERVER });
-    if (!saved.isSaved) return null;
-    await NativeBiometric.verifyIdentity({
-      reason: 'Unlock Edentrack',
-      title: 'Unlock Edentrack',
-      subtitle: 'Use Face ID or your fingerprint to sign in',
-      negativeButtonText: 'Cancel',
-    });
+    if (!saved.isSaved) {
+      return { ok: false, reason: 'no-creds' };
+    }
+    try {
+      await NativeBiometric.verifyIdentity({
+        reason: 'Unlock Edentrack',
+        title: 'Unlock Edentrack',
+        subtitle: 'Use Face ID or your fingerprint to sign in',
+        negativeButtonText: 'Cancel',
+      });
+    } catch (err: any) {
+      // The plugin throws on cancel + on auth failure. Code 10 / 11 /
+      // 13 / 14 are the iOS LAError codes for user-cancel and similar.
+      // We don't get a reliable cancel flag back, so map the most
+      // common cancellation messages to a silent 'cancelled' and
+      // anything else to 'failed' with the plugin's message exposed.
+      const msg = String(err?.message || err?.code || '').toLowerCase();
+      if (msg.includes('cancel') || msg.includes('user denied') || msg.includes('user negated')) {
+        return { ok: false, reason: 'cancelled' };
+      }
+      return { ok: false, reason: 'failed', message: err?.message || 'Biometry failed' };
+    }
     const creds = await NativeBiometric.getCredentials({ server: BIOMETRIC_SERVER });
-    return { email: creds.username, secret: creds.password };
-  } catch {
-    return null;
+    return { ok: true, email: creds.username, secret: creds.password };
+  } catch (err: any) {
+    return { ok: false, reason: 'failed', message: err?.message || 'Unknown error' };
   }
 }
 

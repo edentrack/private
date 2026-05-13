@@ -102,22 +102,48 @@ export function LoginScreen({ onToggle, onForgotPassword }: LoginScreenProps) {
     }
   };
 
-  // Tap the Face ID / fingerprint button. This prompts biometry, pulls
-  // saved creds out of the keychain, and runs the same Supabase password
-  // sign-in we'd run on the manual form. Returning the password here is
-  // safe — the keychain entry is hardware-encrypted and gated by biometry.
+  // Tap the Face ID / fingerprint button. Prompts biometry, pulls saved
+  // creds out of the keychain, runs the standard Supabase password sign-
+  // in. Now distinguishes between (a) user cancelled — silent, (b) no
+  // creds saved — friendly nudge to sign in once first, (c) biometry
+  // failed — surface the message. Previously every failure path was
+  // silent and users tapped the button with nothing happening.
   const handleBiometricUnlock = async () => {
     setError('');
     setLoading(true);
     try {
-      const creds = await biometricUnlock();
-      if (!creds) {
-        // User cancelled, biometry failed, or no creds saved. Don't show
-        // a scary error — just silently let them fall through to typing.
-        setLoading(false);
+      const result = await biometricUnlock();
+      if (!result.ok) {
+        switch (result.reason) {
+          case 'cancelled':
+            // User backed out of the Face ID sheet themselves — silent.
+            break;
+          case 'no-creds':
+            // Most common reason a brand-new user taps the button and
+            // nothing happens: they never saved credentials. Tell them.
+            setError(isFr
+              ? "Aucune identification enregistrée. Connectez-vous une fois avec votre email et mot de passe, puis activez Face ID quand on vous le propose."
+              : "No saved login yet. Sign in once with your email and password, then tap Enable when prompted to save biometric unlock.");
+            break;
+          case 'web':
+            // Shouldn't happen — the button doesn't render on web — but
+            // safe to handle.
+            setError(isFr
+              ? "La connexion biométrique n'est disponible que dans l'app mobile."
+              : 'Biometric sign-in is only available in the mobile app.');
+            break;
+          case 'failed':
+          default:
+            await tapWarning();
+            setError(isFr
+              ? `Échec de la biométrie : ${result.message || 'réessayez ou utilisez le mot de passe.'}`
+              : `Biometric sign-in failed: ${result.message || 'try again or use your password.'}`);
+            break;
+        }
         return;
       }
-      await signIn(creds.email, creds.secret);
+      // Success — hand off to Supabase.
+      await signIn(result.email, result.secret);
       await tapSuccess();
     } catch (err: any) {
       await tapWarning();
