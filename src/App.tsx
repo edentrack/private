@@ -341,13 +341,38 @@ function AppContent() {
 
     // Onboarding wizard removed - users go directly to dashboard after approval
 
-    // New-user welcome screen: show once to users with no farms who haven't seen it yet
+    // New-user welcome screen.
+    //
+    // Show ONCE to users who:
+    //   1. Have no farms yet (allFarms.length === 0), AND
+    //   2. Haven't completed onboarding (profile.onboarding_completed
+    //      is not true / status !== 'completed'), AND
+    //   3. Haven't already seen this welcome on this device.
+    //
+    // PRIOR BUG (May 2026): the check was just (allFarms.length === 0
+    // && !seen). That misfired for established users signing in on a
+    // fresh Capacitor install: their localStorage was empty (so seen
+    // was null), AND there's a brief window between auth completing
+    // and the farms query resolving where allFarms is still []. The
+    // useEffect fired during that gap and shoved them onto /welcome
+    // even though they already had farms server-side. User feedback:
+    // "I logged in on the test capacitor app, it still took me to the
+    // landing page and asked me to continue to my account on dashboard."
+    //
+    // Adding the onboarding_completed check fixes this — that field
+    // is set server-side after first-ever sign-up and follows the
+    // user across devices, so an established user on a new install
+    // still has it true and skips the welcome correctly.
+    const hasCompletedOnboarding =
+      profile?.onboarding_completed === true ||
+      profile?.onboarding_status === 'completed';
     if (
       user &&
       profile &&
       !profile.is_super_admin &&
       !loading &&
       allFarms.length === 0 &&
+      !hasCompletedOnboarding &&
       !window.location.hash.includes('#/welcome') &&
       !window.location.hash.includes('#/onboarding') &&
       !window.location.hash.includes('#/invite')
