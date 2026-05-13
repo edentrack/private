@@ -243,6 +243,13 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     supabase.from("expenses").select("amount, category, description, incurred_on, currency").eq("farm_id", farmId).order("incurred_on", { ascending: false }).limit(5000),
     supabase.from("egg_sales").select("total_amount, sale_date, customer_name, payment_status, total_eggs").eq("farm_id", farmId).order("sale_date", { ascending: false }).limit(5000),
     supabase.from("bird_sales").select("total_amount, sale_date, customer_name, payment_status, birds_sold").eq("farm_id", farmId).order("sale_date", { ascending: false }).limit(5000),
+    // rabbit_sales — Eden was previously blind to all rabbit revenue.
+    // Caught during the May 2026 stress test: a rabbit farm with five
+    // sales totaling 231,000 XAF in the dashboard came back as "Total
+    // Sales: CFA 0" in Eden's report because the sales array was only
+    // unioning eggs + birds. Now included unconditionally; the per-
+    // farm filter scopes to the active farm's rows.
+    supabase.from("rabbit_sales").select("total_amount, sold_at, count, total_live_weight_kg, total_carcass_weight_kg, price_per_kg, buyer_name, payment_status").eq("farm_id", farmId).order("sold_at", { ascending: false }).limit(5000),
     supabase.from("mortality_logs").select("count, cause, event_date, flock_id, notes").eq("farm_id", farmId).gte("event_date", farmStart).order("event_date", { ascending: false }),
     supabase.from("weight_logs").select("average_weight, date, flock_id, sample_size").eq("farm_id", farmId).gte("date", farmStart).order("date", { ascending: false }),
     supabase.from("vaccinations").select("vaccine_name, administered_date, flock_id, notes").eq("farm_id", farmId).gte("administered_date", farmStart).order("administered_date", { ascending: false }),
@@ -257,12 +264,20 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     supabase.from("sampling_events").select("sampled_at, flock_id, sample_size, abw_g, notes").eq("farm_id", farmId).gte("sampled_at", thirtyDaysAgo).order("sampled_at", { ascending: false }),
   ]);
   const ok = (i: number) => settled[i].status === "fulfilled" ? (settled[i] as PromiseFulfilledResult<any>).value : { data: null };
+  // 21 elements — rabbitSalesRes added between birdSalesRes and mortalityRes
+  // to keep financial-data adjacency in the destructuring. If you add
+  // another supabase.from() call above, bump the length here too — the
+  // ok() helper silently returns { data: null } past the array end, which
+  // means the shadowing variable would be undefined and downstream
+  // `.length` reads would throw at runtime. Tests should catch this if
+  // the destructuring ever desyncs from the Promise.allSettled list.
   const [
     farmRes, flocksRes, tasksRes, feedRes, otherInvRes,
-    expensesRes, eggSalesRes, birdSalesRes, mortalityRes, weightRes,
+    expensesRes, eggSalesRes, birdSalesRes, rabbitSalesRes,
+    mortalityRes, weightRes,
     vaccinationsRes, eggRes, payrollRes, workersRes, payRatesRes, setupConfigRes, teamMembersRes,
     waterQualityRes, harvestRes, samplingRes,
-  ] = Array.from({ length: 20 }, (_, i) => ok(i));
+  ] = Array.from({ length: 21 }, (_, i) => ok(i));
 
   const farm = farmRes.data;
   const currency = farm?.currency_code || farm?.currency || "XAF";
@@ -273,7 +288,20 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   const expenses = expensesRes.data || [];
   const eggSales = eggSalesRes.data || [];
   const birdSales = birdSalesRes.data || [];
-  const sales = [...eggSales, ...birdSales].sort((a: any, b: any) => (b.sale_date || "").localeCompare(a.sale_date || ""));
+  // Rabbit sales live in their own table with `sold_at` instead of
+  // `sale_date`. Map to a uniform shape so the merged `sales` array
+  // can be sorted and summed the same way as eggs/birds. Eden was
+  // previously blind to rabbit revenue entirely — this union fixes it.
+  const rabbitSalesRaw = rabbitSalesRes.data || [];
+  const rabbitSales = rabbitSalesRaw.map((r: any) => ({
+    total_amount: r.total_amount,
+    sale_date: r.sold_at,                 // normalize the date field
+    customer_name: r.buyer_name,
+    payment_status: r.payment_status,
+    rabbits_sold: r.count,                // separate from birds_sold for clarity
+    _source: 'rabbit_sales',              // tag so downstream prompts can attribute
+  }));
+  const sales = [...eggSales, ...birdSales, ...rabbitSales].sort((a: any, b: any) => (b.sale_date || "").localeCompare(a.sale_date || ""));
   const mortality = mortalityRes.data || [];
   const weights = weightRes.data || [];
   const vaccinations = vaccinationsRes.data || [];
