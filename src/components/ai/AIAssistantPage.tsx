@@ -2074,7 +2074,29 @@ export function AIAssistantPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    // ── Mobile keyboard fix (May 2026) ─────────────────────────────────
+    // Was: h-full. On mobile this collapses the input bar above the
+    // keyboard — the parent's pixel-height stays the same when the
+    // keyboard opens (h-full = 100% of dashboard, which is 100vh of
+    // the page = same height regardless of keyboard). So the textarea
+    // got pushed off-screen and the user had to drag it back down.
+    //
+    // Fix: switch the page-root to `100dvh` (dynamic viewport height)
+    // which AUTO-shrinks when the soft keyboard opens on iOS 15.4+ /
+    // Chrome Android. Also subtract the Capacitor `--keyboard-height`
+    // CSS variable (set by wireKeyboard in capacitorNative.ts) so
+    // native iOS/Android shells get the same behavior even when the
+    // WebView doesn't shrink automatically.
+    //
+    // The CSS calc() falls back to `100dvh` if --keyboard-height is
+    // unset (web-only / before keyboard fires).
+    <div
+      className="flex flex-col bg-gray-50"
+      style={{
+        height: 'calc(100dvh - var(--keyboard-height, 0px))',
+        maxHeight: '100dvh',
+      }}
+    >
       {/* Header */}
       <EdenHeader
         speciesId={farmSpecies.id}
