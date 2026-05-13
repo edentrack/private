@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Navigation, Info, CloudSun } from 'lucide-react';
+import { MapPin, Navigation, Info, CloudSun, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,6 +23,21 @@ export function FarmLocationSettings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [detectingLocation, setDetectingLocation] = useState(false);
+  // Whether the verbose fields (address lines, postal code, GPS coords,
+  // location notes, sharing consent) are shown. Default off — most
+  // farmers don't have a formal postal address or need GPS. The only
+  // fields Eden/weather actually use are City + Region, which stay
+  // visible above. Opens automatically if any of those advanced fields
+  // already have values (so editing existing data isn't hidden).
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  useEffect(() => {
+    if (
+      addressLine1 || addressLine2 || postalCode ||
+      latitude || longitude || locationNotes || locationSharingConsent
+    ) {
+      setShowAdvanced(true);
+    }
+  }, [addressLine1, addressLine2, postalCode, latitude, longitude, locationNotes, locationSharingConsent]);
 
   useEffect(() => {
     if (currentFarm?.id) {
@@ -245,6 +260,25 @@ export function FarmLocationSettings() {
           </div>
         </div>
 
+        {/* "Show advanced" toggle — hides postal address + GPS + notes +
+            sharing-consent. Most farmers don't have a formal street
+            address; City + Region (above) is what Eden and weather use.
+            Auto-opens if any of those fields already have values (so the
+            user can still edit existing data without clicking through).
+            User feedback May 2026: "the farm location thing is too long". */}
+        {!showAdvanced && (
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(true)}
+            className="w-full px-4 py-3 border border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <ChevronDown className="w-4 h-4" />
+            {isFr ? "Plus d'options (adresse, GPS, notes)" : 'More options (address, GPS, notes)'}
+          </button>
+        )}
+
+        {showAdvanced && (
+        <>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {isFr ? 'Adresse' : (t('settings.street_address') || 'Street Address')}
@@ -382,15 +416,8 @@ export function FarmLocationSettings() {
             {isFr ? 'Partager ma position avec les fournisseurs pour les estimations de livraison' : (t('settings.share_location') || 'Share my location with suppliers for delivery estimates')}
           </label>
         </div>
-
-        <div className="flex items-start gap-2 text-sm text-gray-500">
-          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <p>
-            {isFr
-              ? "Pourquoi nous en avons besoin: estimations de livraison fournisseurs, connexion avec les éleveurs voisins, données météo locales (à venir). Votre position exacte est privée et partagée uniquement avec votre consentement."
-              : (t('settings.location_why_needed') || 'Why we need this: Supplier delivery estimates, connect with nearby farmers, local weather data (future). Your exact location is private and only shared with your consent.')}
-          </p>
-        </div>
+        </>
+        )}
 
         <div className="flex gap-3 pt-4">
           <button

@@ -21,6 +21,7 @@ import { ReferralSection } from './ReferralSection';
 import { FarmJoinCodeSection } from './FarmJoinCodeSection';
 import { AIPermissionsSection } from './AIPermissionsSection';
 import { MyFarmsSection } from './MyFarmsSection';
+import { CollapsibleSection } from '../common/CollapsibleSection';
 
 type TabId = 'farm' | 'team' | 'eden' | 'preferences' | 'my-farms';
 
@@ -642,41 +643,45 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
             </div>
           )}
 
+          {/* Settings sections collapsed by default — May 2026 rewrite.
+              User feedback: the Settings page was too long and noisy on
+              mobile, especially the 8+ always-open cards. Now each
+              section's body only mounts when its header is tapped, which
+              also defers child data-fetching until the section is opened. */}
           {isOwner && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 text-blue-500">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">{t('settings.farm_location')}</h3>
-              </div>
+            <CollapsibleSection
+              icon={<MapPin className="w-4 h-4" />}
+              iconClass="bg-blue-50 text-blue-500"
+              title={t('settings.farm_location') || 'Farm Location'}
+              subtitle={isFr ? 'Ville + région pour la météo' : 'City + region for weather'}
+            >
               <FarmLocationSettings />
-            </div>
+            </CollapsibleSection>
           )}
 
           {(isOwner || isManager) && farmType === 'poultry' && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-purple-50 text-purple-500">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">{t('settings.flock_targets_title') || 'Flock Growth Targets & Lifecycle'}</h3>
-              </div>
+            <CollapsibleSection
+              icon={<TrendingUp className="w-4 h-4" />}
+              iconClass="bg-purple-50 text-purple-500"
+              title={t('settings.flock_targets_title') || 'Flock Growth Targets & Lifecycle'}
+              subtitle={isFr ? 'Cibles de poids et durée de cycle' : 'Weight targets + cycle duration'}
+            >
               <FlockTargetsSettings />
-            </div>
+            </CollapsibleSection>
           )}
 
           {(isOwner || isManager) && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-2.5 mb-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-500">
-                  <ListChecks className="w-4 h-4" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">{t('settings.task_settings') || 'Task Settings'}</h3>
-              </div>
+            <CollapsibleSection
+              icon={<ListChecks className="w-4 h-4" />}
+              iconClass="bg-gray-100 text-gray-500"
+              title={t('settings.task_settings') || 'Task Settings'}
+              subtitle={
+                farmType === 'poultry'
+                  ? (language === 'fr' ? 'Mode intervalle + modèles' : 'Egg interval mode + templates')
+                  : (language === 'fr' ? 'Modèles de tâches récurrentes' : 'Recurring task templates')
+              }
+            >
               <p className="text-sm text-gray-600 mb-3">
-                {/* Egg-interval mode is poultry-only — for non-poultry farms
-                    we just describe the templates aspect. */}
                 {farmType === 'poultry'
                   ? (language === 'fr'
                       ? 'Configurer le mode intervalle des œufs et les modèles de tâches.'
@@ -688,7 +693,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
               <button type="button" onClick={() => onNavigate('tasks')} className="btn-primary w-full inline-flex items-center justify-center gap-2">
                 {language === 'fr' ? 'Ouvrir les tâches' : 'Open Tasks'}
               </button>
-            </div>
+            </CollapsibleSection>
           )}
 
           {!isWorker && (
@@ -725,27 +730,25 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
           )}
 
           {isOwner && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-500">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">{t('settings.manager_permissions')}</h3>
-              </div>
+            <CollapsibleSection
+              icon={<Shield className="w-4 h-4" />}
+              iconClass="bg-gray-100 text-gray-500"
+              title={t('settings.manager_permissions') || 'Manager Permissions'}
+              subtitle={isFr ? 'Ce que les managers peuvent faire' : 'What managers can do'}
+            >
               <FarmPermissionsSettings />
-            </div>
+            </CollapsibleSection>
           )}
 
           {isOwner && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 text-blue-500">
-                  <Users className="w-4 h-4" />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">{t('settings.team_contacts')}</h3>
-              </div>
+            <CollapsibleSection
+              icon={<Users className="w-4 h-4" />}
+              iconClass="bg-blue-50 text-blue-500"
+              title={t('settings.team_contacts') || 'Team Contacts'}
+              subtitle={isFr ? 'Numéros pour les rapports WhatsApp' : 'Phone numbers for WhatsApp reports'}
+            >
               <TeamContactsSettings />
-            </div>
+            </CollapsibleSection>
           )}
 
           {isOwner && (
