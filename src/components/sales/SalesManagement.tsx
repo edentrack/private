@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, FileText, Plus, DollarSign, TrendingUp, Bird, Egg, Calendar, Download, Share2, Receipt } from 'lucide-react';
+import { Users, FileText, Plus, DollarSign, TrendingUp, Bird, Egg, Calendar, Download, Share2, Receipt, Package } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ import { RecordBirdSaleModal } from './RecordBirdSaleModal';
 import { BirdSalesList } from './BirdSalesList';
 import { EggSalesList } from './EggSalesList';
 import { RecordEggSale } from '../eggs/RecordEggSale';
+import { RecordOtherSale } from './RecordOtherSale';
 import { ReceiptsList } from './ReceiptsList';
 import { shouldHideFinancialData } from '../../utils/navigationPermissions';
 import { usePermissions } from '../../contexts/PermissionsContext';
@@ -67,7 +68,7 @@ export function SalesManagement() {
   const [historySubTab, setHistorySubTab] = useState<'birds' | 'eggs' | 'receipts'>(
     species.id === 'poultry' ? 'eggs' : 'birds',
   );
-  const [saleType, setSaleType] = useState<'bird' | 'egg'>('bird');
+  const [saleType, setSaleType] = useState<'bird' | 'egg' | 'other'>('bird');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -562,6 +563,20 @@ export function SalesManagement() {
                       {t('sales.sell_eggs')}
                     </button>
                   )}
+                  {/* Other / misc revenue — manure, bedding, hay, breeders,
+                      equipment, services. Visible on every farm type; the
+                      target items differ by species but the UI is generic. */}
+                  <button
+                    onClick={() => setSaleType('other')}
+                    className={`px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors ${
+                      saleType === 'other'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <Package className="w-4 h-4 inline-block mr-2" />
+                    {isFr ? 'Autre' : 'Other'}
+                  </button>
                 </div>
               </div>
 
@@ -574,7 +589,7 @@ export function SalesManagement() {
                   }}
                   isEmbedded={true}
                 />
-              ) : (
+              ) : saleType === 'egg' ? (
                 <div>
                   <div className="mb-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-xl text-sm text-amber-900">
                     <p className="font-medium mb-1">{t('sales.record_egg_collections_dashboard')}</p>
@@ -588,6 +603,11 @@ export function SalesManagement() {
                     }}
                   />
                 </div>
+              ) : (
+                <RecordOtherSale
+                  farmId={currentFarm?.id || ''}
+                  onSuccess={() => loadData(true)}
+                />
               )}
             </div>
           ) : activeTab === 'history' ? (

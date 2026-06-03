@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, Minus, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -144,29 +144,57 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
     }
   };
 
+  // ── Mortality trend chart — flock-aware weekly bins (May 2026) ──────
+  //
+  // PRIOR BUG: hardcoded `const weeks = 4`. A broiler at week 30 saw
+  // only the last 4 calendar weeks. User feedback: "it shows week 1 2
+  // 3 4 but we are in week 30 and I don't see all the other weeks."
+  //
+  // Fix: anchor weeks to the flock's start_date (fallback arrival_date,
+  // fallback created_at) and bin from week 1 → current week of the
+  // flock. Each bar represents one calendar week of the flock's life,
+  // labelled by its flock-relative week number ("Wk 12") rather than
+  // "12 weeks ago".
+  //
+  // When the flock is older than the visible bar window, the chart
+  // becomes horizontally scrollable (overflow handled in the JSX
+  // below). Latest week is rightmost so the most recent data stays in
+  // view; users scroll left to look at the early weeks.
   const getWeeklyData = () => {
-    const weeklyData: { week: string; count: number }[] = [];
-    const weeks = 4;
+    if (!flock) return [];
+    const rawStart =
+      (flock as any).start_date ||
+      (flock as any).arrival_date ||
+      (flock as any).created_at;
+    const flockStart = rawStart ? new Date(rawStart) : null;
+    if (!flockStart || isNaN(flockStart.getTime())) return [];
+    flockStart.setHours(0, 0, 0, 0);
 
-    for (let i = weeks - 1; i >= 0; i--) {
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - (i * 7 + 7));
-      const weekEnd = new Date();
-      weekEnd.setDate(weekEnd.getDate() - (i * 7));
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    // +1 so a flock placed today renders as Week 1, not Week 0.
+    const totalWeeks = Math.max(
+      1,
+      Math.floor((now.getTime() - flockStart.getTime()) / msPerWeek) + 1
+    );
 
-      const weekLogs = logs.filter(log => {
-        const logDate = new Date(log.event_date);
-        return logDate >= weekStart && logDate < weekEnd;
-      });
-
-      const totalCount = weekLogs.reduce((sum, log) => sum + log.count, 0);
-
+    const weeklyData: { week: string; count: number; weekNumber: number }[] = [];
+    for (let w = 1; w <= totalWeeks; w++) {
+      const weekStart = new Date(flockStart.getTime() + (w - 1) * msPerWeek);
+      const weekEnd = new Date(flockStart.getTime() + w * msPerWeek);
+      const totalCount = logs
+        .filter(log => {
+          const d = new Date(log.event_date);
+          return d >= weekStart && d < weekEnd;
+        })
+        .reduce((sum, log) => sum + log.count, 0);
       weeklyData.push({
-        week: `Week ${weeks - i}`,
+        week: `${isFr ? 'Sem' : 'Wk'} ${w}`,
         count: totalCount,
+        weekNumber: w,
       });
     }
-
     return weeklyData;
   };
 
@@ -290,28 +318,49 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
       </div>
 
       <div className="bg-white rounded-3xl p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">{isFr ? `Tendance des ${species.lossNounPlural.toLowerCase()}` : `${species.lossNounPlural} Trend`}</h3>
-
-        <div className="h-64 flex items-end justify-between space-x-2">
-          {weeklyData.map((data, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center">
-              <div className="w-full bg-gray-100 rounded-t-lg overflow-hidden relative" style={{ height: '200px' }}>
-                <div
-                  className="absolute bottom-0 w-full bg-[#3D5F42] rounded-t-lg transition-all duration-300"
-                  style={{ height: `${(data.count / maxCount) * 100}%` }}
-                />
-                {data.count > 0 && (
-                  <div className="absolute top-2 left-0 right-0 text-center text-xs font-semibold text-gray-700">
-                    {data.count}
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-gray-600 mt-2 font-medium">
-                {data.week}
-              </div>
-            </div>
-          ))}
+        <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+          <h3 className="text-lg font-bold text-gray-900">
+            {isFr ? `Tendance des ${species.lossNounPlural.toLowerCase()}` : `${species.lossNounPlural} Trend`}
+          </h3>
+          {weeklyData.length > 0 && (
+            <span className="text-xs text-gray-500">
+              {isFr
+                ? `Sem 1 → ${weeklyData.length} (depuis le démarrage du lot)`
+                : `Week 1 → ${weeklyData.length} (since flock start)`}
+            </span>
+          )}
         </div>
+
+        {/* Horizontally scrollable. When the flock is older than ~12
+            weeks, the chart overflows; we auto-scroll the container to
+            the right on mount so the latest weeks are visible. Each
+            bar's min-width keeps them tappable on phones — they never
+            shrink below 32 px wide regardless of bar count. */}
+        <ChartScroll>
+          <div
+            className="h-64 flex items-end gap-2"
+            style={{ minWidth: `${Math.max(weeklyData.length * 40, 240)}px` }}
+          >
+            {weeklyData.map((data, index) => (
+              <div key={index} className="flex flex-col items-center" style={{ minWidth: '32px', flex: '1 1 32px' }}>
+                <div className="w-full bg-gray-100 rounded-t-lg overflow-hidden relative" style={{ height: '200px' }}>
+                  <div
+                    className="absolute bottom-0 w-full bg-[#3D5F42] rounded-t-lg transition-all duration-300"
+                    style={{ height: `${(data.count / maxCount) * 100}%` }}
+                  />
+                  {data.count > 0 && (
+                    <div className="absolute top-2 left-0 right-0 text-center text-xs font-semibold text-gray-700">
+                      {data.count}
+                    </div>
+                  )}
+                </div>
+                <div className="text-[10px] text-gray-600 mt-2 font-medium whitespace-nowrap">
+                  {data.week}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ChartScroll>
       </div>
 
       {logs.length > 0 ? (
@@ -359,6 +408,38 @@ export function MortalityTracking({ flock: flockProp }: MortalityTrackingProps) 
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Horizontal scroll container for the weekly trend chart. Auto-scrolls
+ * to the rightmost edge on mount so the latest week is visible by
+ * default, then lets the user scroll left to look at older weeks.
+ *
+ * Kept as a small internal helper rather than extracted to common/
+ * because the scroll-to-end-on-mount behaviour is specific to "last
+ * week is what you want to see first" charts and would otherwise need
+ * a configuration prop.
+ */
+function ChartScroll({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (ref.current) {
+      // Defer to next frame so the bar widths have settled before we
+      // try to scroll to the right edge.
+      requestAnimationFrame(() => {
+        if (ref.current) ref.current.scrollLeft = ref.current.scrollWidth;
+      });
+    }
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className="overflow-x-auto -mx-2 px-2 pb-1"
+      style={{ scrollbarWidth: 'thin' }}
+    >
+      {children}
     </div>
   );
 }
