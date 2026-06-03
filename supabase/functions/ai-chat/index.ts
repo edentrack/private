@@ -1869,22 +1869,35 @@ Deno.serve(async (req: Request) => {
         });
         if (followUpResponse.ok) {
           const followUpData = await followUpResponse.json();
+          console.log("[ai-chat] web_search follow-up stop_reason:", followUpData.stop_reason,
+            "content types:", followUpData.content?.map((c: any) => c.type).join(","));
           const textBlock = followUpData.content?.find((c: any) => c.type === "text");
           if (textBlock?.text) {
             claudeData = followUpData;
+          } else {
+            console.warn("[ai-chat] web_search follow-up had no text block; raw:", JSON.stringify(followUpData).slice(0, 400));
           }
+        } else {
+          const errTxt = await followUpResponse.text().catch(() => "");
+          console.warn("[ai-chat] web_search follow-up non-ok:", followUpResponse.status, errTxt.slice(0, 300));
         }
       } catch (wsErr: any) {
         console.warn("[ai-chat] web_search follow-up failed:", wsErr?.message);
-        // Fall through — use whatever text is available below
       }
     }
 
+    // ── Log the raw content structure for debugging ────────────────────
+    if (needsWebSearch(messages)) {
+      console.log("[ai-chat] final content types:", claudeData.content?.map((c: any) => c.type).join(","),
+        "stop_reason:", claudeData.stop_reason);
+    }
+
     // Extract the final text response. For non-web-search turns this is
-    // always content[0].text. After a web-search round-trip it may be in
-    // a later block.
+    // always content[0].text. After a web-search round-trip check all
+    // blocks for a text type, including web_search_tool_result summaries.
     const assistantMessage =
       claudeData.content?.find((c: any) => c.type === "text")?.text
+      || claudeData.content?.find((c: any) => c.type === "web_search_tool_result")?.content
       || claudeData.content?.[0]?.text
       || "I'm sorry, I couldn't generate a response.";
 
