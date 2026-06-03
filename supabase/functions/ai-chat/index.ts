@@ -1810,7 +1810,83 @@ Deno.serve(async (req: Request) => {
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    const assistantMessage = claudeData.content?.[0]?.text || "I'm sorry, I couldn't generate a response.";
+
+    // ── Web-search tool-use: multi-turn round-trip ─────────────────────
+    // When web_search is attached and Claude needs live data, it returns
+    // a `tool_use` content block (stop_reason = 'tool_use'). We must
+    // then send the search result back as a `tool_result` message so
+    // Claude can compose its final answer. Previously we fell through to
+    // the `content[0].text` extraction which is undefined for tool_use
+    // blocks — causing "I couldn't generate a response."
+    //
+    // The web_search_20250305 built-in is a server-side tool: Anthropic
+    // runs the search and returns a `web_search_tool_result` block in
+    // the next assistant turn automatically — we don't need to supply
+    // the search result ourselves. We only need to send the tool_use
+    // block back as-is (with role=assistant) and request the next turn.
+    // Reference: https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool
+    if (
+      claudeData.stop_reason === "tool_use" &&
+      claudeData.content?.some((c: any) => c.type === "tool_use")
+    ) {
+      try {
+        // Build a follow-up request: previous messages + the assistant's
+        // tool_use turn + a placeholder user turn that triggers the model
+        // to call web_search and return the final text answer.
+        const requestHeaders2: Record<string, string> = {
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+          "anthropic-beta": "web-search-2025-03-05",
+        };
+        const followUpResponse = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: requestHeaders2,
+          body: JSON.stringify({
+            model: chosenModel,
+            max_tokens: 2048,
+            system: systemMessage,
+            messages: [
+              ...claudeMessages,
+              // The assistant's tool_use turn
+              { role: "assistant", content: claudeData.content },
+              // Required: a user message with a tool_result for each tool_use block.
+              // For built-in web_search, passing an empty tool_result triggers the
+              // server to run the search and return the real results in the next response.
+              {
+                role: "user",
+                content: claudeData.content
+                  .filter((c: any) => c.type === "tool_use")
+                  .map((c: any) => ({
+                    type: "tool_result",
+                    tool_use_id: c.id,
+                    content: "",
+                  })),
+              },
+            ],
+            tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+          }),
+        });
+        if (followUpResponse.ok) {
+          const followUpData = await followUpResponse.json();
+          const textBlock = followUpData.content?.find((c: any) => c.type === "text");
+          if (textBlock?.text) {
+            claudeData = followUpData;
+          }
+        }
+      } catch (wsErr: any) {
+        console.warn("[ai-chat] web_search follow-up failed:", wsErr?.message);
+        // Fall through — use whatever text is available below
+      }
+    }
+
+    // Extract the final text response. For non-web-search turns this is
+    // always content[0].text. After a web-search round-trip it may be in
+    // a later block.
+    const assistantMessage =
+      claudeData.content?.find((c: any) => c.type === "text")?.text
+      || claudeData.content?.[0]?.text
+      || "I'm sorry, I couldn't generate a response.";
 
     let responseContent = assistantMessage;
     let actions: any[] = [];
