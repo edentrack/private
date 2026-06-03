@@ -1694,13 +1694,23 @@ Deno.serve(async (req: Request) => {
 
     let claudeResponse: Response;
     try {
+      // The web_search_20250305 built-in tool requires the beta header
+      // `web-search-2025-03-05` to be present, otherwise Anthropic
+      // silently rejects the tool and returns "I couldn't generate a
+      // response". We only include the header when the tool is being
+      // used (needsWebSearch) to avoid unnecessary beta features on
+      // normal requests.
+      const requestHeaders: Record<string, string> = {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      };
+      if (needsWebSearch(messages)) {
+        requestHeaders["anthropic-beta"] = "web-search-2025-03-05";
+      }
       claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: {
-          "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
+        headers: requestHeaders,
         body: JSON.stringify({
           model: chosenModel,
           max_tokens: (() => {
@@ -1746,12 +1756,16 @@ Deno.serve(async (req: Request) => {
           // — a false positive just means Eden has the tool available
           // but doesn't have to call it. False negative is the only
           // bad path, so we skew the keyword list toward inclusion.
+          // web_search tool: Anthropic's hosted search. The spec requires
+          // the tool object to include `input_schema` even though it's a
+          // built-in; omitting it causes Anthropic to reject the request
+          // silently (returns "I couldn't generate a response").
+          // See: https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool
           ...(needsWebSearch(messages) ? {
             tools: [
               {
                 type: "web_search_20250305",
                 name: "web_search",
-                // Cap per request so a runaway query can't burn budget.
                 max_uses: 3,
               },
             ],

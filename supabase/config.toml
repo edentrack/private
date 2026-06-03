@@ -388,6 +388,19 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
+# Cron-triggered functions — called by Supabase scheduled tasks which
+# don't send a user JWT. Without verify_jwt = false the gateway returns
+# 401 before the handler ever runs. Auth inside these functions uses
+# the service-role key, which is sufficient.
+[functions.send-whatsapp-daily-report]
+verify_jwt = false
+
+[functions.pond-alerts-evaluator]
+verify_jwt = false
+
+[functions.journal-cron]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
