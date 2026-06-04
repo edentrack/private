@@ -12,13 +12,13 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "/img_9286.png",
+      "src": "/favicon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/img_9286.png",
+      "src": "/favicon-192.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -32,14 +32,14 @@
       "short_name": "Task",
       "description": "Quickly add a new task",
       "url": "/tasks?action=new",
-      "icons": [{ "src": "/img_9286.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/favicon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Log Eggs",
       "short_name": "Eggs",
       "description": "Record egg collection",
       "url": "/eggs?action=log",
-      "icons": [{ "src": "/img_9286.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/favicon-192.png", "sizes": "192x192" }]
     }
   ],
   "prefer_related_applications": false,
