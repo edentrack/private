@@ -1,6 +1,7 @@
-// New logo: the "e" + infinity mark, 4096×4096 square, transparent background.
-// No crop needed — the mark IS the full square. CROP_SCALE = 1 (show the whole image).
-const CROP_SCALE = 1;
+// The logo PNG is square with the chicken in the top ~64% and "EDENTRACK" text below.
+// CROP_SCALE = 1/0.64 ≈ 1.56 — scaling the image to 156% of its container causes
+// overflow:hidden to clip the text, showing only the chicken.
+const CROP_SCALE = 1.56;
 const LOGO_SRC = '/img_9286.png';
 
 interface LogoProps {
