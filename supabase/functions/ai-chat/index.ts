@@ -56,8 +56,14 @@ import { sanitizeDashes } from '../_shared/sanitize.ts';
  * inclusion — outbreak / latest / current / news / price / today /
  * weather / regulation / outbreak / recall.
  */
-function needsWebSearch(messages: ChatMessage[]): boolean {
-  const last = messages[messages.length - 1];
+function needsWebSearch(_messages: ChatMessage[]): boolean {
+  // Disabled 2026-05-15: web search results are getting truncated at
+  // "Wholesale (farm gate):" — the ReactMarkdown bubble isn't rendering
+  // the full response. Re-enable once the chat bubble rendering bug is
+  // fixed so users don't see partial responses.
+  return false;
+  // eslint-disable-next-line no-unreachable
+  const last = _messages[_messages.length - 1];
   if (!last || !last.content) return false;
   const text = (typeof last.content === 'string'
     ? last.content
