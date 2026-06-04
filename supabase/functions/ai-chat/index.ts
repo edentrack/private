@@ -1844,7 +1844,11 @@ Deno.serve(async (req: Request) => {
           headers: requestHeaders2,
           body: JSON.stringify({
             model: chosenModel,
-            max_tokens: 2048,
+            // Web search synthesis needs more tokens — the search result
+            // itself takes ~800 tokens, leaving only ~1200 for the answer
+            // at 2048. Bump to 4096 so price lists / disease reports
+            // don't get cut off mid-sentence.
+            max_tokens: 4096,
             system: systemMessage,
             messages: [
               ...claudeMessages,
