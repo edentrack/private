@@ -7,6 +7,7 @@ import { useFarmSpecies } from '../../hooks/useSpecies';
 import { Flock, Vaccination } from '../../types/database';
 import { FlockSwitcher } from '../common/FlockSwitcher';
 import { VetLog } from '../vet/VetLog';
+import { VaccineScheduleApplier } from './VaccineScheduleApplier';
 
 interface VaccinationScheduleProps {
   flock: Flock | null;
@@ -248,6 +249,24 @@ function VaccinationContent({ flock, activeTab, onTabChange }: { flock: Flock | 
         </div>
       ) : (
         <>
+          {/* Standard schedule applier — species-appropriate preset,
+              fully editable before applying. Shows for all farm types
+              except aquaculture (fish have no vaccine schedule). */}
+          {currentFlock && currentFarm && farmSpecies.id !== 'aquaculture' && (
+            <VaccineScheduleApplier
+              flock={currentFlock}
+              farmId={currentFarm.id}
+              species={
+                farmSpecies.id === 'rabbits'
+                  ? 'rabbits'
+                  : (currentFlock as any).type?.toLowerCase().includes('layer')
+                  ? 'poultry_layer'
+                  : 'poultry_broiler'
+              }
+              onApplied={() => { loadVaccinations(); }}
+            />
+          )}
+
           {showAddForm && (
             <div className="bg-white rounded-3xl p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">{t('vaccinations.new_vaccination')}</h3>

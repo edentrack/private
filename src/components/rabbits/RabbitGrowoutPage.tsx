@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, Layers, Calendar, Users, Plus, X, HeartOff, Skull } from 'lucide-react';
+import { Loader2, Layers, Calendar, Users, Plus, X, HeartOff, Skull, Scale, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -72,6 +72,17 @@ export function RabbitGrowoutPage() {
   const [mortCause, setMortCause] = useState('');
   const [submittingMort, setSubmittingMort] = useState(false);
 
+  // ── Weight tracking state ──────────────────────────────────────────
+  const [weightGroup, setWeightGroup] = useState<GrowoutGroup | null>(null);
+  const [weightKg, setWeightKg] = useState('');
+  const [weightSampleSize, setWeightSampleSize] = useState('5');
+  const [weightFeedKg, setWeightFeedKg] = useState('');
+  const [weightNotes, setWeightNotes] = useState('');
+  const [weightDate, setWeightDate] = useState(localToday());
+  const [submittingWeight, setSubmittingWeight] = useState(false);
+  // Latest weight sample per group_id
+  const [latestWeights, setLatestWeights] = useState<Record<string, number>>({});
+
   const loadGroups = useCallback(async () => {
     if (!currentFarm?.id) return;
     setLoading(true);
@@ -79,16 +90,71 @@ export function RabbitGrowoutPage() {
       .from(spec.tables.growout)
       .select('*')
       .eq('farm_id', currentFarm.id)
-      // Active groups float to the top; within each status, newest first.
       .order('status', { ascending: true })
       .order('birth_date', { ascending: false, nullsFirst: false });
     if (error) {
       toast.error(isFr ? 'Échec du chargement des cohortes' : 'Failed to load grow-out groups');
     } else {
-      setGroups((data as GrowoutGroup[]) || []);
+      const gs = (data as GrowoutGroup[]) || [];
+      setGroups(gs);
+      // Load latest weight sample for each active group
+      if (gs.length > 0) {
+        const ids = gs.map(g => g.id);
+        const { data: wData } = await supabase
+          .from('rabbit_weight_samples')
+          .select('growout_group_id, avg_weight_kg, sample_date')
+          .in('growout_group_id', ids)
+          .order('sample_date', { ascending: false });
+        if (wData) {
+          const latest: Record<string, number> = {};
+          wData.forEach((w: any) => {
+            if (!latest[w.growout_group_id]) {
+              latest[w.growout_group_id] = parseFloat(w.avg_weight_kg);
+            }
+          });
+          setLatestWeights(latest);
+        }
+      }
     }
     setLoading(false);
   }, [currentFarm?.id, isFr, toast, spec.tables.growout]);
+
+  const handleLogWeight = async () => {
+    if (!weightGroup || !currentFarm?.id) return;
+    const avg = parseFloat(weightKg);
+    if (!Number.isFinite(avg) || avg <= 0) {
+      toast.error(isFr ? 'Poids invalide' : 'Invalid weight');
+      return;
+    }
+    setSubmittingWeight(true);
+    const { error } = await supabase.from('rabbit_weight_samples').insert({
+      farm_id: currentFarm.id,
+      growout_group_id: weightGroup.id,
+      sample_date: weightDate || localToday(),
+      sample_size: parseInt(weightSampleSize) || 5,
+      avg_weight_kg: avg,
+      feed_consumed_kg: weightFeedKg ? parseFloat(weightFeedKg) : null,
+      notes: weightNotes.trim() || null,
+    });
+    setSubmittingWeight(false);
+    if (error) {
+      toast.error(`${isFr ? 'Échec' : 'Failed'}: ${error.message}`);
+      return;
+    }
+    // Update FCR if feed provided
+    const marketWeight = spec.lifecycle.marketAgeWeeks;
+    const isMarketReady = avg >= 2.0;
+    toast.success(
+      isMarketReady
+        ? (isFr ? `✅ ${avg} kg — Prêt pour la vente !` : `✅ ${avg} kg — Market ready!`)
+        : (isFr ? `Poids enregistré : ${avg} kg` : `Weight logged: ${avg} kg`)
+    );
+    setWeightGroup(null);
+    setWeightKg('');
+    setWeightFeedKg('');
+    setWeightNotes('');
+    void loadGroups();
+  };
 
   useEffect(() => { void loadGroups(); }, [loadGroups]);
 
@@ -350,20 +416,55 @@ export function RabbitGrowoutPage() {
                     </span>
                   )}
                 </div>
+                {/* Latest weight + market-ready indicator */}
+                {latestWeights[g.id] !== undefined && (
+                  <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg mb-2 ${
+                    latestWeights[g.id] >= 2.0
+                      ? 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+                      : 'bg-gray-50 text-gray-600'
+                  }`}>
+                    <Scale className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="font-semibold">{latestWeights[g.id].toFixed(2)} kg</span>
+                    <span className="text-gray-400">{isFr ? 'moy. dernière pesée' : 'avg last weigh-in'}</span>
+                    {latestWeights[g.id] >= 2.0 && (
+                      <span className="ml-auto font-bold text-yellow-700">
+                        {isFr ? '🏆 Prêt' : '🏆 Ready'}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {isActive && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMortalityGroup(g);
-                      setMortCount('1');
-                      setMortDate(localToday());
-                      setMortCause('');
-                    }}
-                    className="w-full px-3 py-1.5 border border-gray-200 hover:border-red-300 hover:bg-red-50 text-xs font-medium text-gray-700 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
-                  >
-                    <HeartOff className="w-3.5 h-3.5 text-red-500" />
-                    {isFr ? 'Enregistrer une perte' : 'Log mortality'}
-                  </button>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWeightGroup(g);
+                        setWeightKg('');
+                        setWeightFeedKg('');
+                        setWeightNotes('');
+                        setWeightDate(localToday());
+                        setWeightSampleSize('5');
+                      }}
+                      className="px-3 py-1.5 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-xs font-medium text-gray-700 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Scale className="w-3.5 h-3.5 text-indigo-500" />
+                      {isFr ? 'Peser' : 'Log weight'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMortalityGroup(g);
+                        setMortCount('1');
+                        setMortDate(localToday());
+                        setMortCause('');
+                      }}
+                      className="px-3 py-1.5 border border-gray-200 hover:border-red-300 hover:bg-red-50 text-xs font-medium text-gray-700 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <HeartOff className="w-3.5 h-3.5 text-red-500" />
+                      {isFr ? 'Perte' : 'Mortality'}
+                    </button>
+                  </div>
                 )}
                 {g.source_litter_id && (
                   <p className="text-[11px] text-gray-400 mt-2 italic">
@@ -444,6 +545,117 @@ export function RabbitGrowoutPage() {
               >
                 {submittingMort && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 {isFr ? 'Enregistrer' : 'Log mortality'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Weight modal ──────────────────────────────────────────────── */}
+      {weightGroup && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4 text-indigo-600" />
+                <h2 className="font-bold text-gray-900 text-sm">
+                  {isFr ? 'Pesée — ' : 'Weigh-in — '}{weightGroup.name}
+                </h2>
+              </div>
+              <button onClick={() => setWeightGroup(null)}><X className="w-5 h-5 text-gray-500" /></button>
+            </div>
+            <div className="p-4 space-y-3">
+              {/* Market-ready target hint */}
+              <div className="px-3 py-2 bg-indigo-50 rounded-lg text-xs text-indigo-800 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
+                {isFr
+                  ? `Objectif marché : 2.0–2.5 kg. Au-dessus = prêt à vendre.`
+                  : `Market target: 2.0–2.5 kg avg. Above = ready to sell.`}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {isFr ? 'Poids moyen (kg) *' : 'Avg weight (kg) *'}
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0.1"
+                    value={weightKg}
+                    onChange={e => setWeightKg(e.target.value)}
+                    placeholder="1.85"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400 font-semibold text-lg"
+                    autoFocus
+                  />
+                  {weightKg && parseFloat(weightKg) >= 2.0 && (
+                    <p className="text-xs text-yellow-700 font-bold mt-1">
+                      🏆 {isFr ? 'Prêt pour la vente !' : 'Market ready!'}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {isFr ? 'Nb. pesé' : 'Sample size'}
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    value={weightSampleSize}
+                    onChange={e => setWeightSampleSize(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {isFr ? 'Date' : 'Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={weightDate}
+                    max={localToday()}
+                    onChange={e => setWeightDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {isFr ? 'Aliment consommé depuis la dernière pesée (kg)' : 'Feed consumed since last weigh-in (kg)'}
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    value={weightFeedKg}
+                    onChange={e => setWeightFeedKg(e.target.value)}
+                    placeholder={isFr ? 'Optionnel — calcule le ICA' : 'Optional — calculates FCR'}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {isFr ? 'Notes' : 'Notes'}
+                  </label>
+                  <input
+                    type="text"
+                    value={weightNotes}
+                    onChange={e => setWeightNotes(e.target.value)}
+                    placeholder={isFr ? 'Optionnel' : 'Optional'}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-400"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={submittingWeight || !weightKg}
+                onClick={handleLogWeight}
+                className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submittingWeight && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <Scale className="w-4 h-4" />
+                {isFr ? 'Enregistrer la pesée' : 'Save weight'}
               </button>
             </div>
           </div>
