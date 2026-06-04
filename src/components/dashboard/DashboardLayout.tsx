@@ -15,7 +15,7 @@ import { NotificationCenter } from '../notifications/NotificationCenter';
 import { canViewModule, ModuleName } from '../../utils/navigationPermissions';
 import HelpModal from '../help/HelpModal';
 import { useVisualViewport } from '../../hooks/useVisualViewport';
-import { LogoIcon } from '../common/Logo';
+// LogoIcon removed — chicken no longer shown in top-left nav (May 2026)
 import { getNavigationGroups, getExpandedGroups, saveExpandedGroups, NavigationGroupId } from '../../utils/navigationGroups';
 import { OfflineIndicator } from '../common/OfflineIndicator';
 import { initOfflineSync } from '../../lib/offlineSync';
@@ -314,7 +314,6 @@ export function DashboardLayout({ children, currentView, onNavigate }: Dashboard
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="flex items-center h-14 sm:h-16 gap-3 sm:gap-4 lg:gap-8">
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <LogoIcon size="sm" blend />
               <div className="block">
                 <h1 className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">
                   EDENTRACK
