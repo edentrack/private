@@ -9,7 +9,7 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen bg-white">
       <div className="max-w-3xl mx-auto px-6 py-16 text-gray-800">
         <h1 className="text-4xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
-        <p className="text-sm text-gray-500 mb-10">Last updated: May 10, 2026</p>
+        <p className="text-sm text-gray-500 mb-10">Last updated: June 4, 2026</p>
 
         <p className="mb-6 leading-relaxed">
           This Privacy Policy explains how EdenTrack ("we", "us", "our") collects, uses, and shares
@@ -71,7 +71,8 @@ export default function PrivacyPolicy() {
             <li><strong>OpenAI</strong>: transcribes voice messages you record (Whisper)</li>
             <li><strong>PostHog</strong>: product analytics and error tracking</li>
             <li><strong>Crisp</strong>: in-app support chat (web only; disabled in mobile apps)</li>
-            <li><strong>Stripe, Paystack, Campay, Flutterwave</strong>: payment processing depending on your country</li>
+            <li><strong>Stripe</strong>: card payment processing for South Africa and international users</li>
+            <li><strong>Flutterwave</strong>: card and mobile money payment processing for African countries</li>
             <li><strong>Apple Push Notification service & Firebase Cloud Messaging</strong>: to deliver push notifications to your phone</li>
           </ul>
           <p className="mb-4">
