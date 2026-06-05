@@ -73,7 +73,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             await loadUserData(session.user.id);
           } else {
-            clearUserData();
+            // ── Offline guard ──────────────────────────────────────────
+            // When the device is offline, Supabase fires a SIGNED_OUT or
+            // TOKEN_REFRESHED-failure event because it can't reach the
+            // network to validate/refresh the token. Without this guard,
+            // clearUserData() runs and the user sees the "create a farm"
+            // onboarding screen — losing all context even though their
+            // data is safe in Supabase.
+            //
+            // Fix: if we're offline AND we already have a user loaded,
+            // keep the existing state. Only clear when we're genuinely
+            // signed out (user tapped Sign Out) or we know we're online
+            // and got a real null session.
+            //
+            // `navigator.onLine` is not 100% reliable but it's the best
+            // we have in a WebView without a network-check request.
+            const isOffline = !navigator.onLine;
+            const alreadyHaveUser = !!session === false && !!window.localStorage.getItem('sb-' + import.meta.env.VITE_SUPABASE_URL?.replace(/https?:\/\//, '').replace(/\..*/,'') + '-auth-token');
+            if (isOffline && alreadyHaveUser) {
+              // Stay in current state — don't wipe the farm context
+              setLoading(false);
+              return;
+            }
+            if (event === 'SIGNED_OUT') {
+              // Explicit sign-out: clear everything
+              clearUserData();
+            } else if (!isOffline) {
+              // Online + null session = genuinely not authenticated
+              clearUserData();
+            } else {
+              // Offline + unclear state: keep whatever we have
+              setLoading(false);
+            }
           }
         } catch (error) {
           console.error('Error in auth state change:', error);
