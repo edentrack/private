@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Check, ArrowRight, Leaf, Sprout, Crown, Building2, ChevronDown, ChevronUp } from 'lucide-react';
 import { CheckoutModal } from './CheckoutModal';
 import { getEffectivePrice, formatPrice } from '../../utils/regionalPayment';
@@ -60,6 +61,7 @@ function perMonthEquiv(plan: PaidPlan, cycle: Cycle): string {
 }
 
 export default function PricingSection({ onGetStarted }: PricingSectionProps) {
+  const prefersReduced = useReducedMotion();
   const [cycle, setCycle] = useState<Cycle>('yearly');
   const [checkoutPlan, setCheckoutPlan] = useState<PaidPlan | null>(null);
   const [showCompare, setShowCompare] = useState(false);
@@ -76,7 +78,13 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Heading */}
-        <div className="text-center mb-10">
+        <motion.div
+          className="text-center mb-10"
+          initial={prefersReduced ? false : { opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1] }}
+        >
           <div className="inline-flex items-center gap-2 border border-white/10 text-gray-400 text-xs font-bold px-4 py-1.5 rounded-full mb-5 uppercase tracking-wider">
             Pricing
           </div>
@@ -86,7 +94,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
           <p className="text-gray-400 text-xl max-w-2xl mx-auto">
             Start free. Pay only when Eden is doing real work for you.
           </p>
-        </div>
+        </motion.div>
 
         {/* Billing cycle toggle */}
         <div className="flex justify-center mb-12">
@@ -117,7 +125,14 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
 
           {/* Starter — free */}
-          <div className="rounded-2xl p-7 flex flex-col" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <motion.div
+            className="rounded-2xl p-7 flex flex-col"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+            initial={prefersReduced ? false : { opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.55, delay: 0, ease: [0.25, 0.1, 0.25, 1] }}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/10 text-gray-300">
                 <Leaf className="w-5 h-5" />
@@ -149,10 +164,17 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               className="w-full py-2.5 rounded-2xl font-semibold text-sm border border-white/20 text-white hover:bg-white/10 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
               Get started free <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          </motion.div>
 
           {/* Grower — most popular */}
-          <div className="rounded-2xl p-7 flex flex-col relative" style={{ background: '#ffdd00' }}>
+          <motion.div
+            className="rounded-2xl p-7 flex flex-col relative"
+            style={{ background: '#ffdd00' }}
+            initial={prefersReduced ? false : { opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.55, delay: 0.08, ease: [0.25, 0.1, 0.25, 1] }}
+          >
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               <span className="bg-black/20 text-gray-900 text-xs font-bold px-4 py-1.5 rounded-full">Most Popular</span>
             </div>
@@ -199,10 +221,17 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               className="w-full py-2.5 rounded-2xl font-bold text-sm bg-gray-900 text-white hover:bg-gray-800 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
               Subscribe <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          </motion.div>
 
           {/* Farm Boss */}
-          <div className="rounded-2xl p-7 flex flex-col" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <motion.div
+            className="rounded-2xl p-7 flex flex-col"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+            initial={prefersReduced ? false : { opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.55, delay: 0.16, ease: [0.25, 0.1, 0.25, 1] }}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/10 text-amber-400">
                 <Crown className="w-5 h-5" />
@@ -242,10 +271,17 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               className="w-full py-2.5 rounded-2xl font-bold text-sm bg-amber-500 text-white hover:bg-amber-600 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
               Subscribe <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          </motion.div>
 
           {/* Industry */}
-          <div className="rounded-2xl p-7 flex flex-col" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <motion.div
+            className="rounded-2xl p-7 flex flex-col"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+            initial={prefersReduced ? false : { opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.55, delay: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/10 text-blue-400">
                 <Building2 className="w-5 h-5" />
@@ -287,7 +323,7 @@ export default function PricingSection({ onGetStarted }: PricingSectionProps) {
               className="w-full py-2.5 rounded-2xl font-bold text-sm bg-blue-600 text-white hover:bg-blue-700 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
               Subscribe <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          </motion.div>
         </div>
 
         {/* Compare all features — expandable matrix */}

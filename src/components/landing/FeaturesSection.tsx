@@ -1,8 +1,17 @@
 
+import { motion, useReducedMotion } from 'framer-motion';
 import { TrendingUp, Smartphone, Globe, Shield, Zap, Users, BarChart } from 'lucide-react';
 import { CheckCircle2, BarChart3 } from 'lucide-react';
 
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 28 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-60px' },
+  transition: { duration: 0.55, delay, ease: [0.25, 0.1, 0.25, 1] as const },
+});
+
 export default function FeaturesSection() {
+  const prefersReduced = useReducedMotion();
   const mainFeatures = [
     {
       icon: TrendingUp,
@@ -67,22 +76,26 @@ export default function FeaturesSection() {
     <section id="features" className="py-20 lg:py-32 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main Heading */}
-        <div className="text-center mb-16">
+        <motion.div
+          className="text-center mb-16"
+          {...(prefersReduced ? {} : fadeUp())}
+        >
           <h2 className="text-4xl md:text-5xl font-bold text-agri-brown-900 mb-4">
             Everything You Need to Manage Your Farm
           </h2>
           <p className="text-xl text-agri-brown-600 max-w-2xl mx-auto">
             Powerful features designed for modern farmers
           </p>
-        </div>
+        </motion.div>
 
         {/* Main Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
           {mainFeatures.map((feature, idx) => {
             const Icon = feature.icon;
             return (
-              <div
+              <motion.div
                 key={idx}
+                {...(prefersReduced ? {} : fadeUp(idx * 0.08))}
                 className="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-agri-brown-100 hover:border-neon-300 group"
               >
                 <div className={`w-12 h-12 ${feature.bgColor} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
@@ -90,7 +103,7 @@ export default function FeaturesSection() {
                 </div>
                 <h3 className="text-xl font-bold text-agri-brown-900 mb-2">{feature.title}</h3>
                 <p className="text-agri-brown-600 leading-relaxed">{feature.description}</p>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -105,13 +118,17 @@ export default function FeaturesSection() {
             {/* Left: Feature List */}
             <div className="space-y-6">
               {trackFeatures.map((feature, idx) => (
-                <div key={idx} className="flex items-start gap-4">
+                <motion.div
+                  key={idx}
+                  {...(prefersReduced ? {} : fadeUp(idx * 0.08))}
+                  className="flex items-start gap-4"
+                >
                   <CheckCircle2 className="w-6 h-6 text-neon-600 flex-shrink-0 mt-1" />
                   <div>
                     <h4 className="font-bold text-lg text-agri-brown-900 mb-1">{feature.text}</h4>
                     <p className="text-agri-brown-600">{feature.subtext}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
 
@@ -120,8 +137,9 @@ export default function FeaturesSection() {
               {additionalFeatures.map((feature, idx) => {
                 const Icon = feature.icon;
                 return (
-                  <div
+                  <motion.div
                     key={idx}
+                    {...(prefersReduced ? {} : fadeUp(0.2 + idx * 0.08))}
                     className="bg-gradient-to-br from-white to-agri-gold-50 rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-agri-brown-100 group"
                   >
                     <div className="w-10 h-10 bg-neon-100 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
@@ -129,7 +147,7 @@ export default function FeaturesSection() {
                     </div>
                     <h4 className="font-bold text-lg text-agri-brown-900 mb-1">{feature.title}</h4>
                     <p className="text-sm text-agri-brown-600">{feature.subtitle}</p>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

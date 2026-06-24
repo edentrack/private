@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, Play, CheckCircle2, TrendingUp, Package, DollarSign, Calendar, Clock, User, Mail, Phone, MessageSquare, X } from 'lucide-react';
 import { ChickenIcon } from '../icons/ChickenIcon';
 import { supabase } from '../../lib/supabaseClient';
+
+const heroContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.11 } },
+};
+const heroItem = {
+  hidden: { opacity: 0, y: 28 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.65, ease: [0.25, 0.1, 0.25, 1] as const } },
+};
 
 interface HeroSectionProps {
   onGetStarted: () => void;
 }
 
 export default function HeroSection({ onGetStarted }: HeroSectionProps) {
+  const prefersReduced = useReducedMotion();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [showDemoForm, setShowDemoForm] = useState(false);
   const [demoFormData, setDemoFormData] = useState({
@@ -310,29 +321,46 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
   return (
     <section className="relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
-        <div className="text-center">
+        <motion.div
+          className="text-center"
+          variants={prefersReduced ? undefined : heroContainer}
+          initial={prefersReduced ? false : 'hidden'}
+          animate="show"
+        >
           {/* Main Heading */}
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
+          <motion.h1
+            variants={prefersReduced ? undefined : heroItem}
+            className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight"
+          >
             Run your farm
             <br />
             <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #ffe833 0%, #ffdd00 50%, #F5A623 100%)', WebkitBackgroundClip: 'text' }}>
               with Eden.
             </span>
-          </h1>
+          </motion.h1>
 
           {/* Subheading */}
-          <p className="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <motion.p
+            variants={prefersReduced ? undefined : heroItem}
+            className="text-xl md:text-2xl text-gray-700 mb-8 max-w-3xl mx-auto leading-relaxed"
+          >
             Eden is the AI that records sales, tracks expenses, and keeps your books up to date.
             On the dashboard or right inside WhatsApp. Poultry, fish, rabbits. Your language. Your currency.
-          </p>
+          </motion.p>
 
           {/* Tagline */}
-          <p className="text-lg text-gray-600 mb-12 italic">
+          <motion.p
+            variants={prefersReduced ? undefined : heroItem}
+            className="text-lg text-gray-600 mb-12 italic"
+          >
             Made for farmers everywhere.
-          </p>
+          </motion.p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+          <motion.div
+            variants={prefersReduced ? undefined : heroItem}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8"
+          >
             <button
               type="button"
               onClick={(e) => {
@@ -361,7 +389,7 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
               <Play className="w-5 h-5" />
               View Demo
             </button>
-          </div>
+          </motion.div>
 
           {/* Demo Booking Form - Inline */}
           {showDemoForm && (
@@ -593,14 +621,22 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
               features free, then drop to the forever-Free plan if they
               don't subscribe. No card required. */}
           {!showDemoForm && (
-            <p className="text-sm text-gray-500">
+            <motion.p
+              variants={prefersReduced ? undefined : heroItem}
+              className="text-sm text-gray-500"
+            >
               No credit card required • 30 days of Grower free, then Free forever
-            </p>
+            </motion.p>
           )}
-        </div>
+        </motion.div>
 
         {/* App Preview Slideshow */}
-        <div className="mt-16 max-w-5xl mx-auto">
+        <motion.div
+          className="mt-16 max-w-5xl mx-auto"
+          initial={prefersReduced ? false : { opacity: 0, y: 48 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.55, ease: [0.25, 0.1, 0.25, 1] }}
+        >
 
           {/* Tab bar */}
           <div className="flex items-center justify-center gap-1 mb-4">
@@ -693,7 +729,7 @@ export default function HeroSection({ onGetStarted }: HeroSectionProps) {
           <p className="text-center text-sm text-agri-brown-400 mt-3">
             Auto-advances every 5 seconds · Click any tab to explore
           </p>
-        </div>
+        </motion.div>
       </div>
 
     </section>
