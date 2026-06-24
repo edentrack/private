@@ -1070,10 +1070,10 @@ export default function LandingPage() {
                     ))}
                   </ul>
 
-                  {checkoutError?.plan === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : 'industry') && (
+                  {PLAN_KEY[plan.id] !== null && checkoutError?.plan === PLAN_KEY[plan.id] && (
                     <p className="text-red-400 text-xs mb-2 text-center">{checkoutError.msg}</p>
                   )}
-                  {flwEmailFor === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : plan.id === 'industry' ? 'industry' : null) && (
+                  {PLAN_KEY[plan.id] !== null && flwEmailFor === PLAN_KEY[plan.id] && (
                     <form onSubmit={doFlutterwaveCheckout} className="mb-2 space-y-2">
                       <input
                         type="email" required autoFocus value={flwEmail} onChange={e => setFlwEmail(e.target.value)}
@@ -1088,7 +1088,7 @@ export default function LandingPage() {
                   )}
                   <button
                     type="button"
-                    disabled={!!checkoutLoading || flwEmailFor === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : plan.id === 'industry' ? 'industry' : null)}
+                    disabled={!!checkoutLoading || (PLAN_KEY[plan.id] !== null && flwEmailFor === PLAN_KEY[plan.id])}
                     onClick={() => {
                       if (plan.id === 'grower') { startCheckout('pro'); return; }
                       if (plan.id === 'farmboss') { startCheckout('enterprise'); return; }
@@ -1105,7 +1105,7 @@ export default function LandingPage() {
                         : 'border border-white/20 text-white hover:bg-white/10'
                     }`}
                   >
-                    {checkoutLoading === (plan.id === 'grower' ? 'pro' : plan.id === 'farmboss' ? 'enterprise' : plan.id === 'industry' ? 'industry' : '') ? (
+                    {PLAN_KEY[plan.id] !== null && checkoutLoading === PLAN_KEY[plan.id] ? (
                       <><svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg> Preparing…</>
                     ) : plan.ctaLabel}
                   </button>
@@ -1184,6 +1184,7 @@ export default function LandingPage() {
           </div>
           <p className="text-xs text-center">Poultry farm management for everyone, everywhere.</p>
           <div className="flex items-center gap-6 text-xs">
+            <a href="#/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
             <button type="button" onClick={handleSignIn} className="hover:text-white transition-colors">Sign In</button>
             <button type="button" onClick={handleGetStarted} className="hover:text-white transition-colors">Get Started</button>
           </div>
