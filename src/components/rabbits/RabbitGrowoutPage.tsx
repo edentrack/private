@@ -107,9 +107,9 @@ export function RabbitGrowoutPage() {
           .order('sample_date', { ascending: false });
         if (wData) {
           const latest: Record<string, number> = {};
-          wData.forEach((w: any) => {
+          wData.forEach((w: { growout_group_id: string; avg_weight_kg: string | number }) => {
             if (!latest[w.growout_group_id]) {
-              latest[w.growout_group_id] = parseFloat(w.avg_weight_kg);
+              latest[w.growout_group_id] = parseFloat(String(w.avg_weight_kg));
             }
           });
           setLatestWeights(latest);
@@ -141,8 +141,7 @@ export function RabbitGrowoutPage() {
       toast.error(`${isFr ? 'Échec' : 'Failed'}: ${error.message}`);
       return;
     }
-    // Update FCR if feed provided
-    const marketWeight = spec.lifecycle.marketAgeWeeks;
+    // Rabbits are market-ready at ~2.0–2.5 kg live weight.
     const isMarketReady = avg >= 2.0;
     toast.success(
       isMarketReady

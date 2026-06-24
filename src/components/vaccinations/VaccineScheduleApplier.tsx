@@ -46,10 +46,8 @@ interface Props {
 }
 
 function computeDate(flock: Flock, template: Template): string {
-  const rawStart =
-    (flock as any).start_date ||
-    (flock as any).arrival_date ||
-    (flock as any).created_at;
+  const f = flock as Flock & { start_date?: string; arrival_date?: string; created_at?: string };
+  const rawStart = f.start_date || f.arrival_date || f.created_at;
   const base = rawStart ? new Date(rawStart) : new Date();
   base.setHours(12, 0, 0, 0);
 
@@ -82,7 +80,6 @@ export function VaccineScheduleApplier({ flock, farmId, species, onApplied }: Pr
   const isFr = language === 'fr';
 
   const [open, setOpen] = useState(false);
-  const [templates, setTemplates] = useState<Template[]>([]);
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -97,7 +94,6 @@ export function VaccineScheduleApplier({ flock, farmId, species, onApplied }: Pr
       .eq('species', species)
       .order('display_order');
     const tpls: Template[] = (data || []) as Template[];
-    setTemplates(tpls);
     setDrafts(tpls.map(t => ({
       template_id: t.id,
       vaccine_name: t.vaccine_name,
@@ -107,7 +103,7 @@ export function VaccineScheduleApplier({ flock, farmId, species, onApplied }: Pr
       editing: false,
     })));
     setLoading(false);
-  }, [species, flock.id]);
+  }, [species, flock]);
 
   // Check if schedule already applied (any vaccination exists for this flock)
   useEffect(() => {
