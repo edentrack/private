@@ -29,7 +29,7 @@ import { createClient, SupabaseClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const CRON_SECRET = Deno.env.get("CRON_SECRET") || SUPABASE_SERVICE_KEY;
+const CRON_SECRET = Deno.env.get("CRON_SECRET");
 
 /**
  * Notify every farm member who has opted in to `eden_journal` push
@@ -391,14 +391,21 @@ async function runWeeklySummaries(supabase: SupabaseClient): Promise<number> {
 }
 
 Deno.serve(async (req: Request) => {
-  // Only allow service-role / explicit CRON_SECRET callers.
-  const authHeader = req.headers.get('authorization') ?? '';
-  const provided = authHeader.replace(/^Bearer\s+/i, '');
-  if (provided !== SUPABASE_SERVICE_KEY && provided !== CRON_SECRET) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  // pg_cron can't carry a secret without hardcoding it in cron.job
+  // (which is how the service-role JWT ended up leaked there — see
+  // migration 20260701000001). All work below is idempotent
+  // (journal_clear_announced flag + once-per-week dedupe), so this
+  // runs open like the other cron functions. Set the CRON_SECRET
+  // env var on this function to re-enable the auth gate.
+  if (CRON_SECRET) {
+    const authHeader = req.headers.get('authorization') ?? '';
+    const provided = authHeader.replace(/^Bearer\s+/i, '');
+    if (provided !== SUPABASE_SERVICE_KEY && provided !== CRON_SECRET) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);

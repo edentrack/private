@@ -42,5 +42,8 @@ export default defineConfig({
       VITE_SUPABASE_URL: 'https://placeholder.supabase.co',
       VITE_SUPABASE_ANON_KEY: 'placeholder-anon-key',
     },
+    // Stale agent worktrees under .claude/ carry full repo copies —
+    // without this exclude every test file runs once per worktree.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/**'],
   },
 });
