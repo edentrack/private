@@ -14,7 +14,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { SimpleModeProvider } from './contexts/SimpleModeContext';
 import { Flock } from './types/database';
 import { OverflowModal } from './components/billing/OverflowModal';
-import { getMaxFarms, getMaxFlocks, getMaxTeamMembers } from './utils/planGating';
+import { getMaxFlocks, getMaxTeamMembers } from './utils/planGating';
 import { useFarmHeadcount } from './hooks/useFarmHeadcount';
 
 // Auth screens — kept eager (shown before JS finishes loading)
@@ -287,31 +287,52 @@ function AppContent() {
     const tierRank: Record<string, number> = { free: 0, pro: 1, enterprise: 2, industry: 3 };
     if (prev !== null && (tierRank[prev] ?? 0) > (tierRank[effectiveTier] ?? 0)) {
       // Query current data to see if anything overflows the new tier
-      const maxFarms = getMaxFarms(effectiveTier);
       const maxFlocks = getMaxFlocks(effectiveTier);
       const maxTeam = getMaxTeamMembers(effectiveTier);
       import('./lib/supabaseClient').then(({ supabase }) => {
         Promise.all([
-          supabase.from('farms').select('id,name').eq('owner_id', user.id),
           supabase.from('flocks').select('id,name,farm_id,status').in('farm_id', allFarms.map(f => f.id)),
-          supabase.from('farm_members').select('id,user_id,farm_id').in('farm_id', allFarms.map(f => f.id)),
-        ]).then(([farmsRes, flocksRes, teamRes]) => {
-          const farms = farmsRes.data ?? [];
+          supabase.from('farm_members').select('id,user_id,farm_id,role,is_active').in('farm_id', allFarms.map(f => f.id)).eq('is_active', true),
+        ]).then(async ([flocksRes, teamRes]) => {
           const flocks = (flocksRes.data ?? []).filter((fl: any) => fl.status === 'active');
-          const team = teamRes.data ?? [];
+          // The owner can't archive themselves — only other members go in
+          // the pick list.
+          const team = (teamRes.data ?? []).filter((m: any) => m.user_id !== user.id && m.role !== 'owner');
+
+          // Resolve member names — raw user_id UUIDs in the modal are
+          // unusable (a farmer can't tell which worker is which).
+          const memberIds = team.map((m: any) => m.user_id);
+          const { data: memberProfiles } = memberIds.length > 0
+            ? await supabase.from('profiles').select('id,full_name,email').in('id', memberIds)
+            : { data: [] as Array<{ id: string; full_name: string | null; email: string | null }> };
+          const nameOf = (uid: string) => {
+            const p = (memberProfiles ?? []).find((pr: any) => pr.id === uid);
+            return p?.full_name || p?.email || 'Team member';
+          };
+
+          // Show ALL items in each over-limit category (not just the
+          // overflow tail) and pre-select the first `limit` of each —
+          // otherwise the within-limit items are invisible and the
+          // selected-vs-limit math lets users save a still-over state.
+          // The flock limit is per farm, so group before comparing.
           const items: typeof overflowItems = [];
-          farms.forEach((f: any, i: number) => {
-            if (i >= maxFarms) items.push({ id: f.id, type: 'farm', name: f.name, isCurrentlyActive: true });
-          });
-          flocks.forEach((fl: any, i: number) => {
-            if (i >= maxFlocks) {
-              const farmName = allFarms.find(f => f.id === fl.farm_id)?.name;
-              items.push({ id: fl.id, type: 'flock', name: fl.name, context: farmName ? `in ${farmName}` : undefined, isCurrentlyActive: true });
-            }
-          });
-          team.forEach((m: any, i: number) => {
-            if (i >= maxTeam) items.push({ id: m.id, type: 'team_member', name: m.user_id, isCurrentlyActive: true });
-          });
+          const flocksByFarm: Record<string, any[]> = {};
+          flocks.forEach((fl: any) => { (flocksByFarm[fl.farm_id] ||= []).push(fl); });
+          if (Object.values(flocksByFarm).some(list => list.length > maxFlocks)) {
+            Object.entries(flocksByFarm).forEach(([farmId, list]) => {
+              const farmName = allFarms.find(f => f.id === farmId)?.name;
+              list.forEach((fl: any, i: number) => {
+                items.push({ id: fl.id, type: 'flock', name: fl.name, context: farmName ? `in ${farmName}` : undefined, isCurrentlyActive: i < maxFlocks });
+              });
+            });
+          }
+          // maxTeam counts the owner, so members get maxTeam - 1 slots.
+          const memberSlots = Math.max(0, maxTeam - 1);
+          if (team.length > memberSlots) {
+            team.forEach((m: any, i: number) => {
+              items.push({ id: m.id, type: 'team_member', name: nameOf(m.user_id), isCurrentlyActive: i < memberSlots });
+            });
+          }
           if (items.length > 0) {
             setOverflowItems(items);
             setShowOverflow(true);
@@ -1790,8 +1811,34 @@ function OverflowModalWithHeadcount(props: {
   overflowItems: Parameters<typeof OverflowModal>[0]['items'];
   onUpgrade: () => void;
 }) {
-  const { currentFarm } = useAuth();
+  const { currentFarm, user } = useAuth();
   const { status } = useFarmHeadcount(currentFarm?.id, props.effectiveTier);
+
+  // Archive everything the user did NOT keep: flocks go read-only via
+  // status='archived' (same path as ArchiveFlockModal), team members are
+  // deactivated via is_active=false (AuthContext filters on it, so they
+  // lose access on next load). Nothing is deleted.
+  const handleArchive = async (selectedToKeepActive: string[]) => {
+    const keep = new Set(selectedToKeepActive);
+    const dropFlocks = props.overflowItems.filter(i => i.type === 'flock' && !keep.has(i.id)).map(i => i.id);
+    const dropMembers = props.overflowItems.filter(i => i.type === 'team_member' && !keep.has(i.id)).map(i => i.id);
+    const { supabase } = await import('./lib/supabaseClient');
+    if (dropFlocks.length > 0) {
+      const { error } = await supabase.from('flocks').update({
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        archived_reason: 'Plan limit — archived when trial ended',
+        archived_by: user?.id ?? null,
+      }).in('id', dropFlocks);
+      if (error) throw error;
+    }
+    if (dropMembers.length > 0) {
+      const { error } = await supabase.from('farm_members').update({ is_active: false }).in('id', dropMembers);
+      if (error) throw error;
+    }
+    window.location.reload();
+  };
+
   return (
     <OverflowModal
       open={props.showOverflow}
@@ -1799,7 +1846,7 @@ function OverflowModalWithHeadcount(props: {
       effectiveTier={props.effectiveTier}
       items={props.overflowItems}
       onUpgrade={props.onUpgrade}
-      onArchive={async () => props.onClose()}
+      onArchive={handleArchive}
       headcount={status}
     />
   );

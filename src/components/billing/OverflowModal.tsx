@@ -71,7 +71,10 @@ export function OverflowModal({
   const limits = useMemo(() => ({
     farm: getMaxFarms(effectiveTier),
     flock: getMaxFlocks(effectiveTier),
-    team_member: getMaxTeamMembers(effectiveTier),
+    // The plan's team size includes the owner, who is never shown in the
+    // pick list (they can't archive themselves) — so members get one
+    // fewer slot than the headline number.
+    team_member: Math.max(0, getMaxTeamMembers(effectiveTier) - 1),
   }), [effectiveTier]);
 
   const tierLabel = effectiveTier === 'free' ? 'Free' : effectiveTier === 'pro' ? 'Grower' : effectiveTier === 'enterprise' ? 'Farm Boss' : 'Industry';
@@ -101,6 +104,8 @@ export function OverflowModal({
     try {
       await onArchive(Array.from(selected));
       onClose();
+    } catch (err) {
+      alert(`Could not save your selection: ${err instanceof Error ? err.message : 'unknown error'}. Please try again.`);
     } finally {
       setSaving(false);
     }
@@ -188,7 +193,7 @@ export function OverflowModal({
         ) : (
           <div className="p-6 space-y-5">
             <p className="text-xs text-gray-600">
-              {tierLabel} allows {limits.farm} farm{limits.farm !== 1 ? 's' : ''}, {limits.flock} active flock{limits.flock !== 1 ? 's' : ''} per farm, and {limits.team_member} team member{limits.team_member !== 1 ? 's' : ''}.
+              {tierLabel} allows {limits.farm} farm{limits.farm !== 1 ? 's' : ''}, {limits.flock} active flock{limits.flock !== 1 ? 's' : ''} per farm, and {limits.team_member} team member{limits.team_member !== 1 ? 's' : ''} besides you. Unchecked items go read-only — nothing is deleted.
             </p>
 
             {grouped.farm.length > 0 && (

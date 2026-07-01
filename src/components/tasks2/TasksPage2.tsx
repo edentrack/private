@@ -182,16 +182,27 @@ export function TasksPage2() {
     const run = async () => {
       if (!currentFarm?.id) return;
       setLoading(true);
-      // Make sure template-based daily tasks exist for the selected date before reading.
-      await ensureTasksGeneratedForDate(supabase, currentFarm.id, dateISO, undefined, farmTz);
-      await normalizeAndDedupTasksForDate(supabase, currentFarm.id, dateISO);
-      const [t, temps] = await Promise.all([
-        fetchTasksForDate({ farmId: currentFarm.id, dateISO, farmTz }),
-        fetchTemplates(currentFarm.id),
-      ]);
-      setTasks(t);
-      setTemplates(temps);
-      setLoading(false);
+      try {
+        // Make sure template-based daily tasks exist for the selected date before reading.
+        // Generation/dedup are best-effort: if they fail we still want to
+        // show whatever tasks exist rather than spin forever.
+        try {
+          await ensureTasksGeneratedForDate(supabase, currentFarm.id, dateISO, undefined, farmTz);
+          await normalizeAndDedupTasksForDate(supabase, currentFarm.id, dateISO);
+        } catch (genErr) {
+          console.error('Task generation/dedup failed (continuing with existing tasks):', genErr);
+        }
+        const [t, temps] = await Promise.all([
+          fetchTasksForDate({ farmId: currentFarm.id, dateISO, farmTz }),
+          fetchTemplates(currentFarm.id),
+        ]);
+        setTasks(t);
+        setTemplates(temps);
+      } catch (err) {
+        console.error('Failed to load tasks:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     run();
   }, [currentFarm?.id, dateISO, farmTz]);

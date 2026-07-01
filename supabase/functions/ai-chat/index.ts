@@ -229,7 +229,7 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
   const settled = await Promise.allSettled([
     supabase.from("farms").select("name, currency, currency_code, location, farm_type").eq("id", farmId).maybeSingle(),
     supabase.from("flocks").select("id, name, type, current_count, initial_count, status, start_date").eq("farm_id", farmId),
-    supabase.from("tasks").select("id, status, scheduled_for, title_override, priority").eq("farm_id", farmId).eq("is_archived", false).gte("scheduled_for", `${thirtyDaysAgo}T00:00:00`),
+    supabase.from("tasks").select("id, status, scheduled_for, title_override, priority, completed_at, completed_by").eq("farm_id", farmId).eq("is_archived", false).gte("scheduled_for", `${thirtyDaysAgo}T00:00:00`),
     supabase.from("feed_stock").select("id, feed_type, current_stock_bags, bags_in_stock, unit, kg_per_unit").eq("farm_id", farmId),
     supabase.from("other_inventory").select("id, item_name, quantity, unit, category").eq("farm_id", farmId),
     // ── Financial tables — return ALL records (no date filter) ────────────
@@ -268,11 +268,14 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     supabase.from("water_quality_logs").select("logged_at, flock_id, temperature_c, dissolved_oxygen, ph, ammonia_mgl, nitrite_mgl, notes").eq("farm_id", farmId).gte("logged_at", thirtyDaysAgo).order("logged_at", { ascending: false }),
     supabase.from("harvest_records").select("harvested_at, flock_id, total_weight_kg, price_per_kg, total_amount, buyer_name, payment_status").eq("farm_id", farmId).gte("harvested_at", farmStart).order("harvested_at", { ascending: false }),
     supabase.from("sampling_events").select("sampled_at, flock_id, sample_size, abw_g, notes").eq("farm_id", farmId).gte("sampled_at", thirtyDaysAgo).order("sampled_at", { ascending: false }),
+    // Daily usage log — the accountability trail. Farmers ask "when was
+    // feed last logged and by who?" — that answer lives here, not in the
+    // expenses table (purchases ≠ daily usage).
+    supabase.from("inventory_usage").select("usage_date, item_type, quantity_used, recorded_by, flock_id, notes").eq("farm_id", farmId).gte("usage_date", toDateStr(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000))).order("usage_date", { ascending: false }).limit(300),
   ]);
   const ok = (i: number) => settled[i].status === "fulfilled" ? (settled[i] as PromiseFulfilledResult<any>).value : { data: null };
-  // 21 elements — rabbitSalesRes added between birdSalesRes and mortalityRes
-  // to keep financial-data adjacency in the destructuring. If you add
-  // another supabase.from() call above, bump the length here too — the
+  // 22 elements — usageRes (inventory_usage) appended at the end. If you
+  // add another supabase.from() call above, bump the length here too — the
   // ok() helper silently returns { data: null } past the array end, which
   // means the shadowing variable would be undefined and downstream
   // `.length` reads would throw at runtime. Tests should catch this if
@@ -282,8 +285,8 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     expensesRes, eggSalesRes, birdSalesRes, rabbitSalesRes,
     mortalityRes, weightRes,
     vaccinationsRes, eggRes, payrollRes, workersRes, payRatesRes, setupConfigRes, teamMembersRes,
-    waterQualityRes, harvestRes, samplingRes,
-  ] = Array.from({ length: 21 }, (_, i) => ok(i));
+    waterQualityRes, harvestRes, samplingRes, usageRes,
+  ] = Array.from({ length: 22 }, (_, i) => ok(i));
 
   const farm = farmRes.data;
   const currency = farm?.currency_code || farm?.currency || "XAF";
@@ -376,6 +379,12 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
 
   const pondOrFlock = isAquaFarm ? "Ponds" : "Flocks";
   context += `### ${pondOrFlock}\n`;
+  // Precomputed totals — ALWAYS quote these instead of adding flock counts
+  // yourself. A model doing mental arithmetic across 5 rows gets it wrong
+  // often enough that users notice (observed: off by 500 on a 1,669 farm).
+  const activeFlockRows = flocks.filter((f: any) => f.status === "active");
+  const totalAnimalsActive = activeFlockRows.reduce((s: number, f: any) => s + (Number(f.current_count) || 0), 0);
+  context += `TOTALS (precomputed — use these, do not re-add): ${activeFlockRows.length} active ${pondOrFlock.toLowerCase()}, ${totalAnimalsActive.toLocaleString()} ${isAquaFarm ? "fish" : "animals"} currently alive.\n`;
   if (flocks.length === 0) {
     context += `No ${pondOrFlock.toLowerCase()} recorded.\n`;
   } else {
@@ -436,6 +445,51 @@ async function getFarmContext(supabase: any, farmId: string): Promise<{ context:
     overdueTasks.slice(0, 5).forEach((t: any) => {
       context += `  · "${t.title_override || "task"}", due ${t.scheduled_for?.split("T")[0]}\n`;
     });
+  }
+
+  // ── Accountability log ────────────────────────────────────────────────
+  // Answers "who did what, when — and what was missed": daily usage
+  // entries (feed/water/medication) and task completions, both with the
+  // recorder's name and exact dates, plus a day-by-day feed coverage line
+  // so Eden can say "feed was NOT logged on Tue, Wed, Thu" without
+  // deriving it. Names resolve through team members (user_id → full_name).
+  const usage = usageRes.data || [];
+  const memberName = (uid: string | null | undefined): string => {
+    if (!uid) return "unknown";
+    const m = (teamMembersRes.data || []).find((tm: any) => tm.user_id === uid);
+    return m?.full_name || m?.email || "unknown member";
+  };
+  const flockName = (fid: string | null | undefined): string => {
+    const f = flocks.find((fl: any) => fl.id === fid);
+    return f?.name || "farm-wide";
+  };
+  context += `\n### Accountability log (last 14 days)\n`;
+  const feedUsage = usage.filter((u: any) => u.item_type === "feed");
+  const feedDays = new Set(feedUsage.map((u: any) => String(u.usage_date).slice(0, 10)));
+  const last7: string[] = Array.from({ length: 7 }, (_, i) => toDateStr(new Date(Date.now() - i * 24 * 60 * 60 * 1000)));
+  const missedFeedDays = last7.filter(d => !feedDays.has(d));
+  context += `- Feed logged on ${feedDays.size} of the last 14 days.`;
+  context += missedFeedDays.length === 0
+    ? ` All of the last 7 days covered.\n`
+    : ` MISSING days (last 7): ${missedFeedDays.join(", ")}.\n`;
+  if (usage.length > 0) {
+    context += `- Daily usage entries (date · item · qty · flock · logged by):\n`;
+    usage.slice(0, 40).forEach((u: any) => {
+      context += `  · ${String(u.usage_date).slice(0, 10)} · ${u.item_type} · ${u.quantity_used} · ${flockName(u.flock_id)} · ${memberName(u.recorded_by)}\n`;
+    });
+  } else {
+    context += `- No daily usage entries in the last 14 days — nobody has logged feed/water/medication usage.\n`;
+  }
+  const completedTasks = tasks
+    .filter((t: any) => t.status === "completed" && t.completed_at)
+    .sort((a: any, b: any) => String(b.completed_at).localeCompare(String(a.completed_at)));
+  if (completedTasks.length > 0) {
+    context += `- Task completions (most recent first, max 25):\n`;
+    completedTasks.slice(0, 25).forEach((t: any) => {
+      context += `  · ${String(t.completed_at).slice(0, 10)} · "${t.title_override || "task"}" · completed by ${memberName(t.completed_by)}\n`;
+    });
+  } else {
+    context += `- No task completions recorded in the last 30 days.\n`;
   }
 
   context += `\n### Inventory\n`;
